@@ -13,7 +13,7 @@ the cloud VM:
 - NetCDF root: `/usr`
 - WRF external NetCDF link path: `/usr/lib/x86_64-linux-gnu`
 - NetCDF libraries: `-lnetcdff -lnetcdf`
-- Jasper: conda-forge `linux-64` tarball installed under `/usr/local`
+- Jasper: source-built `2.0.33` installed under `/usr/local`
 
 The Dockerfile is intentionally documented as a `linux/amd64` build because the
-Jasper tarball is architecture-specific.
+known-good WRF configure reference came from an x86_64 cloud VM.

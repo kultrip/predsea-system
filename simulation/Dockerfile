@@ -1,6 +1,7 @@
 # PredSea WRF/WPS image.
 #
-# This build follows the proven Debian Bullseye + conda-forge Jasper pattern.
+# This build follows the proven Debian Bullseye WRF pattern and builds Jasper
+# from source to avoid stale architecture-specific binary URLs.
 # It is intended for linux/amd64 cloud runners. On Apple Silicon, build with:
 # docker build --platform linux/amd64 -t predsea-wrf:4.5 -f simulation/Dockerfile simulation
 FROM debian:bullseye AS wrf-builder
@@ -15,15 +16,19 @@ ARG WPS_CONFIGURE_OPTION=3
 ENV DIR=/opt \
     WRF_DIR=/opt/WRF \
     WPS_DIR=/opt/WPS \
-    NETCDF=/usr \
     JASPERLIB=/usr/local/lib \
     JASPERINC=/usr/local/include \
     LD_LIBRARY_PATH=/usr/local/lib \
-    WRFIO_NCD_LARGE_FILE_SUPPORT=1
+    WRFIO_NCD_LARGE_FILE_SUPPORT=1 \
+    NETCDF=/usr \
+    NETCDF_classic=1 \
+    PNETCDF_QUILT=0 \
+    WRF_EM_CORE=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
+    cmake \
     csh \
     curl \
     file \
@@ -32,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     git \
+    libjpeg-dev \
     libnetcdf-dev \
     libnetcdff-dev \
     libopenmpi-dev \
@@ -50,9 +56,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /opt
 
-RUN wget -q https://anaconda.org/conda-forge/jasper/${JASPER_VERSION}/download/linux-64/jasper-${JASPER_VERSION}-h98d927c_0.tar.bz2 -O jasper.tar.bz2 \
-    && tar -xjf jasper.tar.bz2 -C /usr/local --strip-components=1 \
-    && rm jasper.tar.bz2
+RUN wget -q https://github.com/jasper-software/jasper/archive/refs/tags/version-${JASPER_VERSION}.tar.gz -O jasper.tar.gz \
+    && tar -xzf jasper.tar.gz \
+    && cmake -S jasper-version-${JASPER_VERSION} -B jasper-build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_SKIP_INSTALL_RPATH=YES \
+        -DJAS_ENABLE_DOC=OFF \
+    && cmake --build jasper-build -j "$(nproc)" \
+    && cmake --install jasper-build \
+    && rm -rf jasper.tar.gz jasper-version-${JASPER_VERSION} jasper-build
 
 RUN wget -q https://github.com/wrf-model/WRF/archive/refs/tags/v${WRF_VERSION}.tar.gz -O wrf.tar.gz \
     && tar -xzf wrf.tar.gz \
@@ -90,7 +103,8 @@ ENV WRF_DIR=/opt/WRF \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     csh \
     libgfortran5 \
-    libnetcdf15 \
+    libnetcdf-dev \
+    libnetcdff-dev \
     libpng16-16 \
     openmpi-bin \
     python3 \

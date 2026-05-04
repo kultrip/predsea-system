@@ -41,9 +41,11 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "gfortran" in dockerfile
     assert "libnetcdf-dev" in dockerfile
     assert "libnetcdff-dev" in dockerfile
+    assert "libnetcdf15" not in dockerfile
     assert "netcdf-bin" in dockerfile
     assert "libjasper-dev" not in dockerfile
-    assert "download/linux-64/jasper-${JASPER_VERSION}" in dockerfile
+    assert "jasper-software/jasper" in dockerfile
+    assert "CMAKE_INSTALL_PREFIX=/usr/local" in dockerfile
     assert "linux/amd64" in dockerfile
     assert "mpirun" in dockerfile
 
