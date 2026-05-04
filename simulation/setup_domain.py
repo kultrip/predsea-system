@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class BalearicDomain:
+    start_date: str = "2026-05-04_00:00:00"
+    end_date: str = "2026-05-05_00:00:00"
+    interval_seconds: int = 10800
+    geog_data_path: str = "/opt/WPS_GEOG"
+    ref_lat: float = 39.2
+    ref_lon: float = 2.7
+    parent_dx_m: int = 3000
+    parent_dy_m: int = 3000
+    parent_e_we: int = 240
+    parent_e_sn: int = 210
+    nest_e_we: int = 361
+    nest_e_sn: int = 331
+    i_parent_start: int = 70
+    j_parent_start: int = 58
+    parent_grid_ratio: int = 3
+
+
+def render_namelist(domain: BalearicDomain) -> str:
+    return f"""&share
+ wrf_core = 'ARW',
+ max_dom = 2,
+ start_date = '{domain.start_date}', '{domain.start_date}',
+ end_date = '{domain.end_date}', '{domain.end_date}',
+ interval_seconds = {domain.interval_seconds},
+ io_form_geogrid = 2,
+ opt_output_from_geogrid_path = './geo_em',
+ debug_level = 0,
+/
+
+&geogrid
+ parent_id = 1, 1,
+ parent_grid_ratio = 1, {domain.parent_grid_ratio},
+ i_parent_start = 1, {domain.i_parent_start},
+ j_parent_start = 1, {domain.j_parent_start},
+ e_we = {domain.parent_e_we}, {domain.nest_e_we},
+ e_sn = {domain.parent_e_sn}, {domain.nest_e_sn},
+ geog_data_res = 'default', 'default',
+ dx = {domain.parent_dx_m},
+ dy = {domain.parent_dy_m},
+ map_proj = 'lambert',
+ ref_lat = {domain.ref_lat:.4f},
+ ref_lon = {domain.ref_lon:.4f},
+ truelat1 = 37.0,
+ truelat2 = 43.0,
+ stand_lon = {domain.ref_lon:.4f},
+ geog_data_path = '{domain.geog_data_path}',
+/
+
+&ungrib
+ out_format = 'WPS',
+ prefix = 'GFS',
+/
+
+&metgrid
+ fg_name = 'GFS',
+ io_form_metgrid = 2,
+ opt_output_from_metgrid_path = './met_em',
+/
+"""
+
+
+def write_namelist(path: Path, domain: BalearicDomain) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_namelist(domain))
+    return path
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate a WPS namelist for the Balearic Sea nest.")
+    parser.add_argument("--output", type=Path, default=Path("simulation/namelist.wps"))
+    parser.add_argument("--start-date", default=BalearicDomain.start_date)
+    parser.add_argument("--end-date", default=BalearicDomain.end_date)
+    parser.add_argument("--geog-data-path", default=BalearicDomain.geog_data_path)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    domain = BalearicDomain(
+        start_date=args.start_date,
+        end_date=args.end_date,
+        geog_data_path=args.geog_data_path,
+    )
+    output = write_namelist(args.output, domain)
+    print(output)
+
+
+if __name__ == "__main__":
+    main()

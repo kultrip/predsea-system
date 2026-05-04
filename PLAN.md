@@ -1,94 +1,73 @@
-# PredSea Decision Engine (v1) Plan
+# PredSea Vertically Integrated Pipeline Plan
 
-## Project
+## Phase 1: Repository Foundation
 
-PredSea Decision Engine (v1)
+Create the new project structure:
 
-## Objective
+- `simulation/`: WRF/WPS Dockerfiles and Fortran namelists.
+- `ingestion/`: scripts that fetch global GFS/ERA5 data from AWS S3.
+- `processing/`: NetCDF-to-JSON translation using `wrf-python`.
+- `vault/`: PostGIS schema for predictions and future Yacht-as-a-Sensor data.
+- `api/`: FastAPI gateway for the LLM Agent to query proprietary runs.
 
-Build a Python-based middleware that fetches real-time oceanographic data from
-the SOCIB THREDDS server via OpenDAP and exposes a Natural Language Ready API
-for yacht captains.
+## Phase 2: Atmospheric Forcing Engine (WRF)
 
-## Core Tech Stack
+In `simulation/`:
 
-- Data: `xarray`, `netCDF4`, `pydap` for remote slicing
-- API: FastAPI
-- Logic: Geopy for coordinate math
+- Create a Dockerfile for a high-performance WRF v4.5 environment.
+- Use a multi-stage build to compile WRF and WPS with GNU compilers and NetCDF-4 support.
+- Provide `setup_domain.py` to generate `namelist.wps` for a 1km high-resolution nest centered on the Balearic Sea, focusing on the Menorca and Ibiza channels.
+- Include `run_pipeline.sh` to automate the transition from GRIB2 ingestion to `wrf.exe` output.
 
-## Step 1: The Data Slicer (The Foundation)
+Current status: scaffolded in `simulation/` with a multi-stage WRF/WPS Dockerfile,
+Balearic `namelist.wps` generator, generated default namelist, and pipeline
+orchestration script. The Docker image has not been built locally in this
+session because compiling WRF/WPS is a long-running workload.
 
-Create `socib_client.py` with `get_ocean_data(lat, lon, timeframe)`.
+## Phase 3: Automated GFS Data Ingestion
 
-The function must:
+In `ingestion/`:
 
-- Connect to the SOCIB WMOP, Western Mediterranean Operational model, OpenDAP URL:
-  `https://thredds.socib.es/thredds/dodsC/wmop/forecast/latest`
-- Use `xarray` to remotely slice the dataset for a specific GPS coordinate and a
-  24-hour time window.
-- Extract:
-  - `sea_surface_height`
-  - `u_current`
-  - `v_current`
-  - `significant_wave_height`
-- Return a clean Python dictionary with these values.
-- Avoid downloading the whole file by using remote indexing.
+- Create `gfs_puller.py`.
+- Use `boto3` to fetch the latest 0.25-degree GFS data from the `noaa-gfs-bdp-pds` S3 bucket.
+- Download only the latest cycle: `00`, `06`, `12`, or `18` UTC.
+- Implement a Western Mediterranean bounding-box flow to reduce bandwidth and compute time.
+- Add a `tenacity` retry loop for transient 504/timeout issues.
 
-Current status: implemented in `socib_client.py` with unit tests in
-`tests/test_socib_client.py`.
+## Phase 4: The Captain's Intelligence Layer
 
-## Step 2: The Mariner Logic (The Brain)
+In `processing/`:
 
-Create `mariner_logic.py`. This is the Expert System for PredSea.
+- Create `mariner_interpreter.py`.
+- Use `xarray` and `wrf-python` to parse `wrfout` files.
+- Implement `get_captain_summary(lat, lon, time)`.
+- Calculate resultant wind, gust factors, and sea state stability.
+- Return JSON structured for LLM consumption.
 
-Create `evaluate_safety(data, vessel_type="yacht_20m")`.
+Example output:
 
-The function must:
-
-- Take the raw numbers from SOCIB.
-- Apply Mariner Thresholds:
-  - Green: waves below 1.0m, currents below 0.5 knots.
-  - Yellow: waves from 1.0m to 1.8m, currents from 0.5 to 1.5 knots.
-    Label: `Moderate discomfort`.
-  - Red: waves above 2.0m.
-    Label: `Safety Risk / Re-route suggested`.
-- Return a `status` and a Plain English Summary that an LLM can use to talk to a
-  captain.
-
-## Step 3: The API (The Interface)
-
-Create `main.py` using FastAPI.
-
-The API must:
-
-- Provide `GET /check-route` accepting `lat` and `lon`.
-- Call `socib_client.get_ocean_data()` to fetch oceanographic data.
-- Call `mariner_logic.evaluate_safety()` to produce the mariner evaluation.
-- Return JSON containing the raw data and the human-readable Mariner Summary.
-- Provide a health-check endpoint that verifies the SOCIB connection.
-
-## Step 4: The AI Agent Connector (The Goal)
-
-Create `agent_tool.py`.
-
-The script must:
-
-- Define a Pydantic schema for the `/check-route` tool.
-- Describe how an LLM should call this API.
-- Include this system prompt:
-
-```text
-You are a Master Mariner for the Balearics. Use the provided data to give concise, confident navigation advice. Mention specific conditions like the Menorca Channel if applicable.
+```json
+{
+  "condition": "Gale Warning",
+  "wind_knots": 35,
+  "direction": "NW",
+  "risk_assessment": "High risk of micro-bursts near Tramuntana cliffs"
+}
 ```
 
-## Why This Architecture
+## Phase 5: Data Assimilation Vault
 
-Zero Overhead: PredSea does not store oceanographic data. It streams the needed
-slice from SOCIB when a captain or agent asks.
+In `vault/`:
 
-Context Aware: Kultrip itinerary waypoints can eventually provide the `lat` and
-`lon` inputs directly.
+- Create `schema.sql` for PostgreSQL/PostGIS.
+- Create `forecast_ledger` with spatial indexing for WRF outputs.
+- Create `observations` for real-time yacht telemetry: wind, pressure, and position.
+- Create `bias_analysis` joining forecasts and observations by time/space proximity to calculate error margin for future ML training.
 
-Modular: If SOCIB changes its URL, only `socib_client.py` needs to change. If
-PredSea later moves to deeper proprietary models, the client module can be
-swapped without rewriting the API or mariner logic.
+## Strategic Rationale
+
+Ownership: PredSea becomes a data provider, not a wrapper.
+
+Reliability: Uptime depends on cloud infrastructure rather than government servers.
+
+Valuation: Proprietary model runs and a Truth Vault become defensible IP.

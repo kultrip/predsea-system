@@ -1,7 +1,10 @@
-xarray>=2025.1
-netCDF4>=1.7
-pydap>=3.5
-geopy>=2.4
+boto3>=1.34
+botocore>=1.34
 fastapi>=0.115
+netCDF4>=1.7
 numpy>=2.0
+pandas>=2.2
 pytest>=8.0
+tenacity>=8.2
+uvicorn>=0.30
+xarray>=2025.1
