@@ -3,6 +3,7 @@ set -euo pipefail
 
 WPS_DIR="${WPS_DIR:-/opt/WPS}"
 WRF_DIR="${WRF_DIR:-/opt/WRF}"
+PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"
 GRIB_DIR="${GRIB_DIR:-/data/gfs}"
 RUN_DIR="${RUN_DIR:-/workspace/run}"
 NAMELIST_WPS="${NAMELIST_WPS:-/workspace/namelist.wps}"
@@ -21,16 +22,18 @@ cd "${WPS_DIR}"
 
 ln -sf "${Vtable}" Vtable
 ./link_grib.csh "${GRIB_DIR}"/*.grib2
-./ungrib.exe
-./geogrid.exe
-./metgrid.exe
+"${PREDSEA_BIN}/ungrib.exe"
+"${PREDSEA_BIN}/geogrid.exe"
+"${PREDSEA_BIN}/metgrid.exe"
 
 cd "${RUN_DIR}"
 cp "${WPS_DIR}"/met_em.d0*.nc .
 cp "${WRF_DIR}/run"/* .
+cp "${PREDSEA_BIN}/real.exe" .
+cp "${PREDSEA_BIN}/wrf.exe" .
 
-mpirun -np "${MPI_PROCS}" ./real.exe
-mpirun -np "${MPI_PROCS}" ./wrf.exe
+mpirun -np "${MPI_PROCS}" "${PREDSEA_BIN}/real.exe"
+mpirun -np "${MPI_PROCS}" "${PREDSEA_BIN}/wrf.exe"
 
 echo "WRF output files:"
 ls -1 wrfout_d0*

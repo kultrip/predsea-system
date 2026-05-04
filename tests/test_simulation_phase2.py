@@ -48,9 +48,14 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "CMAKE_INSTALL_PREFIX=/usr/local" in dockerfile
     assert "linux/amd64" in dockerfile
     assert "mpirun" in dockerfile
+    assert "test -x run/wrf.exe" in dockerfile
+    assert "test -x geogrid.exe" in dockerfile
+    assert "COPY --from=wrf-builder /opt/WRF/run/wrf.exe" in dockerfile
+    assert "COPY --from=wrf-builder /opt/WPS/geogrid.exe" in dockerfile
 
     assert "link_grib.csh" in pipeline
     assert "ungrib.exe" in pipeline
     assert "metgrid.exe" in pipeline
-    assert "real.exe" in pipeline
-    assert "wrf.exe" in pipeline
+    assert 'PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"' in pipeline
+    assert '"${PREDSEA_BIN}/real.exe"' in pipeline
+    assert '"${PREDSEA_BIN}/wrf.exe"' in pipeline

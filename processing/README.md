@@ -28,3 +28,13 @@ Multi-domain route comparison is available for the d01, d02, and d03 samples:
 ```bash
 python processing/run_route_comparison.py
 ```
+
+Observation-vs-forecast distribution validation is available:
+
+```bash
+python processing/run_observation_validation.py
+```
+
+The validation runner currently reads normalized station observations from CSV
+and scores each WRF domain by bias, MAE, RMSE, and a simple two-sample
+Kolmogorov-Smirnov statistic.

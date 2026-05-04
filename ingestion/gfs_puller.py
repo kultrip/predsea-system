@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -15,6 +16,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 GFS_BUCKET = "noaa-gfs-bdp-pds"
 GFS_CYCLES = ("00", "06", "12", "18")
+DEFAULT_LOOKBACK_CYCLES = 12
 WESTERN_MEDITERRANEAN_BBOX = {
     "min_lon": -6.0,
     "max_lon": 10.0,
@@ -81,17 +83,45 @@ def grib_filter_expression(bbox: dict[str, float] | None = None) -> str:
     )
 
 
+def iter_candidate_cycles(now: datetime, lookback_cycles: int = DEFAULT_LOOKBACK_CYCLES):
+    current = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    current = current.astimezone(timezone.utc)
+    cycle_hour = (current.hour // 6) * 6
+    cycle_time = current.replace(hour=cycle_hour, minute=0, second=0, microsecond=0)
+
+    for offset in range(lookback_cycles):
+        candidate = cycle_time - timedelta(hours=6 * offset)
+        yield candidate, f"{candidate.hour:02d}"
+
+
+def find_latest_available_config(
+    s3_client,
+    now: datetime | None = None,
+    output_dir: Path = Path("data/gfs"),
+    bucket: str = GFS_BUCKET,
+    lookback_cycles: int = DEFAULT_LOOKBACK_CYCLES,
+) -> tuple[GfsPullConfig, list[str]]:
+    reference_time = now or datetime.now(timezone.utc)
+    for run_date, cycle in iter_candidate_cycles(reference_time, lookback_cycles):
+        config = GfsPullConfig(run_date=run_date, cycle=cycle, output_dir=output_dir, bucket=bucket)
+        keys = list_grib_keys(s3_client, config)
+        if keys:
+            return config, keys
+    raise RuntimeError(f"No GFS 0.25-degree GRIB2 files found in the last {lookback_cycles} cycles.")
+
+
 def download_latest_cycle(
     output_dir: Path = Path("data/gfs"),
     now: datetime | None = None,
     dry_run: bool = False,
     max_files: int | None = None,
 ) -> list[Path]:
-    run_date = now or datetime.now(timezone.utc)
-    cycle = choose_latest_cycle(run_date)
-    config = GfsPullConfig(run_date=run_date, cycle=cycle, output_dir=output_dir)
     s3_client = make_s3_client()
-    keys = list_grib_keys(s3_client, config)
+    config, keys = find_latest_available_config(
+        s3_client=s3_client,
+        now=now,
+        output_dir=output_dir,
+    )
     selected_keys = keys[:max_files] if max_files else keys
 
     if dry_run:
@@ -99,6 +129,7 @@ def download_latest_cycle(
             print(key)
         return []
 
+    ensure_wgrib2_available()
     config.cycle_output_dir.mkdir(parents=True, exist_ok=True)
     return [_download_and_filter(s3_client, config, key) for key in selected_keys]
 
@@ -134,6 +165,15 @@ def filter_grib_to_bbox(input_path: Path, output_path: Path, bbox: dict[str, flo
         str(output_path),
     ]
     subprocess.run(command, check=True)
+
+
+def ensure_wgrib2_available() -> None:
+    if shutil.which("wgrib2") is None:
+        raise RuntimeError(
+            "wgrib2 is required for Phase 3 GRIB2 bounding-box filtering. "
+            "Install it first, for example with `conda install -c conda-forge wgrib2` "
+            "or run inside an image that includes wgrib2."
+        )
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:

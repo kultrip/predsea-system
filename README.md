@@ -43,7 +43,14 @@ pip install -r processing/requirements.txt
 List the latest GFS keys for the Western Mediterranean without downloading:
 
 ```bash
-python ingestion/gfs_puller.py --dry-run
+python ingestion/gfs_puller.py --dry-run --max-files 5
+```
+
+Download and filter files after installing `wgrib2`:
+
+```bash
+conda install -c conda-forge wgrib2
+python ingestion/gfs_puller.py --max-files 1
 ```
 
 ## Phase 2 WRF Scaffold
@@ -62,3 +69,44 @@ docker build --platform linux/amd64 -t predsea-wrf:4.5 -f simulation/Dockerfile 
 
 Run `simulation/run_pipeline.sh` inside the image with GFS GRIB2 files mounted at
 `/data/gfs`.
+
+## Phase 4 Captain Summary
+
+Run the WRF interpreter against the sample `wrfout_d03` fixture:
+
+```bash
+python processing/run_phase4_summary.py
+```
+
+The interpreter returns LLM-ready JSON with condition, wind speed, direction,
+gust factor, stability, risk assessment, source, location, and supporting
+metrics.
+
+Run a route sample across the WRF fixture:
+
+```bash
+python processing/run_route_summary.py
+```
+
+Run Dijkstra lowest-wind routing across the WRF grid:
+
+```bash
+python processing/run_optimal_route.py
+```
+
+Compare Dijkstra lowest-wind routing across the 9 km, 3 km, and 1 km sample
+domains:
+
+```bash
+python processing/run_route_comparison.py
+```
+
+Validate forecast distributions against station-style observations:
+
+```bash
+python processing/run_observation_validation.py
+```
+
+The default observation CSV is a small development fixture. Replace
+`ingestion/fixtures/balearic_observations_sample.csv` with SOCIB or Puertos del
+Estado observations for real validation.

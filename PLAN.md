@@ -34,6 +34,13 @@ In `ingestion/`:
 - Implement a Western Mediterranean bounding-box flow to reduce bandwidth and compute time.
 - Add a `tenacity` retry loop for transient 504/timeout issues.
 
+Current status: implemented in `ingestion/gfs_puller.py`. The puller finds the
+latest available NOAA GFS 0.25-degree cycle, lists matching GRIB2 keys from S3,
+supports dry-run inspection, retries download/filter failures, and uses
+`wgrib2 -small_grib` to cut downloaded GRIB2 files to the Western Mediterranean
+bounding box. Live S3 dry-run has been verified. Actual filtering requires
+`wgrib2` to be installed on the machine or container running ingestion.
+
 ## Phase 4: The Captain's Intelligence Layer
 
 In `processing/`:
@@ -43,6 +50,11 @@ In `processing/`:
 - Implement `get_captain_summary(lat, lon, time)`.
 - Calculate resultant wind, gust factors, and sea state stability.
 - Return JSON structured for LLM consumption.
+
+Current status: initial implementation exists in `processing/mariner_interpreter.py`
+using the real `processing/fixtures/wrfout_d03_sample.nc` fixture. It extracts
+nearest-grid 10m wind, direction, pressure, temperature, terrain, rain, computes
+a gust factor and stability label, and returns LLM-ready captain guidance.
 
 Example output:
 

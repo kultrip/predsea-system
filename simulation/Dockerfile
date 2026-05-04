@@ -56,6 +56,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /opt
 
+# Change "$(nproc)" to 1 to prevent QEMU segmentation faults on Mac
 RUN wget -q https://github.com/jasper-software/jasper/archive/refs/tags/version-${JASPER_VERSION}.tar.gz -O jasper.tar.gz \
     && tar -xzf jasper.tar.gz \
     && cmake -S jasper-version-${JASPER_VERSION} -B jasper-build \
@@ -63,7 +64,7 @@ RUN wget -q https://github.com/jasper-software/jasper/archive/refs/tags/version-
         -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DCMAKE_SKIP_INSTALL_RPATH=YES \
         -DJAS_ENABLE_DOC=OFF \
-    && cmake --build jasper-build -j "$(nproc)" \
+    && cmake --build jasper-build -j 1 \
     && cmake --install jasper-build \
     && rm -rf jasper.tar.gz jasper-version-${JASPER_VERSION} jasper-build
 
@@ -75,7 +76,9 @@ RUN wget -q https://github.com/wrf-model/WRF/archive/refs/tags/v${WRF_VERSION}.t
 WORKDIR /opt/WRF
 
 RUN printf "%s\n1\n" "${WRF_CONFIGURE_OPTION}" | ./configure \
-    && ./compile -j "$(nproc)" em_real
+    && ./compile -j "$(nproc)" em_real \
+    && test -x run/real.exe \
+    && test -x run/wrf.exe
 
 WORKDIR /opt
 
@@ -87,7 +90,10 @@ RUN wget -q https://github.com/wrf-model/WPS/archive/refs/tags/v${WPS_VERSION}.t
 WORKDIR /opt/WPS
 
 RUN printf "%s\n" "${WPS_CONFIGURE_OPTION}" | ./configure \
-    && ./compile
+    && ./compile \
+    && test -x geogrid.exe \
+    && test -x ungrib.exe \
+    && test -x metgrid.exe
 
 FROM debian:bullseye-slim AS wrf-runtime
 
@@ -115,10 +121,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN mpirun --version
 
+RUN mkdir -p /opt/predsea/bin
+
 COPY --from=wrf-builder /usr/local/lib/libjasper* /usr/local/lib/
 COPY --from=wrf-builder /usr/local/include/jasper /usr/local/include/jasper
 COPY --from=wrf-builder /opt/WRF /opt/WRF
 COPY --from=wrf-builder /opt/WPS /opt/WPS
+COPY --from=wrf-builder /opt/WRF/run/real.exe /opt/predsea/bin/real.exe
+COPY --from=wrf-builder /opt/WRF/run/wrf.exe /opt/predsea/bin/wrf.exe
+COPY --from=wrf-builder /opt/WPS/geogrid.exe /opt/predsea/bin/geogrid.exe
+COPY --from=wrf-builder /opt/WPS/ungrib.exe /opt/predsea/bin/ungrib.exe
+COPY --from=wrf-builder /opt/WPS/metgrid.exe /opt/predsea/bin/metgrid.exe
 COPY setup_domain.py /opt/predsea/setup_domain.py
 COPY run_pipeline.sh /opt/predsea/run_pipeline.sh
 
