@@ -1,0 +1,49 @@
+name: PredSea Daily Briefing
+
+on:
+  schedule:
+    # GitHub cron is UTC. This is 08:30 in Mallorca during summer time.
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: predsea-daily-briefing
+  cancel-in-progress: false
+
+jobs:
+  run-daily-briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run PredSea briefing script
+        env:
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
+          PREDSEA_LOGO_PATH: assets/predsea_logo.png
+        run: |
+          python scripts/generate_daily_briefing.py
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: predsea-daily-output
+          path: outputs/
+          if-no-files-found: error
+          retention-days: 14
