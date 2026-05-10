@@ -13,23 +13,26 @@ class BalearicDomain:
     geog_data_path: str = "/opt/WPS_GEOG"
     ref_lat: float = 39.2
     ref_lon: float = 2.7
-    parent_dx_m: int = 3000
-    parent_dy_m: int = 3000
-    parent_e_we: int = 240
-    parent_e_sn: int = 210
-    nest_e_we: int = 361
-    nest_e_sn: int = 331
-    i_parent_start: int = 70
-    j_parent_start: int = 58
-    parent_grid_ratio: int = 3
+    d01_dx_m: int = 9000
+    d01_dy_m: int = 9000
+    d01_e_we: int = 120
+    d01_e_sn: int = 110
+    d02_e_we: int = 121
+    d02_e_sn: int = 121
+    d03_e_we: int = 151
+    d03_e_sn: int = 151
+    d02_i_parent_start: int = 86
+    d02_j_parent_start: int = 61
+    d03_i_parent_start: int = 34
+    d03_j_parent_start: int = 35
 
 
 def render_namelist(domain: BalearicDomain) -> str:
     return f"""&share
  wrf_core = 'ARW',
- max_dom = 2,
- start_date = '{domain.start_date}', '{domain.start_date}',
- end_date = '{domain.end_date}', '{domain.end_date}',
+ max_dom = 3,
+ start_date = '{domain.start_date}', '{domain.start_date}', '{domain.start_date}',
+ end_date = '{domain.end_date}', '{domain.end_date}', '{domain.end_date}',
  interval_seconds = {domain.interval_seconds},
  io_form_geogrid = 2,
  opt_output_from_geogrid_path = './geo_em',
@@ -37,15 +40,15 @@ def render_namelist(domain: BalearicDomain) -> str:
 /
 
 &geogrid
- parent_id = 1, 1,
- parent_grid_ratio = 1, {domain.parent_grid_ratio},
- i_parent_start = 1, {domain.i_parent_start},
- j_parent_start = 1, {domain.j_parent_start},
- e_we = {domain.parent_e_we}, {domain.nest_e_we},
- e_sn = {domain.parent_e_sn}, {domain.nest_e_sn},
- geog_data_res = 'default', 'default',
- dx = {domain.parent_dx_m},
- dy = {domain.parent_dy_m},
+ parent_id = 1, 1, 2,
+ parent_grid_ratio = 1, 3, 3,
+ i_parent_start = 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start},
+ j_parent_start = 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start},
+ e_we = {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we},
+ e_sn = {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn},
+ geog_data_res = 'default', 'default', 'default',
+ dx = {domain.d01_dx_m},
+ dy = {domain.d01_dy_m},
  map_proj = 'lambert',
  ref_lat = {domain.ref_lat:.4f},
  ref_lon = {domain.ref_lon:.4f},

@@ -38,3 +38,12 @@ python processing/run_observation_validation.py
 The validation runner currently reads normalized station observations from CSV
 and scores each WRF domain by bias, MAE, RMSE, and a simple two-sample
 Kolmogorov-Smirnov statistic.
+
+GFS-vs-PredSea validation is available:
+
+```bash
+python processing/run_gfs_vs_predsea_validation.py
+```
+
+This compares the real NOAA GFS 2026-04-29 12Z forecast-hour-006 wind/pressure
+extraction against the PredSea WRF d03 fixture using the same observation rows.

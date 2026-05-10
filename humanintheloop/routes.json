@@ -1,0 +1,134 @@
+{
+  "palma_ibiza": {
+    "id": "palma_ibiza",
+    "name": "Palma -> Ibiza",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Ibiza",
+      "longitude": 1.4350,
+      "latitude": 38.9089
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "representative for Ibiza Channel exposure"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Exposed SW Mallorca to Ibiza crossing; watch the Ibiza Channel when NW swell builds.",
+    "sample_points": [
+      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+      {"name": "Mid Palma-Ibiza", "longitude": 2.04, "latitude": 39.19},
+      {"name": "Ibiza Channel", "longitude": 1.83, "latitude": 38.85}
+    ]
+  },
+  "palma_cabrera": {
+    "id": "palma_cabrera",
+    "name": "Palma -> Cabrera",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Cabrera",
+      "longitude": 2.9320,
+      "latitude": 39.1510
+    },
+    "validation": {
+      "truth_source": "bahia_de_palma",
+      "socib_platform_id": 143,
+      "socib_instrument_id": 983,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "closest public SOCIB wave buoy to Palma departure waters"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Shorter exposed run south of Mallorca; comfort depends on wave direction and shelter near Cabrera.",
+    "sample_points": [
+      {"name": "Palma Bay south", "longitude": 2.58, "latitude": 39.42},
+      {"name": "Mid Palma-Cabrera", "longitude": 2.73, "latitude": 39.30},
+      {"name": "Cabrera approach", "longitude": 2.91, "latitude": 39.16}
+    ]
+  },
+  "ibiza_formentera": {
+    "id": "ibiza_formentera",
+    "name": "Ibiza -> Formentera",
+    "origin": {
+      "name": "Ibiza",
+      "longitude": 1.4350,
+      "latitude": 38.9089
+    },
+    "destination": {
+      "name": "Formentera",
+      "longitude": 1.4160,
+      "latitude": 38.7340
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "closest public SOCIB wave buoy for Ibiza/Formentera channel context"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Short channel route; current and local chop can matter even when wave height looks modest.",
+    "sample_points": [
+      {"name": "Ibiza south approach", "longitude": 1.43, "latitude": 38.90},
+      {"name": "Freus channel", "longitude": 1.43, "latitude": 38.82},
+      {"name": "Formentera approach", "longitude": 1.42, "latitude": 38.74}
+    ]
+  },
+  "alcudia_ciutadella": {
+    "id": "alcudia_ciutadella",
+    "name": "Alcudia -> Ciutadella",
+    "origin": {
+      "name": "Alcudia",
+      "longitude": 3.1350,
+      "latitude": 39.8420
+    },
+    "destination": {
+      "name": "Ciutadella",
+      "longitude": 3.8370,
+      "latitude": 40.0010
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "no suitable SOCIB wave buoy in the Menorca Channel via DataDiscovery"
+    },
+    "current_validation": {
+      "truth_source": "ciutadella",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_speed_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Ciutadella station current observations for Menorca Channel endpoint context"
+    },
+    "route_note": "Menorca Channel crossing; exposed conditions can restrict smaller vessels sooner than other routes.",
+    "sample_points": [
+      {"name": "Alcudia Bay offshore", "longitude": 3.20, "latitude": 39.88},
+      {"name": "Mid Menorca Channel", "longitude": 3.48, "latitude": 39.96},
+      {"name": "Ciutadella approach", "longitude": 3.78, "latitude": 40.00}
+    ]
+  }
+}

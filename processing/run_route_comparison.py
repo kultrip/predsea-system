@@ -17,8 +17,8 @@ if __name__ == "__main__":
             end_lon=3.6,
             time=None,
             wrfout_paths=[
-                Path("processing/wrfout_d01_sample.nc"),
-                Path("processing/wrfout_d02_sample.nc"),
+                Path("processing/fixtures/wrfout_d01_sample.nc"),
+                Path("processing/fixtures/wrfout_d02_sample.nc"),
                 Path("processing/fixtures/wrfout_d03_sample.nc"),
             ],
             cost_field="wind",

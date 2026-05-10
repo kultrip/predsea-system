@@ -13,6 +13,183 @@ observations in a PostGIS vault.
 - `processing/`: NetCDF-to-JSON interpretation using `xarray` and `wrf-python`.
 - `vault/`: PostgreSQL/PostGIS schema for forecasts, yacht telemetry, and bias analysis.
 - `api/`: FastAPI gateway for the LLM agent.
+- `humanintheloop/`: local MVP for captain-facing route decisions and
+  WhatsApp/LinkedIn artifacts.
+
+## Human-in-the-Loop MVP
+
+The current working MVP lives in `humanintheloop/`. It is a lightweight command
+line prototype for proving the decision layer before the full owned-modeling
+stack exists.
+
+The MVP is a human-in-the-loop intelligence workflow:
+
+```text
+forecast + buoy truth + route exposure + vessel class + human review
+= captain-ready decision intelligence
+```
+
+Current routes in `humanintheloop/routes.json`:
+
+```text
+palma_ibiza: Palma -> Ibiza
+palma_cabrera: Palma -> Cabrera
+ibiza_formentera: Ibiza -> Formentera
+alcudia_ciutadella: Alcudia -> Ciutadella
+```
+
+Current data sources:
+
+- SOCIB public observations via DataDiscovery.
+- Copernicus Marine Mediterranean wave and surface-current forecast subsets.
+
+Current forecast variables:
+
+- `VHM0`: significant wave height.
+- `VMDR`: mean wave direction from, used as visual/context information.
+- `uo`, `vo`: eastward and northward surface current components.
+
+Current observation variables:
+
+- Wave height from SOCIB wave buoys.
+- Wave direction from SOCIB wave buoys, visualized as arrows rather than as a
+  scalar line chart.
+- Water temperature, sea-level pressure, wind speed, and salinity where SOCIB
+  exposes them. These are not all validated against forecasts yet because the
+  matching forecast variables are not all downloaded in the MVP.
+
+## Human-in-the-Loop Pipeline
+
+1. Data fetch:
+   - `socib_public.py` fetches current public SOCIB observations.
+   - `fetch_data.py` downloads bounded Copernicus wave/current NetCDF files into
+     `humanintheloop/mvp_data/`.
+
+2. Route catalog:
+   - `routes.json` defines route IDs, display names, sample points, vessel route
+     notes, and validation truth sources.
+
+3. Route forecast sampling:
+   - `route_analysis.py` samples each configured route from the forecast grid.
+   - Decisions use the exposed-route maximum per hour instead of a broad
+     Balearic box average.
+
+4. Vessel-class logic:
+   - `small`: under 15m.
+   - `medium`: 15-24m.
+   - `large`: over 24m.
+   - The same forecast can produce different advice depending on vessel class.
+
+5. Briefing generation:
+   - `briefing.py` creates route-specific snapshots and text artifacts under
+     `mvp_data/routes/<route_id>/`.
+   - `briefing_renderers.py` creates LinkedIn and WhatsApp-style text.
+
+6. Question answering:
+   - `decision_engine.py` answers early rule-based captain questions such as:
+     - `Can I leave at 17:00?`
+     - `Is it safe to stay here?`
+     - `What is the best time to leave?`
+     - `Can I save fuel?`
+
+7. Visual output:
+   - `chat_figure.py` turns the WhatsApp script into a LinkedIn-ready
+     chat-style screenshot.
+
+8. Validation:
+   - `validation_engine.py` compares stored route forecasts against SOCIB truth.
+   - Wave-height validation is a scalar time-series comparison and reports MAE.
+   - Wave direction is visualized with paired forecast/observed arrows per hour.
+   - Direction is not treated as a scalar accuracy plot.
+   - Marketing wins are only flagged when a separate baseline forecast exists.
+
+9. Human review:
+   - The human reviews the briefing, validation plots, buoy suitability, and
+     confidence before publishing or sending advice.
+   - The human decides whether the model evidence supports the message.
+
+Current decision behavior:
+
+- Fetches live observations and forecast data.
+- Builds route-specific artifacts under `mvp_data/routes/<route_id>/`.
+- Samples the selected route corridor instead of using a whole-region Balearic
+  average.
+- Uses the exposed-route maximum per hour for route decisions.
+- Adjusts advice by vessel class: `small`, `medium`, or `large`.
+- Answers captain-style questions with:
+  - `Recommendation`
+  - `Reason`
+  - `Confidence`
+- Handles specific requested times such as `17:00`.
+- Validates stored route forecasts against SOCIB buoy observations with
+  `validation_engine.py`, using route-specific truth sources.
+- Produces wave-height time-series validation plots and wave-direction vector
+  context plots.
+- Produces LinkedIn/WhatsApp text artifacts and a WhatsApp-style screenshot
+  figure.
+
+Run from `humanintheloop/`:
+
+```bash
+./.venv/bin/python briefing.py \
+  --route palma_ibiza \
+  --vessel-class medium \
+  --question "Can I leave at 17:00?" \
+  --location-label "Palma Marina"
+```
+
+For a demo conversation time, override the clock:
+
+```bash
+./.venv/bin/python briefing.py \
+  --route alcudia_ciutadella \
+  --vessel-class small \
+  --question "Can I leave at 17:00?" \
+  --location-label "Palma Marina" \
+  --current-time "09:30"
+```
+
+Generate the WhatsApp-style figure:
+
+```bash
+./.venv/bin/python chat_figure.py \
+  mvp_data/routes/palma_ibiza/briefing_whatsapp_screenshot_script.txt \
+  "/path/to/predsea-logo.png" \
+  mvp_data/routes/palma_ibiza/predsea_whatsapp_figure.png \
+  --platform WhatsApp
+```
+
+Validate stored route forecasts against current SOCIB buoy observations:
+
+```bash
+./.venv/bin/python validation_engine.py
+```
+
+Validation writes:
+
+```text
+mvp_data/validation/<date>/validation_report.json
+mvp_data/validation/<date>/marketing_wins.txt
+mvp_data/validation/<date>/time_series/time_series_report.json
+mvp_data/validation/<date>/time_series/*_wave_timeseries.png
+mvp_data/validation/<date>/direction_vectors/direction_vector_report.json
+mvp_data/validation/<date>/direction_vectors/*_wave_direction_vectors.png
+```
+
+Run MVP tests:
+
+```bash
+cd humanintheloop
+./.venv/bin/python -m unittest test_socib_scripts.py
+```
+
+Important limitation: this is not yet a production chat system. Data refresh is
+still coupled to `briefing.py`, unknown routes are not generated automatically,
+location sharing is simulated for screenshots, and the question parser is
+rule-based. Marketing-win claims require a separate baseline forecast in the
+snapshot; the MVP does not claim to beat Copernicus by comparing Copernicus-based
+route output against itself. `Alcudia -> Ciutadella` is intentionally marked as
+not validated by SOCIB until a suitable Menorca Channel wave source is added.
 
 ## Execution Order
 
@@ -110,3 +287,14 @@ python processing/run_observation_validation.py
 The default observation CSV is a small development fixture. Replace
 `ingestion/fixtures/balearic_observations_sample.csv` with SOCIB or Puertos del
 Estado observations for real validation.
+
+Compare a GFS-style wind baseline against the PredSea WRF d03 fixture:
+
+```bash
+python processing/run_gfs_vs_predsea_validation.py
+```
+
+The default GFS NetCDF is the real NOAA GFS 2026-04-29 12Z forecast-hour-006
+wind/pressure extraction, valid at the same 2026-04-29 18Z timestamp as the WRF
+d03 fixture. Replace the observation CSV with real buoy/station observations for
+production validation.

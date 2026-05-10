@@ -1,85 +1,344 @@
-# PredSea Vertically Integrated Pipeline Plan
+# PredSea Modeling Plan
 
-## Phase 1: Repository Foundation
+## Human-in-the-Loop MVP Status
 
-Create the new project structure:
+Status: working local MVP for route-aware Balearic decision briefings.
 
-- `simulation/`: WRF/WPS Dockerfiles and Fortran namelists.
-- `ingestion/`: scripts that fetch global GFS/ERA5 data from AWS S3.
-- `processing/`: NetCDF-to-JSON translation using `wrf-python`.
-- `vault/`: PostGIS schema for predictions and future Yacht-as-a-Sensor data.
-- `api/`: FastAPI gateway for the LLM Agent to query proprietary runs.
+This MVP is intentionally simpler than the long-term owned-modeling roadmap
+below. Its goal is to prove PredSea's decision value before investing in a full
+NEMO/SWAN/LLM/product stack.
 
-## Phase 2: Atmospheric Forcing Engine (WRF)
+Implemented now in `humanintheloop/`:
 
-In `simulation/`:
+- SOCIB public observations are fetched and normalized from DataDiscovery.
+- Copernicus Marine Mediterranean wave/current forecast subsets are downloaded.
+- The decision source no longer uses a broad Balearic box average.
+- `humanintheloop/routes.json` configures initial platform routes:
+  - `palma_ibiza`
+  - `palma_cabrera`
+  - `ibiza_formentera`
+  - `alcudia_ciutadella`
+- The route engine samples the selected route corridor and uses the exposed-route
+  maximum per hour (`sampling_method: route_exposed_max`).
+- Briefing artifacts are written under `mvp_data/routes/<route_id>/`.
+- Vessel class filtering adjusts advice for `small`, `medium`, and `large`
+  vessels.
+- `validation_engine.py` compares stored route forecasts against SOCIB buoy
+  observations and writes validation artifacts. Validation sources are configured
+  per route, not globally.
+- Wave-height validation uses scalar time-series comparisons and MAE. Wave
+  direction is visualized with paired forecast/observed vectors per hour and is
+  not treated as a scalar line-chart metric.
+- Captain questions can be answered with `briefing.py --question`.
+- The decision engine supports these early intents:
+  - leave/window timing
+  - local stay/move safety
+  - conditions at a requested time such as `17:00`
+  - first-pass fuel/route-efficiency language
+- Answers include `Recommendation`, `Reason`, and `Confidence`.
+- Screenshot-ready WhatsApp conversation scripts are generated.
+- `chat_figure.py` renders a LinkedIn-ready WhatsApp-style PNG with the PredSea
+  logo, shared-location card, emphasized decision values, and confidence badge.
+- Current verification: local `unittest` coverage in
+  `humanintheloop/test_socib_scripts.py`.
 
-- Create a Dockerfile for a high-performance WRF v4.5 environment.
-- Use a multi-stage build to compile WRF and WPS with GNU compilers and NetCDF-4 support.
-- Provide `setup_domain.py` to generate `namelist.wps` for a 1km high-resolution nest centered on the Balearic Sea, focusing on the Menorca and Ibiza channels.
-- Include `run_pipeline.sh` to automate the transition from GRIB2 ingestion to `wrf.exe` output.
+Current MVP command examples:
 
-Current status: scaffolded in `simulation/` with a multi-stage WRF/WPS Dockerfile,
-Balearic `namelist.wps` generator, generated default namelist, and pipeline
-orchestration script. The Docker image has not been built locally in this
-session because compiling WRF/WPS is a long-running workload.
+```bash
+cd humanintheloop
 
-## Phase 3: Automated GFS Data Ingestion
+# Use real current local time
+./.venv/bin/python briefing.py \
+  --route palma_ibiza \
+  --vessel-class medium \
+  --question "Can I leave at 17:00?" \
+  --location-label "Palma Marina"
 
-In `ingestion/`:
+# Force a demo time for a LinkedIn screenshot
+./.venv/bin/python briefing.py \
+  --route alcudia_ciutadella \
+  --vessel-class small \
+  --question "Can I leave at 17:00?" \
+  --location-label "Palma Marina" \
+  --current-time "09:30"
 
-- Create `gfs_puller.py`.
-- Use `boto3` to fetch the latest 0.25-degree GFS data from the `noaa-gfs-bdp-pds` S3 bucket.
-- Download only the latest cycle: `00`, `06`, `12`, or `18` UTC.
-- Implement a Western Mediterranean bounding-box flow to reduce bandwidth and compute time.
-- Add a `tenacity` retry loop for transient 504/timeout issues.
+./.venv/bin/python chat_figure.py \
+  mvp_data/routes/palma_ibiza/briefing_whatsapp_screenshot_script.txt \
+  "/Users/charles.santana/Downloads/ChatGPT Image Apr 29, 2026, 08_47_42 PM.png" \
+  mvp_data/routes/palma_ibiza/predsea_whatsapp_figure.png \
+  --platform WhatsApp
 
-Current status: implemented in `ingestion/gfs_puller.py`. The puller finds the
-latest available NOAA GFS 0.25-degree cycle, lists matching GRIB2 keys from S3,
-supports dry-run inspection, retries download/filter failures, and uses
-`wgrib2 -small_grib` to cut downloaded GRIB2 files to the Western Mediterranean
-bounding box. Live S3 dry-run has been verified. Actual filtering requires
-`wgrib2` to be installed on the machine or container running ingestion.
+./.venv/bin/python validation_engine.py
+```
 
-## Phase 4: The Captain's Intelligence Layer
+Known MVP limitations:
 
-In `processing/`:
+- Routes use a small fixed set of representative points rather than an automatic
+  generated corridor width.
+- The question parser is rule-based, not yet LLM-backed.
+- Location sharing is simulated for screenshots; no real WhatsApp/GPS
+  integration exists yet.
+- Validation can compare PredSea route forecasts against observed SOCIB buoy
+  truth. `Palma -> Ibiza` and `Ibiza -> Formentera` use Canal de Ibiza;
+  `Palma -> Cabrera` uses Bahia de Palma; `Alcudia -> Ciutadella` is marked as
+  having no suitable SOCIB wave buoy yet. It only flags a `Marketing Win` when a
+  separate baseline forecast is present in the snapshot; the system does not
+  claim to beat Copernicus by comparing Copernicus-derived output against itself.
+- The system still refreshes data during each `briefing.py` run; production
+  should separate scheduled data refresh from on-demand question answering.
+- SOCIB WMOP/SAPO are not yet integrated; Copernicus is the working forecast
+  source for the MVP.
 
-- Create `mariner_interpreter.py`.
-- Use `xarray` and `wrf-python` to parse `wrfout` files.
-- Implement `get_captain_summary(lat, lon, time)`.
-- Calculate resultant wind, gust factors, and sea state stability.
-- Return JSON structured for LLM consumption.
+Next MVP milestones:
 
-Current status: initial implementation exists in `processing/mariner_interpreter.py`
-using the real `processing/fixtures/wrfout_d03_sample.nc` fixture. It extracts
-nearest-grid 10m wind, direction, pressure, temperature, terrain, rain, computes
-a gust factor and stability label, and returns LLM-ready captain guidance.
+1. Replace fixed route points with generated route corridor sampling.
+2. Add arbitrary port/marina lookup for routes not yet in `routes.json`.
+3. Split the pipeline into:
+   - scheduled data refresh
+   - on-demand question answering from cached snapshots
+4. Add query-context extraction:
+   - current/shared location
+   - destination
+   - requested time
+   - decision intent
+5. Add an LLM communication layer that interprets structured facts but does not
+   invent forecasts.
+6. Add more decision types: stay/move, leave/wait, comfort/risk, fuel/reroute.
+7. Add SOCIB WMOP/SAPO where they improve local current/wave decisions.
+8. Store explicit baseline forecasts for fair PredSea-vs-global-app validation.
+9. Add a reliable Menorca Channel truth source for Alcudia-Ciutadella validation.
+10. Add scalar forecast variables for water temperature and wind speed so they
+    can be validated against SOCIB observations.
 
-Example output:
+## Phase 1: Atmospheric Foundation
+
+Goal: own the high-resolution atmospheric forcing pipeline for the Balearic Sea.
+
+Status: mostly complete for the prototype.
+
+- Repository structure created: `simulation/`, `ingestion/`, `processing/`, `vault/`, `api/`.
+- WRF/WPS Docker scaffold created and successfully built on x86_64.
+- Balearic WPS domain generator created.
+- GFS latest-cycle ingestion from NOAA public S3 implemented.
+- WRF `wrfout` interpretation implemented for d01/d02/d03 fixtures.
+- Route sampling and forecast-vs-observation distribution scoring implemented.
+
+Important note: Dijkstra over wind-only fields is useful as a graph-routing proof,
+but it is not the right marine-routing foundation. Marine routing should be based
+on waves, currents, vessel heading, and sea-state comfort/risk.
+
+## Phase 2: Owned Oceanographic Modeling
+
+Goal: add proprietary ocean conditions using NEMO for currents/sea state context
+and SWAN for coastal waves.
+
+Selected first domain:
+
+```text
+lon: 1.0 to 5.0
+lat: 38.0 to 41.0
+focus: Mallorca, Menorca Channel, Ibiza Channel, Balearic inter-island routes
+```
+
+The domain should match the WRF nested Balearic coverage as closely as practical.
+
+Selected first forecast target:
+
+```text
+forecast horizon: 24 hours
+output interval: hourly
+```
+
+Selected model pair:
+
+- NEMO: currents, sea level, temperature, salinity.
+- SWAN: coastal and channel-scale waves.
+
+Why SWAN: PredSea is focused on yacht operations around islands, channels, and
+coastal waters. SWAN is the better first wave model for shallow/coastal
+transformation, local wind-wave growth, bathymetric effects, and island sheltering.
+
+## Phase 2A: NEMO Minimal Viable Run
+
+User tasks:
+
+- Decide where NEMO will run. Recommendation: use the Google Cloud x86_64 VM,
+  not the local Mac, for full model builds and production-style runs.
+- Install the Copernicus Marine Toolbox on the run machine.
+- Confirm access to Copernicus Marine Data Store credentials with
+  `copernicusmarine login --check-credentials-valid`.
+- Download Mediterranean physical analysis/forecast data for initial and boundary
+  conditions.
+- Prepare bathymetry for the Balearic domain.
+- Prepare or generate the NEMO grid, vertical levels, masks, and coordinates.
+- Feed atmospheric forcing from WRF when available; use GFS forcing for early
+  smoke tests if needed.
+- Run a 24h hourly-output test.
+
+Expected first NEMO output variables:
+
+```text
+sea_surface_height
+sea_surface_temperature
+u_current
+v_current
+salinity
+```
+
+Repo tasks:
+
+- Create `simulation/nemo/`.
+- Add NEMO build/run documentation.
+- Add configuration placeholders for Balearic domain bounds and hourly output.
+- Add `processing/nemo_interpreter.py`.
+- Add synthetic NEMO NetCDF fixture for tests.
+- Add route sampling over NEMO currents.
+
+## Phase 2B: SWAN Minimal Viable Run
+
+User tasks:
+
+- Build/install SWAN on the same x86_64 VM.
+- Prepare SWAN computational grid for the same Balearic bounds.
+- Prepare bathymetry for SWAN.
+- Use WRF 10m wind as preferred forcing; GFS wind is acceptable for smoke tests.
+- Use Copernicus Marine wave products, global WAVEWATCH III, or another basin
+  wave source as open boundary conditions for the first test.
+- Run a 24h hourly-output test.
+
+Expected first SWAN output variables:
+
+```text
+significant_wave_height
+peak_wave_period
+mean_wave_direction
+```
+
+Repo tasks:
+
+- Create `simulation/swan/`.
+- Add SWAN build/run documentation.
+- Add `processing/swan_interpreter.py`.
+- Add synthetic SWAN NetCDF fixture for tests.
+- Add route sampling over wave height, period, and direction.
+
+## Phase 2C: Marine Fusion Layer
+
+Goal: combine WRF + NEMO + SWAN into captain-ready marine intelligence.
+
+Create:
+
+```text
+processing/marine_fusion.py
+```
+
+Input:
+
+- WRF wind and pressure.
+- NEMO currents, sea surface height, sea surface temperature.
+- SWAN wave height, period, direction.
+- Vessel route and nominal cruise speed.
+
+Output:
 
 ```json
 {
-  "condition": "Gale Warning",
-  "wind_knots": 35,
-  "direction": "NW",
-  "risk_assessment": "High risk of micro-bursts near Tramuntana cliffs"
+  "comfort_status": "comfortable | moderate | rough | high_risk",
+  "fuel_penalty": 1.18,
+  "eta_impact_minutes": 24,
+  "worst_segment": {},
+  "captain_summary": ""
 }
 ```
 
-## Phase 5: Data Assimilation Vault
+Minimal comfort thresholds:
 
-In `vault/`:
+```text
+comfortable: waves < 0.8m and currents < 0.5 kt
+moderate:    waves 0.8-1.5m or currents 0.5-1.2 kt
+rough:       waves 1.5-2.2m or currents 1.2-2.0 kt
+high_risk:   waves > 2.2m or currents > 2.0 kt
+```
 
-- Create `schema.sql` for PostgreSQL/PostGIS.
-- Create `forecast_ledger` with spatial indexing for WRF outputs.
-- Create `observations` for real-time yacht telemetry: wind, pressure, and position.
-- Create `bias_analysis` joining forecasts and observations by time/space proximity to calculate error margin for future ML training.
+Minimal fuel logic:
 
-## Strategic Rationale
+```text
+fuel_penalty = distance_penalty + opposing_current_penalty + wave_resistance_penalty
+```
 
-Ownership: PredSea becomes a data provider, not a wrapper.
+Dijkstra should return only after this fusion layer exists. The graph cost should
+use waves and opposing currents, not wind alone.
 
-Reliability: Uptime depends on cloud infrastructure rather than government servers.
+## Phase 2D: Validation
 
-Valuation: Proprietary model runs and a Truth Vault become defensible IP.
+Goal: prove which resolution/model configuration is closest to reality.
+
+Validation sources:
+
+- Buoy wave observations.
+- In-situ current observations where available.
+- Sea temperature observations.
+- Yacht telemetry later.
+
+Metrics:
+
+```text
+bias
+MAE
+RMSE
+distribution similarity
+station distance from nearest grid cell
+```
+
+Existing repo support:
+
+- `ingestion/observations_client.py` normalizes station-style CSV observations.
+- `processing/forecast_validation.py` compares forecast and observation
+  distributions.
+
+Next extension:
+
+- Add validation for NEMO currents.
+- Add validation for SWAN wave height and period.
+- Store validated forecasts and observations in the future PostGIS vault.
+
+## Local Machine vs Cloud
+
+Local machine is useful for:
+
+- Editing configs.
+- Running Python interpreters.
+- Testing synthetic fixtures.
+- Inspecting small NetCDF outputs.
+- Running tiny toy NEMO/SWAN cases only if dependencies compile cleanly.
+
+Cloud x86_64 VM is recommended for:
+
+- Building NEMO, XIOS, and SWAN.
+- Running 24h Balearic simulations.
+- Running repeated forecast cycles.
+- Keeping the pipeline close to production.
+
+Reason: NEMO/XIOS/SWAN builds are compiler/MPI/NetCDF-heavy. The local Mac,
+especially Apple Silicon, can work for development but is not the lowest-friction
+place for repeatable operational model runs.
+
+## Immediate Next Tasks
+
+User:
+
+1. Confirm Copernicus Marine credentials, not only EUMETSAT credentials.
+2. Install `copernicusmarine` on the VM.
+3. Run `copernicusmarine login`.
+4. Confirm credentials with `copernicusmarine login --check-credentials-valid`.
+5. Keep first domain as `lon 1.0..5.0`, `lat 38.0..41.0`.
+6. Keep first target as `24h`, hourly output.
+
+Repo:
+
+1. Create `simulation/nemo/` and `simulation/swan/` scaffolds.
+2. Add synthetic NEMO and SWAN fixtures.
+3. Implement `nemo_interpreter.py`.
+4. Implement `swan_interpreter.py`.
+5. Implement `marine_fusion.py`.
+6. Add tests and runners for the minimal marine summary.

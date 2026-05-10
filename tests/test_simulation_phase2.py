@@ -6,14 +6,19 @@ from simulation.setup_domain import BalearicDomain, render_namelist
 def test_render_namelist_defines_one_km_balearic_nested_domain():
     namelist = render_namelist(BalearicDomain())
 
-    assert "max_dom = 2" in namelist
-    assert "parent_grid_ratio = 1, 3" in namelist
-    assert "dx = 3000" in namelist
-    assert "dy = 3000" in namelist
+    assert "max_dom = 3" in namelist
+    assert "parent_id = 1, 1, 2" in namelist
+    assert "parent_grid_ratio = 1, 3, 3" in namelist
+    assert "dx = 9000" in namelist
+    assert "dy = 9000" in namelist
     assert "ref_lat = 39.2000" in namelist
     assert "ref_lon = 2.7000" in namelist
     assert "stand_lon = 2.7000" in namelist
-    assert "geog_data_res = 'default', 'default'" in namelist
+    assert "geog_data_res = 'default', 'default', 'default'" in namelist
+    assert "i_parent_start = 1, 86, 34" in namelist
+    assert "j_parent_start = 1, 61, 35" in namelist
+    assert "e_we = 120, 121, 151" in namelist
+    assert "e_sn = 110, 121, 151" in namelist
 
 
 def test_render_namelist_allows_dates_and_geog_path_override():
@@ -25,8 +30,14 @@ def test_render_namelist_allows_dates_and_geog_path_override():
         )
     )
 
-    assert "start_date = '2026-05-04_00:00:00', '2026-05-04_00:00:00'" in namelist
-    assert "end_date = '2026-05-05_00:00:00', '2026-05-05_00:00:00'" in namelist
+    assert (
+        "start_date = '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00'"
+        in namelist
+    )
+    assert (
+        "end_date = '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00'"
+        in namelist
+    )
     assert "geog_data_path = '/opt/wps_geog'" in namelist
 
 
