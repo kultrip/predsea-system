@@ -90,17 +90,36 @@ def validate_route_artifacts(route_dir, skip_figures=False):
         raise RuntimeError(f"{route_dir} missing required artifact(s): {', '.join(missing)}")
 
 
+def resolve_repo_path(path):
+    if path is None:
+        return None
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return candidate
+    return PROJECT_ROOT / candidate
+
+
+def validate_forecast_available(forecast, route_id):
+    missing = []
+    if forecast.get("wave_max_m") is None:
+        missing.append("wave forecast")
+    if forecast.get("current_max_kn") is None:
+        missing.append("current forecast")
+    if missing:
+        raise RuntimeError(f"Forecast layer unavailable for {route_id}: {', '.join(missing)}")
+
+
 def maybe_generate_chat_figure(chat_figure, route_dir, logo_path, skip_figures=False):
     if skip_figures:
         return None
-    if not logo_path or not Path(logo_path).exists():
-        print(f"Logo not found at {logo_path}; skipping WhatsApp-style figure for {route_dir.name}.")
-        return None
+    resolved_logo_path = resolve_repo_path(logo_path)
+    if not resolved_logo_path or not resolved_logo_path.exists():
+        raise RuntimeError(f"Logo not found at {resolved_logo_path}; cannot generate WhatsApp-style figure.")
 
     output_path = route_dir / "predsea_whatsapp_figure.png"
     chat_figure.generate_chat_figure(
         route_dir / "briefing_whatsapp_screenshot_script.txt",
-        logo_path,
+        resolved_logo_path,
         output_path,
         platform="WhatsApp",
     )
@@ -133,6 +152,7 @@ def generate_daily_briefings(
     modules = load_mvp_modules()
     run_date = run_date or today_local()
     current_time = current_time or current_time_local()
+    logo_path = resolve_repo_path(logo_path)
     output_root = Path(output_root).resolve()
     day_dir = output_root / run_date
     day_dir.mkdir(parents=True, exist_ok=True)
@@ -151,6 +171,7 @@ def generate_daily_briefings(
                 Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc",
                 route=route,
             )
+            validate_forecast_available(forecast, route_id)
             snapshot = modules.route_analysis.build_route_snapshot(
                 observations,
                 forecast,
@@ -171,7 +192,7 @@ def generate_daily_briefings(
                 logo_path,
                 skip_figures=skip_figures,
             )
-            validate_route_artifacts(route_dir, skip_figures=skip_figures or figure_path is None)
+            validate_route_artifacts(route_dir, skip_figures=skip_figures)
 
     write_manifest(day_dir, run_date, selected_route_ids, vessel_class)
     return SimpleNamespace(output_dir=day_dir, routes=selected_route_ids)
@@ -189,7 +210,7 @@ def parse_args():
     parser.add_argument(
         "--logo-path",
         default=os.environ.get("PREDSEA_LOGO_PATH", str(PROJECT_ROOT / "assets" / "predsea_logo.png")),
-        help="Logo path for WhatsApp-style figures. Figures are skipped if the file is missing.",
+        help="Logo path for WhatsApp-style figures. Relative paths resolve from the repo root.",
     )
     parser.add_argument("--skip-figures", action="store_true", help="Only generate text/JSON artifacts.")
     return parser.parse_args()

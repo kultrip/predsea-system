@@ -73,7 +73,11 @@ class FakeFetchData:
 
 
 class FakeChatFigure:
+    def __init__(self):
+        self.logo_paths = []
+
     def generate_chat_figure(self, script_path, logo_path, output_path, platform="WhatsApp"):
+        self.logo_paths.append(Path(logo_path))
         Path(output_path).write_text("fake image", encoding="utf-8")
 
 
@@ -143,3 +147,76 @@ def test_generate_daily_briefings_fails_when_required_artifact_is_missing(tmp_pa
             current_time="09:30",
             skip_figures=True,
         )
+
+
+def test_generate_daily_briefings_fails_when_forecast_layer_is_unavailable(tmp_path, monkeypatch):
+    runner = load_runner()
+
+    class UnavailableForecastRouteAnalysis(FakeRouteAnalysis):
+        def forecast_summary_from_files(self, waves_path, currents_path, route):
+            return {
+                "wave_min_m": None,
+                "wave_max_m": None,
+                "wave_peak_time": "N/A",
+                "current_max_kn": None,
+                "current_peak_time": "N/A",
+            }
+
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=UnavailableForecastRouteAnalysis(),
+            briefing=FakeBriefing(),
+            fetch_data=FakeFetchData(),
+            chat_figure=FakeChatFigure(),
+        ),
+    )
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
+
+    with pytest.raises(RuntimeError, match="Forecast layer unavailable"):
+        runner.generate_daily_briefings(
+            output_root=tmp_path / "outputs",
+            run_date="2026-05-10",
+            route_ids=["palma_ibiza"],
+            vessel_class="medium",
+            current_time="09:30",
+            skip_figures=True,
+        )
+
+
+def test_relative_logo_path_resolves_from_project_root_after_chdir(tmp_path, monkeypatch):
+    runner = load_runner()
+    fake_chat = FakeChatFigure()
+    project_root = tmp_path / "repo"
+    human_dir = project_root / "humanintheloop"
+    assets_dir = project_root / "assets"
+    human_dir.mkdir(parents=True)
+    assets_dir.mkdir()
+    logo = assets_dir / "predsea_logo.png"
+    logo.write_text("logo", encoding="utf-8")
+
+    monkeypatch.setattr(runner, "PROJECT_ROOT", project_root)
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", human_dir)
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=FakeRouteAnalysis(),
+            briefing=FakeBriefing(),
+            fetch_data=FakeFetchData(),
+            chat_figure=fake_chat,
+        ),
+    )
+
+    runner.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-05-10",
+        route_ids=["palma_ibiza"],
+        vessel_class="medium",
+        current_time="09:30",
+        logo_path="assets/predsea_logo.png",
+    )
+
+    assert fake_chat.logo_paths == [logo]
+    assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "predsea_whatsapp_figure.png").exists()

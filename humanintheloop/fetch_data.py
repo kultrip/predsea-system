@@ -64,6 +64,7 @@ def get_balearic_forecast(dry_run=False):
     except Exception as e:
         print(f"An error occurred: {e}")
         print("\nTroubleshooting tip: Run 'copernicusmarine login' again to refresh your token.")
+        raise
 
 if __name__ == "__main__":
     get_balearic_forecast()
