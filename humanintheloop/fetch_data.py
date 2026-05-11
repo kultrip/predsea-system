@@ -4,6 +4,10 @@ import os
 
 OUTPUT_DIR = "./mvp_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+REQUIRED_COPERNICUS_ENV = (
+    "COPERNICUSMARINE_SERVICE_USERNAME",
+    "COPERNICUSMARINE_SERVICE_PASSWORD",
+)
 
 # Current Copernicus Marine Mediterranean analysis/forecast dataset IDs.
 PHY_ID = "cmems_mod_med_phy-cur_anfc_4.2km-2D_PT1H-m"
@@ -17,6 +21,18 @@ lat_min, lat_max = 38.5, 40.5
 # Time window
 start_time = (datetime.datetime.now() - datetime.timedelta(hours=6))
 end_time = (datetime.datetime.now() + datetime.timedelta(days=1))
+
+
+def validate_copernicus_credentials_available():
+    if os.getenv("GITHUB_ACTIONS") != "true" and os.getenv("CI") != "true":
+        return
+    missing = [name for name in REQUIRED_COPERNICUS_ENV if not os.getenv(name)]
+    if missing:
+        raise RuntimeError(
+            "Missing Copernicus Marine credential environment variable(s): "
+            + ", ".join(missing)
+        )
+
 
 def subset_balearic_forecast(dataset_id, variables, output_filename, dry_run=False):
     return copernicusmarine.subset(
@@ -39,6 +55,9 @@ def subset_balearic_forecast(dataset_id, variables, output_filename, dry_run=Fal
 def get_balearic_forecast(dry_run=False):
     print("Fetching Balearic Currents (4.2km resolution)...")
     try:
+        if not dry_run:
+            validate_copernicus_credentials_available()
+
         # subset() downloads a bounded region/time/variable slice.
         subset_balearic_forecast(
             dataset_id=PHY_ID,

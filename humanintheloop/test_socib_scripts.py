@@ -27,6 +27,16 @@ class FetchDataTests(unittest.TestCase):
         self.assertEqual(wave_call["output_filename"], "balearic_waves.nc")
         self.assertTrue(wave_call["dry_run"])
 
+    @patch("fetch_data.copernicusmarine.subset")
+    @patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}, clear=True)
+    def test_balearic_forecast_fails_fast_in_ci_without_copernicus_credentials(self, subset):
+        import fetch_data
+
+        with self.assertRaisesRegex(RuntimeError, "COPERNICUSMARINE_SERVICE_USERNAME"):
+            fetch_data.get_balearic_forecast(dry_run=False)
+
+        subset.assert_not_called()
+
 
 class SocibFetcherTests(unittest.TestCase):
     def test_build_headers_uses_socib_api_key_header_without_json_accept(self):
