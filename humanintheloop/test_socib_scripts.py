@@ -253,7 +253,9 @@ class BriefingRendererTests(unittest.TestCase):
         self.assertIn("Captain:", screenshot)
         self.assertIn("PredSea:", screenshot)
         self.assertIn("Captain: [Shared live location]", screenshot)
-        self.assertIn("Got it. You're near Palma Marina.", screenshot)
+        self.assertIn("Captain: Mallorca -> Ibiza today. Best time to leave?", screenshot)
+        self.assertIn("PredSea: Go earlier.", screenshot)
+        self.assertIn("peaks near 1.6 m", screenshot)
 
 
 class BriefingCliTests(unittest.TestCase):
@@ -638,7 +640,7 @@ class ChatFigureTests(unittest.TestCase):
             self.assertEqual(Path(result), output_path)
             self.assertTrue(output_path.exists())
             with Image.open(output_path) as image:
-                self.assertEqual(image.size, (1080, 1350))
+                self.assertEqual(image.size, (1440, 1800))
 
 
 class ValidationEngineTests(unittest.TestCase):

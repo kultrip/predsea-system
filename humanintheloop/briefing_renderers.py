@@ -47,14 +47,41 @@ def render_whatsapp(snapshot):
 
 
 def render_whatsapp_screenshot_script(snapshot):
+    forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
+    vessel_label = snapshot.get("vessel_profile", {}).get("label", "the selected vessel class")
+    wave_max = forecast.get("wave_max_m")
+    peak_time = forecast.get("wave_peak_time")
+    if wave_max is not None and peak_time and peak_time != "N/A":
+        peak_text = f"{snapshot['route']} peaks near {wave_max:.1f} m {operational_time_phrase(peak_time)}."
+    elif wave_max is not None:
+        peak_text = f"{snapshot['route']} peaks near {wave_max:.1f} m later."
+    else:
+        peak_text = f"{snapshot['route']} needs a manual forecast check."
+    route_is_calm_now = "The route is calm this morning, but exposed wave energy builds later."
+    if wave_max is not None and wave_max <= 1.0:
+        route_is_calm_now = "The route looks manageable today, with no major wave build-up flagged."
     return "\n".join(
         [
             "Illustrative WhatsApp screenshot script",
             "Captain: [Shared live location]",
-            f"PredSea: Got it. You're near Palma Marina. For {snapshot['route']}, the best window looks {rec.get('best_window', 'check manually')}.",
-            f"PredSea: Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
+            f"Captain: {snapshot['route']} today. Best time to leave?",
+            f"PredSea: Go earlier. {route_is_calm_now}",
+            f"PredSea: {peak_text}",
+            f"PredSea: Operational read: {rec.get('vessel_advice', f'check manually for vessels {vessel_label}')}.",
             f"PredSea: Confidence: {rec.get('confidence', 'low')}.",
             "Caption note: illustrative product example based on public marine data.",
         ]
     )
+
+
+def operational_time_phrase(time_text):
+    try:
+        hour = int(str(time_text).split(":", 1)[0])
+    except (TypeError, ValueError):
+        return f"around {time_text}"
+    if hour >= 20:
+        return "late evening"
+    if hour <= 3:
+        return "overnight"
+    return f"around {time_text}"
