@@ -3,7 +3,7 @@ name: PredSea Daily Briefing
 on:
   schedule:
     # GitHub cron is UTC. This is 08:30 in Mallorca during summer time.
-    - cron: "30 6 * * *"
+    - cron: "30 5 * * *"
   workflow_dispatch:
 
 permissions:
