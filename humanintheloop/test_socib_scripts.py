@@ -41,6 +41,12 @@ class FetchDataTests(unittest.TestCase):
 
 
 class MapGeneratorTests(unittest.TestCase):
+    def test_worst_segment_uses_highest_route_sample_value(self):
+        import map_generator
+
+        self.assertEqual(map_generator.worst_segment_from_route_values([0.8, 1.6, 1.0], 4), 1)
+        self.assertEqual(map_generator.worst_segment_from_route_values([1.8, 1.2, 0.9], 4), 0)
+
     def test_route_decision_map_writes_png_from_forecast_files(self):
         import numpy as np
         import xarray as xr
