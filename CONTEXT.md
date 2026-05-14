@@ -54,8 +54,9 @@ owned NEMO/SWAN modeling, or large-scale lakehouse storage.
 
 Maps are now the next product priority.
 
-The map should not look like a general marine weather map. It should be a
-Decision Map: a visual explanation of the operational read.
+The map should not look like an optimal-route instruction. It should be an
+Oceanographic Conditions Map: visual evidence that lets the captain inspect the
+sea state before reading PredSea's operational interpretation.
 
 First map outputs should focus on oceanic prediction:
 
@@ -69,7 +70,8 @@ First map outputs should focus on oceanic prediction:
 
 Current MVP implementation:
 
-- `humanintheloop/map_generator.py` creates first-version Route Decision Maps.
+- `humanintheloop/map_generator.py` creates first-version Oceanographic
+  Conditions Maps.
 - The daily ETL writes `route_decision_map.png` for each configured route.
 - The first version uses a lightweight Pillow renderer over the existing
   Copernicus NetCDF grid, so it works in GitHub Actions without Cartopy.
@@ -113,7 +115,7 @@ architecture.
 The next useful product step is:
 
 ```text
-forecast + buoy truth + route exposure + vessel class + Decision Map
+forecast + buoy truth + route exposure + vessel class + oceanographic evidence map
 = captain-ready operational guidance
 ```
 
@@ -121,7 +123,7 @@ The daily artifacts should evolve toward:
 
 - Morning briefing.
 - Afternoon/evening update.
-- Route Decision Map per route.
-- Balearic overview Decision Map.
+- Oceanographic Conditions Map per route.
+- Balearic overview conditions map.
 - WhatsApp-style captain interaction.
 - LinkedIn-ready operational summary.

@@ -104,8 +104,9 @@ Current observation variables:
 7. Visual output:
    - `chat_figure.py` turns the WhatsApp script into a LinkedIn-ready
      chat-style screenshot.
-   - `map_generator.py` creates first-version Route Decision Maps that explain
-     the operational read, not generic weather-map decoration.
+   - `map_generator.py` creates first-version Oceanographic Conditions Maps:
+     wave-height fields, surface-current vectors, and the captain route as a
+     reference overlay.
 
 8. Validation:
    - `validation_engine.py` compares stored route forecasts against SOCIB truth.
@@ -138,14 +139,14 @@ Current decision behavior:
   context plots.
 - Produces LinkedIn/WhatsApp text artifacts and a WhatsApp-style screenshot
   figure.
-- Produces a first-version `route_decision_map.png` for each daily route artifact
-  folder.
+- Produces a first-version oceanographic map, currently named
+  `route_decision_map.png`, for each daily route artifact folder.
 
 Next visual priority:
 
-- Improve Route Decision Maps with cleaner geography, better route framing, and
-  a more meaningful worst-segment calculation.
-- Balearic overview Decision Maps for LinkedIn and daily human review.
+- Improve Oceanographic Conditions Maps with clearer wave scales, current-speed
+  legends, and wave direction context.
+- Balearic overview conditions maps for LinkedIn and daily human review.
 - Wind context only when it explains the sea-state decision.
 
 Run from `humanintheloop/`:

@@ -41,6 +41,16 @@ class FetchDataTests(unittest.TestCase):
 
 
 class MapGeneratorTests(unittest.TestCase):
+    def test_map_metadata_prioritizes_oceanographic_layers(self):
+        import map_generator
+
+        metadata = map_generator.map_metadata()
+
+        self.assertEqual(metadata["title"], "OCEANOGRAPHIC CONDITIONS MAP")
+        self.assertIn("wave_height", metadata["primary_layers"])
+        self.assertIn("current_vectors", metadata["primary_layers"])
+        self.assertEqual(metadata["route_role"], "reference")
+
     def test_worst_segment_uses_highest_route_sample_value(self):
         import map_generator
 

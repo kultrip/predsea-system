@@ -49,8 +49,9 @@ Implemented now in `humanintheloop/`:
 
 Current map status:
 
-- `humanintheloop/map_generator.py` creates first-version captain-facing Route
-  Decision Maps from the existing Copernicus wave/current NetCDF files.
+- `humanintheloop/map_generator.py` creates first-version captain-facing
+  Oceanographic Conditions Maps from the existing Copernicus wave/current
+  NetCDF files.
 - The daily ETL now writes `route_decision_map.png` for each configured route.
 - Validation plots still exist as diagnostic artifacts, separate from
   captain-facing route maps.
@@ -106,9 +107,9 @@ Known MVP limitations:
 
 Next MVP milestones:
 
-1. Improve Route Decision Maps with cleaner geography, better route framing, and
-   a more meaningful worst-segment calculation.
-2. Generate one Balearic Overview Decision Map for LinkedIn and daily review.
+1. Improve Oceanographic Conditions Maps with cleaner geography, better variable
+   scales, wave direction context, and clearer current-speed legends.
+2. Generate one Balearic Overview Conditions Map for LinkedIn and daily review.
 3. Use wind only as supporting context when it changes the operational read
    (for example wind against current, wind aligned with swell, or afternoon sea
    breeze affecting comfort). The product remains ocean-first.
