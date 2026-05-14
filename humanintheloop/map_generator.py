@@ -1,4 +1,5 @@
 import math
+import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -16,6 +17,7 @@ GREEN = "#6ee65d"
 YELLOW = "#ffd84d"
 RED = "#ff6b6b"
 LOW_WAVE = "#27ddea"
+ROUTES_PATH = Path(__file__).with_name("routes.json")
 
 
 def map_metadata():
@@ -23,6 +25,8 @@ def map_metadata():
         "title": "OCEANOGRAPHIC CONDITIONS MAP",
         "primary_layers": ["wave_height", "current_vectors", "route_reference"],
         "route_role": "reference",
+        "extent": "full_forecast_region",
+        "current_resolution": "Copernicus Mediterranean 4.2km forecast grid",
     }
 
 
@@ -48,12 +52,10 @@ def generate_route_decision_map(waves_path, currents_path, route, snapshot, outp
         draw_header(draw, fonts, route, time_label)
 
         map_box = (80, 350, 1360, 1235)
-        bounds = route_bounds(route, wave)
-        route_values = route_sample_wave_values(wave, route)
-        route_currents = route_sample_current_values(current_u, current_v, route)
-        draw_oceanographic_map_base(image, draw, wave, map_box, bounds, route, route_values)
+        bounds = forecast_region_bounds(wave)
+        draw_oceanographic_map_base(image, draw, wave, map_box, bounds)
         draw_current_arrows(draw, current_u, current_v, map_box, bounds)
-        draw_route_reference(draw, route, map_box, bounds, route_values)
+        draw_all_route_references(draw, map_box, bounds)
         draw_legend(draw, map_box, fonts)
         draw_decision_panel(draw, fonts, snapshot)
 
@@ -90,6 +92,12 @@ def route_bounds(route, wave):
     return lon_min, lon_max, lat_min, lat_max
 
 
+def forecast_region_bounds(wave):
+    lons = [float(value) for value in wave["longitude"].values]
+    lats = [float(value) for value in wave["latitude"].values]
+    return min(lons), max(lons), min(lats), max(lats)
+
+
 def project(lon, lat, map_box, bounds):
     left, top, right, bottom = map_box
     lon_min, lon_max, lat_min, lat_max = bounds
@@ -106,7 +114,7 @@ def draw_header(draw, fonts, route, time_label):
     draw.text((80, 70), "PredSea", font=fonts["brand"], fill=TEXT)
     draw.text((80, 165), "OCEANOGRAPHIC CONDITIONS MAP", font=fonts["title"], fill=TEXT)
     draw.line((80, 245, 760, 245), fill=CYAN, width=4)
-    draw.text((80, 278), route["name"], font=fonts["subtitle"], fill=CYAN)
+    draw.text((80, 278), "Balearic forecast region", font=fonts["subtitle"], fill=CYAN)
     draw.text((980, 92), f"Model slice: {time_label}", font=fonts["small"], fill=MUTED)
 
 
@@ -127,15 +135,14 @@ def route_sample_current_values(current_u, current_v, route):
     return values
 
 
-def draw_oceanographic_map_base(image, draw, wave, map_box, bounds, route, route_values):
+def draw_oceanographic_map_base(image, draw, wave, map_box, bounds):
     left, top, right, bottom = map_box
     draw.rounded_rectangle(map_box, radius=34, fill="#082331", outline="#1a6374", width=3)
     draw_bathymetry(draw, map_box)
     draw_smooth_wave_field(image, wave, map_box, bounds)
     draw_island_context(draw, map_box, bounds)
-    draw_route_condition_halos(image, route, route_values, map_box, bounds)
     draw.rounded_rectangle(map_box, radius=34, outline="#2b7c8f", width=3)
-    draw.text((left + 34, top + 30), "Significant wave height + surface current vectors", font=load_fonts()["small"], fill=MUTED)
+    draw.text((left + 34, top + 30), "Significant wave height + surface current vectors | Copernicus Med 4.2 km grid", font=load_fonts()["small"], fill=MUTED)
 
 
 def draw_bathymetry(draw, map_box):
@@ -158,20 +165,45 @@ ISLAND_SHAPES = {
         (1.25, 38.66), (1.42, 38.73), (1.62, 38.72), (1.58, 38.62), (1.36, 38.58),
     ],
     "menorca": [
-        (3.78, 39.86), (4.15, 40.08), (4.65, 40.08), (4.35, 39.86),
+        (3.78, 39.86), (4.12, 40.08), (4.44, 40.07), (4.35, 39.88),
     ],
     "cabrera": [
         (2.88, 39.12), (2.98, 39.17), (3.05, 39.11), (2.96, 39.06),
     ],
 }
 
+ISLAND_LABELS = {
+    "mallorca": "MALLORCA",
+    "ibiza": "IBIZA",
+    "formentera": "FORMENTERA",
+    "menorca": "MENORCA",
+    "cabrera": "CABRERA",
+}
+
+ISLAND_LABEL_OFFSETS = {
+    "mallorca": (0, 0),
+    "ibiza": (-18, -44),
+    "formentera": (38, 46),
+    "menorca": (0, 18),
+    "cabrera": (54, 22),
+}
+
 
 def draw_island_context(draw, map_box, bounds):
-    for points in ISLAND_SHAPES.values():
+    fonts = load_fonts()
+    for island, points in ISLAND_SHAPES.items():
         projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
         if not all(point_inside_map(point, map_box, margin=10) for point in projected):
             continue
         draw.polygon(projected, fill="#12313d", outline="#77aebc")
+        center_x = sum(point[0] for point in projected) / len(projected)
+        center_y = sum(point[1] for point in projected) / len(projected)
+        label = ISLAND_LABELS[island]
+        label_box = draw.textbbox((0, 0), label, font=fonts["micro"])
+        label_width = label_box[2] - label_box[0]
+        offset_x, offset_y = ISLAND_LABEL_OFFSETS.get(island, (0, 0))
+        label_position = (center_x - label_width / 2 + offset_x, center_y - 12 + offset_y)
+        draw_outlined_text(draw, label_position, label, fonts["micro"], fill="#d8fbff")
 
 
 def point_inside_map(point, map_box, margin=0):
@@ -213,13 +245,17 @@ def draw_smooth_wave_field(image, wave, map_box, bounds):
             )
             if rect[2] < rect[0] or rect[3] < rect[1]:
                 continue
-            overlay_draw.rectangle(rect, fill=rgba_for_wave(value, alpha=135))
+            overlay_draw.rectangle(rect, fill=rgba_for_color(rainbow_wave_color(value), alpha=165))
     overlay = overlay.filter(ImageFilter.GaussianBlur(26))
     image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
 
 
 def rgba_for_wave(value, alpha=255):
     hex_color = segment_color_for_wave(value)
+    return rgba_for_color(hex_color, alpha)
+
+
+def rgba_for_color(hex_color, alpha=255):
     return tuple(int(hex_color[index : index + 2], 16) for index in (1, 3, 5)) + (alpha,)
 
 
@@ -230,7 +266,27 @@ def segment_color_for_wave(value):
         return RED
     if value >= 1.2:
         return YELLOW
+    if value >= 0.7:
+        return "#39d98a"
     return LOW_WAVE
+
+
+def rainbow_wave_color(value, min_value=0.0, max_value=2.5):
+    ratio = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
+    stops = [
+        (0.00, (23, 68, 214)),
+        (0.25, (39, 221, 234)),
+        (0.50, (70, 220, 105)),
+        (0.72, (255, 216, 77)),
+        (1.00, (255, 83, 95)),
+    ]
+    for index in range(len(stops) - 1):
+        start_pos, start = stops[index]
+        end_pos, end = stops[index + 1]
+        if start_pos <= ratio <= end_pos:
+            local = (ratio - start_pos) / (end_pos - start_pos)
+            return blend(start, end, local)
+    return RED
 
 
 def draw_wave_field(draw, wave, map_box, bounds):
@@ -291,8 +347,8 @@ def draw_grid(draw, map_box):
 def draw_current_arrows(draw, current_u, current_v, map_box, bounds):
     lons = [float(value) for value in current_u["longitude"].values]
     lats = [float(value) for value in current_u["latitude"].values]
-    lon_step = max(1, len(lons) // 5)
-    lat_step = max(1, len(lats) // 5)
+    lon_step = max(1, len(lons) // 8)
+    lat_step = max(1, len(lats) // 8)
     for lat_index in range(0, len(lats), lat_step):
         for lon_index in range(0, len(lons), lon_step):
             lon = lons[lon_index]
@@ -305,7 +361,7 @@ def draw_current_arrows(draw, current_u, current_v, map_box, bounds):
             speed = math.hypot(u, v)
             if speed == 0 or speed != speed:
                 continue
-            length = min(54, 18 + speed * 110)
+            length = min(42, 14 + speed * 100)
             angle = math.atan2(v, u)
             x2 = x + math.cos(angle) * length
             y2 = y - math.sin(angle) * length
@@ -336,18 +392,34 @@ def draw_current_context(draw, route, route_currents, map_box, bounds):
     draw.text((map_box[0] + 34, map_box[3] - 80), "small arrows: surface current context", font=fonts["micro"], fill=MUTED)
 
 
-def draw_route_reference(draw, route, map_box, bounds, route_values=None):
+def load_all_routes(path=ROUTES_PATH):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except OSError:
+        return {}
+
+
+def draw_all_route_references(draw, map_box, bounds):
+    routes = load_all_routes()
+    for route in routes.values():
+        draw_route_reference(draw, route, map_box, bounds, route_values=None, emphasize=False)
+    draw.text((map_box[2] - 560, map_box[3] - 54), "white lines: configured PredSea route references", font=load_fonts()["micro"], fill=TEXT)
+
+
+def draw_route_reference(draw, route, map_box, bounds, route_values=None, emphasize=True):
     points = [(route["origin"]["longitude"], route["origin"]["latitude"])]
     points.extend((point["longitude"], point["latitude"]) for point in route.get("sample_points", []))
     points.append((route["destination"]["longitude"], route["destination"]["latitude"]))
     projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
     for start, end in zip(projected, projected[1:]):
-        draw.line((*start, *end), fill="#e8fbff", width=6)
+        draw.line((*start, *end), fill="#e8fbff", width=4 if not emphasize else 6)
     for x, y in projected:
-        draw.ellipse((x - 12, y - 12, x + 12, y + 12), fill=TEXT, outline=BG, width=4)
-    label_point(draw, route["origin"]["name"], projected[0], dx=22, dy=-50)
-    label_point(draw, route["destination"]["name"], projected[-1], dx=22, dy=20)
-    if route_values:
+        radius = 7 if not emphasize else 12
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=TEXT, outline=BG, width=3)
+    if emphasize:
+        label_point(draw, route["origin"]["name"], projected[0], dx=22, dy=-50)
+        label_point(draw, route["destination"]["name"], projected[-1], dx=22, dy=20)
+    if emphasize and route_values:
         sample_points = projected[1:-1]
         valid = [(index, value) for index, value in enumerate(route_values) if value == value and index < len(sample_points)]
         if valid:
@@ -355,7 +427,6 @@ def draw_route_reference(draw, route, map_box, bounds, route_values=None):
             x, y = sample_points[peak_index]
             draw.ellipse((x - 28, y - 28, x + 28, y + 28), outline=YELLOW, width=5)
             label_point(draw, "sampled route point", (x, y), dx=28, dy=-62)
-    draw.text((map_box[0] + 34, map_box[3] - 80), "white line: captain route reference", font=load_fonts()["micro"], fill=MUTED)
 
 
 def draw_route(draw, route, map_box, bounds, snapshot, route_values=None):
@@ -419,20 +490,27 @@ def label_point(draw, label, point, dx=12, dy=12):
     draw.text((x + dx, y + dy), label, font=font, fill=TEXT)
 
 
+def draw_outlined_text(draw, position, text, font, fill=TEXT, outline=BG):
+    x, y = position
+    for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2)):
+        draw.text((x + dx, y + dy), text, font=font, fill=outline)
+    draw.text(position, text, font=font, fill=fill)
+
+
 def draw_legend(draw, map_box, fonts):
     left, top, right, bottom = map_box
-    legend = (left + 34, top + 86, left + 520, top + 200)
+    legend = (left + 34, top + 86, left + 650, top + 230)
     draw.rounded_rectangle(legend, radius=18, fill="#09202a", outline="#164552", width=2)
-    draw.text((legend[0] + 24, legend[1] + 18), "Wave height + currents", font=fonts["small"], fill=TEXT)
-    items = [("low", LOW_WAVE), ("moderate", YELLOW), ("high", RED)]
-    x = legend[0] + 24
-    y = legend[1] + 66
-    for label, color in items:
-        draw.rounded_rectangle((x, y, x + 34, y + 18), radius=9, fill=color)
-        draw.text((x + 44, y - 5), label, font=fonts["micro"], fill=MUTED)
-        x += 116
-    draw.line((legend[0] + 360, y + 9, legend[0] + 410, y + 9), fill="#d8fbff", width=4)
-    draw.text((legend[0] + 420, y - 5), "current", font=fonts["micro"], fill=MUTED)
+    draw.text((legend[0] + 24, legend[1] + 18), "Significant wave height (m)", font=fonts["small"], fill=TEXT)
+    bar = (legend[0] + 24, legend[1] + 68, legend[0] + 420, legend[1] + 94)
+    for index in range(bar[0], bar[2]):
+        ratio = (index - bar[0]) / (bar[2] - bar[0])
+        color = rainbow_wave_color(ratio * 2.5)
+        draw.line((index, bar[1], index, bar[3]), fill=color, width=1)
+    for label, x in [("0", bar[0]), ("1.2", (bar[0] + bar[2]) / 2), ("2.5+", bar[2] - 44)]:
+        draw.text((x, bar[3] + 8), label, font=fonts["micro"], fill=MUTED)
+    draw.line((legend[0] + 470, bar[1] + 12, legend[0] + 535, bar[1] + 12), fill="#d8fbff", width=4)
+    draw.text((legend[0] + 470, bar[3] + 8), "current", font=fonts["micro"], fill=MUTED)
 
 
 def draw_decision_panel(draw, fonts, snapshot):

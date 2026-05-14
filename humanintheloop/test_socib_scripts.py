@@ -50,6 +50,7 @@ class MapGeneratorTests(unittest.TestCase):
         self.assertIn("wave_height", metadata["primary_layers"])
         self.assertIn("current_vectors", metadata["primary_layers"])
         self.assertEqual(metadata["route_role"], "reference")
+        self.assertEqual(metadata["extent"], "full_forecast_region")
 
     def test_worst_segment_uses_highest_route_sample_value(self):
         import map_generator

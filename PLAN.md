@@ -53,6 +53,9 @@ Current map status:
   Oceanographic Conditions Maps from the existing Copernicus wave/current
   NetCDF files.
 - The daily ETL now writes `route_decision_map.png` for each configured route.
+- Maps now prioritize full-region oceanographic evidence: significant wave
+  height as a color field, surface-current vectors, island labels, and all
+  configured routes as reference overlays.
 - Validation plots still exist as diagnostic artifacts, separate from
   captain-facing route maps.
 - The current maps are intentionally lightweight Pillow renders, not final

@@ -140,13 +140,17 @@ Current decision behavior:
 - Produces LinkedIn/WhatsApp text artifacts and a WhatsApp-style screenshot
   figure.
 - Produces a first-version oceanographic map, currently named
-  `route_decision_map.png`, for each daily route artifact folder.
+  `route_decision_map.png`, for each daily route artifact folder. The map uses
+  the full Balearic forecast region, significant wave height as a color field,
+  surface-current vectors, island labels, and configured routes as reference
+  context.
 
 Next visual priority:
 
 - Improve Oceanographic Conditions Maps with clearer wave scales, current-speed
   legends, and wave direction context.
-- Balearic overview conditions maps for LinkedIn and daily human review.
+- Add wave-period/wavelength layers if they become available in the forecast
+  download.
 - Wind context only when it explains the sea-state decision.
 
 Run from `humanintheloop/`:

@@ -64,8 +64,8 @@ First map outputs should focus on oceanic prediction:
 - Wave direction.
 - Surface current speed.
 - Surface current direction.
-- Route line and sampled points.
-- Worst or most exposed segment.
+- Full Balearic forecast-region context.
+- Configured routes as light reference overlays only.
 - Route status: favorable, workable, conservative, or restricted.
 
 Current MVP implementation:
@@ -75,6 +75,9 @@ Current MVP implementation:
 - The daily ETL writes `route_decision_map.png` for each configured route.
 - The first version uses a lightweight Pillow renderer over the existing
   Copernicus NetCDF grid, so it works in GitHub Actions without Cartopy.
+- The current map view uses the full Copernicus Mediterranean 4.2 km forecast
+  grid available to the MVP, with island labels and all configured PredSea
+  routes as context.
 - These maps are operational visual snippets, not final cartographic products.
 
 Wind can be included only when it changes the operational interpretation, for
