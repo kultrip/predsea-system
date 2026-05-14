@@ -8,6 +8,11 @@ This MVP is intentionally simpler than the long-term owned-modeling roadmap
 below. Its goal is to prove PredSea's decision value before investing in a full
 NEMO/SWAN/LLM/product stack.
 
+Product focus: PredSea should own decision intelligence for the sea. The MVP
+should not become another generic weather dashboard. Its outputs should translate
+ocean forecasts, SOCIB buoy truth, route exposure, vessel class, and human
+review into operational guidance a captain can act on.
+
 Implemented now in `humanintheloop/`:
 
 - SOCIB public observations are fetched and normalized from DataDiscovery.
@@ -41,6 +46,16 @@ Implemented now in `humanintheloop/`:
   logo, shared-location card, emphasized decision values, and confidence badge.
 - Current verification: local `unittest` coverage in
   `humanintheloop/test_socib_scripts.py`.
+
+Current map status:
+
+- `humanintheloop/map_generator.py` creates first-version captain-facing Route
+  Decision Maps from the existing Copernicus wave/current NetCDF files.
+- The daily ETL now writes `route_decision_map.png` for each configured route.
+- Validation plots still exist as diagnostic artifacts, separate from
+  captain-facing route maps.
+- The current maps are intentionally lightweight Pillow renders, not final
+  Cartopy-grade cartographic products.
 
 Current MVP command examples:
 
@@ -91,23 +106,31 @@ Known MVP limitations:
 
 Next MVP milestones:
 
-1. Replace fixed route points with generated route corridor sampling.
-2. Add arbitrary port/marina lookup for routes not yet in `routes.json`.
-3. Split the pipeline into:
+1. Improve Route Decision Maps with cleaner geography, better route framing, and
+   a more meaningful worst-segment calculation.
+2. Generate one Balearic Overview Decision Map for LinkedIn and daily review.
+3. Use wind only as supporting context when it changes the operational read
+   (for example wind against current, wind aligned with swell, or afternoon sea
+   breeze affecting comfort). The product remains ocean-first.
+4. Add morning and afternoon/evening briefing modes so maps and text do not
+   recycle stale "before midday" language after the day has moved on.
+5. Replace fixed route points with generated route corridor sampling.
+6. Add arbitrary port/marina lookup for routes not yet in `routes.json`.
+7. Split the pipeline into:
    - scheduled data refresh
    - on-demand question answering from cached snapshots
-4. Add query-context extraction:
+8. Add query-context extraction:
    - current/shared location
    - destination
    - requested time
    - decision intent
-5. Add an LLM communication layer that interprets structured facts but does not
+9. Add an LLM communication layer that interprets structured facts but does not
    invent forecasts.
-6. Add more decision types: stay/move, leave/wait, comfort/risk, fuel/reroute.
-7. Add SOCIB WMOP/SAPO where they improve local current/wave decisions.
-8. Store explicit baseline forecasts for fair PredSea-vs-global-app validation.
-9. Add a reliable Menorca Channel truth source for Alcudia-Ciutadella validation.
-10. Add scalar forecast variables for water temperature and wind speed so they
+10. Add more decision types: stay/move, leave/wait, comfort/risk, fuel/reroute.
+11. Add SOCIB WMOP/SAPO where they improve local current/wave decisions.
+12. Store explicit baseline forecasts for fair PredSea-vs-global-app validation.
+13. Add a reliable Menorca Channel truth source for Alcudia-Ciutadella validation.
+14. Add scalar forecast variables for water temperature and wind speed so they
     can be validated against SOCIB observations.
 
 ## Phase 1: Atmospheric Foundation

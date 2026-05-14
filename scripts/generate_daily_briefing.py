@@ -55,12 +55,14 @@ def load_mvp_modules():
     import briefing
     import chat_figure
     import fetch_data
+    import map_generator
     import route_analysis
 
     return SimpleNamespace(
         briefing=briefing,
         chat_figure=chat_figure,
         fetch_data=fetch_data,
+        map_generator=map_generator,
         route_analysis=route_analysis,
     )
 
@@ -77,15 +79,17 @@ def route_ids_from_args(route_analysis, route_ids):
     return route_ids
 
 
-def required_artifacts_for(skip_figures=False):
+def required_artifacts_for(skip_figures=False, skip_maps=False):
     artifacts = list(REQUIRED_TEXT_ARTIFACTS)
     if not skip_figures:
         artifacts.append("predsea_whatsapp_figure.png")
+    if not skip_maps:
+        artifacts.append("route_decision_map.png")
     return artifacts
 
 
-def validate_route_artifacts(route_dir, skip_figures=False):
-    missing = [name for name in required_artifacts_for(skip_figures) if not (route_dir / name).exists()]
+def validate_route_artifacts(route_dir, skip_figures=False, skip_maps=False):
+    missing = [name for name in required_artifacts_for(skip_figures, skip_maps) if not (route_dir / name).exists()]
     if missing:
         raise RuntimeError(f"{route_dir} missing required artifact(s): {', '.join(missing)}")
 
@@ -126,6 +130,20 @@ def maybe_generate_chat_figure(chat_figure, route_dir, logo_path, skip_figures=F
     return output_path
 
 
+def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False):
+    if skip_maps:
+        return None
+    output_path = route_dir / "route_decision_map.png"
+    map_generator.generate_route_decision_map(
+        waves_path,
+        currents_path,
+        route,
+        snapshot,
+        output_path,
+    )
+    return output_path
+
+
 def write_manifest(day_dir, run_date, routes, vessel_class):
     manifest = {
         "run_date": run_date,
@@ -148,6 +166,7 @@ def generate_daily_briefings(
     current_time=None,
     logo_path=None,
     skip_figures=False,
+    skip_maps=False,
 ):
     modules = load_mvp_modules()
     run_date = run_date or today_local()
@@ -163,12 +182,14 @@ def generate_daily_briefings(
     with pushd(HUMANINTHELOOP_DIR):
         observations = modules.briefing.load_observations()
         modules.fetch_data.get_balearic_forecast(dry_run=False)
+        waves_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc"
+        currents_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc"
 
         for route_id in selected_route_ids:
             route = routes[route_id]
             forecast = modules.route_analysis.forecast_summary_from_files(
-                Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc",
-                Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc",
+                waves_path,
+                currents_path,
                 route=route,
             )
             validate_forecast_available(forecast, route_id)
@@ -192,7 +213,16 @@ def generate_daily_briefings(
                 logo_path,
                 skip_figures=skip_figures,
             )
-            validate_route_artifacts(route_dir, skip_figures=skip_figures)
+            map_path = maybe_generate_route_map(
+                modules.map_generator,
+                route_dir,
+                route,
+                snapshot,
+                waves_path,
+                currents_path,
+                skip_maps=skip_maps,
+            )
+            validate_route_artifacts(route_dir, skip_figures=skip_figures, skip_maps=skip_maps)
 
     write_manifest(day_dir, run_date, selected_route_ids, vessel_class)
     return SimpleNamespace(output_dir=day_dir, routes=selected_route_ids)
@@ -213,6 +243,7 @@ def parse_args():
         help="Logo path for WhatsApp-style figures. Relative paths resolve from the repo root.",
     )
     parser.add_argument("--skip-figures", action="store_true", help="Only generate text/JSON artifacts.")
+    parser.add_argument("--skip-maps", action="store_true", help="Do not generate route Decision Map artifacts.")
     return parser.parse_args()
 
 
@@ -228,6 +259,7 @@ def main():
         current_time=args.current_time,
         logo_path=args.logo_path,
         skip_figures=args.skip_figures,
+        skip_maps=args.skip_maps,
     )
     print(f"Wrote PredSea daily briefing artifacts to {result.output_dir}")
     print(f"Routes: {', '.join(result.routes)}")

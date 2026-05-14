@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import patch
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 class FetchDataTests(unittest.TestCase):
@@ -36,6 +38,93 @@ class FetchDataTests(unittest.TestCase):
             fetch_data.get_balearic_forecast(dry_run=False)
 
         subset.assert_not_called()
+
+
+class MapGeneratorTests(unittest.TestCase):
+    def test_route_decision_map_writes_png_from_forecast_files(self):
+        import numpy as np
+        import xarray as xr
+        from PIL import Image
+
+        import map_generator
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            times = np.array(["2026-05-14T06:00:00", "2026-05-14T07:00:00"], dtype="datetime64[ns]")
+            latitudes = [38.8, 39.2, 39.6]
+            longitudes = [1.6, 2.1, 2.6]
+            waves = xr.Dataset(
+                {
+                    "VHM0": (
+                        ("time", "latitude", "longitude"),
+                        np.array(
+                            [
+                                [[0.8, 0.9, 1.0], [1.1, 1.3, 1.2], [0.7, 0.8, 0.9]],
+                                [[0.9, 1.0, 1.1], [1.2, 1.6, 1.4], [0.8, 0.9, 1.0]],
+                            ]
+                        ),
+                    ),
+                    "VMDR": (
+                        ("time", "latitude", "longitude"),
+                        np.full((2, 3, 3), 300.0),
+                    ),
+                },
+                coords={"time": times, "latitude": latitudes, "longitude": longitudes},
+            )
+            currents = xr.Dataset(
+                {
+                    "uo": (("time", "latitude", "longitude"), np.full((2, 3, 3), 0.2)),
+                    "vo": (("time", "latitude", "longitude"), np.full((2, 3, 3), 0.1)),
+                },
+                coords={"time": times, "latitude": latitudes, "longitude": longitudes},
+            )
+            waves_path = root / "waves.nc"
+            currents_path = root / "currents.nc"
+            waves.to_netcdf(waves_path)
+            currents.to_netcdf(currents_path)
+
+            route = {
+                "id": "palma_ibiza",
+                "name": "Palma -> Ibiza",
+                "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
+                "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
+                "sample_points": [
+                    {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+                    {"name": "Mid Palma-Ibiza", "longitude": 2.10, "latitude": 39.20},
+                    {"name": "Ibiza Channel", "longitude": 1.70, "latitude": 38.90},
+                ],
+            }
+            snapshot = {
+                "route": "Palma -> Ibiza",
+                "route_id": "palma_ibiza",
+                "vessel_profile": {"label": "15-24m"},
+                "forecast": {
+                    "wave_min_m": 0.8,
+                    "wave_max_m": 1.6,
+                    "wave_peak_time": "07:00",
+                    "current_max_kn": 0.4,
+                    "current_peak_time": "07:00",
+                },
+                "recommendation": {
+                    "vessel_severity": "caution",
+                    "vessel_advice": "caution for vessels 15-24m",
+                    "confidence": "medium",
+                },
+            }
+
+            output = root / "route_decision_map.png"
+            result = map_generator.generate_route_decision_map(
+                waves_path,
+                currents_path,
+                route,
+                snapshot,
+                output,
+            )
+
+            self.assertEqual(result, output)
+            self.assertTrue(output.exists())
+            with Image.open(output) as image:
+                self.assertEqual(image.size, (1440, 1800))
 
 
 class SocibFetcherTests(unittest.TestCase):

@@ -1,10 +1,19 @@
 # PredSea System
 
-PredSea is a vertically integrated oceanographic pipeline for proprietary marine
-weather intelligence around the Balearic Sea. The system is designed to ingest
-global atmospheric forcing, run high-resolution regional simulations, translate
-model output into captain-ready intelligence, and preserve forecasts plus
-observations in a PostGIS vault.
+PredSea is a maritime decision intelligence system for the Balearic Sea. The
+current MVP translates ocean forecasts, SOCIB buoy truth, route exposure, vessel
+class, and human review into captain-ready operational guidance.
+
+The product direction is deliberately ocean-first. Wind is useful supporting
+context when it changes the operational read, but PredSea is not trying to be
+another generic wind or weather app.
+
+Core positioning:
+
+```text
+Ocean data is everywhere.
+Operational decisions are not.
+```
 
 ## Architecture
 
@@ -95,6 +104,8 @@ Current observation variables:
 7. Visual output:
    - `chat_figure.py` turns the WhatsApp script into a LinkedIn-ready
      chat-style screenshot.
+   - `map_generator.py` creates first-version Route Decision Maps that explain
+     the operational read, not generic weather-map decoration.
 
 8. Validation:
    - `validation_engine.py` compares stored route forecasts against SOCIB truth.
@@ -127,6 +138,15 @@ Current decision behavior:
   context plots.
 - Produces LinkedIn/WhatsApp text artifacts and a WhatsApp-style screenshot
   figure.
+- Produces a first-version `route_decision_map.png` for each daily route artifact
+  folder.
+
+Next visual priority:
+
+- Improve Route Decision Maps with cleaner geography, better route framing, and
+  a more meaningful worst-segment calculation.
+- Balearic overview Decision Maps for LinkedIn and daily human review.
+- Wind context only when it explains the sea-state decision.
 
 Run from `humanintheloop/`:
 

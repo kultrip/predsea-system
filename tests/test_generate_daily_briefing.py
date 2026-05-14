@@ -81,9 +81,19 @@ class FakeChatFigure:
         Path(output_path).write_text("fake image", encoding="utf-8")
 
 
+class FakeMapGenerator:
+    def __init__(self):
+        self.calls = []
+
+    def generate_route_decision_map(self, waves_path, currents_path, route, snapshot, output_path):
+        self.calls.append((Path(waves_path), Path(currents_path), route["id"], snapshot["route_id"]))
+        Path(output_path).write_text("fake route map", encoding="utf-8")
+
+
 def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tmp_path, monkeypatch):
     runner = load_runner()
     fake_fetch = FakeFetchData()
+    fake_map_generator = FakeMapGenerator()
     monkeypatch.setattr(
         runner,
         "load_mvp_modules",
@@ -92,6 +102,7 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
             briefing=FakeBriefing(),
             fetch_data=fake_fetch,
             chat_figure=FakeChatFigure(),
+            map_generator=fake_map_generator,
         ),
     )
     monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
@@ -113,6 +124,8 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
     assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "daily_snapshot.json").exists()
     assert (tmp_path / "outputs" / "2026-05-10" / "palma_cabrera" / "briefing_whatsapp.txt").exists()
     assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "predsea_whatsapp_figure.png").exists()
+    assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "route_decision_map.png").exists()
+    assert [call[2] for call in fake_map_generator.calls] == ["palma_ibiza", "palma_cabrera"]
     manifest = json.loads((tmp_path / "outputs" / "2026-05-10" / "run_manifest.json").read_text())
     assert manifest["route_count"] == 2
     assert manifest["routes"] == ["palma_ibiza", "palma_cabrera"]
@@ -134,6 +147,7 @@ def test_generate_daily_briefings_fails_when_required_artifact_is_missing(tmp_pa
             briefing=BrokenBriefing(),
             fetch_data=FakeFetchData(),
             chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
         ),
     )
     monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
@@ -170,6 +184,7 @@ def test_generate_daily_briefings_fails_when_forecast_layer_is_unavailable(tmp_p
             briefing=FakeBriefing(),
             fetch_data=FakeFetchData(),
             chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
         ),
     )
     monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
@@ -206,6 +221,7 @@ def test_relative_logo_path_resolves_from_project_root_after_chdir(tmp_path, mon
             briefing=FakeBriefing(),
             fetch_data=FakeFetchData(),
             chat_figure=fake_chat,
+            map_generator=FakeMapGenerator(),
         ),
     )
 
