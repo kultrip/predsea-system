@@ -40,6 +40,13 @@ jobs:
         run: |
           python scripts/generate_daily_briefing.py
 
+      - name: Export web demo bundle
+        run: |
+          python scripts/export_web_demo_bundle.py \
+            --input-root outputs \
+            --output-dir outputs/web-demo \
+            --featured-route palma_ibiza
+
       - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
