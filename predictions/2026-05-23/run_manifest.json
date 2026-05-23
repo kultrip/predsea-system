@@ -1,0 +1,12 @@
+{
+  "run_date": "2026-05-23",
+  "route_count": 4,
+  "routes": [
+    "alcudia_ciutadella",
+    "ibiza_formentera",
+    "palma_cabrera",
+    "palma_ibiza"
+  ],
+  "vessel_class": "medium",
+  "created_at_utc": "2026-05-23 06:25 UTC"
+}

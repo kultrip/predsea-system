@@ -1,0 +1,333 @@
+{
+  "route": "Ibiza -> Formentera",
+  "route_id": "ibiza_formentera",
+  "route_note": "Short channel route; current and local chop can matter even when wave height looks modest.",
+  "vessel_class": "medium",
+  "vessel_profile": {
+    "label": "15-24m",
+    "manageable_m": 1.5,
+    "restricted_m": 2.2
+  },
+  "created_at_utc": "2026-05-12 07:26 UTC",
+  "observations": {
+    "bahia_de_palma": {
+      "name": "Buoy Bahia de Palma",
+      "last_sample_utc": "2026-05-12 07:00 UTC",
+      "salinity_psu": 37.243,
+      "water_temp_c": 19.35,
+      "sea_level_pressure_hpa": 1015.0,
+      "wave_height_m": 0.42,
+      "wave_from_direction_deg": "SW"
+    },
+    "canal_de_ibiza": {
+      "name": "Buoy Canal de Ibiza",
+      "last_sample_utc": "2026-05-12 07:00 UTC",
+      "salinity_psu": 37.176,
+      "water_temp_c": 19.09,
+      "sea_level_pressure_hpa": 1015.0,
+      "wave_height_m": 0.57,
+      "wave_from_direction_deg": "SW"
+    },
+    "porto_colom": {
+      "name": "Buoy Porto Colom",
+      "last_sample_utc": "2026-04-01 10:30 UTC",
+      "wave_height_m": "N/A",
+      "wave_from_direction_deg": "N/A",
+      "water_temp_c": "N/A"
+    },
+    "pollensa": {
+      "name": "Station Pollensa",
+      "last_sample_utc": "2026-05-12 07:19 UTC",
+      "air_pressure_hpa": 1015.22,
+      "water_temp_c": 19.8
+    }
+  },
+  "forecast": {
+    "wave_min_m": 0.4,
+    "wave_max_m": 1.4,
+    "wave_peak_time": "02:00",
+    "wave_peak_direction_deg": 251.6,
+    "current_max_kn": 1.1,
+    "current_peak_time": "02:00",
+    "hourly": [
+      {
+        "time": "02:00",
+        "wave_m": 0.4,
+        "time_utc": "2026-05-12 02:00 UTC",
+        "wave_direction_deg": 219.8,
+        "current_mps": 0.165,
+        "current_kn": 0.3,
+        "current_direction_deg": 87.6
+      },
+      {
+        "time": "03:00",
+        "wave_m": 0.4,
+        "time_utc": "2026-05-12 03:00 UTC",
+        "wave_direction_deg": 218.9,
+        "current_mps": 0.181,
+        "current_kn": 0.4,
+        "current_direction_deg": 89.7
+      },
+      {
+        "time": "04:00",
+        "wave_m": 0.4,
+        "time_utc": "2026-05-12 04:00 UTC",
+        "wave_direction_deg": 218.8,
+        "current_mps": 0.186,
+        "current_kn": 0.4,
+        "current_direction_deg": 92.6
+      },
+      {
+        "time": "05:00",
+        "wave_m": 0.4,
+        "time_utc": "2026-05-12 05:00 UTC",
+        "wave_direction_deg": 219.4,
+        "current_mps": 0.18,
+        "current_kn": 0.4,
+        "current_direction_deg": 96.1
+      },
+      {
+        "time": "06:00",
+        "wave_m": 0.5,
+        "time_utc": "2026-05-12 06:00 UTC",
+        "wave_direction_deg": 220.6,
+        "current_mps": 0.169,
+        "current_kn": 0.3,
+        "current_direction_deg": 99.4
+      },
+      {
+        "time": "07:00",
+        "wave_m": 0.5,
+        "time_utc": "2026-05-12 07:00 UTC",
+        "wave_direction_deg": 220.9,
+        "current_mps": 0.156,
+        "current_kn": 0.3,
+        "current_direction_deg": 101.9
+      },
+      {
+        "time": "08:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 08:00 UTC",
+        "wave_direction_deg": 221.3,
+        "current_mps": 0.147,
+        "current_kn": 0.3,
+        "current_direction_deg": 103.2
+      },
+      {
+        "time": "09:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 09:00 UTC",
+        "wave_direction_deg": 223.4,
+        "current_mps": 0.15,
+        "current_kn": 0.3,
+        "current_direction_deg": 101.3
+      },
+      {
+        "time": "10:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 10:00 UTC",
+        "wave_direction_deg": 226.0,
+        "current_mps": 0.172,
+        "current_kn": 0.3,
+        "current_direction_deg": 94.1
+      },
+      {
+        "time": "11:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 11:00 UTC",
+        "wave_direction_deg": 226.9,
+        "current_mps": 0.196,
+        "current_kn": 0.4,
+        "current_direction_deg": 92.0
+      },
+      {
+        "time": "12:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 12:00 UTC",
+        "wave_direction_deg": 227.4,
+        "current_mps": 0.224,
+        "current_kn": 0.4,
+        "current_direction_deg": 91.8
+      },
+      {
+        "time": "13:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 13:00 UTC",
+        "wave_direction_deg": 229.0,
+        "current_mps": 0.253,
+        "current_kn": 0.5,
+        "current_direction_deg": 91.8
+      },
+      {
+        "time": "14:00",
+        "wave_m": 0.6,
+        "time_utc": "2026-05-12 14:00 UTC",
+        "wave_direction_deg": 229.6,
+        "current_mps": 0.282,
+        "current_kn": 0.5,
+        "current_direction_deg": 92.3
+      },
+      {
+        "time": "15:00",
+        "wave_m": 0.7,
+        "time_utc": "2026-05-12 15:00 UTC",
+        "wave_direction_deg": 228.8,
+        "current_mps": 0.303,
+        "current_kn": 0.6,
+        "current_direction_deg": 93.6
+      },
+      {
+        "time": "16:00",
+        "wave_m": 0.8,
+        "time_utc": "2026-05-12 16:00 UTC",
+        "wave_direction_deg": 226.8,
+        "current_mps": 0.315,
+        "current_kn": 0.6,
+        "current_direction_deg": 95.3
+      },
+      {
+        "time": "17:00",
+        "wave_m": 0.8,
+        "time_utc": "2026-05-12 17:00 UTC",
+        "wave_direction_deg": 225.5,
+        "current_mps": 0.316,
+        "current_kn": 0.6,
+        "current_direction_deg": 97.6
+      },
+      {
+        "time": "18:00",
+        "wave_m": 0.8,
+        "time_utc": "2026-05-12 18:00 UTC",
+        "wave_direction_deg": 224.9,
+        "current_mps": 0.311,
+        "current_kn": 0.6,
+        "current_direction_deg": 101.2
+      },
+      {
+        "time": "19:00",
+        "wave_m": 0.8,
+        "time_utc": "2026-05-12 19:00 UTC",
+        "wave_direction_deg": 224.3,
+        "current_mps": 0.31,
+        "current_kn": 0.6,
+        "current_direction_deg": 106.3
+      },
+      {
+        "time": "20:00",
+        "wave_m": 0.9,
+        "time_utc": "2026-05-12 20:00 UTC",
+        "wave_direction_deg": 228.4,
+        "current_mps": 0.322,
+        "current_kn": 0.6,
+        "current_direction_deg": 110.9
+      },
+      {
+        "time": "21:00",
+        "wave_m": 1.1,
+        "time_utc": "2026-05-12 21:00 UTC",
+        "wave_direction_deg": 232.8,
+        "current_mps": 0.343,
+        "current_kn": 0.7,
+        "current_direction_deg": 114.0
+      },
+      {
+        "time": "22:00",
+        "wave_m": 1.2,
+        "time_utc": "2026-05-12 22:00 UTC",
+        "wave_direction_deg": 235.6,
+        "current_mps": 0.377,
+        "current_kn": 0.7,
+        "current_direction_deg": 115.8
+      },
+      {
+        "time": "23:00",
+        "wave_m": 1.3,
+        "time_utc": "2026-05-12 23:00 UTC",
+        "wave_direction_deg": 239.9,
+        "current_mps": 0.433,
+        "current_kn": 0.8,
+        "current_direction_deg": 117.4
+      },
+      {
+        "time": "00:00",
+        "wave_m": 1.3,
+        "time_utc": "2026-05-13 00:00 UTC",
+        "wave_direction_deg": 244.0,
+        "current_mps": 0.492,
+        "current_kn": 1.0,
+        "current_direction_deg": 118.6
+      },
+      {
+        "time": "01:00",
+        "wave_m": 1.4,
+        "time_utc": "2026-05-13 01:00 UTC",
+        "wave_direction_deg": 247.8,
+        "current_mps": 0.534,
+        "current_kn": 1.0,
+        "current_direction_deg": 120.6
+      },
+      {
+        "time": "02:00",
+        "wave_m": 1.4,
+        "time_utc": "2026-05-13 02:00 UTC",
+        "wave_direction_deg": 251.6,
+        "current_mps": 0.547,
+        "current_kn": 1.1,
+        "current_direction_deg": 123.3
+      },
+      {
+        "time": "03:00",
+        "wave_m": 1.4,
+        "time_utc": "2026-05-13 03:00 UTC",
+        "wave_direction_deg": 252.8,
+        "current_mps": 0.524,
+        "current_kn": 1.0,
+        "current_direction_deg": 126.8
+      },
+      {
+        "time": "04:00",
+        "wave_m": 1.3,
+        "time_utc": "2026-05-13 04:00 UTC",
+        "wave_direction_deg": 253.0,
+        "current_mps": 0.473,
+        "current_kn": 0.9,
+        "current_direction_deg": 132.0
+      },
+      {
+        "time": "05:00",
+        "wave_m": 1.3,
+        "time_utc": "2026-05-13 05:00 UTC",
+        "wave_direction_deg": 252.3,
+        "current_mps": 0.41,
+        "current_kn": 0.8,
+        "current_direction_deg": 139.4
+      },
+      {
+        "time": "06:00",
+        "wave_m": 1.3,
+        "time_utc": "2026-05-13 06:00 UTC",
+        "wave_direction_deg": 250.7,
+        "current_mps": 0.345,
+        "current_kn": 0.7,
+        "current_direction_deg": 149.7
+      },
+      {
+        "time": "07:00",
+        "wave_m": 1.2,
+        "time_utc": "2026-05-13 07:00 UTC",
+        "wave_direction_deg": 248.8,
+        "current_mps": 0.292,
+        "current_kn": 0.6,
+        "current_direction_deg": 163.0
+      }
+    ],
+    "sampling_method": "route_exposed_max"
+  },
+  "recommendation": {
+    "best_window": "before midday",
+    "watch_out": "waves build toward 1.4 m around 02:00; current may reach 1.1 kn around 02:00",
+    "confidence": "medium",
+    "vessel_severity": "manageable",
+    "vessel_advice": "manageable for vessels 15-24m"
+  }
+}

@@ -1,5 +1,4 @@
 import math
-import json
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -17,16 +16,16 @@ GREEN = "#6ee65d"
 YELLOW = "#ffd84d"
 RED = "#ff6b6b"
 LOW_WAVE = "#27ddea"
-ROUTES_PATH = Path(__file__).with_name("routes.json")
 
 
 def map_metadata():
     return {
         "title": "OCEANOGRAPHIC CONDITIONS MAP",
-        "primary_layers": ["wave_height", "current_vectors", "route_reference"],
-        "route_role": "reference",
+        "primary_layers": ["wave_height", "current_vectors", "island_context"],
+        "route_role": "none",
         "extent": "full_forecast_region",
         "current_resolution": "Copernicus Mediterranean 4.2km forecast grid",
+        "coastline_source": "schematic_balearic_context",
     }
 
 
@@ -55,7 +54,6 @@ def generate_route_decision_map(waves_path, currents_path, route, snapshot, outp
         bounds = forecast_region_bounds(wave)
         draw_oceanographic_map_base(image, draw, wave, map_box, bounds)
         draw_current_arrows(draw, current_u, current_v, map_box, bounds)
-        draw_all_route_references(draw, map_box, bounds)
         draw_legend(draw, map_box, fonts)
         draw_decision_panel(draw, fonts, snapshot)
 
@@ -392,20 +390,6 @@ def draw_current_context(draw, route, route_currents, map_box, bounds):
     draw.text((map_box[0] + 34, map_box[3] - 80), "small arrows: surface current context", font=fonts["micro"], fill=MUTED)
 
 
-def load_all_routes(path=ROUTES_PATH):
-    try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except OSError:
-        return {}
-
-
-def draw_all_route_references(draw, map_box, bounds):
-    routes = load_all_routes()
-    for route in routes.values():
-        draw_route_reference(draw, route, map_box, bounds, route_values=None, emphasize=False)
-    draw.text((map_box[2] - 560, map_box[3] - 54), "white lines: configured PredSea route references", font=load_fonts()["micro"], fill=TEXT)
-
-
 def draw_route_reference(draw, route, map_box, bounds, route_values=None, emphasize=True):
     points = [(route["origin"]["longitude"], route["origin"]["latitude"])]
     points.extend((point["longitude"], point["latitude"]) for point in route.get("sample_points", []))
@@ -521,7 +505,7 @@ def draw_decision_panel(draw, fonts, snapshot):
     status = status_label(rec.get("vessel_severity"))
     color = severity_color(rec.get("vessel_severity"))
     draw.ellipse((122, 1372, 152, 1402), fill=color)
-    draw.text((175, 1350), "PREDSEA OPERATIONAL READ", font=fonts["status"], fill=TEXT)
+    draw.text((175, 1350), "PREDSEA SEA-STATE READ", font=fonts["status"], fill=TEXT)
     draw.text((175, 1410), f"{status}: {rec.get('vessel_advice', 'manual review needed')}", font=fonts["body"], fill=color)
     wave_min = forecast.get("wave_min_m")
     wave_max = forecast.get("wave_max_m")
@@ -534,7 +518,7 @@ def draw_decision_panel(draw, fonts, snapshot):
     current_text = "Current max: unavailable" if current is None else f"Current max: {current:.1f} kn"
     draw.text((760, 1482), current_text, font=fonts["body"], fill=TEXT)
     draw.text((760, 1538), f"Confidence: {rec.get('confidence', 'low')}", font=fonts["body"], fill=TEXT)
-    draw.text((175, 1622), "Map is evidence for the captain: ocean variables first, route decision second.", font=fonts["small"], fill=MUTED)
+    draw.text((175, 1622), "Forecast field for human review: waves first, currents second, decision after interpretation.", font=fonts["small"], fill=MUTED)
 
 
 def status_label(severity):

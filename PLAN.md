@@ -54,8 +54,10 @@ Current map status:
   NetCDF files.
 - The daily ETL now writes `route_decision_map.png` for each configured route.
 - Maps now prioritize full-region oceanographic evidence: significant wave
-  height as a color field, surface-current vectors, island labels, and all
-  configured routes as reference overlays.
+  height as a color field, surface-current vectors, and island labels. Route
+  overlays are intentionally excluded from the map layer.
+- `scripts/generate_ocean_conditions_map.py` creates publication maps with real
+  Cartopy coastline context and should be used for LinkedIn/web visuals.
 - Validation plots still exist as diagnostic artifacts, separate from
   captain-facing route maps.
 - The current maps are intentionally lightweight Pillow renders, not final

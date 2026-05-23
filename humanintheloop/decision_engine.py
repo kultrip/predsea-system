@@ -51,8 +51,12 @@ def answer_question(question, snapshot, location_label="shared location", curren
             recommendation = f"leave {best_window}"
             reason = watch_out
     elif intent == "conditions_soon":
-        recommendation = "expect conditions to worsen if your timing overlaps the forecast peak"
-        reason = f"forecast wave peak is near {wave_max} m around {wave_peak}"
+        if is_manageable_peak(forecast, snapshot.get("vessel_profile", {})):
+            recommendation = "conditions look workable; no narrow weather window flagged"
+            reason = f"forecast wave peak is only near {wave_max} m around {wave_peak}, with no major wave build-up"
+        else:
+            recommendation = "expect conditions to worsen if your timing overlaps the forecast peak"
+            reason = f"forecast wave peak is near {wave_max} m around {wave_peak}"
     else:
         recommendation = best_window
         reason = watch_out
@@ -121,6 +125,14 @@ def is_morning_window_passed(best_window, current_time):
     except ValueError:
         return False
     return hour >= 12
+
+
+def is_manageable_peak(forecast, vessel_profile):
+    wave_max = forecast.get("wave_max_m")
+    if wave_max is None:
+        return False
+    manageable_m = vessel_profile.get("manageable_m", 1.2)
+    return float(wave_max) < float(manageable_m)
 
 
 def render_decision_screenshot_script(decision):

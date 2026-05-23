@@ -65,19 +65,21 @@ First map outputs should focus on oceanic prediction:
 - Surface current speed.
 - Surface current direction.
 - Full Balearic forecast-region context.
-- Configured routes as light reference overlays only.
 - Route status: favorable, workable, conservative, or restricted.
 
 Current MVP implementation:
 
 - `humanintheloop/map_generator.py` creates first-version Oceanographic
-  Conditions Maps.
+  Conditions Maps without route overlays.
 - The daily ETL writes `route_decision_map.png` for each configured route.
 - The first version uses a lightweight Pillow renderer over the existing
   Copernicus NetCDF grid, so it works in GitHub Actions without Cartopy.
 - The current map view uses the full Copernicus Mediterranean 4.2 km forecast
-  grid available to the MVP, with island labels and all configured PredSea
-  routes as context.
+  grid available to the MVP, with schematic island labels as geographic context.
+- `scripts/generate_ocean_conditions_map.py` is the preferred publication-map
+  script when real coastline detail is needed. It uses Cartopy coastline/land
+  features, latitude/longitude axes, a real colorbar, and optional current
+  vectors.
 - These maps are operational visual snippets, not final cartographic products.
 
 Wind can be included only when it changes the operational interpretation, for

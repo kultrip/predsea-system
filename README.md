@@ -105,8 +105,11 @@ Current observation variables:
    - `chat_figure.py` turns the WhatsApp script into a LinkedIn-ready
      chat-style screenshot.
    - `map_generator.py` creates first-version Oceanographic Conditions Maps:
-     wave-height fields, surface-current vectors, and the captain route as a
-     reference overlay.
+     wave-height fields and surface-current vectors, without route overlays.
+     This is the lightweight GitHub Actions fallback renderer.
+   - `scripts/generate_ocean_conditions_map.py` creates publication maps with
+     real Cartopy coastline context, latitude/longitude axes, colorbar, and
+     optional current vectors.
 
 8. Validation:
    - `validation_engine.py` compares stored route forecasts against SOCIB truth.
@@ -140,18 +143,31 @@ Current decision behavior:
 - Produces LinkedIn/WhatsApp text artifacts and a WhatsApp-style screenshot
   figure.
 - Produces a first-version oceanographic map, currently named
-  `route_decision_map.png`, for each daily route artifact folder. The map uses
-  the full Balearic forecast region, significant wave height as a color field,
-  surface-current vectors, island labels, and configured routes as reference
-  context.
+  `route_decision_map.png`, for each daily route artifact folder. The fallback
+  map uses the full Balearic forecast region, significant wave height as a color
+  field, surface-current vectors, and island labels. Publication maps should be
+  generated with `scripts/generate_ocean_conditions_map.py` when real coastline
+  detail matters.
 
 Next visual priority:
 
 - Improve Oceanographic Conditions Maps with clearer wave scales, current-speed
   legends, and wave direction context.
+- Replace the fallback schematic coastline in the automated ETL with the
+  Cartopy publication renderer once the GitHub Action runtime is validated.
 - Add wave-period/wavelength layers if they become available in the forecast
   download.
 - Wind context only when it explains the sea-state decision.
+
+Generate a publication-quality ocean map with real coastline context:
+
+```bash
+python scripts/generate_ocean_conditions_map.py \
+  --waves humanintheloop/mvp_data/balearic_waves.nc \
+  --currents humanintheloop/mvp_data/balearic_currents.nc \
+  --time 12:00 \
+  --output humanintheloop/artifacts/ocean_conditions_cartopy.png
+```
 
 Run from `humanintheloop/`:
 

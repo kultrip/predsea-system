@@ -49,7 +49,8 @@ class MapGeneratorTests(unittest.TestCase):
         self.assertEqual(metadata["title"], "OCEANOGRAPHIC CONDITIONS MAP")
         self.assertIn("wave_height", metadata["primary_layers"])
         self.assertIn("current_vectors", metadata["primary_layers"])
-        self.assertEqual(metadata["route_role"], "reference")
+        self.assertNotIn("route_reference", metadata["primary_layers"])
+        self.assertEqual(metadata["route_role"], "none")
         self.assertEqual(metadata["extent"], "full_forecast_region")
 
     def test_worst_segment_uses_highest_route_sample_value(self):
@@ -660,6 +661,31 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertIn("17:00 looks better than the 14:00 peak", decision["answer"])
         self.assertIn("1.2 m", decision["answer"])
+
+    def test_conditions_soon_does_not_warn_when_peak_is_calm(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+            "forecast": {"wave_max_m": 0.5, "wave_peak_time": "08:00", "current_max_kn": 0.3},
+            "recommendation": {
+                "best_window": "most daylight windows look manageable",
+                "watch_out": "no major wave build-up in the 24h forecast",
+                "confidence": "medium",
+                "vessel_advice": "manageable for vessels 15-24m",
+            },
+        }
+
+        decision = decision_engine.answer_question(
+            "How will the sea be this afternoon?",
+            snapshot,
+            current_time="09:30",
+        )
+
+        self.assertIn("conditions look workable", decision["answer"])
+        self.assertIn("0.5 m", decision["answer"])
+        self.assertNotIn("expect conditions to worsen", decision["answer"])
 
     def test_answer_question_includes_vessel_class_context(self):
         import decision_engine
