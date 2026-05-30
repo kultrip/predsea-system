@@ -1,0 +1,102 @@
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.evidence_store import EvidenceNotFoundError, create_evidence_store_from_env
+from api.schemas import BriefingResponse, HealthResponse, QuestionRequest, QuestionResponse
+from api.services import answer_question, evidence_used, render_briefing
+
+
+def create_app(evidence_store=None):
+    app = FastAPI(
+        title="PredSea MVP API",
+        version="0.1.0",
+        description="File-backed API for PredSea route evidence, briefings, and captain questions.",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "https://predsea.lovable.app",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
+    )
+    store = evidence_store or create_evidence_store_from_env()
+
+    @app.get("/health", response_model=HealthResponse)
+    def health():
+        try:
+            latest_date = store.latest_date()
+        except EvidenceNotFoundError:
+            latest_date = None
+        return {
+            "status": "ok",
+            "latest_date": latest_date,
+            "storage_backend": getattr(store, "storage_backend", "unknown"),
+        }
+
+    @app.get("/routes")
+    def routes(date: str | None = None):
+        try:
+            run_date = store.resolve_date(date)
+            route_ids = store.route_ids(run_date)
+            return {"date": run_date, "routes": route_ids}
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/routes/{route_id}/evidence")
+    def route_evidence(route_id: str, date: str | None = None):
+        try:
+            run_date = store.resolve_date(date)
+            snapshot = store.load_snapshot(route_id, run_date)
+            return {"date": run_date, "evidence": snapshot}
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/routes/{route_id}/briefing", response_model=BriefingResponse)
+    def route_briefing(
+        route_id: str,
+        date: str | None = None,
+        vessel_class: str = Query("medium", pattern="^(small|medium|large)$"),
+        format: str = Query("whatsapp", pattern="^(whatsapp|linkedin)$"),
+    ):
+        try:
+            run_date = store.resolve_date(date)
+            snapshot = store.load_snapshot(route_id, run_date)
+            briefing, adjusted = render_briefing(snapshot, vessel_class, format)
+            return {
+                "route_id": route_id,
+                "route": adjusted.get("route", route_id),
+                "date": run_date,
+                "format": format,
+                "briefing": briefing,
+            }
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.post("/routes/{route_id}/question", response_model=QuestionResponse)
+    def route_question(route_id: str, request: QuestionRequest):
+        try:
+            run_date = store.resolve_date(request.date)
+            snapshot = store.load_snapshot(route_id, run_date)
+            decision, adjusted = answer_question(snapshot, request)
+            return {
+                "route_id": route_id,
+                "route": adjusted.get("route", route_id),
+                "date": run_date,
+                "question": request.question,
+                "answer": decision["answer"],
+                "intent": decision["intent"],
+                "evidence_used": evidence_used(adjusted),
+            }
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    return app
+
+
+app = create_app()

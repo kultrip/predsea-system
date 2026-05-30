@@ -40,6 +40,24 @@ jobs:
         run: |
           python scripts/generate_daily_briefing.py
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload prediction outputs to Cloud Storage
+        run: |
+          DAY_DIR=$(find outputs -mindepth 1 -maxdepth 1 -type d -name '20*' | sort | tail -n 1)
+          if [ -z "$DAY_DIR" ]; then
+            echo "No dated output directory found under outputs/" >&2
+            exit 1
+          fi
+          RUN_DATE=$(basename "$DAY_DIR")
+          gcloud storage rsync --recursive "$DAY_DIR" "gs://predsea-daily-outputs/predictions/$RUN_DATE"
+
       - name: Export web demo bundle
         run: |
           python scripts/export_web_demo_bundle.py \

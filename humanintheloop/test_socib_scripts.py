@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from datetime import datetime, timezone
 
 
 class FetchDataTests(unittest.TestCase):
@@ -194,7 +195,10 @@ class SocibPublicStructuredTests(unittest.TestCase):
             }
         ]
 
-        observations = socib_public.extract_public_observations(payload)
+        observations = socib_public.extract_public_observations(
+            payload,
+            now=datetime(2026, 5, 9, 7, 0, tzinfo=timezone.utc),
+        )
 
         canal = observations["canal_de_ibiza"]
         self.assertEqual(canal["name"], "Buoy Canal de Ibiza")
@@ -224,7 +228,10 @@ class SocibPublicStructuredTests(unittest.TestCase):
             }
         ]
 
-        observations = socib_public.extract_public_observations(payload)
+        observations = socib_public.extract_public_observations(
+            payload,
+            now=datetime(2026, 5, 9, 7, 0, tzinfo=timezone.utc),
+        )
 
         self.assertEqual(observations["bahia_de_palma"]["wave_height_m"], 0.38)
 
@@ -250,9 +257,41 @@ class SocibPublicStructuredTests(unittest.TestCase):
             }
         ]
 
-        observations = socib_public.extract_public_observations(payload)
+        observations = socib_public.extract_public_observations(
+            payload,
+            now=datetime(2026, 5, 9, 7, 0, tzinfo=timezone.utc),
+        )
 
         self.assertEqual(observations["canal_de_ibiza"]["wave_from_direction_deg"], 64.7)
+
+    def test_extract_public_observations_excludes_stale_platforms(self):
+        import socib_public
+
+        payload = [
+            {
+                "id": 512,
+                "name": "Buoy Porto Colom",
+                "lastTimeSampleReceived": 1775041200,
+                "jsonInstrumentList": [
+                    {
+                        "jsonVariableList": [
+                            {
+                                "standardName": "sea_surface_wave_significant_height",
+                                "lastSampleValue": "0.40 m",
+                                "lastValue": 0.40,
+                            }
+                        ]
+                    }
+                ],
+            }
+        ]
+
+        observations = socib_public.extract_public_observations(
+            payload,
+            now=datetime(2026, 5, 9, 7, 0, tzinfo=timezone.utc),
+        )
+
+        self.assertNotIn("porto_colom", observations)
 
 
 class RouteAnalysisTests(unittest.TestCase):

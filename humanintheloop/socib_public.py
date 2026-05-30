@@ -31,6 +31,7 @@ NUMERIC_VARIABLES = {
     "air_pressure": "air_pressure_hpa",
     "air_pressure_at_sea_level": "sea_level_pressure_hpa",
 }
+MAX_OBSERVATION_AGE_HOURS = 48
 
 
 def format_timestamp(epoch_seconds):
@@ -38,6 +39,19 @@ def format_timestamp(epoch_seconds):
         return "N/A"
     timestamp = datetime.fromtimestamp(epoch_seconds, tz=timezone.utc)
     return timestamp.strftime("%Y-%m-%d %H:%M UTC")
+
+
+def observation_age_hours(epoch_seconds, now=None):
+    if not epoch_seconds:
+        return None
+    now = now or datetime.now(timezone.utc)
+    timestamp = datetime.fromtimestamp(epoch_seconds, tz=timezone.utc)
+    return (now - timestamp).total_seconds() / 3600
+
+
+def is_fresh_observation(epoch_seconds, max_age_hours=MAX_OBSERVATION_AGE_HOURS, now=None):
+    age = observation_age_hours(epoch_seconds, now=now)
+    return age is not None and 0 <= age <= max_age_hours
 
 
 def important_values(platform):
@@ -78,7 +92,7 @@ def get_public_data():
         print(f"Error: {e}")
 
 
-def extract_public_observations(platforms):
+def extract_public_observations(platforms, now=None):
     observations = {}
     for platform in platforms:
         platform_id = platform.get("id")
@@ -86,9 +100,13 @@ def extract_public_observations(platforms):
         if not key:
             continue
 
+        last_sample = platform.get("lastTimeSampleReceived")
+        if not is_fresh_observation(last_sample, now=now):
+            continue
+
         record = {
             "name": platform.get("name", "N/A"),
-            "last_sample_utc": format_timestamp(platform.get("lastTimeSampleReceived")),
+            "last_sample_utc": format_timestamp(last_sample),
         }
         for instrument in platform.get("jsonInstrumentList", []):
             for variable in instrument.get("jsonVariableList", []):
