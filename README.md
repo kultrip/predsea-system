@@ -31,6 +31,13 @@ The current working MVP lives in `humanintheloop/`. It is a lightweight command
 line prototype for proving the decision layer before the full owned-modeling
 stack exists.
 
+Current operational docs:
+
+- `docs/prediction-etl.md`: ETL, external forecasts, evidence packages, GCS
+  output layout, and where new data/model sources should be added.
+- `docs/api-whatsapp.md`: deployed API, WhatsApp integration, run selection,
+  and future media/map endpoints.
+
 The MVP is a human-in-the-loop intelligence workflow:
 
 ```text

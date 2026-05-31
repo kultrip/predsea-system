@@ -3,6 +3,12 @@
 This API reads existing prediction artifacts and answers questions from stored
 route evidence. It does not fetch Copernicus or SOCIB forecast data per request.
 
+For the full API and WhatsApp integration guide, see:
+
+```text
+docs/api-whatsapp.md
+```
+
 Run from `humanintheloop/`:
 
 ```bash
@@ -14,8 +20,8 @@ Examples:
 ```bash
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/routes
-curl "http://127.0.0.1:8000/routes/palma_ibiza/evidence?date=2026-05-22"
-curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-22&vessel_class=medium&format=whatsapp"
+curl "http://127.0.0.1:8000/routes/palma_ibiza/evidence?date=2026-05-31&run=latest"
+curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-31&run=latest&vessel_class=medium&format=whatsapp"
 ```
 
 Ask a captain-style question:
@@ -24,7 +30,8 @@ Ask a captain-style question:
 curl -X POST http://127.0.0.1:8000/routes/palma_ibiza/question \
   -H "Content-Type: application/json" \
   -d '{
-    "date": "2026-05-22",
+    "date": "2026-05-31",
+    "run": "latest",
     "question": "Can I leave Palma at 17:00?",
     "vessel_class": "medium",
     "location_label": "Palma Marina",
@@ -33,8 +40,9 @@ curl -X POST http://127.0.0.1:8000/routes/palma_ibiza/question \
 ```
 
 By default, the API loads local files from
-`predictions/YYYY-MM-DD/<route_id>/evidence.json`. If that richer evidence
-package is missing, it falls back to the older
+`predictions/YYYY-MM-DD/runs/RUN_ID/<route_id>/evidence.json`. If that richer
+run-based evidence package is missing, it falls back to the older
+`predictions/YYYY-MM-DD/<route_id>/evidence.json` and then
 `predictions/YYYY-MM-DD/<route_id>/daily_snapshot.json`.
 
 The evidence package is the forward-compatible format for WhatsApp questions:
