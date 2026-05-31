@@ -44,7 +44,10 @@ def answer_question(question, snapshot, location_label="shared location", curren
             recommendation = f"use the direct route during the {best_window} window; reassess if leaving later"
         reason = f"after the best window, waves/current can increase fuel burn and comfort risk. Current forecast peak: {wave_max} m around {wave_peak}"
     elif intent == "leave_window":
-        if morning_window_passed:
+        if is_late_day(current_time):
+            recommendation = "today's practical daylight window has passed; use this as tomorrow morning planning guidance"
+            reason = f"latest route signal is: {watch_out}. Recheck the morning run and buoy observations before committing"
+        elif morning_window_passed:
             if "before midday" in best_window:
                 recommendation = "the calmer morning window has passed; avoid timing your departure near the forecast peak"
             else:
@@ -223,6 +226,17 @@ def is_morning_window_passed(best_window, current_time):
     except ValueError:
         return False
     return hour >= 12
+
+
+def is_late_day(current_time):
+    if not current_time:
+        return False
+    hour_text = str(current_time).split(":", 1)[0]
+    try:
+        hour = int(hour_text)
+    except ValueError:
+        return False
+    return hour >= 20
 
 
 def is_manageable_peak(forecast, vessel_profile):

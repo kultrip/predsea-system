@@ -670,6 +670,29 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("morning run", tomorrow["answer"])
         self.assertNotEqual(tonight["answer"], tomorrow["answer"])
 
+    def test_late_best_time_question_defers_to_tomorrow_planning(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "forecast": {"wave_max_m": 0.4, "wave_peak_time": "15:00", "current_max_kn": 0.2},
+            "recommendation": {
+                "best_window": "most daylight windows look manageable",
+                "watch_out": "no major wave build-up in the 24h forecast",
+                "confidence": "medium",
+            },
+        }
+
+        decision = decision_engine.answer_question(
+            "What is the best time to leave Palma for Ibiza today?",
+            snapshot,
+            current_time="22:00",
+        )
+
+        self.assertEqual(decision["intent"], "leave_window")
+        self.assertIn("practical daylight window has passed", decision["answer"])
+        self.assertIn("tomorrow morning", decision["answer"])
+
     def test_answer_question_uses_captain_facing_operational_tone(self):
         import decision_engine
 
