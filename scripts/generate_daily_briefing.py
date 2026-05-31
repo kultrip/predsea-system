@@ -19,6 +19,7 @@ DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "outputs"
 DEFAULT_LOCAL_TIMEZONE = "Europe/Madrid"
 REQUIRED_TEXT_ARTIFACTS = (
     "daily_snapshot.json",
+    "evidence.json",
     "briefing_linkedin.txt",
     "briefing_whatsapp.txt",
     "briefing_whatsapp_screenshot_script.txt",
@@ -206,6 +207,7 @@ def generate_daily_briefings(
                 question=question,
                 location_label=location_label,
                 current_time=current_time,
+                route=route,
             )
             figure_path = maybe_generate_chat_figure(
                 modules.chat_figure,

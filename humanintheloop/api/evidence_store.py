@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 
+import evidence_package
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PREDICTIONS_ROOT = Path(os.environ.get("PREDSEA_PREDICTIONS_ROOT", PROJECT_ROOT / "predictions"))
@@ -48,6 +50,10 @@ class EvidenceStore:
 
     def load_snapshot(self, route_id, run_date=None):
         date_text = self.resolve_date(run_date)
+        evidence_path = self.predictions_root / date_text / route_id / "evidence.json"
+        if evidence_path.exists():
+            package = json.loads(evidence_path.read_text(encoding="utf-8"))
+            return evidence_package.snapshot_from_evidence(package)
         snapshot_path = self.predictions_root / date_text / route_id / "daily_snapshot.json"
         if not snapshot_path.exists():
             raise EvidenceNotFoundError(f"No evidence for route '{route_id}' on {date_text}")
@@ -143,6 +149,12 @@ class GcsEvidenceStore:
 
     def load_snapshot(self, route_id, run_date=None):
         date_text = self.resolve_date(run_date)
+        evidence_object_name = self._object_name(date_text, route_id, "evidence.json")
+        try:
+            return evidence_package.snapshot_from_evidence(json.loads(self._download_text(evidence_object_name)))
+        except EvidenceNotFoundError:
+            pass
+
         object_name = self._object_name(date_text, route_id, "daily_snapshot.json")
         try:
             return json.loads(self._download_text(object_name))

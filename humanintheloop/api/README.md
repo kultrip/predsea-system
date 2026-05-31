@@ -33,7 +33,14 @@ curl -X POST http://127.0.0.1:8000/routes/palma_ibiza/question \
 ```
 
 By default, the API loads local files from
+`predictions/YYYY-MM-DD/<route_id>/evidence.json`. If that richer evidence
+package is missing, it falls back to the older
 `predictions/YYYY-MM-DD/<route_id>/daily_snapshot.json`.
+
+The evidence package is the forward-compatible format for WhatsApp questions:
+it includes the route subject, observation records, forecast variables,
+operational interpretation, data quality notes, and a `decision_context` block
+that keeps the current `/briefing` and `/question` behavior stable.
 
 In production, set these Cloud Run environment variables so the API reads the
 latest ETL outputs from Google Cloud Storage first:

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import briefing_renderers
 import decision_engine
+import evidence_package
 import fetch_data
 import route_analysis
 import socib_public
@@ -32,10 +33,14 @@ def route_output_dir(root, route):
     return Path(root) / "routes" / route["id"]
 
 
-def write_outputs(snapshot, output_dir=OUTPUT_DIR, question=None, location_label="Palma Marina", current_time=None):
+def write_outputs(snapshot, output_dir=OUTPUT_DIR, question=None, location_label="Palma Marina", current_time=None, route=None):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     (output_path / "daily_snapshot.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+    if route or snapshot.get("route_id"):
+        route = route or route_analysis.load_route(snapshot["route_id"])
+        evidence = evidence_package.build_route_evidence_package(snapshot, route)
+        (output_path / "evidence.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
     (output_path / "briefing_linkedin.txt").write_text(briefing_renderers.render_linkedin(snapshot), encoding="utf-8")
     (output_path / "briefing_whatsapp.txt").write_text(briefing_renderers.render_whatsapp(snapshot), encoding="utf-8")
     screenshot_script = briefing_renderers.render_whatsapp_screenshot_script(snapshot)
@@ -86,6 +91,7 @@ def main():
         question=args.question,
         location_label=args.location_label,
         current_time=args.current_time or datetime.now().strftime("%H:%M"),
+        route=route,
     )
     print(f"Wrote PredSea briefing artifacts to {route_output_dir(OUTPUT_DIR, route)}/")
 
