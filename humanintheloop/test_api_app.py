@@ -202,6 +202,9 @@ class FakeGcsBlob:
             return self._text
         return self._text.encode("utf-8")
 
+    def generate_signed_url(self, version="v4", expiration=None, method="GET"):
+        return f"https://signed.example/{self.name}?method={method}&version={version}"
+
 
 class MissingFakeGcsBlob:
     def exists(self):
@@ -284,6 +287,60 @@ def test_gcs_evidence_store_reads_latest_run_from_bucket():
     assert store.route_ids("2026-05-31") == ["palma_ibiza"]
     assert store.load_snapshot("palma_ibiza", "2026-05-31")["forecast"]["wave_max_m"] == 0.9
     assert store.load_snapshot("palma_ibiza", "2026-05-31", run_id="2026-05-31T0630Z")["forecast"]["wave_max_m"] == 0.4
+
+
+def test_media_endpoint_returns_api_and_signed_urls_for_route_artifacts():
+    objects = {
+        "predictions/2026-05-31/latest_run.json": json.dumps(
+            {"run_id": "2026-05-31T1230Z", "path": "runs/2026-05-31T1230Z"}
+        ),
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/daily_snapshot.json": json.dumps(
+            write_snapshot_data(wave_max=0.9)
+        ),
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/route_decision_map.png": b"map",
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/predsea_whatsapp_figure.png": b"chat",
+    }
+    client = TestClient(create_app(GcsEvidenceStore("predsea-daily-outputs", client=FakeGcsClient(objects))))
+
+    response = client.get("/routes/palma_ibiza/media?date=2026-05-31&run=latest")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["run"] == "2026-05-31T1230Z"
+    route_map = payload["artifacts"]["route_decision_map.png"]
+    assert route_map["api_url"].endswith(
+        "/routes/palma_ibiza/artifacts/route_decision_map.png?date=2026-05-31&run=2026-05-31T1230Z"
+    )
+    assert route_map["signed_url"].startswith("https://signed.example/")
+    assert route_map["download_url"] == route_map["signed_url"]
+    assert payload["artifacts"]["predsea_whatsapp_figure.png"]["media_type"] == "image/png"
+
+
+def test_maps_endpoint_returns_planned_contract(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/maps?date=2026-05-31&variable=wave_height&time=14:00")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "planned"
+    assert payload["variable"] == "wave_height"
+    assert "Leaflet-ready" in payload["message"]
+
+
+def test_media_endpoint_download_url_falls_back_to_api_url_for_local_store(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    route_dir = Path(tmp_path) / "2026-05-31" / "runs" / "2026-05-31T1230Z" / "palma_ibiza"
+    (route_dir / "predsea_whatsapp_figure.png").write_bytes(b"chat")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes/palma_ibiza/media?date=2026-05-31&run=latest")
+
+    assert response.status_code == 200
+    route_map = response.json()["artifacts"]["route_decision_map.png"]
+    assert route_map["signed_url"] is None
+    assert route_map["download_url"] == route_map["api_url"]
 
 
 def test_health_reports_gcs_backend_when_gcs_store_is_injected():

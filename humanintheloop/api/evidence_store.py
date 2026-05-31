@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from datetime import timedelta
 
 import evidence_package
 
@@ -99,6 +100,9 @@ class EvidenceStore:
         if not artifact_path.exists():
             raise EvidenceNotFoundError(f"No artifact '{artifact_name}' for route '{route_id}' on {date_text}")
         return artifact_path.read_bytes()
+
+    def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
+        return None
 
 
 class GcsEvidenceStore:
@@ -263,6 +267,27 @@ class GcsEvidenceStore:
             if self.fallback_store is not None:
                 return self.fallback_store.load_binary_artifact(route_id, artifact_name, date_text, run_id)
             raise
+
+    def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
+        date_text = self.resolve_date(run_date)
+        object_name = f"{self._base_prefix(date_text, run_id)}/{route_id}/{artifact_name}"
+        bucket = self.client.bucket(self.bucket_name)
+        blob = bucket.blob(object_name)
+        if not blob.exists():
+            if self.fallback_store is not None:
+                return self.fallback_store.signed_artifact_url(
+                    route_id,
+                    artifact_name,
+                    date_text,
+                    run_id,
+                    expires_minutes=expires_minutes,
+                )
+            raise EvidenceNotFoundError(f"No GCS object found at gs://{self.bucket_name}/{object_name}")
+        return blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(minutes=expires_minutes),
+            method="GET",
+        )
 
 
 def create_evidence_store_from_env():
