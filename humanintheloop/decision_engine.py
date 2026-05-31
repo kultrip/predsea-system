@@ -61,13 +61,13 @@ def answer_question(question, snapshot, location_label="shared location", curren
         recommendation = best_window
         reason = watch_out
 
-    answer = "\n".join(
-        [
-            f"Recommendation: {recommendation}.",
-            f"Reason: {reason}.",
-            *([f"Vessel class: {vessel_advice}."] if vessel_advice else []),
-            f"Confidence: {confidence}",
-        ]
+    answer = render_captain_answer(
+        route=snapshot.get("route"),
+        intent=intent,
+        recommendation=recommendation,
+        reason=reason,
+        confidence=confidence,
+        vessel_advice=vessel_advice,
     )
     return {
         "intent": intent,
@@ -75,6 +75,48 @@ def answer_question(question, snapshot, location_label="shared location", curren
         "answer": answer,
         "location_label": location_label,
     }
+
+
+def render_captain_answer(route, intent, recommendation, reason, confidence, vessel_advice=None):
+    route_prefix = f"{route}: " if route else ""
+    lines = []
+
+    if intent == "conditions_soon" and recommendation.startswith("conditions look workable"):
+        lines.append(f"{route_prefix}conditions look workable for the next operational window.")
+        lines.append(f"{sentence_case(reason)}.")
+    elif intent == "location_safety":
+        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
+        lines.append(f"{sentence_case(reason)}.")
+    elif intent == "fuel_efficiency":
+        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
+        lines.append(f"{sentence_case(reason)}.")
+    elif intent == "leave_window":
+        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
+        lines.append(f"{sentence_case(reason)}.")
+    else:
+        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
+        lines.append(f"{sentence_case(reason)}.")
+
+    if vessel_advice:
+        lines.append(render_vessel_context(vessel_advice))
+
+    lines.append(f"Confidence: {confidence}.")
+    return "\n\n".join(lines)
+
+
+def sentence_case(text):
+    if not text:
+        return ""
+    return text[0].upper() + text[1:]
+
+
+def render_vessel_context(vessel_advice):
+    if vessel_advice.startswith("manageable for"):
+        advice = vessel_advice.replace("manageable for vessels ", "manageable for ")
+        return f"For this vessel class, it looks {advice}."
+    if vessel_advice.startswith("restricted for"):
+        return f"For this vessel class, treat it as {vessel_advice}."
+    return f"Vessel context: {vessel_advice}."
 
 
 def extract_requested_time(question):

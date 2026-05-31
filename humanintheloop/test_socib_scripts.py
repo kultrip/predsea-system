@@ -471,7 +471,10 @@ class BriefingCliTests(unittest.TestCase):
             )
             root = Path(tmp)
 
-            self.assertIn("Recommendation:", (root / "decision_answer.txt").read_text())
+            answer = (root / "decision_answer.txt").read_text()
+
+            self.assertIn("Stay only if you are sheltered", answer)
+            self.assertNotIn("Recommendation:", answer)
             self.assertIn("Captain: Is it safe to stay here?", (root / "briefing_whatsapp_screenshot_script.txt").read_text())
 
     def test_write_outputs_with_afternoon_question_does_not_recommend_past_morning_window(self):
@@ -498,8 +501,8 @@ class BriefingCliTests(unittest.TestCase):
             )
             answer = (Path(tmp) / "decision_answer.txt").read_text()
 
-            self.assertIn("the calmer morning window has passed", answer)
-            self.assertNotIn("Recommendation: leave before midday", answer)
+            self.assertIn("calmer morning window has passed", answer)
+            self.assertNotIn("Recommendation:", answer)
 
     def test_write_outputs_with_morning_current_time_keeps_morning_window_actionable(self):
         import tempfile
@@ -525,7 +528,8 @@ class BriefingCliTests(unittest.TestCase):
             )
             answer = (Path(tmp) / "decision_answer.txt").read_text()
 
-            self.assertIn("Recommendation: leave morning to early afternoon", answer)
+            self.assertIn("Leave morning to early afternoon", answer)
+            self.assertNotIn("Recommendation:", answer)
             self.assertNotIn("has passed", answer)
 
 
@@ -624,7 +628,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(decision_engine.classify_question("What is the best time to leave Palma?"), "leave_window")
         self.assertEqual(decision_engine.classify_question("How will the sea be here in 4 hours?"), "conditions_soon")
 
-    def test_answer_question_returns_decision_reason_confidence(self):
+    def test_answer_question_uses_captain_facing_operational_tone(self):
         import decision_engine
 
         snapshot = {
@@ -645,9 +649,10 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertEqual(decision["intent"], "leave_window")
-        self.assertIn("Recommendation:", decision["answer"])
-        self.assertIn("the calmer morning window has passed", decision["answer"])
-        self.assertNotIn("Recommendation: leave before midday", decision["answer"])
+        self.assertIn("calmer morning window has passed", decision["answer"])
+        self.assertIn("avoid timing your departure near the forecast peak", decision["answer"])
+        self.assertNotIn("Recommendation:", decision["answer"])
+        self.assertNotIn("Reason:", decision["answer"])
         self.assertIn("Confidence: medium", decision["answer"])
 
     def test_afternoon_question_reframes_morning_to_early_afternoon_window(self):
@@ -670,7 +675,7 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertIn("avoid the 14:00 peak", decision["answer"])
-        self.assertNotIn("Recommendation: leave morning", decision["answer"])
+        self.assertNotIn("Recommendation:", decision["answer"])
 
     def test_requested_time_question_compares_against_forecast_curve(self):
         import decision_engine
@@ -724,6 +729,7 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertIn("conditions look workable", decision["answer"])
         self.assertIn("0.5 m", decision["answer"])
+        self.assertIn("15-24m", decision["answer"])
         self.assertNotIn("expect conditions to worsen", decision["answer"])
 
     def test_answer_question_includes_vessel_class_context(self):
@@ -755,14 +761,14 @@ class DecisionEngineTests(unittest.TestCase):
         decision = {
             "intent": "location_safety",
             "question": "Is it safe to stay here?",
-            "answer": "Recommendation: stay only if sheltered.\nReason: waves build.\nConfidence: medium",
+            "answer": "Stay only if you are sheltered.\nWaves build.\nConfidence: medium.",
         }
 
         script = decision_engine.render_decision_screenshot_script(decision)
 
         self.assertIn("Captain: [Shared live location]", script)
         self.assertIn("Captain: Is it safe to stay here?", script)
-        self.assertIn("PredSea: Recommendation: stay only if sheltered.", script)
+        self.assertIn("PredSea: Stay only if you are sheltered.", script)
 
 
 class ChatFigureTests(unittest.TestCase):
