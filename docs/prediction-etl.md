@@ -46,6 +46,38 @@ Current observation variables depend on each SOCIB platform, but can include:
 SOCIB observations older than the freshness threshold are filtered out before
 they enter the evidence package.
 
+## Data Source Responsibilities
+
+PredSea separates three concerns:
+
+```text
+data providers -> normalized evidence -> captain intelligence
+```
+
+The ETL is responsible for:
+
+- fetching external model and observation data
+- normalizing variables into common names and units
+- sampling routes, points, or regions
+- recording model metadata such as source, run time, resolution, and freshness
+- writing the evidence package to local outputs and GCS
+
+The API is responsible for:
+
+- selecting the right stored evidence package
+- answering captain questions from that evidence
+- returning text and media URLs
+
+Captain knowledge is responsible for:
+
+- interpreting risk, comfort, and operational trade-offs
+- adapting the same data to vessel class, route exposure, timing, and local
+  experience
+
+Do not make the API download new model files during a captain request. If a
+question needs more data than the ETL prepared, add that data to the evidence
+package first.
+
 ## Current Routes
 
 Routes are configured in:
@@ -270,9 +302,50 @@ Each provider should normalize into common variables before evidence packaging:
 The API should not need to know whether the source was Copernicus, SOCIB WMOP,
 ECMWF, or a future PredSea internal model.
 
+## Where To Add More Variables
+
+Add new variables in this order:
+
+1. Fetch or expose the variable in the relevant provider/download script.
+2. Normalize it into common units and names.
+3. Sample it along routes, points, or regions.
+4. Add it to `evidence.json` with source metadata and freshness.
+5. Decide whether it should affect `decision_context`.
+6. Update API and renderer tests only if the variable changes captain-facing
+   behavior.
+
+Practical examples:
+
+- Wave period or wavelength should be added to the wave provider/normalizer,
+  then route sampled alongside `VHM0`.
+- Wind should be added as supporting context only when it explains the sea-state
+  decision. PredSea should stay ocean-first.
+- Water temperature is useful for observations and comfort context, but should
+  not normally drive go/no-go routing advice.
+- Current direction should usually be visual/vector evidence, not scalar text
+  unless it changes fuel, drift, or crossing comfort.
+
+Likely files to touch today:
+
+```text
+humanintheloop/fetch_data.py
+humanintheloop/socib_public.py
+humanintheloop/route_analysis.py
+humanintheloop/evidence_packager.py
+humanintheloop/map_generator.py
+scripts/generate_leaflet_overlays.py
+scripts/generate_daily_briefing.py
+humanintheloop/test_socib_scripts.py
+humanintheloop/test_api_app.py
+```
+
+If a variable only appears on maps, add it to the map/overlay scripts and media
+metadata. If it changes advice, also update `decision_engine.py` and tests.
+
 ## Where To Add Graham's Captain Knowledge
 
-Captain knowledge should not live in the ETL. It belongs in the decision layer.
+Captain knowledge should not live in the ETL. It belongs in the decision layer
+above the normalized evidence.
 
 Recommended future structure:
 
@@ -285,6 +358,71 @@ humanintheloop/captain_knowledge/
 ```
 
 The ETL produces evidence. Graham's knowledge interprets evidence.
+
+Recommended format:
+
+```yaml
+id: graham-menorca-channel-north-wind-small-vessels
+source: Graham interview
+region: Menorca Channel
+routes:
+  - alcudia_ciutadella
+vessel_classes:
+  - small
+conditions:
+  wave_height_m_min: 1.2
+  wind_direction: N-NW
+  current_against_wind: true
+operational_read: >
+  For smaller vessels, a moderate northerly with current against wind can feel
+  worse than the headline wave height suggests.
+advice: >
+  Prefer an earlier crossing or wait for the easing period. Do not rely only on
+  the significant wave height number.
+confidence: expert_rule
+notes: >
+  Convert interview stories into rules only after Charles reviews them.
+```
+
+Good Graham knowledge is specific:
+
+- route or region
+- vessel class
+- sea/wind/current pattern
+- time-of-day or exposure nuance
+- operational consequence
+- preferred action
+- confidence or source note
+
+Avoid storing vague comments such as "be careful in rough seas." Those should
+be rewritten into testable operational rules or saved as interview notes until
+they can be made specific.
+
+When Graham gives stories outside the Balearics, keep them. Store them with a
+different `region` and mark them as transferable only if the underlying pattern
+is general, for example current-against-wind, lee shore, harbor entrance surge,
+or vessel-size sensitivity. Do not apply non-Balearic local rules blindly to
+Balearic routes.
+
+Future files likely to change:
+
+```text
+humanintheloop/captain_knowledge/graham_rules.yaml
+humanintheloop/captain_knowledge/graham_cases.json
+humanintheloop/captain_knowledge/route_exposure_notes.yaml
+humanintheloop/decision_engine.py
+humanintheloop/test_socib_scripts.py
+```
+
+Longer term, Graham's reviewed rules should feed an interpretation layer before
+the final answer is rendered:
+
+```text
+evidence package
+        -> operational rule matching
+        -> route/vessel/timing interpretation
+        -> captain-facing answer
+```
 
 ## Where Internal Dynamical Models Would Fit Later
 

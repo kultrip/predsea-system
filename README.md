@@ -107,6 +107,8 @@ Current observation variables:
      - `Is it safe to stay here?`
      - `What is the best time to leave?`
      - `Can I save fuel?`
+   - Answers are now rendered as short captain-facing operational messages,
+     not as rigid `Recommendation` / `Reason` templates.
 
 7. Visual output:
    - `chat_figure.py` turns the WhatsApp script into a LinkedIn-ready
@@ -139,8 +141,9 @@ Current decision behavior:
 - Uses the exposed-route maximum per hour for route decisions.
 - Adjusts advice by vessel class: `small`, `medium`, or `large`.
 - Answers captain-style questions with:
-  - `Recommendation`
-  - `Reason`
+  - route or location read
+  - short evidence explanation
+  - vessel-class context when relevant
   - `Confidence`
 - Handles specific requested times such as `17:00`.
 - Validates stored route forecasts against SOCIB buoy observations with
@@ -155,6 +158,8 @@ Current decision behavior:
   field, surface-current vectors, and island labels. Publication maps should be
   generated with `scripts/generate_ocean_conditions_map.py` when real coastline
   detail matters.
+- Serves the public website demo through the live API: the demo map loads the
+  latest artifact and the demo chat calls `/routes/palma_ibiza/question`.
 
 Next visual priority:
 

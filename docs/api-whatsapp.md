@@ -9,7 +9,9 @@ The API is the decision interface over stored PredSea evidence.
 
 It does not download Copernicus, SOCIB, or model data during a captain request.
 It reads the latest ETL evidence package from Google Cloud Storage and returns
-captain-ready guidance.
+captain-ready guidance. The captain-facing `answer` should read like a short
+message from a maritime operations desk, not like a generic weather app or a
+form response.
 
 ```text
 WhatsApp platform
@@ -166,6 +168,24 @@ Response includes:
 - `date`
 - `run`
 - `evidence_used`
+
+The `answer` intentionally avoids rigid labels such as `Recommendation:` and
+`Reason:`. Those fields were useful during prototyping, but they made the
+WhatsApp response feel repetitive. The API still returns `intent` and
+`evidence_used` as structured fields for Relay AI, debugging, and future UI
+explainability.
+
+Example captain-facing answer:
+
+```text
+Palma -> Ibiza: conditions look workable for the next operational window.
+
+Forecast wave peak is only near 0.3 m around 15:00, with no major wave build-up.
+
+For this vessel class, it looks manageable for 15-24m.
+
+Confidence: medium.
+```
 
 ## Recommended WhatsApp Flow
 
@@ -358,6 +378,19 @@ The web app should display the same operational pair that captains understand:
 decision + map evidence
 ```
 
+The public `predsea.com` demo currently uses that pattern:
+
+- the map panel loads the latest generated route map artifact from the API
+- the chat panel calls `POST /routes/palma_ibiza/question`
+- the three suggested questions plus one optional custom question use the live
+  API response
+- the opening chat bubble is static website copy, but every captain question is
+  answered by the deployed API
+
+If the API answer style changes in `humanintheloop/decision_engine.py`, the
+demo chat reflects it after Cloud Run is deployed. A website redeploy is only
+needed when changing the web copy, suggested questions, limits, or map display.
+
 ## Operational Tone
 
 PredSea should sound like a maritime operations desk:
@@ -375,6 +408,28 @@ Avoid:
 - generic weather summaries
 - raw data dumps
 - sounding like a chatbot
+
+Current answer style rules:
+
+- Lead with the operational read for the route or location.
+- Explain the evidence in one short paragraph.
+- Mention vessel class naturally when it changes the recommendation.
+- Keep `Confidence: low|medium|high` visible.
+- Do not expose raw internal labels such as `Recommendation:` or `Reason:` in
+  the captain-facing text.
+
+Where this lives:
+
+```text
+humanintheloop/decision_engine.py
+```
+
+Tests that protect this behavior:
+
+```text
+humanintheloop/test_socib_scripts.py
+humanintheloop/test_api_app.py
+```
 
 ## Current Deployment Commands
 
