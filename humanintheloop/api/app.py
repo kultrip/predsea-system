@@ -15,6 +15,8 @@ def create_app(evidence_store=None):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
+            "https://predsea.com",
+            "https://www.predsea.com",
             "https://predsea.lovable.app",
             "http://localhost:3000",
             "http://localhost:5173",
