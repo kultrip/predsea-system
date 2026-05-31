@@ -1,4 +1,5 @@
 import argparse
+import importlib.util
 import json
 import os
 import sys
@@ -139,14 +140,29 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
     if skip_maps:
         return None
     output_path = route_dir / "route_decision_map.png"
-    map_generator.generate_route_decision_map(
+    publication_map = load_publication_map_generator()
+    publication_map.generate_ocean_conditions_map(
         waves_path,
-        currents_path,
-        route,
-        snapshot,
         output_path,
+        currents_path=currents_path,
+        requested_time=snapshot.get("forecast", {}).get("wave_peak_time"),
+        title="PredSea Balearic Sea Conditions",
+        resolution_label="Copernicus Med forecast grid",
+        coastline_resolution="10m",
+        extent=[0.9, 4.55, 38.55, 40.55],
+        dpi=220,
+        arrow_density="normal",
+        arrow_color="black",
     )
     return output_path
+
+
+def load_publication_map_generator():
+    module_path = PROJECT_ROOT / "scripts" / "generate_ocean_conditions_map.py"
+    spec = importlib.util.spec_from_file_location("predsea_publication_map_generator", module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def write_manifest(run_dir, run_date, run_id, routes, vessel_class):
