@@ -627,6 +627,48 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(decision_engine.classify_question("Can I save fuel by using another route to Ibiza?"), "fuel_efficiency")
         self.assertEqual(decision_engine.classify_question("What is the best time to leave Palma?"), "leave_window")
         self.assertEqual(decision_engine.classify_question("How will the sea be here in 4 hours?"), "conditions_soon")
+        self.assertEqual(decision_engine.classify_question("Can I cross Palma to Ibiza tonight?"), "route_timing")
+
+    def test_route_timing_answers_distinguish_tonight_from_tomorrow(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+            "forecast": {
+                "wave_max_m": 0.5,
+                "wave_peak_time": "15:00",
+                "current_max_kn": 0.3,
+                "hourly": [
+                    {"time": "21:00", "wave_m": 0.3, "current_kn": 0.1},
+                    {"time": "09:00", "wave_m": 0.4, "current_kn": 0.2},
+                ],
+            },
+            "recommendation": {
+                "best_window": "most daylight windows look manageable",
+                "watch_out": "no major wave build-up in the 24h forecast",
+                "confidence": "medium",
+                "vessel_advice": "manageable for vessels 15-24m",
+            },
+        }
+
+        tonight = decision_engine.answer_question(
+            "Can I cross Palma to Ibiza tonight?",
+            snapshot,
+            current_time="21:30",
+        )
+        tomorrow = decision_engine.answer_question(
+            "Can I cross Palma to Ibiza tomorrow?",
+            snapshot,
+            current_time="21:30",
+        )
+
+        self.assertEqual(tonight["intent"], "route_timing")
+        self.assertIn("night crossing", tonight["answer"])
+        self.assertIn("Tonight", tonight["answer"])
+        self.assertIn("Tomorrow", tomorrow["answer"])
+        self.assertIn("morning run", tomorrow["answer"])
+        self.assertNotEqual(tonight["answer"], tomorrow["answer"])
 
     def test_answer_question_uses_captain_facing_operational_tone(self):
         import decision_engine

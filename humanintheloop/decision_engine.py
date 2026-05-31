@@ -11,6 +11,8 @@ def classify_question(question):
         return "leave_window"
     if any(word in text for word in ["in 4 hours", "later", "this afternoon", "how will"]):
         return "conditions_soon"
+    if any(word in text for word in ["cross", "tonight", "tomorrow"]):
+        return "route_timing"
     return "general_decision"
 
 
@@ -27,6 +29,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
     wave_peak = forecast.get("wave_peak_time", "N/A")
     morning_window_passed = is_morning_window_passed(best_window, current_time)
     requested_time_summary = summarize_requested_time(requested_time, forecast)
+    timing_context = classify_timing_context(question)
 
     if requested_time_summary:
         recommendation = requested_time_summary["recommendation"]
@@ -57,6 +60,10 @@ def answer_question(question, snapshot, location_label="shared location", curren
         else:
             recommendation = "expect conditions to worsen if your timing overlaps the forecast peak"
             reason = f"forecast wave peak is near {wave_max} m around {wave_peak}"
+    elif intent == "route_timing":
+        route_timing = summarize_route_timing(timing_context, forecast, best_window, watch_out)
+        recommendation = route_timing["recommendation"]
+        reason = route_timing["reason"]
     else:
         recommendation = best_window
         reason = watch_out
@@ -93,6 +100,9 @@ def render_captain_answer(route, intent, recommendation, reason, confidence, ves
     elif intent == "leave_window":
         lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
         lines.append(f"{sentence_case(reason)}.")
+    elif intent == "route_timing":
+        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
+        lines.append(f"{sentence_case(reason)}.")
     else:
         lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
         lines.append(f"{sentence_case(reason)}.")
@@ -117,6 +127,52 @@ def render_vessel_context(vessel_advice):
     if vessel_advice.startswith("restricted for"):
         return f"For this vessel class, treat it as {vessel_advice}."
     return f"Vessel context: {vessel_advice}."
+
+
+def classify_timing_context(question):
+    text = question.lower()
+    if "tonight" in text:
+        return "tonight"
+    if "tomorrow" in text:
+        return "tomorrow"
+    if "this afternoon" in text or "afternoon" in text:
+        return "afternoon"
+    return None
+
+
+def summarize_route_timing(timing_context, forecast, best_window, watch_out):
+    wave_max = forecast.get("wave_max_m", "N/A")
+    wave_peak = forecast.get("wave_peak_time", "N/A")
+    current_max = forecast.get("current_max_kn")
+    current_text = f" Current peak is near {current_max} kn." if current_max is not None else ""
+    hourly_count = len(forecast.get("hourly") or [])
+
+    if timing_context == "tonight":
+        return {
+            "recommendation": "Tonight looks workable on sea state, but treat it as a night crossing rather than a simple green light",
+            "reason": (
+                f"forecast wave peak is near {wave_max} m around {wave_peak}, with the main watch-out: {watch_out}."
+                f"{current_text} Recheck the latest buoy observations before departure because darkness reduces visual margin"
+            ),
+        }
+    if timing_context == "tomorrow":
+        coverage = f"across {hourly_count} forecast time points" if hourly_count else "in the current forecast package"
+        return {
+            "recommendation": "Tomorrow looks workable based on the latest forecast package",
+            "reason": (
+                f"the route signal remains: {watch_out}, with wave peak near {wave_max} m around {wave_peak} {coverage}."
+                " Use this as planning guidance tonight, then confirm with the morning run before committing"
+            ),
+        }
+    if timing_context == "afternoon":
+        return {
+            "recommendation": f"for the afternoon, use the {best_window} guidance and avoid any local peak window",
+            "reason": f"main watch-out is: {watch_out}; forecast wave peak is near {wave_max} m around {wave_peak}.{current_text}",
+        }
+    return {
+        "recommendation": best_window,
+        "reason": watch_out,
+    }
 
 
 def extract_requested_time(question):
