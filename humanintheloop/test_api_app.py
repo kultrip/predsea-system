@@ -51,6 +51,7 @@ def write_run_snapshot(root, date_text="2026-05-29", run_id="2026-05-29T0630Z", 
     route_dir.mkdir(parents=True)
     snapshot = write_snapshot_data(route_id, wave_max)
     (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (route_dir / "route_decision_map.png").write_bytes(b"fake-png")
     (Path(root) / date_text / "latest_run.json").write_text(
         json.dumps({"run_id": run_id, "path": f"runs/{run_id}"}),
         encoding="utf-8",
@@ -164,6 +165,27 @@ def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):
     assert "PredSea Captain's Briefing" in payload["briefing"]
 
 
+def test_artifact_endpoint_serves_latest_route_map(tmp_path):
+    write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes/palma_ibiza/artifacts/route_decision_map.png?date=2026-05-29&run=latest")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["cache-control"] == "public, max-age=300"
+    assert response.content == b"fake-png"
+
+
+def test_artifact_endpoint_rejects_non_public_artifacts(tmp_path):
+    write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes/palma_ibiza/artifacts/daily_snapshot.json?date=2026-05-29&run=latest")
+
+    assert response.status_code == 404
+
+
 class FakeGcsBlob:
     def __init__(self, name, text):
         self.name = name
@@ -174,6 +196,11 @@ class FakeGcsBlob:
 
     def download_as_text(self, encoding="utf-8"):
         return self._text
+
+    def download_as_bytes(self):
+        if isinstance(self._text, bytes):
+            return self._text
+        return self._text.encode("utf-8")
 
 
 class MissingFakeGcsBlob:

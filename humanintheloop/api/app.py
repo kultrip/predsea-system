@@ -1,9 +1,15 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.evidence_store import EvidenceNotFoundError, create_evidence_store_from_env
 from api.schemas import BriefingResponse, HealthResponse, QuestionRequest, QuestionResponse
 from api.services import answer_question, evidence_used, render_briefing
+
+
+MEDIA_TYPES = {
+    "route_decision_map.png": "image/png",
+    "predsea_whatsapp_figure.png": "image/png",
+}
 
 
 def create_app(evidence_store=None):
@@ -91,6 +97,21 @@ def create_app(evidence_store=None):
                 "format": format,
                 "briefing": briefing,
             }
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/routes/{route_id}/artifacts/{artifact_name}")
+    def route_artifact(route_id: str, artifact_name: str, date: str | None = None, run: str | None = None):
+        media_type = MEDIA_TYPES.get(artifact_name)
+        if media_type is None:
+            raise HTTPException(status_code=404, detail=f"Artifact '{artifact_name}' is not public")
+
+        try:
+            run_date = store.resolve_date(date)
+            run_id = store.resolve_run(run_date, run)
+            content = store.load_binary_artifact(route_id, artifact_name, run_date, run_id)
+            headers = {"Cache-Control": "public, max-age=300"}
+            return Response(content=content, media_type=media_type, headers=headers)
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 

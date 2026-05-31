@@ -93,6 +93,13 @@ class EvidenceStore:
             raise EvidenceNotFoundError(f"No artifact '{artifact_name}' for route '{route_id}' on {date_text}")
         return artifact_path.read_text(encoding="utf-8")
 
+    def load_binary_artifact(self, route_id, artifact_name, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        artifact_path = self._base_dir(date_text, run_id) / route_id / artifact_name
+        if not artifact_path.exists():
+            raise EvidenceNotFoundError(f"No artifact '{artifact_name}' for route '{route_id}' on {date_text}")
+        return artifact_path.read_bytes()
+
 
 class GcsEvidenceStore:
     def __init__(self, bucket_name, prefix=DEFAULT_GCS_PREFIX, client=None, fallback_store=None):
@@ -121,6 +128,13 @@ class GcsEvidenceStore:
         if not blob.exists():
             raise EvidenceNotFoundError(f"No GCS object found at gs://{self.bucket_name}/{object_name}")
         return blob.download_as_text(encoding="utf-8")
+
+    def _download_bytes(self, object_name):
+        bucket = self.client.bucket(self.bucket_name)
+        blob = bucket.blob(object_name)
+        if not blob.exists():
+            raise EvidenceNotFoundError(f"No GCS object found at gs://{self.bucket_name}/{object_name}")
+        return blob.download_as_bytes()
 
     def available_dates(self):
         root_prefix = f"{self.prefix}/" if self.prefix else ""
@@ -238,6 +252,16 @@ class GcsEvidenceStore:
         except EvidenceNotFoundError:
             if self.fallback_store is not None:
                 return self.fallback_store.load_text_artifact(route_id, artifact_name, date_text, run_id)
+            raise
+
+    def load_binary_artifact(self, route_id, artifact_name, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        object_name = f"{self._base_prefix(date_text, run_id)}/{route_id}/{artifact_name}"
+        try:
+            return self._download_bytes(object_name)
+        except EvidenceNotFoundError:
+            if self.fallback_store is not None:
+                return self.fallback_store.load_binary_artifact(route_id, artifact_name, date_text, run_id)
             raise
 
 
