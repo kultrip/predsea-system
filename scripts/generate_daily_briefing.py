@@ -48,6 +48,10 @@ def current_time_local(timezone_name=DEFAULT_LOCAL_TIMEZONE):
     return datetime.now(ZoneInfo(timezone_name)).strftime("%H:%M")
 
 
+def current_run_id_utc():
+    return datetime.utcnow().strftime("%Y-%m-%dT%H%MZ")
+
+
 def load_mvp_modules():
     human_path = str(HUMANINTHELOOP_DIR)
     if human_path not in sys.path:
@@ -145,16 +149,31 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
     return output_path
 
 
-def write_manifest(day_dir, run_date, routes, vessel_class):
+def write_manifest(run_dir, run_date, run_id, routes, vessel_class):
     manifest = {
         "run_date": run_date,
+        "run_id": run_id,
         "route_count": len(routes),
         "routes": routes,
         "vessel_class": vessel_class,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
-    (day_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
+
+
+def write_latest_run(day_dir, run_date, run_id, routes, vessel_class):
+    latest = {
+        "run_date": run_date,
+        "run_id": run_id,
+        "path": f"runs/{run_id}",
+        "route_count": len(routes),
+        "routes": routes,
+        "vessel_class": vessel_class,
+        "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    }
+    (day_dir / "latest_run.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
+    return latest
 
 
 def generate_daily_briefings(
@@ -165,17 +184,21 @@ def generate_daily_briefings(
     question=None,
     location_label="Palma Marina",
     current_time=None,
+    run_id=None,
     logo_path=None,
     skip_figures=False,
     skip_maps=False,
 ):
     modules = load_mvp_modules()
     run_date = run_date or today_local()
+    run_id = run_id or current_run_id_utc()
     current_time = current_time or current_time_local()
     logo_path = resolve_repo_path(logo_path)
     output_root = Path(output_root).resolve()
     day_dir = output_root / run_date
     day_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = day_dir / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
 
     selected_route_ids = route_ids_from_args(modules.route_analysis, route_ids)
     routes = modules.route_analysis.load_routes()
@@ -200,7 +223,7 @@ def generate_daily_briefings(
                 route=route,
                 vessel_class=vessel_class,
             )
-            route_dir = day_dir / route_id
+            route_dir = run_dir / route_id
             modules.briefing.write_outputs(
                 snapshot,
                 output_dir=route_dir,
@@ -226,14 +249,16 @@ def generate_daily_briefings(
             )
             validate_route_artifacts(route_dir, skip_figures=skip_figures, skip_maps=skip_maps)
 
-    write_manifest(day_dir, run_date, selected_route_ids, vessel_class)
-    return SimpleNamespace(output_dir=day_dir, routes=selected_route_ids)
+    write_manifest(run_dir, run_date, run_id, selected_route_ids, vessel_class)
+    write_latest_run(day_dir, run_date, run_id, selected_route_ids, vessel_class)
+    return SimpleNamespace(output_dir=run_dir, day_dir=day_dir, run_id=run_id, routes=selected_route_ids)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate daily PredSea route briefing artifacts.")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--date", dest="run_date", help="Local run date, YYYY-MM-DD. Defaults to Europe/Madrid today.")
+    parser.add_argument("--run-id", help="Run identifier. Defaults to current UTC time, e.g. 2026-05-31T0630Z.")
     parser.add_argument("--route", action="append", dest="route_ids", help="Route ID to generate. Repeat for multiple.")
     parser.add_argument("--vessel-class", default="medium", choices=["small", "medium", "large"])
     parser.add_argument("--question", help="Optional captain question to answer for each route snapshot.")
@@ -259,11 +284,13 @@ def main():
         question=args.question,
         location_label=args.location_label,
         current_time=args.current_time,
+        run_id=args.run_id,
         logo_path=args.logo_path,
         skip_figures=args.skip_figures,
         skip_maps=args.skip_maps,
     )
     print(f"Wrote PredSea daily briefing artifacts to {result.output_dir}")
+    print(f"Run ID: {result.run_id}")
     print(f"Routes: {', '.join(result.routes)}")
 
 

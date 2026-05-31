@@ -46,6 +46,53 @@ def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
     return snapshot
 
 
+def write_run_snapshot(root, date_text="2026-05-29", run_id="2026-05-29T0630Z", route_id="palma_ibiza", wave_max=0.5):
+    route_dir = Path(root) / date_text / "runs" / run_id / route_id
+    route_dir.mkdir(parents=True)
+    snapshot = write_snapshot_data(route_id, wave_max)
+    (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (Path(root) / date_text / "latest_run.json").write_text(
+        json.dumps({"run_id": run_id, "path": f"runs/{run_id}"}),
+        encoding="utf-8",
+    )
+    return snapshot
+
+
+def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5):
+    return {
+        "route": "Palma -> Ibiza",
+        "route_id": route_id,
+        "vessel_class": "medium",
+        "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+        "created_at_utc": "2026-05-29 06:30 UTC",
+        "observations": {
+            "canal_de_ibiza": {
+                "name": "Buoy Canal de Ibiza",
+                "last_sample_utc": "2026-05-29 06:30 UTC",
+                "wave_height_m": 0.4,
+            }
+        },
+        "forecast": {
+            "wave_min_m": 0.3,
+            "wave_max_m": wave_max,
+            "wave_peak_time": "08:00",
+            "current_max_kn": 0.3,
+            "current_peak_time": "15:00",
+            "hourly": [
+                {"time": "08:00", "wave_m": wave_max, "current_kn": 0.1},
+                {"time": "17:00", "wave_m": 0.4, "current_kn": 0.3},
+            ],
+        },
+        "recommendation": {
+            "best_window": "most daylight windows look manageable",
+            "watch_out": "no major wave build-up in the 24h forecast",
+            "confidence": "medium",
+            "vessel_severity": "manageable",
+            "vessel_advice": "manageable for vessels 15-24m",
+        },
+    }
+
+
 def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
     write_snapshot(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
@@ -54,6 +101,31 @@ def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
 
     assert response.status_code == 200
     assert response.json() == {"date": "2026-05-29", "routes": ["palma_ibiza"]}
+
+
+def test_local_store_uses_latest_run_folder_when_available(tmp_path):
+    write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
+    write_run_snapshot(tmp_path, run_id="2026-05-29T1230Z", wave_max=0.8)
+    store = EvidenceStore(tmp_path)
+
+    assert store.latest_run("2026-05-29") == "2026-05-29T1230Z"
+    assert store.route_ids("2026-05-29") == ["palma_ibiza"]
+    assert store.load_snapshot("palma_ibiza", "2026-05-29")["forecast"]["wave_max_m"] == 0.8
+    assert store.load_snapshot("palma_ibiza", "2026-05-29", run_id="2026-05-29T0630Z")["forecast"]["wave_max_m"] == 0.5
+
+
+def test_routes_endpoint_accepts_specific_run_id(tmp_path):
+    write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
+    write_run_snapshot(tmp_path, run_id="2026-05-29T1230Z", wave_max=0.8)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes/palma_ibiza/evidence?date=2026-05-29&run=2026-05-29T0630Z")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["date"] == "2026-05-29"
+    assert payload["run"] == "2026-05-29T0630Z"
+    assert payload["evidence"]["forecast"]["wave_max_m"] == 0.5
 
 
 def test_question_endpoint_answers_from_stored_evidence(tmp_path):
@@ -167,6 +239,26 @@ def test_gcs_evidence_store_reads_latest_snapshot_from_bucket():
     assert store.load_snapshot("palma_ibiza") == snapshot
 
 
+def test_gcs_evidence_store_reads_latest_run_from_bucket():
+    objects = {
+        "predictions/2026-05-31/latest_run.json": json.dumps(
+            {"run_id": "2026-05-31T1230Z", "path": "runs/2026-05-31T1230Z"}
+        ),
+        "predictions/2026-05-31/runs/2026-05-31T0630Z/palma_ibiza/daily_snapshot.json": json.dumps(
+            write_snapshot_data(wave_max=0.4)
+        ),
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/daily_snapshot.json": json.dumps(
+            write_snapshot_data(wave_max=0.9)
+        ),
+    }
+    store = GcsEvidenceStore("predsea-daily-outputs", client=FakeGcsClient(objects))
+
+    assert store.latest_run("2026-05-31") == "2026-05-31T1230Z"
+    assert store.route_ids("2026-05-31") == ["palma_ibiza"]
+    assert store.load_snapshot("palma_ibiza", "2026-05-31")["forecast"]["wave_max_m"] == 0.9
+    assert store.load_snapshot("palma_ibiza", "2026-05-31", run_id="2026-05-31T0630Z")["forecast"]["wave_max_m"] == 0.4
+
+
 def test_health_reports_gcs_backend_when_gcs_store_is_injected():
     objects = {
         "predictions/2026-05-31/palma_ibiza/daily_snapshot.json": json.dumps(
@@ -187,5 +279,6 @@ def test_health_reports_gcs_backend_when_gcs_store_is_injected():
     assert response.json() == {
         "status": "ok",
         "latest_date": "2026-05-31",
+        "latest_run": None,
         "storage_backend": "gcs",
     }

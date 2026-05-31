@@ -37,9 +37,35 @@ class EvidenceStore:
     def resolve_date(self, run_date=None):
         return run_date or self.latest_date()
 
-    def route_ids(self, run_date=None):
+    def latest_run(self, run_date=None):
         date_text = self.resolve_date(run_date)
         day_dir = self.predictions_root / date_text
+        latest_path = day_dir / "latest_run.json"
+        if latest_path.exists():
+            latest = json.loads(latest_path.read_text(encoding="utf-8"))
+            return latest.get("run_id")
+        runs_dir = day_dir / "runs"
+        if runs_dir.exists():
+            runs = sorted(path.name for path in runs_dir.iterdir() if path.is_dir())
+            if runs:
+                return runs[-1]
+        return None
+
+    def resolve_run(self, run_date=None, run_id=None):
+        if run_id and run_id != "latest":
+            return run_id
+        return self.latest_run(run_date)
+
+    def _base_dir(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        resolved_run = self.resolve_run(date_text, run_id)
+        if resolved_run:
+            return self.predictions_root / date_text / "runs" / resolved_run
+        return self.predictions_root / date_text
+
+    def route_ids(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        day_dir = self._base_dir(date_text, run_id)
         if not day_dir.exists():
             raise EvidenceNotFoundError(f"No predictions found for {date_text}")
         return sorted(
@@ -48,20 +74,21 @@ class EvidenceStore:
             if path.is_dir() and (path / "daily_snapshot.json").exists()
         )
 
-    def load_snapshot(self, route_id, run_date=None):
+    def load_snapshot(self, route_id, run_date=None, run_id=None):
         date_text = self.resolve_date(run_date)
-        evidence_path = self.predictions_root / date_text / route_id / "evidence.json"
+        base_dir = self._base_dir(date_text, run_id)
+        evidence_path = base_dir / route_id / "evidence.json"
         if evidence_path.exists():
             package = json.loads(evidence_path.read_text(encoding="utf-8"))
             return evidence_package.snapshot_from_evidence(package)
-        snapshot_path = self.predictions_root / date_text / route_id / "daily_snapshot.json"
+        snapshot_path = base_dir / route_id / "daily_snapshot.json"
         if not snapshot_path.exists():
             raise EvidenceNotFoundError(f"No evidence for route '{route_id}' on {date_text}")
         return json.loads(snapshot_path.read_text(encoding="utf-8"))
 
-    def load_text_artifact(self, route_id, artifact_name, run_date=None):
+    def load_text_artifact(self, route_id, artifact_name, run_date=None, run_id=None):
         date_text = self.resolve_date(run_date)
-        artifact_path = self.predictions_root / date_text / route_id / artifact_name
+        artifact_path = self._base_dir(date_text, run_id) / route_id / artifact_name
         if not artifact_path.exists():
             raise EvidenceNotFoundError(f"No artifact '{artifact_name}' for route '{route_id}' on {date_text}")
         return artifact_path.read_text(encoding="utf-8")
@@ -125,9 +152,48 @@ class GcsEvidenceStore:
     def resolve_date(self, run_date=None):
         return run_date or self.latest_date()
 
-    def route_ids(self, run_date=None):
+    def latest_run(self, run_date=None):
         date_text = self.resolve_date(run_date)
-        prefix = self._object_name(date_text)
+        latest_object_name = self._object_name(date_text, "latest_run.json")
+        try:
+            latest = json.loads(self._download_text(latest_object_name))
+            return latest.get("run_id")
+        except EvidenceNotFoundError:
+            pass
+
+        runs_prefix = self._object_name(date_text, "runs")
+        if runs_prefix:
+            runs_prefix = f"{runs_prefix}/"
+        try:
+            iterator = self._list_blobs(runs_prefix, delimiter="/")
+            for _ in iterator:
+                pass
+            runs = sorted(prefix.rstrip("/").split("/")[-1] for prefix in iterator.prefixes)
+            if runs:
+                return runs[-1]
+        except Exception as error:
+            if self.fallback_store is None:
+                raise EvidenceNotFoundError(f"Unable to list GCS runs for {date_text}: {error}") from error
+
+        if self.fallback_store is not None:
+            return self.fallback_store.latest_run(date_text)
+        return None
+
+    def resolve_run(self, run_date=None, run_id=None):
+        if run_id and run_id != "latest":
+            return run_id
+        return self.latest_run(run_date)
+
+    def _base_prefix(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        resolved_run = self.resolve_run(date_text, run_id)
+        if resolved_run:
+            return self._object_name(date_text, "runs", resolved_run)
+        return self._object_name(date_text)
+
+    def route_ids(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        prefix = self._base_prefix(date_text, run_id)
         if prefix:
             prefix = f"{prefix}/"
         route_ids = set()
@@ -144,33 +210,34 @@ class GcsEvidenceStore:
         if route_ids:
             return sorted(route_ids)
         if self.fallback_store is not None:
-            return self.fallback_store.route_ids(date_text)
+            return self.fallback_store.route_ids(date_text, run_id)
         raise EvidenceNotFoundError(f"No predictions found for {date_text}")
 
-    def load_snapshot(self, route_id, run_date=None):
+    def load_snapshot(self, route_id, run_date=None, run_id=None):
         date_text = self.resolve_date(run_date)
-        evidence_object_name = self._object_name(date_text, route_id, "evidence.json")
+        base_prefix = self._base_prefix(date_text, run_id)
+        evidence_object_name = f"{base_prefix}/{route_id}/evidence.json"
         try:
             return evidence_package.snapshot_from_evidence(json.loads(self._download_text(evidence_object_name)))
         except EvidenceNotFoundError:
             pass
 
-        object_name = self._object_name(date_text, route_id, "daily_snapshot.json")
+        object_name = f"{base_prefix}/{route_id}/daily_snapshot.json"
         try:
             return json.loads(self._download_text(object_name))
         except EvidenceNotFoundError:
             if self.fallback_store is not None:
-                return self.fallback_store.load_snapshot(route_id, date_text)
+                return self.fallback_store.load_snapshot(route_id, date_text, run_id)
             raise
 
-    def load_text_artifact(self, route_id, artifact_name, run_date=None):
+    def load_text_artifact(self, route_id, artifact_name, run_date=None, run_id=None):
         date_text = self.resolve_date(run_date)
-        object_name = self._object_name(date_text, route_id, artifact_name)
+        object_name = f"{self._base_prefix(date_text, run_id)}/{route_id}/{artifact_name}"
         try:
             return self._download_text(object_name)
         except EvidenceNotFoundError:
             if self.fallback_store is not None:
-                return self.fallback_store.load_text_artifact(route_id, artifact_name, date_text)
+                return self.fallback_store.load_text_artifact(route_id, artifact_name, date_text, run_id)
             raise
 
 

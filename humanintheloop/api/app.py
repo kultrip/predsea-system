@@ -31,29 +31,40 @@ def create_app(evidence_store=None):
     def health():
         try:
             latest_date = store.latest_date()
+            latest_run = store.latest_run(latest_date)
         except EvidenceNotFoundError:
             latest_date = None
+            latest_run = None
         return {
             "status": "ok",
             "latest_date": latest_date,
+            "latest_run": latest_run,
             "storage_backend": getattr(store, "storage_backend", "unknown"),
         }
 
     @app.get("/routes")
-    def routes(date: str | None = None):
+    def routes(date: str | None = None, run: str | None = None):
         try:
             run_date = store.resolve_date(date)
-            route_ids = store.route_ids(run_date)
-            return {"date": run_date, "routes": route_ids}
+            run_id = store.resolve_run(run_date, run)
+            route_ids = store.route_ids(run_date, run_id)
+            response = {"date": run_date, "routes": route_ids}
+            if run_id:
+                response["run"] = run_id
+            return response
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
     @app.get("/routes/{route_id}/evidence")
-    def route_evidence(route_id: str, date: str | None = None):
+    def route_evidence(route_id: str, date: str | None = None, run: str | None = None):
         try:
             run_date = store.resolve_date(date)
-            snapshot = store.load_snapshot(route_id, run_date)
-            return {"date": run_date, "evidence": snapshot}
+            run_id = store.resolve_run(run_date, run)
+            snapshot = store.load_snapshot(route_id, run_date, run_id)
+            response = {"date": run_date, "evidence": snapshot}
+            if run_id:
+                response["run"] = run_id
+            return response
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
@@ -61,17 +72,20 @@ def create_app(evidence_store=None):
     def route_briefing(
         route_id: str,
         date: str | None = None,
+        run: str | None = None,
         vessel_class: str = Query("medium", pattern="^(small|medium|large)$"),
         format: str = Query("whatsapp", pattern="^(whatsapp|linkedin)$"),
     ):
         try:
             run_date = store.resolve_date(date)
-            snapshot = store.load_snapshot(route_id, run_date)
+            run_id = store.resolve_run(run_date, run)
+            snapshot = store.load_snapshot(route_id, run_date, run_id)
             briefing, adjusted = render_briefing(snapshot, vessel_class, format)
             return {
                 "route_id": route_id,
                 "route": adjusted.get("route", route_id),
                 "date": run_date,
+                "run": run_id,
                 "format": format,
                 "briefing": briefing,
             }
@@ -82,12 +96,14 @@ def create_app(evidence_store=None):
     def route_question(route_id: str, request: QuestionRequest):
         try:
             run_date = store.resolve_date(request.date)
-            snapshot = store.load_snapshot(route_id, run_date)
+            run_id = store.resolve_run(run_date, request.run)
+            snapshot = store.load_snapshot(route_id, run_date, run_id)
             decision, adjusted = answer_question(snapshot, request)
             return {
                 "route_id": route_id,
                 "route": adjusted.get("route", route_id),
                 "date": run_date,
+                "run": run_id,
                 "question": request.question,
                 "answer": decision["answer"],
                 "intent": decision["intent"],

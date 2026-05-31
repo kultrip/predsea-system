@@ -18,15 +18,25 @@ ROUTE_ARTIFACTS = (
 def latest_day_dir(input_root):
     root = Path(input_root)
     candidates = sorted(
-        path for path in root.iterdir() if path.is_dir() and (path / "run_manifest.json").exists()
+        path for path in root.iterdir()
+        if path.is_dir() and ((path / "run_manifest.json").exists() or (path / "latest_run.json").exists())
     )
     if not candidates:
         raise RuntimeError(f"No dated PredSea runs with run_manifest.json found under {root}.")
     return candidates[-1]
 
 
-def load_manifest(day_dir):
-    return json.loads((Path(day_dir) / "run_manifest.json").read_text(encoding="utf-8"))
+def resolve_run_dir(day_dir):
+    day_dir = Path(day_dir)
+    latest_path = day_dir / "latest_run.json"
+    if latest_path.exists():
+        latest = json.loads(latest_path.read_text(encoding="utf-8"))
+        return day_dir / latest["path"]
+    return day_dir
+
+
+def load_manifest(run_dir):
+    return json.loads((Path(run_dir) / "run_manifest.json").read_text(encoding="utf-8"))
 
 
 def route_ids_from_manifest(manifest):
@@ -71,6 +81,7 @@ def write_demo_manifest(output_dir, run_manifest, route_ids, featured_route):
     ]
     manifest = {
         "run_date": run_manifest.get("run_date"),
+        "run_id": run_manifest.get("run_id"),
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         "source_created_at_utc": run_manifest.get("created_at_utc"),
         "featured_route": featured_route,
@@ -92,7 +103,8 @@ def export_web_demo_bundle(input_root, output_dir, run_date=None, featured_route
     if not day_dir.exists():
         raise RuntimeError(f"PredSea run directory does not exist: {day_dir}")
 
-    run_manifest = load_manifest(day_dir)
+    run_dir = resolve_run_dir(day_dir)
+    run_manifest = load_manifest(run_dir)
     route_ids = route_ids_from_manifest(run_manifest)
     if featured_route not in route_ids:
         featured_route = route_ids[0]
@@ -103,7 +115,7 @@ def export_web_demo_bundle(input_root, output_dir, run_date=None, featured_route
     output_dir.mkdir(parents=True)
 
     for route_id in route_ids:
-        copy_route_artifacts(day_dir, output_dir, route_id)
+        copy_route_artifacts(run_dir, output_dir, route_id)
     copy_featured_artifacts(output_dir, featured_route)
     write_demo_manifest(output_dir, run_manifest, route_ids, featured_route)
 

@@ -9,6 +9,7 @@ VesselClass = Literal["small", "medium", "large"]
 class QuestionRequest(BaseModel):
     question: str = Field(..., min_length=1)
     date: Optional[str] = None
+    run: Optional[str] = None
     vessel_class: VesselClass = "medium"
     location_label: str = "shared location"
     current_time: Optional[str] = None
@@ -18,6 +19,7 @@ class QuestionResponse(BaseModel):
     route_id: str
     route: str
     date: str
+    run: Optional[str] = None
     question: str
     answer: str
     intent: str
@@ -28,6 +30,7 @@ class BriefingResponse(BaseModel):
     route_id: str
     route: str
     date: str
+    run: Optional[str] = None
     format: Literal["whatsapp", "linkedin"]
     briefing: str
 
@@ -40,4 +43,5 @@ class RouteSummary(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     latest_date: Optional[str]
+    latest_run: Optional[str] = None
     storage_backend: str
