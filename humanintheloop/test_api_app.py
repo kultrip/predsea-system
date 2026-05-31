@@ -59,6 +59,39 @@ def write_run_snapshot(root, date_text="2026-05-29", run_id="2026-05-29T0630Z", 
     return snapshot
 
 
+def write_map_overlay(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="wave_height"):
+    maps_dir = Path(root) / date_text / "runs" / run_id / "maps" / variable
+    maps_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{variable}_20260531_140000Z.png"
+    (maps_dir / filename).write_bytes(b"overlay-png")
+    midnight_filename = f"{variable}_20260531_000000Z.png"
+    (maps_dir / midnight_filename).write_bytes(b"midnight-png")
+    (maps_dir / "index.json").write_text(
+        json.dumps(
+            {
+                "variable": variable,
+                "units": "m",
+                "color_scale": {"min": 0, "max": 2.5, "palette": "turbo"},
+                "opacity": 0.698,
+                "overlays": [
+                    {
+                        "time": "2026-05-31T00:00:00Z",
+                        "filename": midnight_filename,
+                        "bounds": [[38.5, 1.0], [40.5, 4.5]],
+                    },
+                    {
+                        "time": "2026-05-31T14:00:00Z",
+                        "filename": filename,
+                        "bounds": [[38.5, 1.0], [40.5, 4.5]],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return filename
+
+
 def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5):
     return {
         "route": "Palma -> Ibiza",
@@ -316,17 +349,36 @@ def test_media_endpoint_returns_api_and_signed_urls_for_route_artifacts():
     assert payload["artifacts"]["predsea_whatsapp_figure.png"]["media_type"] == "image/png"
 
 
-def test_maps_endpoint_returns_planned_contract(tmp_path):
+def test_maps_endpoint_returns_leaflet_overlay_contract(tmp_path):
     write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    filename = write_map_overlay(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.get("/maps?date=2026-05-31&variable=wave_height&time=14:00")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["status"] == "planned"
+    assert payload["status"] == "ready"
+    assert payload["run"] == "2026-05-31T1230Z"
     assert payload["variable"] == "wave_height"
-    assert "Leaflet-ready" in payload["message"]
+    assert payload["time"] == "2026-05-31T14:00:00Z"
+    assert payload["bounds"] == [[38.5, 1.0], [40.5, 4.5]]
+    assert payload["overlay_url"].endswith(
+        f"/maps/overlays/wave_height/{filename}?date=2026-05-31&run=2026-05-31T1230Z"
+    )
+    assert payload["leaflet"]["method"] == "L.imageOverlay"
+
+
+def test_map_overlay_endpoint_serves_overlay_png(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    filename = write_map_overlay(tmp_path)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get(f"/maps/overlays/wave_height/{filename}?date=2026-05-31&run=latest")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content == b"overlay-png"
 
 
 def test_media_endpoint_download_url_falls_back_to_api_url_for_local_store(tmp_path):

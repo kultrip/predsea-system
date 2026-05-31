@@ -1,0 +1,149 @@
+import argparse
+import json
+from pathlib import Path
+
+import numpy as np
+
+
+VARIABLES = {
+    "wave_height": {
+        "dataset": "waves",
+        "units": "m",
+        "vmin": 0.0,
+        "vmax": 2.5,
+        "palette": "turbo",
+    },
+    "current_speed": {
+        "dataset": "currents",
+        "units": "m/s",
+        "vmin": 0.0,
+        "vmax": 1.2,
+        "palette": "viridis",
+    },
+}
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Generate Leaflet-ready forecast image overlays.")
+    parser.add_argument("--waves", required=True, help="Path to Copernicus wave NetCDF.")
+    parser.add_argument("--currents", required=True, help="Path to Copernicus current NetCDF.")
+    parser.add_argument("--output-dir", required=True, help="Directory where maps/<variable>/ files are written.")
+    parser.add_argument("--variable", action="append", choices=sorted(VARIABLES), help="Variable to generate.")
+    parser.add_argument("--alpha", type=int, default=178, help="Overlay alpha, 0-255.")
+    return parser.parse_args(argv)
+
+
+def rgba_for_field(values, vmin, vmax, palette, alpha=178):
+    import matplotlib
+
+    normalized = (values - vmin) / (vmax - vmin)
+    normalized = np.clip(normalized, 0.0, 1.0)
+    cmap = matplotlib.colormaps[palette]
+    rgba = (cmap(normalized) * 255).astype(np.uint8)
+    valid = np.isfinite(values)
+    rgba[..., 3] = np.where(valid, alpha, 0).astype(np.uint8)
+    rgba[~valid, :3] = 0
+    return rgba
+
+
+def image_bounds(data_array):
+    lons = data_array["longitude"].values
+    lats = data_array["latitude"].values
+    return [
+        [float(np.nanmin(lats)), float(np.nanmin(lons))],
+        [float(np.nanmax(lats)), float(np.nanmax(lons))],
+    ]
+
+
+def time_label(dataset, index):
+    return str(dataset["time"].dt.strftime("%Y-%m-%dT%H:%M:%SZ").values[index])
+
+
+def filename_for(variable, iso_time):
+    compact = iso_time.replace("-", "").replace(":", "").replace("T", "_").replace("Z", "Z")
+    return f"{variable}_{compact}.png"
+
+
+def field_for_variable(variable, waves, currents, index):
+    if variable == "wave_height":
+        return waves["VHM0"].isel(time=index)
+    if variable == "current_speed":
+        current_index = min(index, currents.sizes.get("time", 1) - 1)
+        u = currents["uo"].isel(time=current_index)
+        v = currents["vo"].isel(time=current_index)
+        speed = np.hypot(u, v)
+        return speed.rename("current_speed")
+    raise ValueError(f"Unsupported overlay variable: {variable}")
+
+
+def save_overlay_png(data_array, output_path, variable, alpha):
+    from PIL import Image
+
+    meta = VARIABLES[variable]
+    values = np.asarray(data_array.values, dtype=float)
+    # Image rows are top-to-bottom; latitude coordinates are usually south-to-north.
+    if float(data_array["latitude"].values[0]) < float(data_array["latitude"].values[-1]):
+        values = np.flipud(values)
+    rgba = rgba_for_field(values, meta["vmin"], meta["vmax"], meta["palette"], alpha=alpha)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(rgba, mode="RGBA").save(output_path)
+
+
+def generate_leaflet_overlays(waves_path, currents_path, output_dir, variables=None, alpha=178):
+    import xarray as xr
+
+    waves_path = Path(waves_path)
+    currents_path = Path(currents_path)
+    output_dir = Path(output_dir)
+    selected_variables = variables or sorted(VARIABLES)
+    written = {}
+
+    with xr.open_dataset(waves_path) as waves, xr.open_dataset(currents_path) as currents:
+        for variable in selected_variables:
+            meta = VARIABLES[variable]
+            variable_dir = output_dir / "maps" / variable
+            overlays = []
+            for index in range(waves.sizes.get("time", 1)):
+                field = field_for_variable(variable, waves, currents, index)
+                iso_time = time_label(waves, index)
+                filename = filename_for(variable, iso_time)
+                save_overlay_png(field, variable_dir / filename, variable, alpha)
+                overlays.append(
+                    {
+                        "time": iso_time,
+                        "filename": filename,
+                        "bounds": image_bounds(field),
+                    }
+                )
+
+            index_payload = {
+                "variable": variable,
+                "units": meta["units"],
+                "color_scale": {
+                    "min": meta["vmin"],
+                    "max": meta["vmax"],
+                    "palette": meta["palette"],
+                },
+                "opacity": round(alpha / 255, 3),
+                "overlays": overlays,
+            }
+            (variable_dir / "index.json").write_text(json.dumps(index_payload, indent=2), encoding="utf-8")
+            written[variable] = variable_dir
+    return written
+
+
+def main():
+    args = parse_args()
+    written = generate_leaflet_overlays(
+        args.waves,
+        args.currents,
+        args.output_dir,
+        variables=args.variable,
+        alpha=args.alpha,
+    )
+    for variable, path in written.items():
+        print(f"Wrote {variable} overlays to {path}")
+
+
+if __name__ == "__main__":
+    main()

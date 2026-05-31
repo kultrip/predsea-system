@@ -101,6 +101,20 @@ class EvidenceStore:
             raise EvidenceNotFoundError(f"No artifact '{artifact_name}' for route '{route_id}' on {date_text}")
         return artifact_path.read_bytes()
 
+    def load_map_index(self, variable, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        index_path = self._base_dir(date_text, run_id) / "maps" / variable / "index.json"
+        if not index_path.exists():
+            raise EvidenceNotFoundError(f"No map overlay index for '{variable}' on {date_text}")
+        return json.loads(index_path.read_text(encoding="utf-8"))
+
+    def load_map_overlay(self, variable, filename, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        overlay_path = self._base_dir(date_text, run_id) / "maps" / variable / filename
+        if not overlay_path.exists():
+            raise EvidenceNotFoundError(f"No map overlay '{filename}' for '{variable}' on {date_text}")
+        return overlay_path.read_bytes()
+
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
         return None
 
@@ -266,6 +280,26 @@ class GcsEvidenceStore:
         except EvidenceNotFoundError:
             if self.fallback_store is not None:
                 return self.fallback_store.load_binary_artifact(route_id, artifact_name, date_text, run_id)
+            raise
+
+    def load_map_index(self, variable, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        object_name = f"{self._base_prefix(date_text, run_id)}/maps/{variable}/index.json"
+        try:
+            return json.loads(self._download_text(object_name))
+        except EvidenceNotFoundError:
+            if self.fallback_store is not None:
+                return self.fallback_store.load_map_index(variable, date_text, run_id)
+            raise
+
+    def load_map_overlay(self, variable, filename, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        object_name = f"{self._base_prefix(date_text, run_id)}/maps/{variable}/{filename}"
+        try:
+            return self._download_bytes(object_name)
+        except EvidenceNotFoundError:
+            if self.fallback_store is not None:
+                return self.fallback_store.load_map_overlay(variable, filename, date_text, run_id)
             raise
 
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):

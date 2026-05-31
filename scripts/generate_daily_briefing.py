@@ -157,9 +157,29 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
     return output_path
 
 
+def maybe_generate_leaflet_overlays(run_dir, waves_path, currents_path, skip_maps=False):
+    if skip_maps:
+        return None
+    overlay_generator = load_leaflet_overlay_generator()
+    return overlay_generator.generate_leaflet_overlays(
+        waves_path,
+        currents_path,
+        run_dir,
+        variables=["wave_height", "current_speed"],
+    )
+
+
 def load_publication_map_generator():
     module_path = PROJECT_ROOT / "scripts" / "generate_ocean_conditions_map.py"
     spec = importlib.util.spec_from_file_location("predsea_publication_map_generator", module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_leaflet_overlay_generator():
+    module_path = PROJECT_ROOT / "scripts" / "generate_leaflet_overlays.py"
+    spec = importlib.util.spec_from_file_location("predsea_leaflet_overlay_generator", module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -224,6 +244,7 @@ def generate_daily_briefings(
         modules.fetch_data.get_balearic_forecast(dry_run=False)
         waves_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc"
         currents_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc"
+        maybe_generate_leaflet_overlays(run_dir, waves_path, currents_path, skip_maps=skip_maps)
 
         for route_id in selected_route_ids:
             route = routes[route_id]
