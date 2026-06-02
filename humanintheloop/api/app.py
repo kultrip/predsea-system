@@ -56,6 +56,37 @@ def closest_overlay(overlays, time_text):
     return min(overlays, key=distance_from_target)
 
 
+def nearest_index(values, target):
+    return min(range(len(values)), key=lambda index: abs(float(values[index]) - target))
+
+
+def sample_grid(grid, latitude, longitude):
+    latitudes = grid.get("latitudes") or []
+    longitudes = grid.get("longitudes") or []
+    values = grid.get("values") or []
+    if not latitudes or not longitudes or not values:
+        raise EvidenceNotFoundError("Map grid has no sampleable values")
+
+    lat_index = nearest_index(latitudes, latitude)
+    lon_index = nearest_index(longitudes, longitude)
+    try:
+        value = values[lat_index][lon_index]
+    except (IndexError, TypeError) as error:
+        raise EvidenceNotFoundError("Map grid is malformed") from error
+
+    south = min(float(value) for value in latitudes)
+    north = max(float(value) for value in latitudes)
+    west = min(float(value) for value in longitudes)
+    east = max(float(value) for value in longitudes)
+    return {
+        "value": value,
+        "sampled_lat": float(latitudes[lat_index]),
+        "sampled_lon": float(longitudes[lon_index]),
+        "grid_indices": {"lat": lat_index, "lon": lon_index},
+        "inside_domain": south <= latitude <= north and west <= longitude <= east,
+    }
+
+
 def create_app(evidence_store=None):
     app = FastAPI(
         title="PredSea MVP API",
@@ -256,6 +287,45 @@ def create_app(evidence_store=None):
             content = store.load_map_overlay(variable, filename, run_date, run_id)
             headers = {"Cache-Control": "public, max-age=300"}
             return Response(content=content, media_type="image/png", headers=headers)
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/maps/inspect")
+    def map_inspect(
+        date: str | None = None,
+        run: str | None = None,
+        variable: str = Query("wave_height", pattern="^(wave_height|current_speed)$"),
+        time: str | None = None,
+        lat: float = Query(..., ge=-90, le=90),
+        lon: float = Query(..., ge=-180, le=180),
+    ):
+        try:
+            run_date = store.resolve_date(date)
+            run_id = store.resolve_run(run_date, run)
+            index = store.load_map_index(variable, run_date, run_id)
+            selected = closest_overlay(index.get("overlays") or [], time)
+            grid_filename = selected.get("grid_filename")
+            if not grid_filename:
+                raise EvidenceNotFoundError("Selected map overlay has no inspection grid")
+            grid = store.load_map_grid(variable, grid_filename, run_date, run_id)
+            sample = sample_grid(grid, lat, lon)
+            return {
+                "status": "ready",
+                "date": run_date,
+                "run": run_id,
+                "variable": variable,
+                "requested_time": time,
+                "time": selected["time"],
+                "requested_lat": lat,
+                "requested_lon": lon,
+                "sampled_lat": sample["sampled_lat"],
+                "sampled_lon": sample["sampled_lon"],
+                "grid_indices": sample["grid_indices"],
+                "inside_domain": sample["inside_domain"],
+                "value": sample["value"],
+                "units": index["units"],
+                "color_scale": index["color_scale"],
+            }
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 

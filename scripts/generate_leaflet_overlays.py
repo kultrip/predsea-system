@@ -64,6 +64,10 @@ def filename_for(variable, iso_time):
     return f"{variable}_{compact}.png"
 
 
+def grid_filename_for(variable, iso_time):
+    return filename_for(variable, iso_time).replace(".png", ".grid.json")
+
+
 def field_for_variable(variable, waves, currents, index):
     if variable == "wave_height":
         return waves["VHM0"].isel(time=index)
@@ -89,6 +93,17 @@ def save_overlay_png(data_array, output_path, variable, alpha):
     Image.fromarray(rgba, mode="RGBA").save(output_path)
 
 
+def save_value_grid(data_array, output_path):
+    values = np.asarray(data_array.values, dtype=float)
+    values = np.where(np.isfinite(values), values, None)
+    payload = {
+        "latitudes": [float(value) for value in data_array["latitude"].values],
+        "longitudes": [float(value) for value in data_array["longitude"].values],
+        "values": values.tolist(),
+    }
+    output_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+
+
 def generate_leaflet_overlays(waves_path, currents_path, output_dir, variables=None, alpha=178):
     import xarray as xr
 
@@ -107,11 +122,14 @@ def generate_leaflet_overlays(waves_path, currents_path, output_dir, variables=N
                 field = field_for_variable(variable, waves, currents, index)
                 iso_time = time_label(waves, index)
                 filename = filename_for(variable, iso_time)
+                grid_filename = grid_filename_for(variable, iso_time)
                 save_overlay_png(field, variable_dir / filename, variable, alpha)
+                save_value_grid(field, variable_dir / grid_filename)
                 overlays.append(
                     {
                         "time": iso_time,
                         "filename": filename,
+                        "grid_filename": grid_filename,
                         "bounds": image_bounds(field),
                     }
                 )

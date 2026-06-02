@@ -71,6 +71,11 @@ def test_generate_leaflet_overlays_writes_index_and_png(tmp_path):
     image_path = index_path.parent / payload["overlays"][0]["filename"]
     assert image_path.exists()
     assert Image.open(image_path).mode == "RGBA"
+    grid_path = index_path.parent / payload["overlays"][0]["grid_filename"]
+    grid = json.loads(grid_path.read_text(encoding="utf-8"))
+    assert grid["latitudes"] == [38.5, 39.5, 40.5]
+    assert grid["longitudes"] == [1.0, 2.0, 3.0, 4.5]
+    assert grid["values"][0][0] == 0.5
 
 
 def test_current_speed_overlay_uses_current_vector_magnitude(tmp_path):
@@ -96,4 +101,8 @@ def test_filename_for_is_stable_and_url_safe():
     assert (
         module.filename_for("wave_height", "2026-05-31T14:00:00Z")
         == "wave_height_20260531_140000Z.png"
+    )
+    assert (
+        module.grid_filename_for("wave_height", "2026-05-31T14:00:00Z")
+        == "wave_height_20260531_140000Z.grid.json"
     )

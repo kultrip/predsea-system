@@ -63,9 +63,39 @@ def write_map_overlay(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", v
     maps_dir = Path(root) / date_text / "runs" / run_id / "maps" / variable
     maps_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{variable}_20260531_140000Z.png"
+    grid_filename = f"{variable}_20260531_140000Z.grid.json"
     (maps_dir / filename).write_bytes(b"overlay-png")
+    (maps_dir / grid_filename).write_text(
+        json.dumps(
+            {
+                "latitudes": [38.5, 39.5, 40.5],
+                "longitudes": [1.0, 2.0, 3.0, 4.5],
+                "values": [
+                    [0.4, 0.5, 0.6, 0.7],
+                    [0.8, 0.9, 1.0, 1.1],
+                    [1.2, 1.3, 1.4, 1.5],
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     midnight_filename = f"{variable}_20260531_000000Z.png"
+    midnight_grid_filename = f"{variable}_20260531_000000Z.grid.json"
     (maps_dir / midnight_filename).write_bytes(b"midnight-png")
+    (maps_dir / midnight_grid_filename).write_text(
+        json.dumps(
+            {
+                "latitudes": [38.5, 39.5, 40.5],
+                "longitudes": [1.0, 2.0, 3.0, 4.5],
+                "values": [
+                    [0.1, 0.2, 0.3, 0.4],
+                    [0.5, 0.6, 0.7, 0.8],
+                    [0.9, 1.0, 1.1, 1.2],
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     (maps_dir / "index.json").write_text(
         json.dumps(
             {
@@ -77,11 +107,13 @@ def write_map_overlay(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", v
                     {
                         "time": "2026-05-31T00:00:00Z",
                         "filename": midnight_filename,
+                        "grid_filename": midnight_grid_filename,
                         "bounds": [[38.5, 1.0], [40.5, 4.5]],
                     },
                     {
                         "time": "2026-05-31T14:00:00Z",
                         "filename": filename,
+                        "grid_filename": grid_filename,
                         "bounds": [[38.5, 1.0], [40.5, 4.5]],
                     }
                 ],
@@ -381,6 +413,27 @@ def test_map_overlay_endpoint_serves_overlay_png(tmp_path):
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content == b"overlay-png"
+
+
+def test_map_inspect_endpoint_samples_nearest_grid_point(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    write_map_overlay(tmp_path)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get(
+        "/maps/inspect?date=2026-05-31&variable=wave_height&time=14:00&lat=39.45&lon=2.1"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert payload["run"] == "2026-05-31T1230Z"
+    assert payload["time"] == "2026-05-31T14:00:00Z"
+    assert payload["sampled_lat"] == 39.5
+    assert payload["sampled_lon"] == 2.0
+    assert payload["value"] == 0.9
+    assert payload["units"] == "m"
+    assert payload["inside_domain"] is True
 
 
 def test_media_endpoint_download_url_falls_back_to_api_url_for_local_store(tmp_path):
