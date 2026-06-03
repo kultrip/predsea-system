@@ -95,6 +95,22 @@ def test_current_speed_overlay_uses_current_vector_magnitude(tmp_path):
     assert len(payload["overlays"]) == 2
 
 
+def test_transparent_no_data_pixels_do_not_keep_black_rgb():
+    module = load_overlay_script()
+    values = np.array(
+        [
+            [0.6, 0.7, 0.8],
+            [0.5, np.nan, 0.9],
+            [0.4, 0.3, 0.2],
+        ]
+    )
+
+    rgba = module.rgba_for_field(values, 0.0, 2.5, "turbo", alpha=178)
+
+    assert rgba[1, 1, 3] == 0
+    assert rgba[1, 1, :3].sum() > 0
+
+
 def test_filename_for_is_stable_and_url_safe():
     module = load_overlay_script()
 

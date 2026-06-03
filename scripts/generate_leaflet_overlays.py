@@ -42,7 +42,53 @@ def rgba_for_field(values, vmin, vmax, palette, alpha=178):
     rgba = (cmap(normalized) * 255).astype(np.uint8)
     valid = np.isfinite(values)
     rgba[..., 3] = np.where(valid, alpha, 0).astype(np.uint8)
-    rgba[~valid, :3] = 0
+    rgba = fill_transparent_rgb_from_neighbors(rgba, valid)
+    return rgba
+
+
+def fill_transparent_rgb_from_neighbors(rgba, valid):
+    """Avoid black interpolation halos around transparent no-data pixels."""
+    if valid.all() or not valid.any():
+        return rgba
+
+    height, width = valid.shape
+    filled = valid.copy()
+    rgb = rgba[..., :3].copy()
+    max_iterations = height + width
+
+    for _ in range(max_iterations):
+        missing = ~filled
+        if not missing.any():
+            break
+
+        previous_filled = filled.copy()
+        previous_rgb = rgb.copy()
+        totals = np.zeros((height, width, 3), dtype=np.uint32)
+        counts = np.zeros((height, width), dtype=np.uint16)
+
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                src_y = slice(max(0, -dy), height - max(0, dy))
+                dst_y = slice(max(0, dy), height - max(0, -dy))
+                src_x = slice(max(0, -dx), width - max(0, dx))
+                dst_x = slice(max(0, dx), width - max(0, -dx))
+
+                neighbor_mask = previous_filled[src_y, src_x]
+                target_mask = missing[dst_y, dst_x] & neighbor_mask
+                if not target_mask.any():
+                    continue
+                totals[dst_y, dst_x][target_mask] += previous_rgb[src_y, src_x][target_mask]
+                counts[dst_y, dst_x][target_mask] += 1
+
+        update_mask = missing & (counts > 0)
+        if not update_mask.any():
+            break
+        rgb[update_mask] = (totals[update_mask] / counts[update_mask, None]).astype(np.uint8)
+        filled[update_mask] = True
+
+    rgba[..., :3] = rgb
     return rgba
 
 
