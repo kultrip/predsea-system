@@ -26,9 +26,35 @@ class FetchDataTests(unittest.TestCase):
         self.assertTrue(current_call["dry_run"])
 
         self.assertEqual(wave_call["dataset_id"], fetch_data.WAV_ID)
-        self.assertEqual(wave_call["variables"], ["VHM0", "VMDR"])
+        self.assertEqual(
+            wave_call["variables"],
+            [
+                "VHM0",
+                "VMDR",
+                "VHM0_SW1",
+                "VMDR_SW1",
+                "VHM0_SW2",
+                "VMDR_SW2",
+                "VHM0_WW",
+                "VMDR_WW",
+            ],
+        )
         self.assertEqual(wave_call["output_filename"], "balearic_waves.nc")
         self.assertTrue(wave_call["dry_run"])
+
+    @patch("fetch_data.copernicusmarine.subset")
+    def test_balearic_forecast_retries_core_waves_if_partitions_unavailable(self, subset):
+        import fetch_data
+
+        subset.side_effect = [None, RuntimeError("variable not found"), None]
+
+        fetch_data.get_balearic_forecast(dry_run=False)
+
+        self.assertEqual(subset.call_count, 3)
+        retry_call = subset.call_args_list[2].kwargs
+        self.assertEqual(retry_call["dataset_id"], fetch_data.WAV_ID)
+        self.assertEqual(retry_call["variables"], fetch_data.CORE_WAVE_VARIABLES)
+        self.assertEqual(retry_call["output_filename"], "balearic_waves.nc")
 
     @patch("fetch_data.copernicusmarine.subset")
     @patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}, clear=True)
@@ -597,6 +623,58 @@ class ForecastSummaryTests(unittest.TestCase):
         self.assertEqual(summary["hourly"][0]["current_direction_deg"], 80.0)
         self.assertEqual(summary["hourly"][0]["current_mps"], 0.3)
 
+    def test_summarize_route_points_keeps_wave_partitions_at_exposed_point(self):
+        import route_analysis
+
+        route = {
+            "origin": {"longitude": 2.0, "latitude": 0.0},
+            "destination": {"longitude": 3.0, "latitude": 0.0},
+        }
+        summary = route_analysis.summarize_route_point_series(
+            times=["15:00"],
+            wave_points_by_time=[[1.2, 1.8, 1.7]],
+            current_points_by_time=[[0.1, 0.3, 0.2]],
+            wave_direction_points_by_time=[[20.0, 90.0, 280.0]],
+            component_points_by_time={
+                "swell_1": {
+                    "height": [[0.4, 1.1, 0.9]],
+                    "direction": [[30.0, 90.0, 290.0]],
+                },
+                "swell_2": {
+                    "height": [[0.2, 0.5, 0.3]],
+                    "direction": [[210.0, 180.0, 160.0]],
+                },
+                "wind_wave": {
+                    "height": [[0.3, 0.7, 0.6]],
+                    "direction": [[80.0, 100.0, 110.0]],
+                },
+            },
+            route=route,
+        )
+
+        self.assertEqual(summary["route_bearing_deg"], 90.0)
+        self.assertEqual(summary["wave_peak_sea_state"], "head sea")
+        self.assertEqual(summary["wave_peak_relative_angle_deg"], 0.0)
+        self.assertEqual(summary["swell_1_height_m"], 1.1)
+        self.assertEqual(summary["swell_1_direction_deg"], 90.0)
+        self.assertEqual(summary["swell_2_height_m"], 0.5)
+        self.assertEqual(summary["swell_2_direction_deg"], 180.0)
+        self.assertEqual(summary["wind_wave_height_m"], 0.7)
+        self.assertEqual(summary["wind_wave_direction_deg"], 100.0)
+        self.assertEqual(summary["hourly"][0]["swell_1_height_m"], 1.1)
+        self.assertEqual(summary["hourly"][0]["swell_1_direction_deg"], 90.0)
+        self.assertEqual(summary["hourly"][0]["wave_sea_state"], "head sea")
+
+    def test_relative_sea_state_classifies_route_angle(self):
+        import route_analysis
+
+        self.assertEqual(route_analysis.relative_sea_state(90, 90)["label"], "head sea")
+        self.assertEqual(route_analysis.relative_sea_state(270, 90)["label"], "following sea")
+        self.assertEqual(route_analysis.relative_sea_state(0, 90)["label"], "beam sea")
+        self.assertEqual(route_analysis.relative_sea_state(45, 90)["label"], "bow quartering sea")
+        self.assertEqual(route_analysis.relative_sea_state(135, 90)["label"], "bow quartering sea")
+        self.assertEqual(route_analysis.relative_sea_state(225, 90)["label"], "stern quartering sea")
+
     def test_route_points_are_read_from_supplied_route(self):
         import route_analysis
 
@@ -838,6 +916,49 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertIn("lower sampled window is around 11:00", decision["answer"])
         self.assertNotIn("05:00", decision["answer"])
+
+    def test_agent_includes_wave_components_and_route_relative_sea_state(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+            "forecast": {
+                "wave_max_m": 1.6,
+                "wave_peak_time": "08:00",
+                "wave_peak_direction_deg": 68,
+                "wave_peak_sea_state": "head sea",
+                "swell_1_height_m": 1.0,
+                "swell_1_direction_deg": 70,
+                "swell_2_height_m": 0.4,
+                "swell_2_direction_deg": 210,
+                "wind_wave_height_m": 0.7,
+                "wind_wave_direction_deg": 75,
+                "hourly": [
+                    {"time": "07:00", "wave_m": 0.8, "wave_direction_deg": 65, "wave_sea_state": "head sea"},
+                    {"time": "08:00", "wave_m": 1.6, "wave_direction_deg": 68, "wave_sea_state": "head sea"},
+                    {"time": "11:00", "wave_m": 1.2, "wave_direction_deg": 70, "wave_sea_state": "head sea"},
+                ],
+            },
+            "recommendation": {
+                "best_window": "morning to early afternoon",
+                "watch_out": "forecast peak near 1.6 m around 08:00",
+                "confidence": "medium",
+                "vessel_advice": "caution for vessels 15-24m; use the best weather window",
+            },
+        }
+
+        decision = decision_engine.answer_question(
+            "What is the best time to leave Palma to Ibiza?",
+            snapshot,
+            current_time="07:00",
+        )
+
+        self.assertIn("head sea", decision["answer"])
+        self.assertIn("Primary swell 1.0 m from 70", decision["answer"])
+        self.assertIn("secondary swell 0.4 m from 210", decision["answer"])
+        self.assertIn("wind wave 0.7 m from 75", decision["answer"])
+        self.assertNotIn("components are not available", decision["answer"])
 
     def test_conditions_soon_does_not_warn_when_peak_is_calm(self):
         import decision_engine

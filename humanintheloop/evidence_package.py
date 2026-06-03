@@ -36,15 +36,28 @@ def build_route_evidence_package(snapshot, route):
                     "max": forecast.get("wave_max_m"),
                     "peak_time": forecast.get("wave_peak_time"),
                     "peak_direction_deg": forecast.get("wave_peak_direction_deg"),
+                    "route_bearing_deg": forecast.get("route_bearing_deg"),
+                    "peak_relative_angle_deg": forecast.get("wave_peak_relative_angle_deg"),
+                    "peak_sea_state": forecast.get("wave_peak_sea_state"),
                     "hourly": [
                         {
                             key: row[key]
-                            for key in ("time", "time_utc", "wave_m", "wave_direction_deg")
+                            for key in (
+                                "time",
+                                "time_utc",
+                                "wave_m",
+                                "wave_direction_deg",
+                                "wave_relative_angle_deg",
+                                "wave_sea_state",
+                            )
                             if key in row
                         }
                         for row in forecast.get("hourly", [])
                     ],
                 },
+                "swell_1": wave_component_forecast(forecast, "swell_1"),
+                "swell_2": wave_component_forecast(forecast, "swell_2"),
+                "wind_wave": wave_component_forecast(forecast, "wind_wave"),
                 "current_speed_kn": {
                     "max": forecast.get("current_max_kn"),
                     "peak_time": forecast.get("current_peak_time"),
@@ -74,6 +87,27 @@ def build_route_evidence_package(snapshot, route):
             "buoy_truth_available": bool(validation.get("truth_source") or current_validation.get("truth_source")),
         },
         "decision_context": snapshot,
+    }
+
+
+def wave_component_forecast(forecast, component_name):
+    return {
+        "height_m": forecast.get(f"{component_name}_height_m"),
+        "direction_deg": forecast.get(f"{component_name}_direction_deg"),
+        "hourly": [
+            {
+                key: row[key]
+                for key in (
+                    "time",
+                    "time_utc",
+                    f"{component_name}_height_m",
+                    f"{component_name}_direction_deg",
+                )
+                if key in row
+            }
+            for row in forecast.get("hourly", [])
+            if f"{component_name}_height_m" in row or f"{component_name}_direction_deg" in row
+        ],
     }
 
 

@@ -275,6 +275,10 @@ def time_to_minutes(value):
 
 
 def render_evidence_note(forecast):
+    component_note = render_wave_component_note(forecast)
+    if component_note:
+        return component_note
+
     has_components = any(
         key in forecast
         for key in (
@@ -297,6 +301,39 @@ def render_evidence_note(forecast):
         "Evidence note: this uses combined wave height only; swell direction and wind-wave "
         "components are not available in this evidence package."
     )
+
+
+def render_wave_component_note(forecast):
+    parts = []
+    sea_state = forecast.get("wave_peak_sea_state")
+    peak_direction = forecast.get("wave_peak_direction_deg")
+    if sea_state and peak_direction is not None:
+        parts.append(f"At the peak, combined seas are a {sea_state} from about {peak_direction:.0f} degrees")
+    elif sea_state:
+        parts.append(f"At the peak, combined seas are a {sea_state}")
+
+    component_texts = []
+    for component_name, label in (
+        ("swell_1", "Primary swell"),
+        ("swell_2", "secondary swell"),
+        ("wind_wave", "wind wave"),
+    ):
+        height = forecast.get(f"{component_name}_height_m")
+        direction = forecast.get(f"{component_name}_direction_deg")
+        if height is None and direction is None:
+            continue
+        if height is not None and direction is not None:
+            component_texts.append(f"{label} {height:.1f} m from {direction:.0f} degrees")
+        elif height is not None:
+            component_texts.append(f"{label} {height:.1f} m")
+        else:
+            component_texts.append(f"{label} from {direction:.0f} degrees")
+    if component_texts:
+        parts.append("; ".join(component_texts))
+
+    if not parts:
+        return None
+    return "Sea-state detail: " + ". ".join(parts) + "."
 
 
 def is_morning_window_passed(best_window, current_time):

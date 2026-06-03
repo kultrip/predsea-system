@@ -25,11 +25,31 @@ def sample_snapshot():
             "wave_min_m": 0.2,
             "wave_max_m": 0.8,
             "wave_peak_time": "17:00",
+            "wave_peak_direction_deg": 90.0,
+            "route_bearing_deg": 240.0,
+            "wave_peak_sea_state": "stern quartering sea",
+            "wave_peak_relative_angle_deg": 150.0,
+            "swell_1_height_m": 0.5,
+            "swell_1_direction_deg": 85.0,
+            "swell_2_height_m": 0.2,
+            "swell_2_direction_deg": 230.0,
+            "wind_wave_height_m": 0.4,
+            "wind_wave_direction_deg": 100.0,
             "current_max_kn": 0.6,
             "current_peak_time": "16:00",
             "hourly": [
-                {"time": "09:00", "wave_m": 0.3, "current_kn": 0.2},
-                {"time": "17:00", "wave_m": 0.8, "current_kn": 0.6},
+                {"time": "09:00", "wave_m": 0.3, "current_kn": 0.2, "wave_sea_state": "beam sea"},
+                {
+                    "time": "17:00",
+                    "wave_m": 0.8,
+                    "wave_direction_deg": 90.0,
+                    "current_kn": 0.6,
+                    "wave_sea_state": "stern quartering sea",
+                    "swell_1_height_m": 0.5,
+                    "swell_1_direction_deg": 85.0,
+                    "wind_wave_height_m": 0.4,
+                    "wind_wave_direction_deg": 100.0,
+                },
             ],
             "sampling_method": "route_exposed_max",
         },
@@ -82,6 +102,9 @@ def test_build_route_evidence_package_has_decision_ready_structure():
         ],
     }
     assert package["forecast"]["variables"]["wave_height_m"]["max"] == 0.8
+    assert package["forecast"]["variables"]["wave_height_m"]["peak_sea_state"] == "stern quartering sea"
+    assert package["forecast"]["variables"]["swell_1"]["height_m"] == 0.5
+    assert package["forecast"]["variables"]["wind_wave"]["direction_deg"] == 100.0
     assert package["forecast"]["variables"]["current_speed_kn"]["peak_time"] == "16:00"
     assert package["operational_interpretation"]["best_window"] == "before late afternoon"
     assert package["data_quality"]["nearest_wave_truth_source"] == "canal_de_ibiza"

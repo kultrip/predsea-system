@@ -12,6 +12,20 @@ REQUIRED_COPERNICUS_ENV = (
 # Current Copernicus Marine Mediterranean analysis/forecast dataset IDs.
 PHY_ID = "cmems_mod_med_phy-cur_anfc_4.2km-2D_PT1H-m"
 WAV_ID = "cmems_mod_med_wav_anfc_4.2km_PT1H-i"
+CORE_WAVE_VARIABLES = ["VHM0", "VMDR"]
+WAVE_PARTITION_VARIABLES = [
+    "VHM0_SW1",
+    "VMDR_SW1",
+    "VHM0_SW2",
+    "VMDR_SW2",
+    "VHM0_WW",
+    "VMDR_WW",
+]
+WAVE_VARIABLES = [
+    "VHM0",
+    "VMDR",
+    *WAVE_PARTITION_VARIABLES,
+]
 
 # Coordinates for the Balearic Islands
 # Adjusted slightly to ensure we don't hit edge-case rounding errors
@@ -52,6 +66,24 @@ def subset_balearic_forecast(dataset_id, variables, output_filename, dry_run=Fal
     )
 
 
+def fetch_wave_forecast(dry_run=False):
+    try:
+        subset_balearic_forecast(
+            dataset_id=WAV_ID,
+            variables=WAVE_VARIABLES,
+            output_filename="balearic_waves.nc",
+            dry_run=dry_run,
+        )
+    except Exception as error:
+        print(f"Wave partition download unavailable ({error}); retrying with core wave variables.")
+        subset_balearic_forecast(
+            dataset_id=WAV_ID,
+            variables=CORE_WAVE_VARIABLES,
+            output_filename="balearic_waves.nc",
+            dry_run=dry_run,
+        )
+
+
 def get_balearic_forecast(dry_run=False):
     print("Fetching Balearic Currents (4.2km resolution)...")
     try:
@@ -67,12 +99,7 @@ def get_balearic_forecast(dry_run=False):
         )
 
         print("Fetching Balearic Waves (4.2km resolution)...")
-        subset_balearic_forecast(
-            dataset_id=WAV_ID,
-            variables=["VHM0", "VMDR"],
-            output_filename="balearic_waves.nc",
-            dry_run=dry_run,
-        )
+        fetch_wave_forecast(dry_run=dry_run)
         if dry_run:
             print("\nDry run complete. No files were downloaded.")
             return
