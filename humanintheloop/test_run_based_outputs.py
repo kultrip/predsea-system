@@ -56,3 +56,35 @@ def test_web_demo_exporter_uses_latest_run_folder(tmp_path):
     assert result.run_date == "2026-05-31"
     assert manifest["run_id"] == run_id
     assert (tmp_path / "web-demo" / "latest.json").exists()
+
+
+def test_daily_generator_requests_all_registered_leaflet_overlay_variables(tmp_path, monkeypatch):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    requested = {}
+
+    class OverlayGenerator:
+        VARIABLES = {
+            "wave_height": {},
+            "current_speed": {},
+            "swell_1_height": {},
+            "swell_1_direction": {},
+            "swell_2_height": {},
+            "swell_2_direction": {},
+            "wind_wave_height": {},
+            "wind_wave_direction": {},
+        }
+
+        @staticmethod
+        def generate_leaflet_overlays(waves_path, currents_path, run_dir, variables):
+            requested["variables"] = variables
+            return {}
+
+    monkeypatch.setattr(generator, "load_leaflet_overlay_generator", lambda: OverlayGenerator)
+
+    generator.maybe_generate_leaflet_overlays(
+        tmp_path / "run",
+        tmp_path / "waves.nc",
+        tmp_path / "currents.nc",
+    )
+
+    assert requested["variables"] == sorted(OverlayGenerator.VARIABLES)

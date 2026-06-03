@@ -31,7 +31,10 @@ def write_test_forecasts(tmp_path):
                         np.full((3, 4), 1.2),
                     ]
                 ),
-            )
+            ),
+            "VHM0_SW1": (("time", "latitude", "longitude"), np.full((2, 3, 4), 0.8)),
+            "VHM0_SW2": (("time", "latitude", "longitude"), np.full((2, 3, 4), 0.3)),
+            "VHM0_WW": (("time", "latitude", "longitude"), np.full((2, 3, 4), 0.5)),
         },
         coords={"time": times, "latitude": lats, "longitude": lons},
     )
@@ -93,6 +96,32 @@ def test_current_speed_overlay_uses_current_vector_magnitude(tmp_path):
     assert payload["variable"] == "current_speed"
     assert payload["units"] == "m/s"
     assert len(payload["overlays"]) == 2
+
+
+def test_wave_partition_overlays_are_generated_when_available(tmp_path):
+    module = load_overlay_script()
+    waves_path, currents_path = write_test_forecasts(tmp_path)
+
+    module.generate_leaflet_overlays(
+        waves_path,
+        currents_path,
+        tmp_path / "run",
+        variables=["swell_1_height", "swell_2_height", "wind_wave_height"],
+    )
+
+    for variable, expected_value in (
+        ("swell_1_height", 0.8),
+        ("swell_2_height", 0.3),
+        ("wind_wave_height", 0.5),
+    ):
+        index_path = tmp_path / "run" / "maps" / variable / "index.json"
+        payload = json.loads(index_path.read_text(encoding="utf-8"))
+        assert payload["variable"] == variable
+        assert payload["units"] == "m"
+        assert payload["source_variable"] in {"VHM0_SW1", "VHM0_SW2", "VHM0_WW"}
+        grid_path = index_path.parent / payload["overlays"][0]["grid_filename"]
+        grid = json.loads(grid_path.read_text(encoding="utf-8"))
+        assert grid["values"][0][0] == expected_value
 
 
 def test_transparent_no_data_pixels_do_not_keep_black_rgb():

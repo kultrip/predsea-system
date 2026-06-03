@@ -403,12 +403,39 @@ def test_maps_endpoint_returns_leaflet_overlay_contract(tmp_path):
     assert payload["leaflet"]["method"] == "L.imageOverlay"
 
 
+def test_maps_endpoint_serves_wave_partition_overlay_contract(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    filename = write_map_overlay(tmp_path, variable="swell_1_height")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/maps?date=2026-05-31&variable=swell_1_height&time=14:00")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["variable"] == "swell_1_height"
+    assert payload["overlay_url"].endswith(
+        f"/maps/overlays/swell_1_height/{filename}?date=2026-05-31&run=2026-05-31T1230Z"
+    )
+
+
 def test_map_overlay_endpoint_serves_overlay_png(tmp_path):
     write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
     filename = write_map_overlay(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.get(f"/maps/overlays/wave_height/{filename}?date=2026-05-31&run=latest")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content == b"overlay-png"
+
+
+def test_map_overlay_endpoint_serves_wave_partition_png(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    filename = write_map_overlay(tmp_path, variable="wind_wave_height")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get(f"/maps/overlays/wind_wave_height/{filename}?date=2026-05-31&run=latest")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"

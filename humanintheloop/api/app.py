@@ -11,7 +11,17 @@ MEDIA_TYPES = {
     "predsea_whatsapp_figure.png": "image/png",
 }
 PUBLIC_MEDIA_ARTIFACTS = tuple(MEDIA_TYPES)
-MAP_VARIABLES = ("wave_height", "current_speed")
+MAP_VARIABLES = (
+    "wave_height",
+    "swell_1_height",
+    "swell_1_direction",
+    "swell_2_height",
+    "swell_2_direction",
+    "wind_wave_height",
+    "wind_wave_direction",
+    "current_speed",
+)
+MAP_VARIABLE_PATTERN = "^(" + "|".join(MAP_VARIABLES) + ")$"
 
 
 def public_base_url(request):
@@ -240,7 +250,7 @@ def create_app(evidence_store=None):
         request: Request,
         date: str | None = None,
         run: str | None = None,
-        variable: str = Query("wave_height", pattern="^(wave_height|current_speed)$"),
+        variable: str = Query("wave_height", pattern=MAP_VARIABLE_PATTERN),
         time: str | None = None,
     ):
         try:
@@ -294,7 +304,7 @@ def create_app(evidence_store=None):
     def map_inspect(
         date: str | None = None,
         run: str | None = None,
-        variable: str = Query("wave_height", pattern="^(wave_height|current_speed)$"),
+        variable: str = Query("wave_height", pattern=MAP_VARIABLE_PATTERN),
         time: str | None = None,
         lat: float = Query(..., ge=-90, le=90),
         lon: float = Query(..., ge=-180, le=180),

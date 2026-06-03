@@ -8,10 +8,59 @@ import numpy as np
 VARIABLES = {
     "wave_height": {
         "dataset": "waves",
+        "source_variable": "VHM0",
         "units": "m",
         "vmin": 0.0,
         "vmax": 2.5,
         "palette": "turbo",
+    },
+    "swell_1_height": {
+        "dataset": "waves",
+        "source_variable": "VHM0_SW1",
+        "units": "m",
+        "vmin": 0.0,
+        "vmax": 2.5,
+        "palette": "turbo",
+    },
+    "swell_1_direction": {
+        "dataset": "waves",
+        "source_variable": "VMDR_SW1",
+        "units": "degree",
+        "vmin": 0.0,
+        "vmax": 360.0,
+        "palette": "twilight",
+    },
+    "swell_2_height": {
+        "dataset": "waves",
+        "source_variable": "VHM0_SW2",
+        "units": "m",
+        "vmin": 0.0,
+        "vmax": 2.5,
+        "palette": "turbo",
+    },
+    "swell_2_direction": {
+        "dataset": "waves",
+        "source_variable": "VMDR_SW2",
+        "units": "degree",
+        "vmin": 0.0,
+        "vmax": 360.0,
+        "palette": "twilight",
+    },
+    "wind_wave_height": {
+        "dataset": "waves",
+        "source_variable": "VHM0_WW",
+        "units": "m",
+        "vmin": 0.0,
+        "vmax": 2.5,
+        "palette": "turbo",
+    },
+    "wind_wave_direction": {
+        "dataset": "waves",
+        "source_variable": "VMDR_WW",
+        "units": "degree",
+        "vmin": 0.0,
+        "vmax": 360.0,
+        "palette": "twilight",
     },
     "current_speed": {
         "dataset": "currents",
@@ -115,8 +164,12 @@ def grid_filename_for(variable, iso_time):
 
 
 def field_for_variable(variable, waves, currents, index):
-    if variable == "wave_height":
-        return waves["VHM0"].isel(time=index)
+    meta = VARIABLES[variable]
+    source_variable = meta.get("source_variable")
+    if meta["dataset"] == "waves" and source_variable:
+        if source_variable not in waves:
+            return None
+        return waves[source_variable].isel(time=index).rename(variable)
     if variable == "current_speed":
         current_index = min(index, currents.sizes.get("time", 1) - 1)
         u = currents["uo"].isel(time=current_index)
@@ -166,6 +219,8 @@ def generate_leaflet_overlays(waves_path, currents_path, output_dir, variables=N
             overlays = []
             for index in range(waves.sizes.get("time", 1)):
                 field = field_for_variable(variable, waves, currents, index)
+                if field is None:
+                    break
                 iso_time = time_label(waves, index)
                 filename = filename_for(variable, iso_time)
                 grid_filename = grid_filename_for(variable, iso_time)
@@ -179,9 +234,12 @@ def generate_leaflet_overlays(waves_path, currents_path, output_dir, variables=N
                         "bounds": image_bounds(field),
                     }
                 )
+            if not overlays:
+                continue
 
             index_payload = {
                 "variable": variable,
+                "source_variable": meta.get("source_variable"),
                 "units": meta["units"],
                 "color_scale": {
                     "min": meta["vmin"],

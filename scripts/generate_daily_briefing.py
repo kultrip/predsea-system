@@ -165,7 +165,7 @@ def maybe_generate_leaflet_overlays(run_dir, waves_path, currents_path, skip_map
         waves_path,
         currents_path,
         run_dir,
-        variables=["wave_height", "current_speed"],
+        variables=sorted(overlay_generator.VARIABLES),
     )
 
 
