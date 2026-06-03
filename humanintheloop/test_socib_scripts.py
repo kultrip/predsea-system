@@ -192,6 +192,44 @@ class SocibPublicTests(unittest.TestCase):
         self.assertTrue(all("DataDiscovery" in url for url in urls))
         self.assertTrue(all("data-catalog/api/instruments" not in url for url in urls))
 
+    def test_fetch_public_platforms_retries_transient_timeout(self):
+        from unittest.mock import Mock
+        import requests
+        import socib_public
+
+        session = Mock()
+        first = requests.exceptions.Timeout("SOCIB slow")
+        second = Mock(status_code=200)
+        second.json.return_value = [{"id": 146}]
+        session.get.side_effect = [first, second]
+
+        payload = socib_public.fetch_public_platforms(
+            session=session,
+            timeout=60,
+            max_retries=2,
+            sleep=lambda seconds: None,
+        )
+
+        self.assertEqual(payload, [{"id": 146}])
+        self.assertEqual(session.get.call_count, 2)
+        self.assertEqual(session.get.call_args.kwargs["timeout"], 60)
+
+    def test_fetch_public_observations_returns_empty_when_socib_stays_unavailable(self):
+        from unittest.mock import Mock
+        import requests
+        import socib_public
+
+        session = Mock()
+        session.get.side_effect = requests.exceptions.Timeout("SOCIB unavailable")
+
+        observations = socib_public.fetch_public_observations(
+            session=session,
+            max_retries=2,
+            sleep=lambda seconds: None,
+        )
+
+        self.assertEqual(observations, {})
+
 
 class SocibPublicStructuredTests(unittest.TestCase):
     def test_extract_public_observations_returns_route_ready_values(self):

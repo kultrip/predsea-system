@@ -50,16 +50,22 @@ class FakeBriefing:
     def load_observations(self):
         return {"canal_de_ibiza": {"wave_height_m": 0.9}}
 
-    def write_outputs(self, snapshot, output_dir, question=None, location_label="Palma Marina", current_time=None):
+    def write_outputs(self, snapshot, output_dir, question=None, location_label="Palma Marina", current_time=None, route=None):
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         (output_path / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+        (output_path / "evidence.json").write_text(json.dumps({"decision_context": snapshot}), encoding="utf-8")
         (output_path / "briefing_linkedin.txt").write_text("linkedin", encoding="utf-8")
         (output_path / "briefing_whatsapp.txt").write_text("whatsapp", encoding="utf-8")
         (output_path / "briefing_whatsapp_screenshot_script.txt").write_text(
             "Captain: [Shared live location]\nPredSea: route read",
             encoding="utf-8",
         )
+
+
+class UnavailableSocibBriefing(FakeBriefing):
+    def load_observations(self):
+        raise TimeoutError("SOCIB DataDiscovery timed out")
 
 
 class FakeFetchData:
@@ -94,6 +100,14 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
     runner = load_runner()
     fake_fetch = FakeFetchData()
     fake_map_generator = FakeMapGenerator()
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    def fake_route_map(map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False):
+        fake_map_generator.calls.append((Path(waves_path), Path(currents_path), route["id"], snapshot["route_id"]))
+        output_path = Path(route_dir) / "route_decision_map.png"
+        output_path.write_text("fake route map", encoding="utf-8")
+        return output_path
+
+    monkeypatch.setattr(runner, "maybe_generate_route_map", fake_route_map)
     monkeypatch.setattr(
         runner,
         "load_mvp_modules",
@@ -121,18 +135,19 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
 
     assert fake_fetch.calls == 1
     assert result.routes == ["palma_ibiza", "palma_cabrera"]
-    assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "daily_snapshot.json").exists()
-    assert (tmp_path / "outputs" / "2026-05-10" / "palma_cabrera" / "briefing_whatsapp.txt").exists()
-    assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "predsea_whatsapp_figure.png").exists()
-    assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "route_decision_map.png").exists()
+    assert (result.output_dir / "palma_ibiza" / "daily_snapshot.json").exists()
+    assert (result.output_dir / "palma_cabrera" / "briefing_whatsapp.txt").exists()
+    assert (result.output_dir / "palma_ibiza" / "predsea_whatsapp_figure.png").exists()
+    assert (result.output_dir / "palma_ibiza" / "route_decision_map.png").exists()
     assert [call[2] for call in fake_map_generator.calls] == ["palma_ibiza", "palma_cabrera"]
-    manifest = json.loads((tmp_path / "outputs" / "2026-05-10" / "run_manifest.json").read_text())
+    manifest = json.loads((result.output_dir / "run_manifest.json").read_text())
     assert manifest["route_count"] == 2
     assert manifest["routes"] == ["palma_ibiza", "palma_cabrera"]
 
 
 def test_generate_daily_briefings_fails_when_required_artifact_is_missing(tmp_path, monkeypatch):
     runner = load_runner()
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
 
     class BrokenBriefing(FakeBriefing):
         def write_outputs(self, snapshot, output_dir, **kwargs):
@@ -158,13 +173,15 @@ def test_generate_daily_briefings_fails_when_required_artifact_is_missing(tmp_pa
             run_date="2026-05-10",
             route_ids=["palma_ibiza"],
             vessel_class="medium",
-            current_time="09:30",
-            skip_figures=True,
-        )
+                current_time="09:30",
+                skip_figures=True,
+                skip_maps=True,
+            )
 
 
 def test_generate_daily_briefings_fails_when_forecast_layer_is_unavailable(tmp_path, monkeypatch):
     runner = load_runner()
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
 
     class UnavailableForecastRouteAnalysis(FakeRouteAnalysis):
         def forecast_summary_from_files(self, waves_path, currents_path, route):
@@ -200,9 +217,52 @@ def test_generate_daily_briefings_fails_when_forecast_layer_is_unavailable(tmp_p
         )
 
 
+def test_generate_daily_briefings_continues_when_socib_observations_timeout(tmp_path, monkeypatch):
+    runner = load_runner()
+    fake_fetch = FakeFetchData()
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=FakeRouteAnalysis(),
+            briefing=UnavailableSocibBriefing(),
+            fetch_data=fake_fetch,
+            chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
+        ),
+    )
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
+
+    result = runner.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-05-10",
+        route_ids=["palma_ibiza"],
+        vessel_class="medium",
+        current_time="09:30",
+        skip_figures=True,
+        skip_maps=True,
+    )
+
+    snapshot = json.loads(
+        (result.output_dir / "palma_ibiza" / "daily_snapshot.json").read_text(encoding="utf-8")
+    )
+    assert fake_fetch.calls == 1
+    assert snapshot["observations"] == {}
+    assert snapshot["recommendation"]["confidence"] == "medium"
+
+
 def test_relative_logo_path_resolves_from_project_root_after_chdir(tmp_path, monkeypatch):
     runner = load_runner()
     fake_chat = FakeChatFigure()
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        runner,
+        "maybe_generate_route_map",
+        lambda map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False: (
+            Path(route_dir) / "route_decision_map.png"
+        ).write_text("fake route map", encoding="utf-8"),
+    )
     project_root = tmp_path / "repo"
     human_dir = project_root / "humanintheloop"
     assets_dir = project_root / "assets"
@@ -225,7 +285,7 @@ def test_relative_logo_path_resolves_from_project_root_after_chdir(tmp_path, mon
         ),
     )
 
-    runner.generate_daily_briefings(
+    result = runner.generate_daily_briefings(
         output_root=tmp_path / "outputs",
         run_date="2026-05-10",
         route_ids=["palma_ibiza"],
@@ -235,4 +295,4 @@ def test_relative_logo_path_resolves_from_project_root_after_chdir(tmp_path, mon
     )
 
     assert fake_chat.logo_paths == [logo]
-    assert (tmp_path / "outputs" / "2026-05-10" / "palma_ibiza" / "predsea_whatsapp_figure.png").exists()
+    assert (result.output_dir / "palma_ibiza" / "predsea_whatsapp_figure.png").exists()

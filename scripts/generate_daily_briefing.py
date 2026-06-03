@@ -119,6 +119,14 @@ def validate_forecast_available(forecast, route_id):
         raise RuntimeError(f"Forecast layer unavailable for {route_id}: {', '.join(missing)}")
 
 
+def safe_load_observations(briefing):
+    try:
+        return briefing.load_observations()
+    except Exception as error:
+        print(f"Warning: SOCIB observations unavailable; continuing without buoy truth. {error}")
+        return {}
+
+
 def maybe_generate_chat_figure(chat_figure, route_dir, logo_path, skip_figures=False):
     if skip_figures:
         return None
@@ -240,7 +248,7 @@ def generate_daily_briefings(
     routes = modules.route_analysis.load_routes()
 
     with pushd(HUMANINTHELOOP_DIR):
-        observations = modules.briefing.load_observations()
+        observations = safe_load_observations(modules.briefing)
         modules.fetch_data.get_balearic_forecast(dry_run=False)
         waves_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc"
         currents_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc"

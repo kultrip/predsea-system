@@ -14,9 +14,7 @@ MVP_DATA_DIR = Path("mvp_data")
 VALIDATION_DIR = MVP_DATA_DIR / "validation"
 SOCIB_SERIES_URL = "http://apps.socib.es/DataDiscovery/variable-plotting-data"
 def load_observations():
-    response = socib_public.requests.get(socib_public.PUBLIC_URL, timeout=30)
-    response.raise_for_status()
-    return socib_public.extract_public_observations(response.json())
+    return socib_public.fetch_public_observations()
 
 
 def validate_route_snapshot(snapshot, observations):

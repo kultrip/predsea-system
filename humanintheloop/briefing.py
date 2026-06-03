@@ -15,9 +15,7 @@ OUTPUT_DIR = Path("mvp_data")
 
 
 def load_observations():
-    response = socib_public.requests.get(socib_public.PUBLIC_URL, timeout=30)
-    response.raise_for_status()
-    return socib_public.extract_public_observations(response.json())
+    return socib_public.fetch_public_observations()
 
 
 def build_forecast_summary(route):

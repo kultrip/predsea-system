@@ -1,4 +1,5 @@
 import requests
+import time
 from datetime import datetime, timezone
 
 # This public DataDiscovery endpoint does NOT require an API key.
@@ -32,6 +33,9 @@ NUMERIC_VARIABLES = {
     "air_pressure_at_sea_level": "sea_level_pressure_hpa",
 }
 MAX_OBSERVATION_AGE_HOURS = 48
+DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_BACKOFF_SECONDS = 2
 
 
 def format_timestamp(epoch_seconds):
@@ -63,18 +67,58 @@ def important_values(platform):
                 values.append((TARGET_VARIABLES[standard_name], variable.get("lastSampleValue", "N/A")))
     return values
 
+
+def fetch_public_platforms(
+    session=None,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
+    backoff_seconds=DEFAULT_BACKOFF_SECONDS,
+    sleep=time.sleep,
+):
+    session = session or requests.Session()
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            response = session.get(PUBLIC_URL, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as error:
+            last_error = error
+            if attempt + 1 >= max_retries:
+                raise
+            sleep(backoff_seconds * (2**attempt))
+    raise last_error
+
+
+def fetch_public_observations(
+    session=None,
+    timeout=DEFAULT_TIMEOUT_SECONDS,
+    max_retries=DEFAULT_MAX_RETRIES,
+    backoff_seconds=DEFAULT_BACKOFF_SECONDS,
+    sleep=time.sleep,
+    now=None,
+):
+    try:
+        platforms = fetch_public_platforms(
+            session=session,
+            timeout=timeout,
+            max_retries=max_retries,
+            backoff_seconds=backoff_seconds,
+            sleep=sleep,
+        )
+    except requests.exceptions.RequestException as error:
+        print(f"Warning: SOCIB observations unavailable after {max_retries} attempt(s): {error}")
+        return {}
+    return extract_public_observations(platforms, now=now)
+
+
 def get_public_data():
     print("--- Fetching Public SOCIB Data (No Key Required) ---")
     try:
-        response = requests.get(PUBLIC_URL, timeout=30)
-        if response.status_code != 200:
-            print(f"Failed to reach SOCIB DataDiscovery: {response.status_code}")
-            print(response.text[:300])
-            return
-
+        payload = fetch_public_platforms()
         platforms = {
             platform.get("id"): platform
-            for platform in response.json()
+            for platform in payload
             if platform.get("id") in TARGET_PLATFORMS
         }
         for platform_id, name in TARGET_PLATFORMS.items():
