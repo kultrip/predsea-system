@@ -44,7 +44,11 @@ def answer_question(question, snapshot, location_label="shared location", curren
             recommendation = f"use the direct route during the {best_window} window; reassess if leaving later"
         reason = f"after the best window, waves/current can increase fuel burn and comfort risk. Current forecast peak: {wave_max} m around {wave_peak}"
     elif intent == "leave_window":
-        if is_late_day(current_time):
+        route_window = summarize_best_departure_window(forecast)
+        if route_window and not is_late_day(current_time) and not morning_window_passed:
+            recommendation = route_window["recommendation"]
+            reason = route_window["reason"]
+        elif is_late_day(current_time):
             recommendation = "today's practical daylight window has passed; use this as tomorrow morning planning guidance"
             reason = f"latest route signal is: {watch_out}. Recheck the morning run and buoy observations before committing"
         elif morning_window_passed:
@@ -71,6 +75,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         recommendation = best_window
         reason = watch_out
 
+    evidence_note = render_evidence_note(forecast)
     answer = render_captain_answer(
         route=snapshot.get("route"),
         intent=intent,
@@ -78,6 +83,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         reason=reason,
         confidence=confidence,
         vessel_advice=vessel_advice,
+        evidence_note=evidence_note,
     )
     return {
         "intent": intent,
@@ -87,7 +93,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
     }
 
 
-def render_captain_answer(route, intent, recommendation, reason, confidence, vessel_advice=None):
+def render_captain_answer(route, intent, recommendation, reason, confidence, vessel_advice=None, evidence_note=None):
     route_prefix = f"{route}: " if route else ""
     lines = []
 
@@ -112,6 +118,9 @@ def render_captain_answer(route, intent, recommendation, reason, confidence, ves
 
     if vessel_advice:
         lines.append(render_vessel_context(vessel_advice))
+
+    if evidence_note:
+        lines.append(evidence_note)
 
     lines.append(f"Confidence: {confidence}.")
     return "\n\n".join(lines)
@@ -213,6 +222,62 @@ def summarize_requested_time(requested_time, forecast):
     if current is not None:
         reason = f"{reason}; current about {current:.1f} kn"
     return {"recommendation": recommendation, "reason": reason}
+
+
+def summarize_best_departure_window(forecast):
+    hourly = forecast.get("hourly") or []
+    peak_time = forecast.get("wave_peak_time", "N/A")
+    peak_wave = forecast.get("wave_max_m")
+    candidates = [
+        row for row in hourly
+        if row.get("time") != peak_time and row.get("wave_m") is not None
+    ]
+    if not candidates or peak_wave is None or peak_time == "N/A":
+        return None
+
+    best = min(candidates, key=lambda row: row.get("wave_m", 999))
+    best_time = best.get("time")
+    best_wave = best.get("wave_m")
+    if best_time is None or best_wave is None:
+        return None
+
+    peak_direction = forecast.get("wave_peak_direction_deg")
+    direction_text = ""
+    if peak_direction is not None:
+        direction_text = f" Mean wave direction near the peak is about {peak_direction:.0f} degrees"
+
+    return {
+        "recommendation": f"avoid the {peak_time} peak; the lower sampled window is around {best_time}",
+        "reason": (
+            f"forecast peak is near {peak_wave:.1f} m around {peak_time}, while the sampled route value "
+            f"near {best_time} is about {best_wave:.1f} m.{direction_text}"
+        ),
+    }
+
+
+def render_evidence_note(forecast):
+    has_components = any(
+        key in forecast
+        for key in (
+            "swell_1_height_m",
+            "swell_1_direction_deg",
+            "swell_2_height_m",
+            "swell_2_direction_deg",
+            "wind_wave_height_m",
+            "wind_wave_direction_deg",
+        )
+    )
+    if has_components:
+        return None
+    if forecast.get("wave_peak_direction_deg") is not None:
+        return (
+            "Evidence note: this uses combined wave height and mean wave direction; "
+            "swell and wind-wave components are not available in this evidence package."
+        )
+    return (
+        "Evidence note: this uses combined wave height only; swell direction and wind-wave "
+        "components are not available in this evidence package."
+    )
 
 
 def is_morning_window_passed(best_window, current_time):
