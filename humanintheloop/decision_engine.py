@@ -44,7 +44,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
             recommendation = f"use the direct route during the {best_window} window; reassess if leaving later"
         reason = f"after the best window, waves/current can increase fuel burn and comfort risk. Current forecast peak: {wave_max} m around {wave_peak}"
     elif intent == "leave_window":
-        route_window = summarize_best_departure_window(forecast)
+        route_window = summarize_best_departure_window(forecast, current_time=current_time)
         if route_window and not is_late_day(current_time) and not morning_window_passed:
             recommendation = route_window["recommendation"]
             reason = route_window["reason"]
@@ -224,13 +224,15 @@ def summarize_requested_time(requested_time, forecast):
     return {"recommendation": recommendation, "reason": reason}
 
 
-def summarize_best_departure_window(forecast):
+def summarize_best_departure_window(forecast, current_time=None):
     hourly = forecast.get("hourly") or []
     peak_time = forecast.get("wave_peak_time", "N/A")
     peak_wave = forecast.get("wave_max_m")
     candidates = [
         row for row in hourly
-        if row.get("time") != peak_time and row.get("wave_m") is not None
+        if row.get("time") != peak_time
+        and row.get("wave_m") is not None
+        and is_future_or_current_time(row.get("time"), current_time)
     ]
     if not candidates or peak_wave is None or peak_time == "N/A":
         return None
@@ -253,6 +255,23 @@ def summarize_best_departure_window(forecast):
             f"near {best_time} is about {best_wave:.1f} m.{direction_text}"
         ),
     }
+
+
+def is_future_or_current_time(candidate_time, current_time):
+    if not current_time or not candidate_time:
+        return True
+    candidate_minutes = time_to_minutes(candidate_time)
+    current_minutes = time_to_minutes(current_time)
+    if candidate_minutes is None or current_minutes is None:
+        return True
+    return candidate_minutes >= current_minutes
+
+
+def time_to_minutes(value):
+    match = re.search(r"\b([01]?\d|2[0-3])(?::([0-5]\d))?\b", str(value))
+    if not match:
+        return None
+    return int(match.group(1)) * 60 + int(match.group(2) or "00")
 
 
 def render_evidence_note(forecast):

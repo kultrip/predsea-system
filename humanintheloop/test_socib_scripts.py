@@ -806,6 +806,39 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("swell and wind-wave components are not available", decision["answer"])
         self.assertNotIn("leave morning to early afternoon", decision["answer"])
 
+    def test_best_departure_window_does_not_recommend_past_time(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+            "forecast": {
+                "wave_max_m": 1.6,
+                "wave_peak_time": "08:00",
+                "wave_peak_direction_deg": 60,
+                "hourly": [
+                    {"time": "05:00", "wave_m": 0.7, "wave_direction_deg": 55},
+                    {"time": "08:00", "wave_m": 1.6, "wave_direction_deg": 60},
+                    {"time": "11:00", "wave_m": 1.2, "wave_direction_deg": 65},
+                ],
+            },
+            "recommendation": {
+                "best_window": "morning to early afternoon",
+                "watch_out": "forecast peak near 1.6 m around 08:00",
+                "confidence": "medium",
+                "vessel_advice": "caution for vessels 15-24m; use the best weather window",
+            },
+        }
+
+        decision = decision_engine.answer_question(
+            "What is the best time to leave Palma to Ibiza?",
+            snapshot,
+            current_time="07:00",
+        )
+
+        self.assertIn("lower sampled window is around 11:00", decision["answer"])
+        self.assertNotIn("05:00", decision["answer"])
+
     def test_conditions_soon_does_not_warn_when_peak_is_calm(self):
         import decision_engine
 
