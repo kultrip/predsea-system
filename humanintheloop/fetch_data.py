@@ -1,6 +1,7 @@
 import copernicusmarine
 import datetime
 import os
+import time
 
 OUTPUT_DIR = "./mvp_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -8,6 +9,8 @@ REQUIRED_COPERNICUS_ENV = (
     "COPERNICUSMARINE_SERVICE_USERNAME",
     "COPERNICUSMARINE_SERVICE_PASSWORD",
 )
+COPERNICUS_MAX_ATTEMPTS = int(os.getenv("PREDSEA_COPERNICUS_MAX_ATTEMPTS", "3"))
+COPERNICUS_BACKOFF_SECONDS = float(os.getenv("PREDSEA_COPERNICUS_BACKOFF_SECONDS", "20"))
 
 # Current Copernicus Marine Mediterranean analysis/forecast dataset IDs.
 PHY_ID = "cmems_mod_med_phy-cur_anfc_4.2km-2D_PT1H-m"
@@ -49,21 +52,70 @@ def validate_copernicus_credentials_available():
 
 
 def subset_balearic_forecast(dataset_id, variables, output_filename, dry_run=False):
-    return copernicusmarine.subset(
+    return subset_with_retries(
         dataset_id=dataset_id,
         variables=variables,
-        minimum_longitude=lon_min,
-        maximum_longitude=lon_max,
-        minimum_latitude=lat_min,
-        maximum_latitude=lat_max,
-        start_datetime=start_time,
-        end_datetime=end_time,
-        output_directory=OUTPUT_DIR,
         output_filename=output_filename,
-        file_format="netcdf",
-        overwrite=True,
         dry_run=dry_run,
     )
+
+
+def subset_with_retries(dataset_id, variables, output_filename, dry_run=False):
+    attempts = 1 if dry_run else max(1, COPERNICUS_MAX_ATTEMPTS)
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return copernicusmarine.subset(
+                dataset_id=dataset_id,
+                variables=variables,
+                minimum_longitude=lon_min,
+                maximum_longitude=lon_max,
+                minimum_latitude=lat_min,
+                maximum_latitude=lat_max,
+                start_datetime=start_time,
+                end_datetime=end_time,
+                output_directory=OUTPUT_DIR,
+                output_filename=output_filename,
+                file_format="netcdf",
+                overwrite=True,
+                dry_run=dry_run,
+            )
+        except Exception as error:
+            last_error = error
+            if attempt >= attempts or not is_retryable_copernicus_error(error):
+                raise
+            wait_seconds = COPERNICUS_BACKOFF_SECONDS * (2 ** (attempt - 1))
+            print(
+                f"Copernicus subset failed for {dataset_id} on attempt {attempt}/{attempts}: {error}. "
+                f"Retrying in {wait_seconds:.0f}s."
+            )
+            time.sleep(wait_seconds)
+    raise last_error
+
+
+def is_retryable_copernicus_error(error):
+    text = f"{type(error).__name__}: {error}".lower()
+    non_retryable_markers = (
+        "variable not found",
+        "variables not found",
+        "not found in dataset",
+        "unknown variable",
+        "does not exist in dataset",
+    )
+    if any(marker in text for marker in non_retryable_markers):
+        return False
+    retryable_markers = (
+        "couldnotconnecttoauthenticationsystem",
+        "connecttimeout",
+        "connection",
+        "timeout",
+        "temporarily unavailable",
+        "503",
+        "502",
+        "504",
+        "429",
+    )
+    return any(marker in text for marker in retryable_markers)
 
 
 def fetch_wave_forecast(dry_run=False):

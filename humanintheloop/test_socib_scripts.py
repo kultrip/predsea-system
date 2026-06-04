@@ -56,6 +56,21 @@ class FetchDataTests(unittest.TestCase):
         self.assertEqual(retry_call["variables"], fetch_data.CORE_WAVE_VARIABLES)
         self.assertEqual(retry_call["output_filename"], "balearic_waves.nc")
 
+    @patch("fetch_data.time.sleep")
+    @patch("fetch_data.copernicusmarine.subset")
+    def test_balearic_forecast_retries_transient_copernicus_auth_failure(self, subset, sleep):
+        import fetch_data
+
+        subset.side_effect = [RuntimeError("CouldNotConnectToAuthenticationSystem"), None, None]
+
+        fetch_data.get_balearic_forecast(dry_run=False)
+
+        self.assertEqual(subset.call_count, 3)
+        sleep.assert_called()
+        current_call = subset.call_args_list[1].kwargs
+        self.assertEqual(current_call["dataset_id"], fetch_data.PHY_ID)
+        self.assertEqual(current_call["variables"], ["uo", "vo"])
+
     @patch("fetch_data.copernicusmarine.subset")
     @patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}, clear=True)
     def test_balearic_forecast_fails_fast_in_ci_without_copernicus_credentials(self, subset):
