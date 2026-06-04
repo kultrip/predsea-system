@@ -952,6 +952,13 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="07:00",
         )
 
+        self.assertIn("Decision:", decision["answer"])
+        self.assertIn("Best window:", decision["answer"])
+        self.assertIn("Comfort:", decision["answer"])
+        self.assertIn("Risk:", decision["answer"])
+        self.assertIn("Why:", decision["answer"])
+        self.assertIn("What could change:", decision["answer"])
+        self.assertIn("Confidence:", decision["answer"])
         self.assertIn("lower sampled window is around 11:00", decision["answer"])
         self.assertNotIn("05:00", decision["answer"])
 
@@ -1019,8 +1026,9 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="09:30",
         )
 
-        self.assertIn("conditions look workable", decision["answer"])
+        self.assertIn("Conditions look workable", decision["answer"])
         self.assertIn("0.5 m", decision["answer"])
+        self.assertIn("For this vessel size:", decision["answer"])
         self.assertIn("15-24m", decision["answer"])
         self.assertNotIn("expect conditions to worsen", decision["answer"])
 
@@ -1045,7 +1053,39 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="09:30",
         )
 
+        self.assertIn("For this vessel size:", decision["answer"])
         self.assertIn("restricted for vessels under 15m", decision["answer"])
+
+    def test_answer_question_handles_missing_vessel_and_component_information(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "forecast": {
+                "wave_max_m": 1.3,
+                "wave_peak_time": "14:00",
+                "wave_peak_direction_deg": 90,
+                "hourly": [{"time": "09:00", "wave_m": 1.0}],
+            },
+            "recommendation": {
+                "best_window": "morning",
+                "watch_out": "forecast peak near 1.3 m around 14:00",
+                "confidence": "medium",
+            },
+        }
+
+        decision = decision_engine.answer_question(
+            "Would Palma to Ibiza feel comfortable tomorrow morning?",
+            snapshot,
+            current_time="21:30",
+        )
+
+        self.assertIn("Decision:", decision["answer"])
+        self.assertIn("Comfort:", decision["answer"])
+        self.assertIn("For this vessel size: vessel size was not provided", decision["answer"])
+        self.assertIn("What could change:", decision["answer"])
+        self.assertIn("swell and wind-wave partition data changes the comfort read", decision["answer"])
+        self.assertIn("Evidence note:", decision["answer"])
 
     def test_render_decision_screenshot_script_uses_shared_location_and_question(self):
         import decision_engine

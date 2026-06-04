@@ -213,9 +213,15 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     payload = response.json()
     assert payload["route_id"] == "palma_ibiza"
     assert payload["intent"] == "conditions_soon"
-    assert "conditions look workable" in payload["answer"]
-    assert "Recommendation:" not in payload["answer"]
-    assert "Reason:" not in payload["answer"]
+    assert "Conditions look workable" in payload["answer"]
+    assert "Decision:" in payload["answer"]
+    assert "Best window:" in payload["answer"]
+    assert "Comfort:" in payload["answer"]
+    assert "Risk:" in payload["answer"]
+    assert "Why:" in payload["answer"]
+    assert "What could change:" in payload["answer"]
+    assert "Confidence:" in payload["answer"]
+    assert "For this vessel size:" in payload["answer"]
     assert payload["evidence_used"]["hourly_points"] == 2
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
 

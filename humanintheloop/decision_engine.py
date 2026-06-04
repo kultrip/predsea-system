@@ -83,6 +83,10 @@ def answer_question(question, snapshot, location_label="shared location", curren
         reason=reason,
         confidence=confidence,
         vessel_advice=vessel_advice,
+        vessel_profile=snapshot.get("vessel_profile"),
+        vessel_class=snapshot.get("vessel_class"),
+        vessel_class_assumed=snapshot.get("vessel_class_assumed", False),
+        forecast=forecast,
         evidence_note=evidence_note,
     )
     return {
@@ -93,34 +97,40 @@ def answer_question(question, snapshot, location_label="shared location", curren
     }
 
 
-def render_captain_answer(route, intent, recommendation, reason, confidence, vessel_advice=None, evidence_note=None):
+def render_captain_answer(
+    route,
+    intent,
+    recommendation,
+    reason,
+    confidence,
+    vessel_advice=None,
+    vessel_profile=None,
+    vessel_class=None,
+    vessel_class_assumed=False,
+    forecast=None,
+    evidence_note=None,
+):
     route_prefix = f"{route}: " if route else ""
-    lines = []
-
+    forecast = forecast or {}
+    display_recommendation = recommendation
     if intent == "conditions_soon" and recommendation.startswith("conditions look workable"):
-        lines.append(f"{route_prefix}conditions look workable for the next operational window.")
-        lines.append(f"{sentence_case(reason)}.")
-    elif intent == "location_safety":
-        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
-        lines.append(f"{sentence_case(reason)}.")
-    elif intent == "fuel_efficiency":
-        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
-        lines.append(f"{sentence_case(reason)}.")
-    elif intent == "leave_window":
-        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
-        lines.append(f"{sentence_case(reason)}.")
-    elif intent == "route_timing":
-        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
-        lines.append(f"{sentence_case(reason)}.")
-    else:
-        lines.append(f"{route_prefix}{sentence_case(recommendation)}.")
-        lines.append(f"{sentence_case(reason)}.")
+        display_recommendation = "conditions look workable for the next operational window"
 
-    if vessel_advice:
-        lines.append(render_vessel_context(vessel_advice))
+    comfort = render_comfort(forecast, vessel_advice, vessel_profile)
+    vessel_context = render_vessel_context(vessel_advice, vessel_profile, vessel_class, vessel_class_assumed)
+    if vessel_context:
+        comfort = f"{comfort} {vessel_context}"
 
-    if evidence_note:
-        lines.append(evidence_note)
+    lines = [
+        f"Decision: {route_prefix}{sentence_case(display_recommendation)}.",
+        f"Best window: {render_best_window(intent, display_recommendation, forecast)}",
+        f"Comfort: {comfort}",
+        f"Risk: {render_risk(forecast, vessel_advice, vessel_profile)}",
+        f"Why: {sentence_case(reason)}.",
+    ]
+
+    what_could_change = render_what_could_change(forecast, evidence_note)
+    lines.append(f"What could change: {what_could_change}")
 
     lines.append(f"Confidence: {confidence}.")
     return "\n\n".join(lines)
@@ -132,13 +142,121 @@ def sentence_case(text):
     return text[0].upper() + text[1:]
 
 
-def render_vessel_context(vessel_advice):
+def render_vessel_context(vessel_advice, vessel_profile=None, vessel_class=None, vessel_class_assumed=False):
+    if not vessel_advice and not vessel_profile:
+        return (
+            "For this vessel size: vessel size was not provided; assuming a medium 15-24m profile. "
+            "Share LOA or vessel class for a sharper read."
+        )
+
+    label = None
+    if isinstance(vessel_profile, dict):
+        label = vessel_profile.get("label")
+    if not label:
+        labels = {"small": "under 15m", "medium": "15-24m", "large": "over 24m"}
+        label = labels.get(vessel_class, "the selected vessel class")
+
+    assumption = "Assuming " if vessel_class_assumed else ""
+    if not vessel_advice:
+        return f"For this vessel size: {assumption}{label}."
     if vessel_advice.startswith("manageable for"):
         advice = vessel_advice.replace("manageable for vessels ", "manageable for ")
-        return f"For this vessel class, it looks {advice}."
+        return f"For this vessel size: {assumption}{label}, conditions look manageable."
     if vessel_advice.startswith("restricted for"):
-        return f"For this vessel class, treat it as {vessel_advice}."
-    return f"Vessel context: {vessel_advice}."
+        return f"For this vessel size: {assumption}{label}, treat it as {vessel_advice}."
+    if vessel_advice.startswith("caution for"):
+        return f"For this vessel size: {assumption}{label}, use conservative timing."
+    if vessel_advice:
+        return f"For this vessel size: {assumption}{label}, {vessel_advice}."
+    return f"For this vessel size: {assumption}{label}."
+
+
+def render_best_window(intent, recommendation, forecast):
+    peak_time = forecast.get("wave_peak_time")
+    if "lower sampled window is around" in recommendation:
+        return sentence_case(recommendation) + "."
+    if "leave " in recommendation.lower() or "depart" in recommendation.lower():
+        return sentence_case(recommendation) + "."
+    if peak_time and peak_time != "N/A":
+        return f"Prefer the lower sea-state window and avoid the forecast peak around {peak_time}."
+    if intent == "location_safety":
+        return "Stay only while sheltered; move earlier if exposure increases."
+    return "No narrow departure window identified from the available evidence."
+
+
+def render_comfort(forecast, vessel_advice, vessel_profile):
+    wave_max = forecast.get("wave_max_m")
+    if wave_max is None:
+        return "Unknown from this package; forecast wave height is missing."
+
+    manageable = None
+    restricted = None
+    if isinstance(vessel_profile, dict):
+        manageable = vessel_profile.get("manageable_m")
+        restricted = vessel_profile.get("restricted_m")
+
+    if restricted is not None and wave_max >= restricted:
+        level = "Poor"
+        detail = "Expect uncomfortable motion on exposed sections."
+    elif manageable is not None and wave_max >= manageable:
+        level = "Moderate to poor"
+        detail = "Manageable only with conservative timing; guests may find it uncomfortable."
+    elif vessel_advice and "caution" in vessel_advice:
+        level = "Moderate"
+        detail = "Workable, but not flat calm for guests or sensitive passengers."
+    else:
+        level = "Moderate to good"
+        detail = "Generally manageable, with comfort still depending on period, direction, and passenger sensitivity."
+    return f"{level}. {detail}"
+
+
+def render_risk(forecast, vessel_advice, vessel_profile):
+    wave_max = forecast.get("wave_max_m")
+    peak_time = forecast.get("wave_peak_time")
+    if wave_max is None:
+        return "Manual review required; wave forecast is missing."
+    if vessel_advice and "restricted" in vessel_advice:
+        level = "High for this vessel size"
+    elif vessel_advice and "caution" in vessel_advice:
+        level = "Moderate"
+    else:
+        level = "Low to moderate"
+
+    peak = f" Peak wave height is near {wave_max:.1f} m"
+    if peak_time and peak_time != "N/A":
+        peak = f"{peak} around {peak_time}"
+    return f"{level}.{peak}."
+
+
+def render_what_could_change(forecast, evidence_note):
+    checks = []
+    if forecast.get("wave_peak_time") not in (None, "N/A"):
+        checks.append("the timing or height of the forecast peak shifts in the next run")
+    if not has_wave_partition_detail(forecast):
+        checks.append("swell and wind-wave partition data changes the comfort read")
+    if forecast.get("current_max_kn") is None:
+        checks.append("current data is missing or updates materially")
+    if not checks:
+        checks.append("buoy observations or the next model run diverge from this forecast")
+
+    detail = "; ".join(checks)
+    if evidence_note:
+        return f"{detail}. {evidence_note}"
+    return f"{detail}."
+
+
+def has_wave_partition_detail(forecast):
+    return any(
+        forecast.get(key) is not None
+        for key in (
+            "swell_1_height_m",
+            "swell_1_direction_deg",
+            "swell_2_height_m",
+            "swell_2_direction_deg",
+            "wind_wave_height_m",
+            "wind_wave_direction_deg",
+        )
+    )
 
 
 def classify_timing_context(question):
@@ -168,12 +286,12 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out):
             ),
         }
     if timing_context == "tomorrow":
-        coverage = f"across {hourly_count} forecast time points" if hourly_count else "in the current forecast package"
+        coverage = render_hourly_coverage(hourly_count)
         return {
             "recommendation": "Tomorrow looks workable based on the latest forecast package",
             "reason": (
-                f"the route signal remains: {watch_out}, with wave peak near {wave_max} m around {wave_peak} {coverage}."
-                " Use this as planning guidance tonight, then confirm with the morning run before committing"
+                f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                "Morning should be the better planning window; confirm with the morning run before committing"
             ),
         }
     if timing_context == "afternoon":
@@ -185,6 +303,14 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out):
         "recommendation": best_window,
         "reason": watch_out,
     }
+
+
+def render_hourly_coverage(hourly_count):
+    if not hourly_count:
+        return " in the current forecast package"
+    if hourly_count == 1:
+        return " in the available sampled forecast point"
+    return f" across {hourly_count} forecast time points"
 
 
 def extract_requested_time(question):

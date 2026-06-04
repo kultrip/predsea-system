@@ -27,6 +27,10 @@ def snapshot_for_vessel_class(snapshot, vessel_class):
 
 def answer_question(snapshot, question_request):
     adjusted = snapshot_for_vessel_class(snapshot, question_request.vessel_class)
+    provided_fields = getattr(question_request, "model_fields_set", None)
+    if provided_fields is None:
+        provided_fields = getattr(question_request, "__fields_set__", set())
+    adjusted["vessel_class_assumed"] = "vessel_class" not in provided_fields
     decision = decision_engine.answer_question(
         question_request.question,
         adjusted,
