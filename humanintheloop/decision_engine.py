@@ -1,5 +1,7 @@
 import re
 
+import captain_knowledge
+
 
 def classify_question(question):
     text = question.lower()
@@ -68,7 +70,13 @@ def answer_question(question, snapshot, location_label="shared location", curren
             recommendation = "expect conditions to worsen if your timing overlaps the forecast peak"
             reason = f"forecast wave peak is near {wave_max} m around {wave_peak}"
     elif intent == "route_timing":
-        route_timing = summarize_route_timing(timing_context, forecast, best_window, watch_out)
+        route_timing = summarize_route_timing(
+            timing_context,
+            forecast,
+            best_window,
+            watch_out,
+            vessel_profile=snapshot.get("vessel_profile"),
+        )
         recommendation = route_timing["recommendation"]
         reason = route_timing["reason"]
     else:
@@ -76,6 +84,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         reason = watch_out
 
     evidence_note = render_evidence_note(forecast)
+    captain_rule_matches = captain_knowledge.match_rules(snapshot, question_intent=intent)
     answer = render_captain_answer(
         route=snapshot.get("route"),
         intent=intent,
@@ -89,12 +98,14 @@ def answer_question(question, snapshot, location_label="shared location", curren
         forecast=forecast,
         freshness=snapshot.get("evidence_freshness"),
         evidence_note=evidence_note,
+        captain_rule_matches=captain_rule_matches,
     )
     return {
         "intent": intent,
         "question": question,
         "answer": answer,
         "location_label": location_label,
+        "captain_knowledge": captain_knowledge.summarize_matches(captain_rule_matches),
     }
 
 
@@ -111,6 +122,7 @@ def render_captain_answer(
     forecast=None,
     freshness=None,
     evidence_note=None,
+    captain_rule_matches=None,
 ):
     route_prefix = f"{route}: " if route else ""
     forecast = forecast or {}
@@ -126,21 +138,41 @@ def render_captain_answer(
     freshness = freshness or {}
     freshness_warning = freshness.get("freshness_warning")
 
+    route_segment_reason = render_route_segment_reason(forecast)
+    captain_rule_reason = render_captain_rule_reason(captain_rule_matches)
+    why_parts = [sentence_case(reason).rstrip(".")]
+    if route_segment_reason:
+        why_parts.append(route_segment_reason.rstrip("."))
+    if captain_rule_reason:
+        why_parts.append(captain_rule_reason.rstrip("."))
+
     lines = [
         f"Decision: {render_decision_line(route_prefix, intent, display_recommendation, forecast, freshness)}",
         f"Best window: {render_best_window(intent, display_recommendation, forecast)}",
         f"Comfort: {comfort}",
         f"Risk: {render_risk(forecast, vessel_advice, vessel_profile)}",
-        f"Why: {sentence_case(reason)}.",
+        f"Why: {'. '.join(unique_sentences(why_parts))}.",
     ]
 
-    what_could_change = render_what_could_change(forecast, evidence_note)
+    what_could_change = render_what_could_change(forecast, evidence_note, captain_rule_matches)
     if freshness_warning:
         what_could_change = f"{freshness_warning} {sentence_case(what_could_change)}"
     lines.append(f"What could change: {what_could_change}")
 
     lines.append(f"Confidence: {render_confidence(confidence, freshness)}")
     return "\n\n".join(lines)
+
+
+def unique_sentences(parts):
+    seen = set()
+    unique = []
+    for part in parts:
+        normalized = " ".join(str(part).lower().split())
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        unique.append(part)
+    return unique
 
 
 def sentence_case(text):
@@ -266,7 +298,35 @@ def render_risk(forecast, vessel_advice, vessel_profile):
     return f"{level}.{peak}."
 
 
-def render_what_could_change(forecast, evidence_note):
+def render_route_segment_reason(forecast):
+    worst_segment = ((forecast.get("route_segments") or {}).get("worst_segment") or {})
+    if not worst_segment:
+        return None
+    name = worst_segment.get("name")
+    peak_time = worst_segment.get("peak_time")
+    wave = worst_segment.get("max_wave_m")
+    sea_state = worst_segment.get("sea_state")
+    if not name or wave is None:
+        return None
+    detail = f"Worst route segment is {name}, near {wave:.1f} m"
+    if peak_time:
+        detail = f"{detail} around {peak_time}"
+    if sea_state:
+        detail = f"{detail}, with a {sea_state}"
+    return f"{detail}."
+
+
+def render_captain_rule_reason(captain_rule_matches):
+    if not captain_rule_matches:
+        return None
+    rule = captain_rule_matches[0]
+    consequence = rule.get("operational_consequence")
+    if not consequence:
+        return None
+    return f"Captain knowledge: {consequence}"
+
+
+def render_what_could_change(forecast, evidence_note, captain_rule_matches=None):
     checks = []
     if forecast.get("wave_peak_time") not in (None, "N/A"):
         checks.append("the timing or height of the forecast peak shifts in the next run")
@@ -276,8 +336,12 @@ def render_what_could_change(forecast, evidence_note):
         checks.append("current data is missing or updates materially")
     if not checks:
         checks.append("buoy observations or the next model run diverge from this forecast")
+    if captain_rule_matches:
+        action = captain_rule_matches[0].get("preferred_action")
+        if action:
+            checks.append(action.rstrip("."))
 
-    detail = "; ".join(checks)
+    detail = "; ".join(check.rstrip(".") for check in checks)
     if evidence_note:
         return f"{detail}. {evidence_note}"
     return f"{detail}."
@@ -315,7 +379,7 @@ def classify_timing_context(question):
     return None
 
 
-def summarize_route_timing(timing_context, forecast, best_window, watch_out):
+def summarize_route_timing(timing_context, forecast, best_window, watch_out, vessel_profile=None):
     wave_max = forecast.get("wave_max_m", "N/A")
     wave_peak = forecast.get("wave_peak_time", "N/A")
     current_max = forecast.get("current_max_kn")
@@ -331,6 +395,26 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out):
             ),
         }
     if timing_context == "tomorrow":
+        if isinstance(wave_max, (int, float)) and isinstance(vessel_profile, dict):
+            restricted = vessel_profile.get("restricted_m")
+            manageable = vessel_profile.get("manageable_m")
+            coverage = render_hourly_coverage(hourly_count)
+            if restricted is not None and wave_max >= restricted:
+                return {
+                    "recommendation": "tomorrow morning is not a comfort recommendation for this vessel size unless the morning run improves",
+                    "reason": (
+                        f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                        "That is above this vessel profile's restricted threshold, so the morning peak is the watch-out, not the best window"
+                    ),
+                }
+            if manageable is not None and wave_max >= manageable:
+                return {
+                    "recommendation": "tomorrow looks possible only with conservative timing for this vessel size",
+                    "reason": (
+                        f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                        "Use the lower sampled window and confirm with the morning run before committing"
+                    ),
+                }
         coverage = render_hourly_coverage(hourly_count)
         return {
             "recommendation": "Tomorrow looks workable based on the latest forecast package",

@@ -64,6 +64,7 @@ def evidence_used(snapshot):
             if forecast.get(key) is not None
         ),
         "hourly_points": len(forecast.get("hourly") or []),
+        "route_segments": sorted((forecast.get("route_segments") or {}).keys()),
         "observations": available_observations,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
     }

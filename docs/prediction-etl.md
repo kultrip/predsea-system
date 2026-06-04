@@ -453,7 +453,7 @@ metadata. If it changes advice, also update `decision_engine.py` and tests.
 Captain knowledge should not live in the ETL. It belongs in the decision layer
 above the normalized evidence.
 
-Recommended future structure:
+Current structure:
 
 ```text
 humanintheloop/captain_knowledge/
@@ -461,33 +461,26 @@ humanintheloop/captain_knowledge/
   graham_rules.yaml
   vessel_thresholds.yaml
   route_exposure_notes.yaml
+humanintheloop/captain_knowledge.py
 ```
 
 The ETL produces evidence. Graham's knowledge interprets evidence.
 
-Recommended format:
+Rule format:
 
-```yaml
-id: graham-menorca-channel-north-wind-small-vessels
-source: Graham interview
-region: Menorca Channel
-routes:
-  - alcudia_ciutadella
-vessel_classes:
-  - small
-conditions:
-  wave_height_m_min: 1.2
-  wind_direction: N-NW
-  current_against_wind: true
-operational_read: >
-  For smaller vessels, a moderate northerly with current against wind can feel
-  worse than the headline wave height suggests.
-advice: >
-  Prefer an earlier crossing or wait for the easing period. Do not rely only on
-  the significant wave height number.
-confidence: expert_rule
-notes: >
-  Convert interview stories into rules only after Charles reviews them.
+```json
+{
+  "id": "menorca_channel_northerly_more_exposed",
+  "source": "graham",
+  "condition": {
+    "route_ids": ["alcudia_ciutadella"],
+    "direction_sector": "N",
+    "min_wave_m": 1.2
+  },
+  "operational_consequence": "The Menorca Channel deserves a more conservative read with northerly sea states than the same height on more protected routes.",
+  "preferred_action": "Prefer early conservative timing or wait for the easing period, especially for smaller vessels.",
+  "confidence": "high"
+}
 ```
 
 Good Graham knowledge is specific:
@@ -515,13 +508,16 @@ Future files likely to change:
 ```text
 humanintheloop/captain_knowledge/graham_rules.yaml
 humanintheloop/captain_knowledge/graham_cases.json
+humanintheloop/captain_knowledge/vessel_thresholds.yaml
 humanintheloop/captain_knowledge/route_exposure_notes.yaml
+humanintheloop/captain_knowledge.py
 humanintheloop/decision_engine.py
-humanintheloop/test_socib_scripts.py
+humanintheloop/test_captain_knowledge.py
+humanintheloop/test_decision_engine.py
 ```
 
-Longer term, Graham's reviewed rules should feed an interpretation layer before
-the final answer is rendered:
+Graham's reviewed rules now feed the interpretation layer before the final
+answer is rendered:
 
 ```text
 evidence package
@@ -529,6 +525,23 @@ evidence package
         -> route/vessel/timing interpretation
         -> captain-facing answer
 ```
+
+Route evidence also includes operational segments:
+
+```json
+{
+  "route_segments": {
+    "departure_conditions": {},
+    "open_water_conditions": {},
+    "arrival_conditions": {},
+    "worst_segment": {},
+    "best_departure_window": {}
+  }
+}
+```
+
+This lets PredSea say, for example, "Worst conditions are expected in the
+open-water section around 14:00" instead of only reporting the route maximum.
 
 ## Where Internal Dynamical Models Would Fit Later
 

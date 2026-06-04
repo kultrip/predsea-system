@@ -39,6 +39,33 @@ curl -X POST http://127.0.0.1:8000/routes/palma_ibiza/question \
   }'
 ```
 
+Route question responses keep the same top-level shape and add:
+
+```json
+{
+  "captain_knowledge": [
+    {
+      "id": "small_vessels_need_conservative_timing",
+      "consequence": "A sea state that is manageable for larger vessels can feel uncomfortable or limiting for vessels under 15m.",
+      "preferred_action": "Use the calmest available window and avoid exposed peak periods.",
+      "confidence": "high"
+    }
+  ],
+  "evidence_used": {
+    "route_segments": [
+      "arrival_conditions",
+      "best_departure_window",
+      "departure_conditions",
+      "open_water_conditions",
+      "worst_segment"
+    ]
+  }
+}
+```
+
+Matt's agent can use `captain_knowledge` as visible reasoning, while the
+captain-facing `answer` remains a concise operational recommendation.
+
 Ask a location-based question from a shared GPS point:
 
 ```bash

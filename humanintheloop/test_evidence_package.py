@@ -52,6 +52,18 @@ def sample_snapshot():
                 },
             ],
             "sampling_method": "route_exposed_max",
+            "route_segments": {
+                "departure_conditions": {"name": "Palma Bay offshore", "max_wave_m": 0.5, "peak_time": "17:00"},
+                "open_water_conditions": {"name": "Ibiza Channel", "max_wave_m": 0.8, "peak_time": "17:00"},
+                "arrival_conditions": {"name": "Ibiza Channel", "max_wave_m": 0.8, "peak_time": "17:00"},
+                "worst_segment": {
+                    "id": "open_water_conditions",
+                    "name": "Ibiza Channel",
+                    "max_wave_m": 0.8,
+                    "peak_time": "17:00",
+                },
+                "best_departure_window": {"time": "09:00", "wave_m": 0.3},
+            },
         },
         "recommendation": {
             "best_window": "before late afternoon",
@@ -102,6 +114,7 @@ def test_build_route_evidence_package_has_decision_ready_structure():
         ],
     }
     assert package["forecast"]["variables"]["wave_height_m"]["max"] == 0.8
+    assert package["forecast"]["route_segments"]["worst_segment"]["name"] == "Ibiza Channel"
     assert package["forecast"]["variables"]["wave_height_m"]["peak_sea_state"] == "stern quartering sea"
     assert package["forecast"]["variables"]["swell_1"]["height_m"] == 0.5
     assert package["forecast"]["variables"]["wind_wave"]["direction_deg"] == 100.0

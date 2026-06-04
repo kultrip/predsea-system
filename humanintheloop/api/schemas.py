@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -40,6 +40,7 @@ class QuestionResponse(BaseModel):
     evidence_timestamp: Optional[str] = None
     freshness_status: str
     freshness_warning: Optional[str] = None
+    captain_knowledge: List[Dict[str, Any]] = Field(default_factory=list)
     evidence_used: Dict[str, Any]
 
 

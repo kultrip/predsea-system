@@ -1,0 +1,25 @@
+[
+  {
+    "case_id": "graham_universal_001",
+    "captain": "graham",
+    "region": "universal",
+    "transferability": "universal",
+    "question": "Why did a moderate wave height still feel uncomfortable?",
+    "recommendation": "Delay or choose more sheltered timing when wind and current create short, uncomfortable seas.",
+    "actual_outcome": "Moderate wave height created more motion than expected because direction and current mattered.",
+    "feedback": "Wave height alone is not enough for a comfort decision.",
+    "rating": 5
+  },
+  {
+    "case_id": "graham_balearics_001",
+    "captain": "graham",
+    "region": "Balearic Islands",
+    "transferability": "local_only",
+    "route": "palma_ibiza",
+    "question": "Would Palma to Ibiza feel comfortable for a smaller vessel?",
+    "recommendation": "Leave earlier or wait when NW swell affects the Ibiza Channel.",
+    "actual_outcome": "The exposed channel was the relevant comfort constraint, not the route-average sea height.",
+    "feedback": "Flag channel exposure and route-relative sea state clearly.",
+    "rating": 5
+  }
+]

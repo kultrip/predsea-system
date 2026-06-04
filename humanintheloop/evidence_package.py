@@ -30,6 +30,7 @@ def build_route_evidence_package(snapshot, route):
         },
         "forecast": {
             "sampling_method": forecast.get("sampling_method"),
+            "route_segments": forecast.get("route_segments", {}),
             "variables": {
                 "wave_height_m": {
                     "min": forecast.get("wave_min_m"),

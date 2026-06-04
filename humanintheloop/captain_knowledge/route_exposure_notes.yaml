@@ -1,0 +1,40 @@
+{
+  "palma_ibiza": {
+    "route": "Palma -> Ibiza",
+    "exposure": "Exposed SW Mallorca to Ibiza crossing; the Ibiza Channel can dominate comfort.",
+    "watch_patterns": [
+      "NW swell in the Ibiza Channel",
+      "beam or quartering sea during the open-water section",
+      "late-day peak coinciding with passenger-sensitive passages"
+    ],
+    "default_operational_bias": "Prefer earlier/lower sea-state windows when small vessels or guests are involved."
+  },
+  "palma_cabrera": {
+    "route": "Palma -> Cabrera",
+    "exposure": "Shorter exposed run south of Mallorca; comfort depends on direction and shelter near Cabrera.",
+    "watch_patterns": [
+      "southerly exposure near Cabrera",
+      "local chop despite moderate significant wave height"
+    ],
+    "default_operational_bias": "Confirm shelter and local conditions before treating the crossing as easy."
+  },
+  "ibiza_formentera": {
+    "route": "Ibiza -> Formentera",
+    "exposure": "Short channel route where local chop and current can matter.",
+    "watch_patterns": [
+      "current opposing wind",
+      "short-period chop in the Freus channel"
+    ],
+    "default_operational_bias": "Treat low wave height as only part of the comfort read."
+  },
+  "alcudia_ciutadella": {
+    "route": "Alcudia -> Ciutadella",
+    "exposure": "Menorca Channel crossing; exposed conditions can restrict smaller vessels sooner than protected routes.",
+    "watch_patterns": [
+      "northerly sea state",
+      "late-afternoon exposed peak",
+      "schedule pressure masking comfort risk"
+    ],
+    "default_operational_bias": "Use conservative timing and be explicit when smaller vessels should wait."
+  }
+}

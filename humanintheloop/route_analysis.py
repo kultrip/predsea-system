@@ -286,7 +286,99 @@ def summarize_route_point_series(
         component_series=component_series or None,
     )
     summary["sampling_method"] = "route_exposed_max"
+    summary["route_segments"] = build_route_segments(
+        times,
+        wave_points_by_time,
+        current_points_by_time,
+        wave_direction_points_by_time,
+        route_bearing_deg,
+        route or load_route(DEFAULT_ROUTE_ID),
+    )
     return summary
+
+
+def build_route_segments(times, wave_points_by_time, current_points_by_time=None, wave_direction_points_by_time=None, route_bearing_deg=None, route=None):
+    sample_points = route_sample_points(route or {})
+    if not sample_points or not wave_points_by_time:
+        return {}
+
+    segment_indexes = operational_segment_indexes(len(sample_points))
+    segments = {}
+    for segment_id, point_index in segment_indexes.items():
+        point = sample_points[point_index]
+        wave_series = series_for_point(wave_points_by_time, point_index)
+        current_series = series_for_point(current_points_by_time or [], point_index)
+        direction_series = series_for_point(wave_direction_points_by_time or [], point_index)
+        segments[segment_id] = summarize_route_segment(
+            segment_id,
+            point.get("name", segment_id.replace("_", " ")),
+            times,
+            wave_series,
+            current_series,
+            direction_series,
+            route_bearing_deg,
+        )
+
+    worst_id = max(
+        segments,
+        key=lambda segment_id: comparable_segment_wave(segments[segment_id]),
+    )
+    best_window = best_route_departure_window(times, wave_points_by_time)
+    segments["worst_segment"] = {"id": worst_id, **segments[worst_id]}
+    segments["best_departure_window"] = best_window
+    return segments
+
+
+def operational_segment_indexes(point_count):
+    if point_count <= 1:
+        return {"departure_conditions": 0, "open_water_conditions": 0, "arrival_conditions": 0}
+    return {
+        "departure_conditions": 0,
+        "open_water_conditions": point_count // 2,
+        "arrival_conditions": point_count - 1,
+    }
+
+
+def series_for_point(values_by_time, point_index):
+    series = []
+    for values in values_by_time:
+        if point_index < len(values):
+            series.append(values[point_index])
+    return series
+
+
+def summarize_route_segment(segment_id, name, times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None):
+    peak_index = index_of_max_valid(wave_series)
+    max_wave = wave_series[peak_index] if peak_index < len(wave_series) else float("nan")
+    direction = direction_series[peak_index] if direction_series and peak_index < len(direction_series) else None
+    sea_state = relative_sea_state(direction, route_bearing_deg)["label"] if direction is not None and route_bearing_deg is not None else None
+    current = current_series[peak_index] if current_series and peak_index < len(current_series) else None
+    segment = {
+        "name": name,
+        "max_wave_m": round(max_wave, 1) if max_wave == max_wave else None,
+        "peak_time": times[peak_index] if peak_index < len(times) else None,
+        "wave_direction_deg": round(direction, 1) if direction is not None and direction == direction else None,
+        "sea_state": sea_state,
+    }
+    if current is not None and current == current:
+        segment["current_kn"] = round(current * MPS_TO_KNOTS, 1)
+    return segment
+
+
+def comparable_segment_wave(segment):
+    value = segment.get("max_wave_m")
+    return float(value) if isinstance(value, (int, float)) else -1.0
+
+
+def best_route_departure_window(times, wave_points_by_time):
+    candidates = []
+    for index, values in enumerate(wave_points_by_time):
+        route_max = max_valid(values)
+        if route_max == route_max and index < len(times):
+            candidates.append({"time": times[index], "wave_m": round(route_max, 1)})
+    if not candidates:
+        return {"time": None, "wave_m": None}
+    return min(candidates, key=lambda candidate: candidate["wave_m"])
 
 
 def initialize_component_series(component_points_by_time):

@@ -580,6 +580,7 @@ def create_app(evidence_store=None):
                 "evidence_timestamp": freshness["evidence_timestamp"],
                 "freshness_status": freshness["freshness_status"],
                 "freshness_warning": freshness["freshness_warning"],
+                "captain_knowledge": decision.get("captain_knowledge", []),
                 "evidence_used": evidence_used(adjusted),
             }
         except EvidenceNotFoundError as error:
