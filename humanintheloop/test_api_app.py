@@ -131,6 +131,29 @@ def write_map_overlay(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", v
     return filename
 
 
+def write_regional_evidence(root, date_text="2026-05-31", run_id="2026-05-31T1230Z"):
+    run_dir = Path(root) / date_text / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    regional = {
+        "region_id": "balearics",
+        "run_date": date_text,
+        "run_id": run_id,
+        "supported_modes": ["route_question", "location_question", "map_inspect"],
+        "available_variables": {
+            "wave_height": {"units": "m", "time_count": 2, "bounds": [[38.5, 1.0], [40.5, 4.5]]},
+            "current_speed": {"units": "m/s", "time_count": 2, "bounds": [[38.5, 1.0], [40.5, 4.5]]},
+        },
+        "limitations": [
+            "No seabed type",
+            "No depth/bathymetry",
+            "No anchoring restrictions",
+            "No nearby shelter search",
+        ],
+    }
+    (run_dir / "regional_evidence.json").write_text(json.dumps(regional), encoding="utf-8")
+    return regional
+
+
 def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5, created_at_utc="2026-05-29 06:30 UTC"):
     return {
         "route": "Palma -> Ibiza",
@@ -240,6 +263,7 @@ def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_p
     write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
     write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="wave_height")
     write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="current_speed")
+    write_regional_evidence(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
@@ -265,6 +289,10 @@ def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_p
     assert payload["location"]["requested_lon"] == 2.1
     assert payload["environmental_evidence"]["wave_height"]["value"] == 0.9
     assert payload["environmental_evidence"]["current_speed"]["value"] == 0.9
+    assert payload["regional_evidence"]["available"] is True
+    assert payload["regional_evidence"]["supported_modes"] == ["route_question", "location_question", "map_inspect"]
+    assert payload["regional_evidence"]["available_variables"] == ["current_speed", "wave_height"]
+    assert "No seabed type" in payload["regional_evidence"]["limitations"]
     assert "Decision:" in payload["answer"]
     assert "Comfort:" in payload["answer"]
     assert "Risk:" in payload["answer"]

@@ -60,6 +60,24 @@ forecast map grids around the shared position and returns a conservative
 operational read. It does not yet include seabed type, depth, anchoring
 restrictions, or nearby shelter search.
 
+When the ETL has written `regional_evidence.json`, the response also includes:
+
+```json
+{
+  "regional_evidence": {
+    "available": true,
+    "region_id": "balearics",
+    "supported_modes": ["route_question", "location_question", "map_inspect"],
+    "available_variables": ["current_speed", "wave_height"],
+    "limitations": ["No seabed type", "No depth/bathymetry"]
+  }
+}
+```
+
+This tells the WhatsApp agent which modes and variables the current run
+officially supports. Older runs without `regional_evidence.json` still answer,
+but return `"available": false` for that metadata block.
+
 By default, the API loads local files from
 `predictions/YYYY-MM-DD/runs/RUN_ID/<route_id>/evidence.json`. If that richer
 run-based evidence package is missing, it falls back to the older

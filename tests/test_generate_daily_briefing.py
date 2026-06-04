@@ -115,6 +115,44 @@ class FakeMapGenerator:
         Path(output_path).write_text("fake route map", encoding="utf-8")
 
 
+def write_fake_map_indexes(output_dir, waves_path=None, currents_path=None, skip_maps=False):
+    if skip_maps:
+        return None
+    maps_dir = Path(output_dir) / "maps"
+    for variable, units, bounds in (
+        ("wave_height", "m", [[38.5, 1.0], [40.5, 4.5]]),
+        ("current_speed", "m/s", [[38.5, 1.0], [40.5, 4.5]]),
+    ):
+        variable_dir = maps_dir / variable
+        variable_dir.mkdir(parents=True, exist_ok=True)
+        (variable_dir / "index.json").write_text(
+            json.dumps(
+                {
+                    "variable": variable,
+                    "units": units,
+                    "color_scale": {"min": 0, "max": 2.5, "palette": "turbo"},
+                    "opacity": 0.698,
+                    "overlays": [
+                        {
+                            "time": "2026-06-04T14:00:00Z",
+                            "filename": f"{variable}_20260604_140000Z.png",
+                            "grid_filename": f"{variable}_20260604_140000Z.grid.json",
+                            "bounds": bounds,
+                        },
+                        {
+                            "time": "2026-06-04T15:00:00Z",
+                            "filename": f"{variable}_20260604_150000Z.png",
+                            "grid_filename": f"{variable}_20260604_150000Z.grid.json",
+                            "bounds": bounds,
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+    return {"wave_height": maps_dir / "wave_height", "current_speed": maps_dir / "current_speed"}
+
+
 def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tmp_path, monkeypatch):
     runner = load_runner()
     fake_fetch = FakeFetchData()
@@ -162,6 +200,55 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
     manifest = json.loads((result.output_dir / "run_manifest.json").read_text())
     assert manifest["route_count"] == 2
     assert manifest["routes"] == ["palma_ibiza", "palma_cabrera"]
+
+
+def test_generate_daily_briefings_writes_regional_evidence_for_location_questions(tmp_path, monkeypatch):
+    runner = load_runner()
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", write_fake_map_indexes)
+    monkeypatch.setattr(
+        runner,
+        "maybe_generate_route_map",
+        lambda map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False, **kwargs: (
+            Path(route_dir) / "route_decision_map.png"
+        ).write_text("fake route map", encoding="utf-8"),
+    )
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=FakeRouteAnalysis(),
+            briefing=FakeBriefing(),
+            fetch_data=FakeFetchData(),
+            chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
+        ),
+    )
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
+
+    result = runner.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-06-04",
+        run_id="2026-06-04T1200Z",
+        route_ids=["palma_ibiza"],
+        vessel_class="medium",
+        current_time="09:30",
+        skip_figures=True,
+    )
+
+    regional = json.loads((result.output_dir / "regional_evidence.json").read_text(encoding="utf-8"))
+    manifest = json.loads((result.output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+
+    assert regional["region_id"] == "balearics"
+    assert regional["run_date"] == "2026-06-04"
+    assert regional["run_id"] == "2026-06-04T1200Z"
+    assert regional["supported_modes"] == ["route_question", "location_question", "map_inspect"]
+    assert regional["available_variables"]["wave_height"]["units"] == "m"
+    assert regional["available_variables"]["wave_height"]["time_count"] == 2
+    assert regional["available_variables"]["wave_height"]["bounds"] == [[38.5, 1.0], [40.5, 4.5]]
+    assert regional["available_variables"]["current_speed"]["units"] == "m/s"
+    assert "No seabed type" in regional["limitations"]
+    assert manifest["regional_evidence"]["path"] == "regional_evidence.json"
+    assert manifest["regional_evidence"]["supported_modes"] == regional["supported_modes"]
 
 
 def test_generate_daily_briefings_writes_parallel_source_evidence_and_keeps_preferred_route_outputs(tmp_path, monkeypatch):

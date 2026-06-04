@@ -122,6 +122,13 @@ class EvidenceStore:
             raise EvidenceNotFoundError(f"No map grid '{filename}' for '{variable}' on {date_text}")
         return json.loads(grid_path.read_text(encoding="utf-8"))
 
+    def load_regional_evidence(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        regional_path = self._base_dir(date_text, run_id) / "regional_evidence.json"
+        if not regional_path.exists():
+            raise EvidenceNotFoundError(f"No regional evidence package on {date_text}")
+        return json.loads(regional_path.read_text(encoding="utf-8"))
+
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
         return None
 
@@ -317,6 +324,16 @@ class GcsEvidenceStore:
         except EvidenceNotFoundError:
             if self.fallback_store is not None:
                 return self.fallback_store.load_map_grid(variable, filename, date_text, run_id)
+            raise
+
+    def load_regional_evidence(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        object_name = f"{self._base_prefix(date_text, run_id)}/regional_evidence.json"
+        try:
+            return json.loads(self._download_text(object_name))
+        except EvidenceNotFoundError:
+            if self.fallback_store is not None:
+                return self.fallback_store.load_regional_evidence(date_text, run_id)
             raise
 
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):

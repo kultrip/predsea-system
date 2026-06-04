@@ -128,6 +128,30 @@ def try_sample_map_variable(store, variable, run_date, run_id, latitude, longitu
         }
 
 
+def try_load_regional_evidence(store, run_date, run_id):
+    try:
+        return store.load_regional_evidence(run_date, run_id)
+    except EvidenceNotFoundError:
+        return None
+
+
+def regional_evidence_summary(regional_evidence):
+    if not regional_evidence:
+        return {
+            "available": False,
+            "supported_modes": ["route_question"],
+            "available_variables": [],
+            "limitations": [],
+        }
+    return {
+        "available": True,
+        "region_id": regional_evidence.get("region_id"),
+        "supported_modes": regional_evidence.get("supported_modes") or [],
+        "available_variables": sorted((regional_evidence.get("available_variables") or {}).keys()),
+        "limitations": regional_evidence.get("limitations") or [],
+    }
+
+
 def classify_location_question(question):
     text = question.lower()
     if any(token in text for token in ("anchor", "anchorage", "stay here", "safe to stay", "where should i anchor")):
@@ -508,6 +532,7 @@ def create_app(evidence_store=None):
                     time_text=time_text,
                 ),
             }
+            regional_evidence = try_load_regional_evidence(store, run_date, run_id)
             intent = classify_location_question(request.question)
             decision = anchoring_decision(samples, request.vessel_class)
             answer = render_location_answer(intent, decision, samples, request)
@@ -526,6 +551,7 @@ def create_app(evidence_store=None):
                     "inside_domain": location_inside_domain(samples),
                 },
                 "environmental_evidence": samples,
+                "regional_evidence": regional_evidence_summary(regional_evidence),
                 "limitations": [
                     "No seabed type in Phase 1",
                     "No depth/bathymetry in Phase 1",

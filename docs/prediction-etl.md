@@ -114,6 +114,24 @@ Known Phase 1 limitations:
 
 The answer must clearly state these limitations and use conservative language.
 
+Each run now writes a run-level regional evidence contract:
+
+```text
+outputs/<date>/runs/<run_id>/regional_evidence.json
+```
+
+This file is created from the generated map overlay indexes and records:
+
+- supported API modes: `route_question`, `location_question`, `map_inspect`
+- available variables, units, time coverage, bounds, color scale, and index path
+- route IDs included in the run
+- forecast sources available for the run
+- Phase 1 limitations for location questions
+
+`run_manifest.json` and `latest_run.json` include a compact
+`regional_evidence` pointer so the API and WhatsApp layer can detect whether
+free-location questions are supported by the current run.
+
 ## Current Routes
 
 Routes are configured in:
@@ -351,6 +369,14 @@ The preferred source is also copied to the legacy route location:
 
 ```text
 outputs/<date>/runs/<run_id>/<route_id>/
+```
+
+The preferred source also drives the run-level map overlays and regional
+evidence package:
+
+```text
+outputs/<date>/runs/<run_id>/maps/<variable>/index.json
+outputs/<date>/runs/<run_id>/regional_evidence.json
 ```
 
 This keeps the current API and WhatsApp integration stable while making model

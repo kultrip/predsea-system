@@ -26,6 +26,13 @@ REQUIRED_TEXT_ARTIFACTS = (
     "briefing_whatsapp.txt",
     "briefing_whatsapp_screenshot_script.txt",
 )
+DEFAULT_REGION_ID = "balearics"
+REGIONAL_LIMITATIONS = (
+    "No seabed type",
+    "No depth/bathymetry",
+    "No anchoring restrictions",
+    "No nearby shelter search",
+)
 
 
 @contextmanager
@@ -196,7 +203,65 @@ def load_leaflet_overlay_generator():
     return module
 
 
-def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None):
+def map_supported_modes(available_variables):
+    modes = ["route_question"]
+    if available_variables:
+        modes.extend(["location_question", "map_inspect"])
+    return modes
+
+
+def collect_map_variable_metadata(run_dir):
+    maps_dir = run_dir / "maps"
+    if not maps_dir.exists():
+        return {}
+
+    variables = {}
+    for index_path in sorted(maps_dir.glob("*/index.json")):
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        overlays = index.get("overlays") or []
+        times = sorted(overlay["time"] for overlay in overlays if overlay.get("time"))
+        first_with_bounds = next((overlay for overlay in overlays if overlay.get("bounds")), None)
+        variable = index.get("variable") or index_path.parent.name
+        variables[variable] = {
+            "units": index.get("units"),
+            "time_count": len(overlays),
+            "time_start": times[0] if times else None,
+            "time_end": times[-1] if times else None,
+            "bounds": first_with_bounds.get("bounds") if first_with_bounds else None,
+            "color_scale": index.get("color_scale"),
+            "opacity": index.get("opacity"),
+            "index_path": str(index_path.relative_to(run_dir)),
+        }
+    return variables
+
+
+def write_regional_evidence(run_dir, run_date, run_id, routes, forecast_sources=None, region_id=DEFAULT_REGION_ID):
+    available_variables = collect_map_variable_metadata(run_dir)
+    regional_evidence = {
+        "region_id": region_id,
+        "run_date": run_date,
+        "run_id": run_id,
+        "supported_modes": map_supported_modes(available_variables),
+        "routes": routes,
+        "forecast_sources": forecast_sources or [],
+        "available_variables": available_variables,
+        "limitations": list(REGIONAL_LIMITATIONS),
+        "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    }
+    (run_dir / "regional_evidence.json").write_text(json.dumps(regional_evidence, indent=2), encoding="utf-8")
+    return regional_evidence
+
+
+def regional_evidence_manifest_entry(regional_evidence):
+    return {
+        "path": "regional_evidence.json",
+        "region_id": regional_evidence["region_id"],
+        "supported_modes": regional_evidence["supported_modes"],
+        "available_variables": sorted(regional_evidence["available_variables"]),
+    }
+
+
+def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None, regional_evidence=None):
     manifest = {
         "run_date": run_date,
         "run_id": run_id,
@@ -204,13 +269,14 @@ def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sou
         "routes": routes,
         "vessel_class": vessel_class,
         "forecast_sources": forecast_sources or [],
+        "regional_evidence": regional_evidence,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
-def write_latest_run(day_dir, run_date, run_id, routes, vessel_class):
+def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_evidence=None):
     latest = {
         "run_date": run_date,
         "run_id": run_id,
@@ -218,6 +284,7 @@ def write_latest_run(day_dir, run_date, run_id, routes, vessel_class):
         "route_count": len(routes),
         "routes": routes,
         "vessel_class": vessel_class,
+        "regional_evidence": regional_evidence,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (day_dir / "latest_run.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
@@ -414,15 +481,26 @@ def generate_daily_briefings(
                 for route_id, source_route_dir in generated_routes.items():
                     copy_preferred_route_artifacts(source_route_dir, run_dir / route_id)
 
+    forecast_source_entries = source_manifest_entries(modules, sources)
+    regional_evidence = write_regional_evidence(
+        run_dir,
+        run_date,
+        run_id,
+        selected_route_ids,
+        forecast_sources=forecast_source_entries,
+    )
+    regional_manifest_entry = regional_evidence_manifest_entry(regional_evidence)
+
     write_manifest(
         run_dir,
         run_date,
         run_id,
         selected_route_ids,
         vessel_class,
-        forecast_sources=source_manifest_entries(modules, sources),
+        forecast_sources=forecast_source_entries,
+        regional_evidence=regional_manifest_entry,
     )
-    write_latest_run(day_dir, run_date, run_id, selected_route_ids, vessel_class)
+    write_latest_run(day_dir, run_date, run_id, selected_route_ids, vessel_class, regional_evidence=regional_manifest_entry)
     return SimpleNamespace(output_dir=run_dir, day_dir=day_dir, run_id=run_id, routes=selected_route_ids)
 
 
