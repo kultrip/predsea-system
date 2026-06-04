@@ -39,8 +39,9 @@ jobs:
           COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
           COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
           PREDSEA_LOGO_PATH: assets/predsea_logo.png
+          PREDSEA_SOURCE_TIMEOUT_SECONDS: "900"
         run: |
-          python scripts/generate_daily_briefing.py
+          python -u scripts/generate_daily_briefing.py
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

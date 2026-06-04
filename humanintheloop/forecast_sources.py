@@ -1,3 +1,7 @@
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -9,16 +13,103 @@ SOCIB_SOURCE = {
     "id": "socib",
     "label": "SOCIB WMOP/SAPO forecast",
 }
+SOURCE_TIMEOUT_SECONDS = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "900"))
 
 
 def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
     """Fetch all configured forecast sources without letting one source block another."""
-    sources = [
-        fetch_copernicus_forecast(fetch_data, dry_run=dry_run),
-        fetch_socib_forecast(fetch_data, output_dir=output_dir, dry_run=dry_run),
+    output_dir = Path(output_dir or fetch_data.OUTPUT_DIR)
+    timeout_seconds = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", str(SOURCE_TIMEOUT_SECONDS)))
+    source_configs = [
+        ("copernicus", output_dir / "copernicus"),
+        ("socib", output_dir / "socib_thredds"),
     ]
+    sources = []
+    for source_id, source_output_dir in source_configs:
+        print(f"Fetching forecast source: {source_id}", flush=True)
+        source = fetch_source_via_subprocess(
+            source_id,
+            source_output_dir,
+            timeout_seconds=timeout_seconds,
+            dry_run=dry_run,
+        )
+        if source.get("available"):
+            print(f"Forecast source ready: {source_id}", flush=True)
+        else:
+            print(f"Forecast source unavailable: {source_id} ({source.get('error')})", flush=True)
+        sources.append(source)
     mark_preferred_source(sources)
     return sources
+
+
+def fetch_source_via_subprocess(source_id, output_dir, timeout_seconds, dry_run=False):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    source = source_template(source_id)
+    metadata_path = output_dir / "forecast_source.json"
+    command = [
+        sys.executable,
+        str(Path(__file__).with_name("fetch_forecast_source.py")),
+        "--source",
+        source_id,
+        "--output-dir",
+        str(output_dir),
+    ]
+    if dry_run:
+        command.append("--dry-run")
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=Path(__file__).parent,
+            timeout=timeout_seconds,
+            check=False,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        )
+    except subprocess.TimeoutExpired:
+        source.update(available=False, error=f"{source_id} fetch timed out after {timeout_seconds}s")
+        return source
+    except Exception as error:
+        source.update(available=False, error=str(error))
+        return source
+
+    if completed.stdout:
+        print(completed.stdout.rstrip(), flush=True)
+    if completed.stderr:
+        print(completed.stderr.rstrip(), flush=True)
+
+    if completed.returncode != 0:
+        source.update(
+            available=False,
+            error=source_error_from_process(source_id, completed),
+        )
+        return source
+
+    if not metadata_path.exists():
+        source.update(available=False, error=f"{source_id} did not write {metadata_path.name}")
+        return source
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["waves_path"] = Path(metadata["waves_path"])
+    metadata["currents_path"] = Path(metadata["currents_path"])
+    return metadata
+
+
+def source_template(source_id):
+    if source_id == "copernicus":
+        return dict(COPERNICUS_SOURCE)
+    if source_id == "socib":
+        return dict(SOCIB_SOURCE)
+    return {"id": source_id, "label": source_id}
+
+
+def source_error_from_process(source_id, completed):
+    output = "\n".join(part for part in (completed.stdout, completed.stderr) if part).strip()
+    if not output:
+        return f"{source_id} fetch exited with code {completed.returncode}"
+    return output[-1000:]
 
 
 def fetch_copernicus_forecast(fetch_data, dry_run=False):

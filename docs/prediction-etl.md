@@ -344,8 +344,15 @@ Source responsibilities:
   WMOP/SAPO files.
 - `humanintheloop/forecast_sources.py` runs all configured sources
   independently and marks the preferred source.
+- `humanintheloop/fetch_forecast_source.py` fetches one source in a bounded
+  subprocess so a slow external provider cannot hang the whole ETL.
 - `scripts/generate_daily_briefing.py` builds route artifacts for every
   available source.
+
+`PREDSEA_SOURCE_TIMEOUT_SECONDS` controls the per-source timeout. GitHub
+Actions currently sets it to `900` seconds. If one source times out, the ETL
+records that source as unavailable in `run_manifest.json` and continues with
+any other available source.
 
 ## Where To Add More Variables
 
