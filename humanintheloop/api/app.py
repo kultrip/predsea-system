@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.evidence_store import EvidenceNotFoundError, create_evidence_store_from_env
-from api.schemas import BriefingResponse, HealthResponse, QuestionRequest, QuestionResponse
+from api.schemas import BriefingResponse, HealthResponse, LocationQuestionRequest, QuestionRequest, QuestionResponse
 from api.services import answer_question, evidence_used, render_briefing
 
 
@@ -95,6 +95,140 @@ def sample_grid(grid, latitude, longitude):
         "grid_indices": {"lat": lat_index, "lon": lon_index},
         "inside_domain": south <= latitude <= north and west <= longitude <= east,
     }
+
+
+def sample_map_variable(store, variable, run_date, run_id, latitude, longitude, time_text=None):
+    index = store.load_map_index(variable, run_date, run_id)
+    selected = closest_overlay(index.get("overlays") or [], time_text)
+    grid_filename = selected.get("grid_filename")
+    if not grid_filename:
+        raise EvidenceNotFoundError(f"Selected {variable} overlay has no inspection grid")
+    grid = store.load_map_grid(variable, grid_filename, run_date, run_id)
+    sample = sample_grid(grid, latitude, longitude)
+    return {
+        "variable": variable,
+        "time": selected["time"],
+        "value": sample["value"],
+        "units": index["units"],
+        "sampled_lat": sample["sampled_lat"],
+        "sampled_lon": sample["sampled_lon"],
+        "inside_domain": sample["inside_domain"],
+        "grid_indices": sample["grid_indices"],
+    }
+
+
+def try_sample_map_variable(store, variable, run_date, run_id, latitude, longitude, time_text=None):
+    try:
+        return sample_map_variable(store, variable, run_date, run_id, latitude, longitude, time_text=time_text)
+    except EvidenceNotFoundError as error:
+        return {
+            "variable": variable,
+            "available": False,
+            "error": str(error),
+        }
+
+
+def classify_location_question(question):
+    text = question.lower()
+    if any(token in text for token in ("anchor", "anchorage", "stay here", "safe to stay", "where should i anchor")):
+        return "anchoring_guidance"
+    return "location_conditions"
+
+
+def location_inside_domain(samples):
+    available_samples = [sample for sample in samples.values() if sample.get("value") is not None]
+    if not available_samples:
+        return False
+    return all(sample.get("inside_domain") for sample in available_samples)
+
+
+def anchoring_decision(samples, vessel_class):
+    wave = samples.get("wave_height", {}).get("value")
+    current = samples.get("current_speed", {}).get("value")
+    inside = location_inside_domain(samples)
+    if not inside:
+        return {
+            "status": "manual_review",
+            "label": "Manual review",
+            "risk": "Unknown",
+            "comfort": "Unknown from this evidence package",
+            "reason": "the shared position is outside the available forecast grid",
+        }
+    if wave is None:
+        return {
+            "status": "manual_review",
+            "label": "Manual review",
+            "risk": "Unknown",
+            "comfort": "Unknown from this evidence package",
+            "reason": "wave-height evidence is missing for this position",
+        }
+
+    small_vessel = vessel_class == "small"
+    strong_current = current is not None and current >= 0.8
+    if wave >= 1.5 or (small_vessel and wave >= 1.2):
+        status = "not_recommended"
+        label = "Not recommended without a more sheltered local check"
+        risk = "High" if small_vessel else "Moderate to high"
+        comfort = "Poor for anchoring comfort"
+    elif wave >= 1.0 or strong_current:
+        status = "marginal"
+        label = "Marginal; choose shelter carefully"
+        risk = "Moderate"
+        comfort = "Moderate; exposed spots may roll or feel unsettled"
+    else:
+        status = "suitable_with_checks"
+        label = "Potentially suitable if locally sheltered"
+        risk = "Low to moderate"
+        comfort = "Generally workable if protected from the forecast sea"
+
+    reason_parts = [f"nearest forecast wave height is about {wave:.1f} m"]
+    if current is not None:
+        reason_parts.append(f"current speed sample is about {current:.1f} m/s")
+    return {
+        "status": status,
+        "label": label,
+        "risk": risk,
+        "comfort": comfort,
+        "reason": "; ".join(reason_parts),
+    }
+
+
+def render_location_answer(intent, decision, samples, request):
+    wave = samples.get("wave_height", {})
+    current = samples.get("current_speed", {})
+    limitations = (
+        "This Phase 1 location read does not yet include seabed type, depth, "
+        "legal anchoring restrictions, local shelter geometry, or real-time traffic."
+    )
+    if decision["status"] == "manual_review":
+        best_action = "Do not use this as an anchoring recommendation; request a position inside the supported forecast area or check locally."
+    elif decision["status"] == "not_recommended":
+        best_action = "Look for a more sheltered nearby option and verify depth/seabed before committing."
+    elif decision["status"] == "marginal":
+        best_action = "Prefer a sheltered bay with protection from the forecast sea and keep an exit plan."
+    else:
+        best_action = "Use the forecast as a screening check, then confirm shelter, depth, seabed, and local restrictions."
+
+    evidence_text = []
+    if wave.get("value") is not None:
+        evidence_text.append(f"wave {wave['value']:.1f} {wave.get('units', 'm')} at {wave.get('time')}")
+    if current.get("value") is not None:
+        evidence_text.append(f"current {current['value']:.1f} {current.get('units', 'm/s')} at {current.get('time')}")
+    if not evidence_text:
+        evidence_text.append("no sampleable wave/current grid was available")
+
+    confidence = "medium" if decision["status"] != "manual_review" else "low"
+    return "\n\n".join(
+        [
+            f"Decision: {decision['label']}.",
+            f"Best window: {best_action}",
+            f"Comfort: {decision['comfort']}. For this vessel size: {request.vessel_class}.",
+            f"Risk: {decision['risk']}.",
+            f"Why: {decision['reason']}. Evidence: {', '.join(evidence_text)}.",
+            f"What could change: wind shift, swell direction, local shelter, seabed holding, depth, or an updated model run. {limitations}",
+            f"Confidence: {confidence}.",
+        ]
+    )
 
 
 def create_app(evidence_store=None):
@@ -335,6 +469,69 @@ def create_app(evidence_store=None):
                 "value": sample["value"],
                 "units": index["units"],
                 "color_scale": index["color_scale"],
+            }
+        except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.post("/question")
+    def location_question(request: LocationQuestionRequest):
+        try:
+            run_date = store.resolve_date(request.date)
+            run_id = store.resolve_run(run_date, request.run)
+            time_text = request.time or request.current_time
+            samples = {
+                "wave_height": try_sample_map_variable(
+                    store,
+                    "wave_height",
+                    run_date,
+                    run_id,
+                    request.latitude,
+                    request.longitude,
+                    time_text=time_text,
+                ),
+                "current_speed": try_sample_map_variable(
+                    store,
+                    "current_speed",
+                    run_date,
+                    run_id,
+                    request.latitude,
+                    request.longitude,
+                    time_text=time_text,
+                ),
+                "swell_1_height": try_sample_map_variable(
+                    store,
+                    "swell_1_height",
+                    run_date,
+                    run_id,
+                    request.latitude,
+                    request.longitude,
+                    time_text=time_text,
+                ),
+            }
+            intent = classify_location_question(request.question)
+            decision = anchoring_decision(samples, request.vessel_class)
+            answer = render_location_answer(intent, decision, samples, request)
+            return {
+                "mode": "location",
+                "date": run_date,
+                "run": run_id,
+                "question": request.question,
+                "intent": intent,
+                "answer": answer,
+                "decision": decision,
+                "location": {
+                    "label": request.location_label,
+                    "requested_lat": request.latitude,
+                    "requested_lon": request.longitude,
+                    "inside_domain": location_inside_domain(samples),
+                },
+                "environmental_evidence": samples,
+                "limitations": [
+                    "No seabed type in Phase 1",
+                    "No depth/bathymetry in Phase 1",
+                    "No anchoring restrictions in Phase 1",
+                    "No nearby shelter search in Phase 1",
+                ],
             }
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error

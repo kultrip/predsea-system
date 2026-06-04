@@ -39,6 +39,27 @@ curl -X POST http://127.0.0.1:8000/routes/palma_ibiza/question \
   }'
 ```
 
+Ask a location-based question from a shared GPS point:
+
+```bash
+curl -X POST http://127.0.0.1:8000/question \
+  -H "Content-Type: application/json" \
+  -d '{
+    "date": "2026-05-31",
+    "run": "latest",
+    "question": "I am at this position, where should I anchor tonight?",
+    "latitude": 39.45,
+    "longitude": 2.10,
+    "vessel_class": "small",
+    "current_time": "19:00"
+  }'
+```
+
+`POST /question` is Phase 1 location intelligence. It samples the nearest
+forecast map grids around the shared position and returns a conservative
+operational read. It does not yet include seabed type, depth, anchoring
+restrictions, or nearby shelter search.
+
 By default, the API loads local files from
 `predictions/YYYY-MM-DD/runs/RUN_ID/<route_id>/evidence.json`. If that richer
 run-based evidence package is missing, it falls back to the older

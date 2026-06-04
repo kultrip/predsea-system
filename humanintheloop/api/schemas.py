@@ -16,6 +16,19 @@ class QuestionRequest(BaseModel):
     current_date: Optional[str] = None
 
 
+class LocationQuestionRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    date: Optional[str] = None
+    run: Optional[str] = None
+    vessel_class: VesselClass = "medium"
+    location_label: str = "shared GPS position"
+    current_time: Optional[str] = None
+    current_date: Optional[str] = None
+    time: Optional[str] = None
+
+
 class QuestionResponse(BaseModel):
     route_id: str
     route: str

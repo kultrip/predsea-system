@@ -236,6 +236,66 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
 
 
+def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="wave_height")
+    write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="current_speed")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/question",
+        json={
+            "date": "2026-05-31",
+            "run": "latest",
+            "question": "I am at this position, where should I anchor tonight?",
+            "latitude": 39.45,
+            "longitude": 2.1,
+            "vessel_class": "small",
+            "current_time": "19:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "location"
+    assert payload["intent"] == "anchoring_guidance"
+    assert payload["date"] == "2026-05-31"
+    assert payload["run"] == "2026-05-31T1230Z"
+    assert payload["location"]["requested_lat"] == 39.45
+    assert payload["location"]["requested_lon"] == 2.1
+    assert payload["environmental_evidence"]["wave_height"]["value"] == 0.9
+    assert payload["environmental_evidence"]["current_speed"]["value"] == 0.9
+    assert "Decision:" in payload["answer"]
+    assert "Comfort:" in payload["answer"]
+    assert "Risk:" in payload["answer"]
+    assert "Why:" in payload["answer"]
+    assert "Confidence:" in payload["answer"]
+    assert "does not yet include seabed type" in payload["answer"]
+
+
+def test_location_question_endpoint_marks_outside_forecast_domain(tmp_path):
+    write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
+    write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="wave_height")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/question",
+        json={
+            "date": "2026-05-31",
+            "question": "Can I anchor here?",
+            "latitude": 42.0,
+            "longitude": 8.0,
+            "vessel_class": "medium",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["location"]["inside_domain"] is False
+    assert payload["decision"]["status"] == "manual_review"
+    assert "outside the available forecast grid" in payload["answer"]
+
+
 def test_question_endpoint_flags_last_night_evidence_and_avoids_repeated_window_copy(tmp_path):
     write_run_snapshot(
         tmp_path,
