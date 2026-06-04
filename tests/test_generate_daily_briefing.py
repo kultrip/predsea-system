@@ -78,6 +78,25 @@ class FakeFetchData:
         self.calls += 1
 
 
+class FakeForecastSources:
+    def __init__(self, sources):
+        self.sources = sources
+
+    def fetch_available_forecasts(self, fetch_data, output_dir=None, dry_run=False):
+        return self.sources
+
+    def source_manifest_entry(self, source):
+        entry = {
+            "id": source.get("id"),
+            "label": source.get("label"),
+            "available": bool(source.get("available")),
+            "preferred": bool(source.get("preferred")),
+        }
+        if source.get("error"):
+            entry["error"] = source["error"]
+        return entry
+
+
 class FakeChatFigure:
     def __init__(self):
         self.logo_paths = []
@@ -101,7 +120,7 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
     fake_fetch = FakeFetchData()
     fake_map_generator = FakeMapGenerator()
     monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
-    def fake_route_map(map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False):
+    def fake_route_map(map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False, **kwargs):
         fake_map_generator.calls.append((Path(waves_path), Path(currents_path), route["id"], snapshot["route_id"]))
         output_path = Path(route_dir) / "route_decision_map.png"
         output_path.write_text("fake route map", encoding="utf-8")
@@ -143,6 +162,144 @@ def test_generate_daily_briefings_writes_dated_route_artifacts_once_per_route(tm
     manifest = json.loads((result.output_dir / "run_manifest.json").read_text())
     assert manifest["route_count"] == 2
     assert manifest["routes"] == ["palma_ibiza", "palma_cabrera"]
+
+
+def test_generate_daily_briefings_writes_parallel_source_evidence_and_keeps_preferred_route_outputs(tmp_path, monkeypatch):
+    runner = load_runner()
+    source_paths = {}
+    for source_id in ("copernicus", "socib"):
+        source_dir = tmp_path / "forecasts" / source_id
+        source_dir.mkdir(parents=True)
+        waves_path = source_dir / "waves.nc"
+        currents_path = source_dir / "currents.nc"
+        waves_path.write_text("waves", encoding="utf-8")
+        currents_path.write_text("currents", encoding="utf-8")
+        source_paths[source_id] = (waves_path, currents_path)
+
+    sources = [
+        {
+            "id": "copernicus",
+            "label": "Copernicus Marine Mediterranean forecast",
+            "available": True,
+            "preferred": True,
+            "waves_path": source_paths["copernicus"][0],
+            "currents_path": source_paths["copernicus"][1],
+        },
+        {
+            "id": "socib",
+            "label": "SOCIB WMOP/SAPO forecast",
+            "available": True,
+            "preferred": False,
+            "waves_path": source_paths["socib"][0],
+            "currents_path": source_paths["socib"][1],
+        },
+    ]
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        runner,
+        "maybe_generate_route_map",
+        lambda map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False, **kwargs: (
+            Path(route_dir) / "route_decision_map.png"
+        ).write_text("fake route map", encoding="utf-8"),
+    )
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=FakeRouteAnalysis(),
+            briefing=FakeBriefing(),
+            fetch_data=FakeFetchData(),
+            forecast_sources=FakeForecastSources(sources),
+            chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
+        ),
+    )
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
+
+    result = runner.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-06-04",
+        route_ids=["palma_ibiza"],
+        vessel_class="medium",
+        current_time="09:30",
+        skip_figures=True,
+    )
+
+    preferred_snapshot = json.loads(
+        (result.output_dir / "palma_ibiza" / "daily_snapshot.json").read_text(encoding="utf-8")
+    )
+    copernicus_snapshot = json.loads(
+        (result.output_dir / "sources" / "copernicus" / "palma_ibiza" / "daily_snapshot.json").read_text(encoding="utf-8")
+    )
+    socib_snapshot = json.loads(
+        (result.output_dir / "sources" / "socib" / "palma_ibiza" / "daily_snapshot.json").read_text(encoding="utf-8")
+    )
+    manifest = json.loads((result.output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+
+    assert preferred_snapshot["forecast_source"]["id"] == "copernicus"
+    assert copernicus_snapshot["forecast_source"]["id"] == "copernicus"
+    assert socib_snapshot["forecast_source"]["id"] == "socib"
+    assert manifest["forecast_sources"] == [
+        {"id": "copernicus", "label": "Copernicus Marine Mediterranean forecast", "available": True, "preferred": True},
+        {"id": "socib", "label": "SOCIB WMOP/SAPO forecast", "available": True, "preferred": False},
+    ]
+
+
+def test_generate_daily_briefings_records_unavailable_parallel_source_without_failing_available_source(tmp_path, monkeypatch):
+    runner = load_runner()
+    waves_path = tmp_path / "waves.nc"
+    currents_path = tmp_path / "currents.nc"
+    waves_path.write_text("waves", encoding="utf-8")
+    currents_path.write_text("currents", encoding="utf-8")
+    sources = [
+        {
+            "id": "copernicus",
+            "label": "Copernicus Marine Mediterranean forecast",
+            "available": False,
+            "preferred": False,
+            "error": "Copernicus authentication service timed out",
+        },
+        {
+            "id": "socib",
+            "label": "SOCIB WMOP/SAPO forecast",
+            "available": True,
+            "preferred": True,
+            "waves_path": waves_path,
+            "currents_path": currents_path,
+        },
+    ]
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=FakeRouteAnalysis(),
+            briefing=FakeBriefing(),
+            fetch_data=FakeFetchData(),
+            forecast_sources=FakeForecastSources(sources),
+            chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
+        ),
+    )
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
+
+    result = runner.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-06-04",
+        route_ids=["palma_ibiza"],
+        vessel_class="medium",
+        current_time="09:30",
+        skip_figures=True,
+        skip_maps=True,
+    )
+
+    manifest = json.loads((result.output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    snapshot = json.loads((result.output_dir / "palma_ibiza" / "daily_snapshot.json").read_text(encoding="utf-8"))
+
+    assert not (result.output_dir / "sources" / "copernicus" / "palma_ibiza").exists()
+    assert (result.output_dir / "sources" / "socib" / "palma_ibiza" / "daily_snapshot.json").exists()
+    assert snapshot["forecast_source"]["id"] == "socib"
+    assert manifest["forecast_sources"][0]["error"] == "Copernicus authentication service timed out"
 
 
 def test_generate_daily_briefings_fails_when_required_artifact_is_missing(tmp_path, monkeypatch):
@@ -259,7 +416,7 @@ def test_relative_logo_path_resolves_from_project_root_after_chdir(tmp_path, mon
     monkeypatch.setattr(
         runner,
         "maybe_generate_route_map",
-        lambda map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False: (
+        lambda map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False, **kwargs: (
             Path(route_dir) / "route_decision_map.png"
         ).write_text("fake route map", encoding="utf-8"),
     )

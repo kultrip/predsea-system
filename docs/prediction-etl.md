@@ -25,6 +25,8 @@ Current external sources:
 
 - Copernicus Marine Mediterranean wave forecast.
 - Copernicus Marine Mediterranean surface-current forecast.
+- SOCIB THREDDS SAPO-IB wave forecast.
+- SOCIB THREDDS WMOP surface-current forecast.
 - SOCIB public observations via DataDiscovery.
 
 Current forecast variables:
@@ -33,6 +35,14 @@ Current forecast variables:
 - `VMDR`: mean wave direction from.
 - `uo`: eastward surface current component.
 - `vo`: northward surface current component.
+- `VHM0_SW1`: primary swell significant wave height when provided by the
+  source.
+
+Copernicus and SOCIB are generated as parallel forecast evidence packages when
+both are available. Copernicus remains the preferred source for the legacy
+top-level route artifacts unless it is unavailable. SOCIB output is normalized
+to the same variable names and units so `route_analysis.py`, map generation, and
+the API can remain source-agnostic.
 
 Current observation variables depend on each SOCIB platform, but can include:
 
@@ -299,8 +309,43 @@ Each provider should normalize into common variables before evidence packaging:
 - coverage area
 - source freshness
 
-The API should not need to know whether the source was Copernicus, SOCIB WMOP,
-ECMWF, or a future PredSea internal model.
+The API should not need to know whether the source was Copernicus, SOCIB
+WMOP/SAPO, ECMWF, or a future PredSea internal model.
+
+## Parallel Forecast Packages
+
+Each ETL run writes source-specific evidence packages:
+
+```text
+outputs/<date>/runs/<run_id>/sources/copernicus/<route_id>/
+outputs/<date>/runs/<run_id>/sources/socib/<route_id>/
+```
+
+The preferred source is also copied to the legacy route location:
+
+```text
+outputs/<date>/runs/<run_id>/<route_id>/
+```
+
+This keeps the current API and WhatsApp integration stable while making model
+comparison possible. `run_manifest.json` records each source with:
+
+- `id`
+- `label`
+- `available`
+- `preferred`
+- `error`, when a source failed
+- `metadata`, when a source provides model URLs or names
+
+Source responsibilities:
+
+- `humanintheloop/fetch_data.py` downloads Copernicus NetCDF subsets.
+- `humanintheloop/socib_thredds.py` downloads and normalizes SOCIB THREDDS
+  WMOP/SAPO files.
+- `humanintheloop/forecast_sources.py` runs all configured sources
+  independently and marks the preferred source.
+- `scripts/generate_daily_briefing.py` builds route artifacts for every
+  available source.
 
 ## Where To Add More Variables
 
@@ -329,6 +374,8 @@ Likely files to touch today:
 
 ```text
 humanintheloop/fetch_data.py
+humanintheloop/forecast_sources.py
+humanintheloop/socib_thredds.py
 humanintheloop/socib_public.py
 humanintheloop/route_analysis.py
 humanintheloop/evidence_packager.py
@@ -446,11 +493,10 @@ Copernicus, SOCIB, or PredSea's own model.
 
 ## Next Useful Additions
 
-- Add SOCIB THREDDS / WMOP as a second external model.
-- Add model metadata to `evidence.json`: model name, run time, resolution, and
-  source URL.
+- Add explicit comparison artifacts: Copernicus vs SOCIB vs buoy truth.
+- Add richer model metadata to `evidence.json`: model run time, resolution,
+  forecast horizon, source URL, and native variable names.
 - Add point and region evidence packages for questions such as "Is it safe to
   stay here?" or "Where can I anchor near Formentera?"
 - Add signed GCS media URLs for maps and WhatsApp images.
-- Add model comparison: Copernicus vs SOCIB vs buoy truth.
 - Add data-quality warnings when observations are stale or model files are old.

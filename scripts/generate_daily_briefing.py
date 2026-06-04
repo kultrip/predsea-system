@@ -2,6 +2,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 import sys
 from contextlib import contextmanager
 from datetime import datetime
@@ -61,6 +62,7 @@ def load_mvp_modules():
     import briefing
     import chat_figure
     import fetch_data
+    import forecast_sources
     import map_generator
     import route_analysis
 
@@ -68,6 +70,7 @@ def load_mvp_modules():
         briefing=briefing,
         chat_figure=chat_figure,
         fetch_data=fetch_data,
+        forecast_sources=forecast_sources,
         map_generator=map_generator,
         route_analysis=route_analysis,
     )
@@ -144,7 +147,7 @@ def maybe_generate_chat_figure(chat_figure, route_dir, logo_path, skip_figures=F
     return output_path
 
 
-def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False):
+def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_path, currents_path, skip_maps=False, resolution_label="Copernicus Med forecast grid"):
     if skip_maps:
         return None
     output_path = route_dir / "route_decision_map.png"
@@ -155,7 +158,7 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
         currents_path=currents_path,
         requested_time=snapshot.get("forecast", {}).get("wave_peak_time"),
         title="PredSea Balearic Sea Conditions",
-        resolution_label="Copernicus Med forecast grid",
+        resolution_label=resolution_label,
         coastline_resolution="10m",
         extent=[0.9, 4.55, 38.55, 40.55],
         dpi=220,
@@ -193,13 +196,14 @@ def load_leaflet_overlay_generator():
     return module
 
 
-def write_manifest(run_dir, run_date, run_id, routes, vessel_class):
+def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None):
     manifest = {
         "run_date": run_date,
         "run_id": run_id,
         "route_count": len(routes),
         "routes": routes,
         "vessel_class": vessel_class,
+        "forecast_sources": forecast_sources or [],
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -218,6 +222,142 @@ def write_latest_run(day_dir, run_date, run_id, routes, vessel_class):
     }
     (day_dir / "latest_run.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
     return latest
+
+
+def fetch_forecast_sources(modules, run_dir):
+    if hasattr(modules, "forecast_sources"):
+        return modules.forecast_sources.fetch_available_forecasts(
+            modules.fetch_data,
+            output_dir=Path(modules.fetch_data.OUTPUT_DIR),
+            dry_run=False,
+        )
+
+    modules.fetch_data.get_balearic_forecast(dry_run=False)
+    output_dir = Path(modules.fetch_data.OUTPUT_DIR)
+    return [
+        {
+            "id": "copernicus",
+            "label": "Copernicus Marine Mediterranean forecast",
+            "available": True,
+            "preferred": True,
+            "waves_path": output_dir / "balearic_waves.nc",
+            "currents_path": output_dir / "balearic_currents.nc",
+        }
+    ]
+
+
+def available_forecast_sources(sources):
+    return [source for source in sources if source.get("available")]
+
+
+def preferred_forecast_source(sources):
+    available = available_forecast_sources(sources)
+    if not available:
+        raise RuntimeError("No forecast source available; cannot generate PredSea evidence package.")
+    return next((source for source in available if source.get("preferred")), available[0])
+
+
+def source_manifest_entries(modules, sources):
+    if hasattr(modules, "forecast_sources"):
+        return [modules.forecast_sources.source_manifest_entry(source) for source in sources]
+    return [
+        {
+            "id": source.get("id"),
+            "label": source.get("label"),
+            "available": bool(source.get("available")),
+            "preferred": bool(source.get("preferred")),
+        }
+        for source in sources
+    ]
+
+
+def annotate_snapshot_with_source(snapshot, source):
+    snapshot["forecast_source"] = {
+        "id": source.get("id"),
+        "label": source.get("label"),
+        "preferred": bool(source.get("preferred")),
+    }
+    if source.get("metadata"):
+        snapshot["forecast_source"]["metadata"] = source["metadata"]
+    return snapshot
+
+
+def resolution_label_for(source):
+    source_id = source.get("id")
+    if source_id == "socib":
+        return "SOCIB WMOP/SAPO forecast grid"
+    return "Copernicus Med forecast grid"
+
+
+def copy_preferred_route_artifacts(source_route_dir, preferred_route_dir):
+    if preferred_route_dir.exists():
+        shutil.rmtree(preferred_route_dir)
+    shutil.copytree(source_route_dir, preferred_route_dir)
+
+
+def generate_route_artifacts_for_source(
+    modules,
+    source,
+    source_root_dir,
+    selected_route_ids,
+    routes,
+    observations,
+    vessel_class,
+    question,
+    location_label,
+    current_time,
+    logo_path,
+    skip_figures,
+    skip_maps,
+):
+    waves_path = Path(source["waves_path"])
+    currents_path = Path(source["currents_path"])
+    maybe_generate_leaflet_overlays(source_root_dir, waves_path, currents_path, skip_maps=skip_maps)
+    generated_routes = {}
+
+    for route_id in selected_route_ids:
+        route = routes[route_id]
+        forecast = modules.route_analysis.forecast_summary_from_files(
+            waves_path,
+            currents_path,
+            route=route,
+        )
+        validate_forecast_available(forecast, route_id)
+        snapshot = modules.route_analysis.build_route_snapshot(
+            observations,
+            forecast,
+            route=route,
+            vessel_class=vessel_class,
+        )
+        annotate_snapshot_with_source(snapshot, source)
+        route_dir = source_root_dir / route_id
+        modules.briefing.write_outputs(
+            snapshot,
+            output_dir=route_dir,
+            question=question,
+            location_label=location_label,
+            current_time=current_time,
+            route=route,
+        )
+        maybe_generate_chat_figure(
+            modules.chat_figure,
+            route_dir,
+            logo_path,
+            skip_figures=skip_figures,
+        )
+        maybe_generate_route_map(
+            modules.map_generator,
+            route_dir,
+            route,
+            snapshot,
+            waves_path,
+            currents_path,
+            skip_maps=skip_maps,
+            resolution_label=resolution_label_for(source),
+        )
+        validate_route_artifacts(route_dir, skip_figures=skip_figures, skip_maps=skip_maps)
+        generated_routes[route_id] = route_dir
+    return generated_routes
 
 
 def generate_daily_briefings(
@@ -249,52 +389,39 @@ def generate_daily_briefings(
 
     with pushd(HUMANINTHELOOP_DIR):
         observations = safe_load_observations(modules.briefing)
-        modules.fetch_data.get_balearic_forecast(dry_run=False)
-        waves_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc"
-        currents_path = Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc"
-        maybe_generate_leaflet_overlays(run_dir, waves_path, currents_path, skip_maps=skip_maps)
+        sources = fetch_forecast_sources(modules, run_dir)
+        preferred_source = preferred_forecast_source(sources)
 
-        for route_id in selected_route_ids:
-            route = routes[route_id]
-            forecast = modules.route_analysis.forecast_summary_from_files(
-                waves_path,
-                currents_path,
-                route=route,
-            )
-            validate_forecast_available(forecast, route_id)
-            snapshot = modules.route_analysis.build_route_snapshot(
+        for source in available_forecast_sources(sources):
+            source_root_dir = run_dir / "sources" / source["id"]
+            generated_routes = generate_route_artifacts_for_source(
+                modules,
+                source,
+                source_root_dir,
+                selected_route_ids,
+                routes,
                 observations,
-                forecast,
-                route=route,
-                vessel_class=vessel_class,
-            )
-            route_dir = run_dir / route_id
-            modules.briefing.write_outputs(
-                snapshot,
-                output_dir=route_dir,
-                question=question,
-                location_label=location_label,
-                current_time=current_time,
-                route=route,
-            )
-            figure_path = maybe_generate_chat_figure(
-                modules.chat_figure,
-                route_dir,
+                vessel_class,
+                question,
+                location_label,
+                current_time,
                 logo_path,
-                skip_figures=skip_figures,
+                skip_figures,
+                skip_maps,
             )
-            map_path = maybe_generate_route_map(
-                modules.map_generator,
-                route_dir,
-                route,
-                snapshot,
-                waves_path,
-                currents_path,
-                skip_maps=skip_maps,
-            )
-            validate_route_artifacts(route_dir, skip_figures=skip_figures, skip_maps=skip_maps)
+            if source["id"] == preferred_source["id"]:
+                maybe_generate_leaflet_overlays(run_dir, Path(source["waves_path"]), Path(source["currents_path"]), skip_maps=skip_maps)
+                for route_id, source_route_dir in generated_routes.items():
+                    copy_preferred_route_artifacts(source_route_dir, run_dir / route_id)
 
-    write_manifest(run_dir, run_date, run_id, selected_route_ids, vessel_class)
+    write_manifest(
+        run_dir,
+        run_date,
+        run_id,
+        selected_route_ids,
+        vessel_class,
+        forecast_sources=source_manifest_entries(modules, sources),
+    )
     write_latest_run(day_dir, run_date, run_id, selected_route_ids, vessel_class)
     return SimpleNamespace(output_dir=run_dir, day_dir=day_dir, run_id=run_id, routes=selected_route_ids)
 

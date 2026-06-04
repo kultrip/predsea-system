@@ -58,12 +58,15 @@ Current data sources:
 
 - SOCIB public observations via DataDiscovery.
 - Copernicus Marine Mediterranean wave and surface-current forecast subsets.
+- SOCIB THREDDS SAPO-IB wave forecasts.
+- SOCIB THREDDS WMOP surface-current forecasts.
 
 Current forecast variables:
 
 - `VHM0`: significant wave height.
 - `VMDR`: mean wave direction from, used as visual/context information.
 - `uo`, `vo`: eastward and northward surface current components.
+- `VHM0_SW1`: primary swell significant wave height when provided by the source.
 
 Current observation variables:
 
@@ -80,6 +83,10 @@ Current observation variables:
    - `socib_public.py` fetches current public SOCIB observations.
    - `fetch_data.py` downloads bounded Copernicus wave/current NetCDF files into
      `humanintheloop/mvp_data/`.
+   - `socib_thredds.py` downloads SOCIB THREDDS WMOP/SAPO files and normalizes
+     them into the same wave/current variable names.
+   - `forecast_sources.py` runs Copernicus and SOCIB independently so one failed
+     source does not block the other.
 
 2. Route catalog:
    - `routes.json` defines route IDs, display names, sample points, vessel route
