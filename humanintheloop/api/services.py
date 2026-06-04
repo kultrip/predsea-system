@@ -1,4 +1,6 @@
 import copy
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import briefing_renderers
 import decision_engine
@@ -31,13 +33,15 @@ def answer_question(snapshot, question_request):
     if provided_fields is None:
         provided_fields = getattr(question_request, "__fields_set__", set())
     adjusted["vessel_class_assumed"] = "vessel_class" not in provided_fields
+    freshness = evidence_freshness(snapshot, question_request)
+    adjusted["evidence_freshness"] = freshness
     decision = decision_engine.answer_question(
         question_request.question,
         adjusted,
         location_label=question_request.location_label,
         current_time=question_request.current_time,
     )
-    return decision, adjusted
+    return decision, adjusted, freshness
 
 
 def render_briefing(snapshot, vessel_class, output_format):
@@ -63,3 +67,78 @@ def evidence_used(snapshot):
         "observations": available_observations,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
     }
+
+
+def evidence_freshness(snapshot, question_request):
+    evidence_timestamp = evidence_timestamp_from_snapshot(snapshot)
+    evidence_date = date_from_timestamp(evidence_timestamp) or date_from_run_id(question_request.run)
+    operational_date = (
+        normalize_date(question_request.current_date)
+        or date_from_timestamp(question_request.current_time)
+        or normalize_date(question_request.date)
+        or datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
+    )
+
+    if not evidence_timestamp:
+        return {
+            "evidence_timestamp": None,
+            "freshness_status": "unknown",
+            "freshness_warning": "Evidence timestamp is unavailable. Treat this as planning guidance and verify before committing.",
+        }
+
+    if operational_date and evidence_date and evidence_date < operational_date:
+        return {
+            "evidence_timestamp": evidence_timestamp,
+            "freshness_status": "last_night_run",
+            "freshness_warning": "Latest available forecast package is from last night. Confirm with the morning run before committing.",
+        }
+
+    return {
+        "evidence_timestamp": evidence_timestamp,
+        "freshness_status": "current",
+        "freshness_warning": None,
+    }
+
+
+def evidence_timestamp_from_snapshot(snapshot):
+    created_at = snapshot.get("created_at_utc")
+    if not created_at:
+        return None
+    parsed = parse_timestamp(created_at)
+    if parsed:
+        return parsed.strftime("%Y-%m-%dT%H:%MZ")
+    return created_at
+
+
+def parse_timestamp(value):
+    if not value:
+        return None
+    text = str(value).strip().replace(" UTC", "Z")
+    for fmt in ("%Y-%m-%dT%H:%MZ", "%Y-%m-%d %H:%MZ", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            pass
+    return None
+
+
+def date_from_timestamp(value):
+    parsed = parse_timestamp(value)
+    if parsed:
+        return parsed.date().isoformat()
+    return normalize_date(value)
+
+
+def date_from_run_id(run_id):
+    if not run_id:
+        return None
+    return normalize_date(str(run_id).split("T", 1)[0])
+
+
+def normalize_date(value):
+    if not value:
+        return None
+    text = str(value).strip()
+    if len(text) >= 10 and text[4:5] == "-" and text[7:8] == "-":
+        return text[:10]
+    return None

@@ -87,6 +87,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         vessel_class=snapshot.get("vessel_class"),
         vessel_class_assumed=snapshot.get("vessel_class_assumed", False),
         forecast=forecast,
+        freshness=snapshot.get("evidence_freshness"),
         evidence_note=evidence_note,
     )
     return {
@@ -108,6 +109,7 @@ def render_captain_answer(
     vessel_class=None,
     vessel_class_assumed=False,
     forecast=None,
+    freshness=None,
     evidence_note=None,
 ):
     route_prefix = f"{route}: " if route else ""
@@ -121,8 +123,11 @@ def render_captain_answer(
     if vessel_context:
         comfort = f"{comfort} {vessel_context}"
 
+    freshness = freshness or {}
+    freshness_warning = freshness.get("freshness_warning")
+
     lines = [
-        f"Decision: {route_prefix}{sentence_case(display_recommendation)}.",
+        f"Decision: {render_decision_line(route_prefix, intent, display_recommendation, forecast, freshness)}",
         f"Best window: {render_best_window(intent, display_recommendation, forecast)}",
         f"Comfort: {comfort}",
         f"Risk: {render_risk(forecast, vessel_advice, vessel_profile)}",
@@ -130,9 +135,11 @@ def render_captain_answer(
     ]
 
     what_could_change = render_what_could_change(forecast, evidence_note)
+    if freshness_warning:
+        what_could_change = f"{freshness_warning} {sentence_case(what_could_change)}"
     lines.append(f"What could change: {what_could_change}")
 
-    lines.append(f"Confidence: {confidence}.")
+    lines.append(f"Confidence: {render_confidence(confidence, freshness)}")
     return "\n\n".join(lines)
 
 
@@ -171,8 +178,31 @@ def render_vessel_context(vessel_advice, vessel_profile=None, vessel_class=None,
     return f"For this vessel size: {assumption}{label}."
 
 
+def render_decision_line(route_prefix, intent, recommendation, forecast, freshness):
+    stale = freshness.get("freshness_status") not in (None, "current")
+    qualifier = " based on the latest available package" if stale else ""
+    if intent == "leave_window":
+        if "practical daylight window has passed" in recommendation:
+            return f"{route_prefix}{sentence_case(recommendation)}."
+        if "looks better than" in recommendation or "near the forecast peak" in recommendation:
+            return f"{route_prefix}{sentence_case(recommendation)}."
+        peak_time = forecast.get("wave_peak_time")
+        route = route_prefix.replace(": ", "").strip() or "This route"
+        if peak_time and peak_time != "N/A":
+            return f"{route} is workable today{qualifier}, but avoid the local peak around {peak_time}."
+        return f"{route} is workable today{qualifier}; no sharp peak is flagged in the available package."
+    return f"{route_prefix}{sentence_case(recommendation)}."
+
+
 def render_best_window(intent, recommendation, forecast):
     peak_time = forecast.get("wave_peak_time")
+    best = extract_lower_sampled_window(recommendation)
+    if best:
+        peak_wave = forecast.get("wave_max_m")
+        peak_text = f", when wave height peaks around {peak_wave:.1f} m" if isinstance(peak_wave, (int, float)) else ""
+        if peak_time and peak_time != "N/A":
+            return f"Leave around {best} if departing today. Conditions are expected to worsen near {peak_time}{peak_text}."
+        return f"Leave around {best} if departing today."
     if "lower sampled window is around" in recommendation:
         return sentence_case(recommendation) + "."
     if "leave " in recommendation.lower() or "depart" in recommendation.lower():
@@ -182,6 +212,14 @@ def render_best_window(intent, recommendation, forecast):
     if intent == "location_safety":
         return "Stay only while sheltered; move earlier if exposure increases."
     return "No narrow departure window identified from the available evidence."
+
+
+def extract_lower_sampled_window(text):
+    match = re.search(r"lower sampled window is around ([0-2]?\d:[0-5]\d)", text or "", re.IGNORECASE)
+    if not match:
+        return None
+    hour, minute = match.group(1).split(":", 1)
+    return f"{int(hour):02d}:{minute}"
 
 
 def render_comfort(forecast, vessel_advice, vessel_profile):
@@ -243,6 +281,13 @@ def render_what_could_change(forecast, evidence_note):
     if evidence_note:
         return f"{detail}. {evidence_note}"
     return f"{detail}."
+
+
+def render_confidence(confidence, freshness):
+    warning = freshness.get("freshness_warning")
+    if warning:
+        return f"{confidence}, because the latest evidence package should be confirmed with the next morning run."
+    return f"{confidence}."
 
 
 def has_wave_partition_detail(forecast):

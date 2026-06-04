@@ -46,10 +46,17 @@ def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
     return snapshot
 
 
-def write_run_snapshot(root, date_text="2026-05-29", run_id="2026-05-29T0630Z", route_id="palma_ibiza", wave_max=0.5):
+def write_run_snapshot(
+    root,
+    date_text="2026-05-29",
+    run_id="2026-05-29T0630Z",
+    route_id="palma_ibiza",
+    wave_max=0.5,
+    created_at_utc="2026-05-29 06:30 UTC",
+):
     route_dir = Path(root) / date_text / "runs" / run_id / route_id
     route_dir.mkdir(parents=True)
-    snapshot = write_snapshot_data(route_id, wave_max)
+    snapshot = write_snapshot_data(route_id, wave_max, created_at_utc=created_at_utc)
     (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
     (route_dir / "route_decision_map.png").write_bytes(b"fake-png")
     (Path(root) / date_text / "latest_run.json").write_text(
@@ -124,13 +131,13 @@ def write_map_overlay(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", v
     return filename
 
 
-def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5):
+def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5, created_at_utc="2026-05-29 06:30 UTC"):
     return {
         "route": "Palma -> Ibiza",
         "route_id": route_id,
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
-        "created_at_utc": "2026-05-29 06:30 UTC",
+        "created_at_utc": created_at_utc,
         "observations": {
             "canal_de_ibiza": {
                 "name": "Buoy Canal de Ibiza",
@@ -213,6 +220,9 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     payload = response.json()
     assert payload["route_id"] == "palma_ibiza"
     assert payload["intent"] == "conditions_soon"
+    assert payload["freshness_status"] == "current"
+    assert payload["freshness_warning"] is None
+    assert payload["evidence_timestamp"] == "2026-05-29T06:30Z"
     assert "Conditions look workable" in payload["answer"]
     assert "Decision:" in payload["answer"]
     assert "Best window:" in payload["answer"]
@@ -224,6 +234,45 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert "For this vessel size:" in payload["answer"]
     assert payload["evidence_used"]["hourly_points"] == 2
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
+
+
+def test_question_endpoint_flags_last_night_evidence_and_avoids_repeated_window_copy(tmp_path):
+    write_run_snapshot(
+        tmp_path,
+        date_text="2026-06-03",
+        run_id="2026-06-03T1923Z",
+        wave_max=1.3,
+        created_at_utc="2026-06-03 19:23 UTC",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-03",
+            "run": "2026-06-03T1923Z",
+            "question": "When is the best moment to leave from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "location_label": "Palma",
+            "current_date": "2026-06-04",
+            "current_time": "10:14",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["evidence_timestamp"] == "2026-06-03T19:23Z"
+    assert payload["freshness_status"] == "last_night_run"
+    assert payload["freshness_warning"] == (
+        "Latest available forecast package is from last night. Confirm with the morning run before committing."
+    )
+    assert "Latest available forecast package is from last night" in payload["answer"]
+    assert "based on the latest available package" in payload["answer"]
+    decision_line = payload["answer"].split("\n\n", 1)[0]
+    best_window_line = payload["answer"].split("\n\n", 2)[1]
+    assert decision_line != best_window_line
+    assert "Decision: Palma -> Ibiza is workable today" in decision_line
+    assert "Best window:" in best_window_line
 
 
 def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):

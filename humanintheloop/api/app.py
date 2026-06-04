@@ -345,7 +345,7 @@ def create_app(evidence_store=None):
             run_date = store.resolve_date(request.date)
             run_id = store.resolve_run(run_date, request.run)
             snapshot = store.load_snapshot(route_id, run_date, run_id)
-            decision, adjusted = answer_question(snapshot, request)
+            decision, adjusted, freshness = answer_question(snapshot, request)
             return {
                 "route_id": route_id,
                 "route": adjusted.get("route", route_id),
@@ -354,6 +354,9 @@ def create_app(evidence_store=None):
                 "question": request.question,
                 "answer": decision["answer"],
                 "intent": decision["intent"],
+                "evidence_timestamp": freshness["evidence_timestamp"],
+                "freshness_status": freshness["freshness_status"],
+                "freshness_warning": freshness["freshness_warning"],
                 "evidence_used": evidence_used(adjusted),
             }
         except EvidenceNotFoundError as error:

@@ -855,7 +855,7 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="12:20",
         )
 
-        self.assertIn("avoid the 14:00 peak", decision["answer"])
+        self.assertIn("avoid the local peak around 14:00", decision["answer"])
         self.assertNotIn("Recommendation:", decision["answer"])
 
     def test_requested_time_question_compares_against_forecast_curve(self):
@@ -916,7 +916,8 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="07:00",
         )
 
-        self.assertIn("Avoid the 08:00 peak", decision["answer"])
+        self.assertIn("avoid the local peak around 08:00", decision["answer"])
+        self.assertIn("Leave around 11:00", decision["answer"])
         self.assertIn("1.6 m", decision["answer"])
         self.assertIn("Mean wave direction near the peak is about 60", decision["answer"])
         self.assertIn("swell and wind-wave components are not available", decision["answer"])
@@ -959,7 +960,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("Why:", decision["answer"])
         self.assertIn("What could change:", decision["answer"])
         self.assertIn("Confidence:", decision["answer"])
-        self.assertIn("lower sampled window is around 11:00", decision["answer"])
+        self.assertIn("Leave around 11:00", decision["answer"])
         self.assertNotIn("05:00", decision["answer"])
 
     def test_agent_includes_wave_components_and_route_relative_sea_state(self):

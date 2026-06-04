@@ -13,6 +13,7 @@ class QuestionRequest(BaseModel):
     vessel_class: VesselClass = "medium"
     location_label: str = "shared location"
     current_time: Optional[str] = None
+    current_date: Optional[str] = None
 
 
 class QuestionResponse(BaseModel):
@@ -23,6 +24,9 @@ class QuestionResponse(BaseModel):
     question: str
     answer: str
     intent: str
+    evidence_timestamp: Optional[str] = None
+    freshness_status: str
+    freshness_warning: Optional[str] = None
     evidence_used: Dict[str, Any]
 
 
