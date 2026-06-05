@@ -446,6 +446,85 @@ def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp
     assert payload["evidence_used"]["route_segments"] == []
 
 
+def test_question_endpoint_leave_window_tomorrow_does_not_use_late_today_message(tmp_path):
+    run_id = "2026-06-05T1622Z"
+    route_dir = Path(tmp_path) / "2026-06-05" / "runs" / run_id / "palma_ibiza"
+    route_dir.mkdir(parents=True)
+    snapshot = write_snapshot_data("palma_ibiza", wave_max=1.9, created_at_utc="2026-06-05 16:23 UTC")
+    snapshot["forecast"].update(
+        {
+            "wave_min_m": 0.5,
+            "wave_max_m": 1.9,
+            "wave_peak_time": "11:00",
+            "current_max_kn": 0.8,
+            "current_peak_time": "11:00",
+            "hourly": [
+                {
+                    "time": "11:00",
+                    "time_utc": "2026-06-05 11:00 UTC",
+                    "wave_m": 1.9,
+                    "current_kn": 0.8,
+                    "wave_direction_deg": 59.9,
+                    "wave_sea_state": "following sea",
+                },
+                {
+                    "time": "00:00",
+                    "time_utc": "2026-06-05 22:00 UTC",
+                    "wave_m": 1.2,
+                    "current_kn": 0.4,
+                    "wave_direction_deg": 73.0,
+                    "wave_sea_state": "following sea",
+                },
+                {
+                    "time": "08:00",
+                    "time_utc": "2026-06-06 06:00 UTC",
+                    "wave_m": 0.8,
+                    "current_kn": 0.3,
+                    "wave_direction_deg": 81.0,
+                    "wave_sea_state": "following sea",
+                },
+                {
+                    "time": "10:00",
+                    "time_utc": "2026-06-06 08:00 UTC",
+                    "wave_m": 0.7,
+                    "current_kn": 0.2,
+                    "wave_direction_deg": 84.0,
+                    "wave_sea_state": "following sea",
+                },
+            ],
+        }
+    )
+    (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (route_dir / "route_decision_map.png").write_bytes(b"fake-png")
+    (Path(tmp_path) / "2026-06-05" / "latest_run.json").write_text(
+        json.dumps({"run_id": run_id, "path": f"runs/{run_id}"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-05",
+            "run": "latest",
+            "question": "When is the best moment to leave from Palma to Ibiza tomorrow?",
+            "vessel_class": "medium",
+            "current_date": "2026-06-05",
+            "current_time": "21:15",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "today's practical daylight window has passed" not in payload["answer"].lower()
+    assert "workable tomorrow" in payload["answer"]
+    assert "08:00" in payload["answer"]
+    assert "1.9 m" not in payload["answer"]
+    assert payload["evidence_used"]["target_local_date"] == "2026-06-06"
+    assert payload["evidence_used"]["target_period_label"] == "tomorrow"
+    assert payload["evidence_used"]["hourly_points"] == 3
+
+
 def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):
     write_snapshot(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))

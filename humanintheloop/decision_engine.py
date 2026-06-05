@@ -62,7 +62,17 @@ def answer_question(question, snapshot, location_label="shared location", curren
             current_time=current_time,
             vessel_profile=snapshot.get("vessel_profile"),
         )
-        if route_window and not is_late_day(current_time) and not morning_window_passed:
+        if timing_context == "tomorrow":
+            route_timing = summarize_route_timing(
+                timing_context,
+                forecast,
+                best_window,
+                watch_out,
+                vessel_profile=snapshot.get("vessel_profile"),
+            )
+            recommendation = route_timing["recommendation"]
+            reason = route_timing["reason"]
+        elif route_window and not is_late_day(current_time) and not morning_window_passed:
             recommendation = route_window["recommendation"]
             reason = route_window["reason"]
         elif is_late_day(current_time):
@@ -242,10 +252,22 @@ def render_decision_line(route_prefix, intent, recommendation, forecast, freshne
             return f"{route_prefix}{sentence_case(recommendation)}."
         peak_time = forecast.get("wave_peak_time")
         route = route_prefix.replace(": ", "").strip() or "This route"
+        target_label = render_target_window_label(forecast)
         if peak_time and peak_time != "N/A":
-            return f"{route} is workable today{qualifier}, but avoid the local peak around {peak_time}."
-        return f"{route} is workable today{qualifier}; no sharp peak is flagged in the available package."
+            return f"{route} is workable {target_label}{qualifier}, but avoid the local peak around {peak_time}."
+        return f"{route} is workable {target_label}{qualifier}; no sharp peak is flagged in the available package."
     return f"{route_prefix}{sentence_case(recommendation)}."
+
+
+def render_target_window_label(forecast):
+    period = forecast.get("target_period_label")
+    if period == "tomorrow":
+        return "tomorrow"
+    if period in ("morning", "afternoon", "evening"):
+        return f"for the requested {period} window"
+    if forecast.get("target_local_date"):
+        return "for the requested forecast day"
+    return "today"
 
 
 def render_best_window(intent, recommendation, forecast):
