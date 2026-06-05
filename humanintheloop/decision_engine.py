@@ -121,6 +121,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         "answer": answer,
         "location_label": location_label,
         "captain_knowledge": captain_knowledge.summarize_matches(captain_rule_matches),
+        "forecast_context": forecast,
     }
 
 
@@ -250,14 +251,20 @@ def render_decision_line(route_prefix, intent, recommendation, forecast, freshne
 def render_best_window(intent, recommendation, forecast):
     peak_time = forecast.get("wave_peak_time")
     best = extract_lower_sampled_window(recommendation)
+    requested_period = forecast.get("target_period_label")
+    departure_context = "if departing today"
+    if requested_period in ("morning", "afternoon", "evening"):
+        departure_context = f"within the requested {requested_period} window"
+    elif forecast.get("target_local_date"):
+        departure_context = "within the requested forecast day"
     if best:
         peak_wave = forecast.get("wave_max_m")
         peak_text = f", when wave height peaks around {peak_wave:.1f} m" if isinstance(peak_wave, (int, float)) else ""
         if peak_time and peak_time != "N/A":
             if "daylight" in recommendation:
-                return f"Leave around {best} during the practical daylight window if departing today. Avoid the local peak around {peak_time}{peak_text}."
-            return f"Leave around {best} if departing today. Conditions are expected to worsen near {peak_time}{peak_text}."
-        return f"Leave around {best} if departing today."
+                return f"Leave around {best} {departure_context}. Avoid the local peak around {peak_time}{peak_text}."
+            return f"Leave around {best} {departure_context}. Conditions are expected to worsen near {peak_time}{peak_text}."
+        return f"Leave around {best} {departure_context}."
     if "lower sampled window is around" in recommendation:
         return sentence_case(recommendation) + "."
     if "leave " in recommendation.lower() or "depart" in recommendation.lower():
@@ -559,6 +566,11 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
             ),
         }
     if timing_context == "tomorrow":
+        route_window = summarize_best_departure_window(
+            forecast,
+            current_time=None,
+            vessel_profile=vessel_profile,
+        )
         if isinstance(wave_max, (int, float)) and isinstance(vessel_profile, dict):
             restricted = vessel_profile.get("restricted_m")
             manageable = vessel_profile.get("manageable_m")
@@ -573,13 +585,26 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
                 }
             if manageable is not None and wave_max >= manageable:
                 return {
-                    "recommendation": "tomorrow looks possible only with conservative timing for this vessel size",
+                    "recommendation": (
+                        route_window["recommendation"]
+                        if route_window
+                        else "tomorrow looks possible only with conservative timing for this vessel size"
+                    ),
                     "reason": (
-                        f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                        route_window["reason"]
+                        if route_window
+                        else f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
                         "Use the lower sampled window and confirm with the morning run before committing"
                     ),
                 }
         coverage = render_hourly_coverage(hourly_count)
+        if route_window:
+            requested_period = forecast.get("target_period_label")
+            period_text = f" {requested_period}" if requested_period in ("morning", "afternoon", "evening") else ""
+            return {
+                "recommendation": f"tomorrow{period_text} looks workable; {route_window['recommendation']}",
+                "reason": f"{route_window['reason']}. Confirm with the morning run before committing",
+            }
         return {
             "recommendation": "Tomorrow looks workable based on the latest forecast package",
             "reason": (

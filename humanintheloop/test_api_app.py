@@ -433,11 +433,17 @@ def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp
 
     assert response.status_code == 200
     payload = response.json()
-    assert "Tomorrow looks workable" in payload["answer"]
+    assert "Tomorrow morning looks workable" in payload["answer"]
     assert "0.8 m" in payload["answer"]
     assert "08:00" in payload["answer"]
+    assert "10:00" in payload["answer"]
+    assert "within the requested morning window" in payload["answer"]
     assert "1.9 m" not in payload["answer"]
     assert "1.2 m" not in payload["answer"]
+    assert payload["evidence_used"]["hourly_points"] == 2
+    assert payload["evidence_used"]["target_local_date"] == "2026-06-06"
+    assert payload["evidence_used"]["target_period_label"] == "morning"
+    assert payload["evidence_used"]["route_segments"] == []
 
 
 def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):

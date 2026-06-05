@@ -52,14 +52,14 @@ def render_briefing(snapshot, vessel_class, output_format):
     return briefing_renderers.render_whatsapp(adjusted), adjusted
 
 
-def evidence_used(snapshot):
-    forecast = snapshot.get("forecast", {})
+def evidence_used(snapshot, forecast_override=None):
+    forecast = forecast_override or snapshot.get("forecast", {})
     observations = snapshot.get("observations", {})
     available_observations = [
         key for key, value in observations.items()
         if isinstance(value, dict) and value.get("last_sample_utc")
     ]
-    return {
+    evidence = {
         "forecast_variables": sorted(
             key for key in ("wave_min_m", "wave_max_m", "current_max_kn")
             if forecast.get(key) is not None
@@ -69,6 +69,11 @@ def evidence_used(snapshot):
         "observations": available_observations,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
     }
+    if forecast.get("target_local_date"):
+        evidence["target_local_date"] = forecast.get("target_local_date")
+    if forecast.get("target_period_label"):
+        evidence["target_period_label"] = forecast.get("target_period_label")
+    return evidence
 
 
 def evidence_freshness(snapshot, question_request):

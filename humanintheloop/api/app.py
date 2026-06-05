@@ -581,7 +581,7 @@ def create_app(evidence_store=None):
                 "freshness_status": freshness["freshness_status"],
                 "freshness_warning": freshness["freshness_warning"],
                 "captain_knowledge": decision.get("captain_knowledge", []),
-                "evidence_used": evidence_used(adjusted),
+                "evidence_used": evidence_used(adjusted, forecast_override=decision.get("forecast_context")),
             }
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error

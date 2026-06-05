@@ -1198,9 +1198,11 @@ class DecisionEngineTests(unittest.TestCase):
             current_date="2026-06-05",
         )
 
-        self.assertIn("Tomorrow looks workable", decision["answer"])
+        self.assertIn("Tomorrow morning looks workable", decision["answer"])
         self.assertIn("0.8 m", decision["answer"])
         self.assertIn("08:00", decision["answer"])
+        self.assertIn("10:00", decision["answer"])
+        self.assertIn("within the requested morning window", decision["answer"])
         self.assertNotIn("1.9 m", decision["answer"])
         self.assertNotIn("1.2 m", decision["answer"])
         self.assertNotIn("Ibiza Channel", decision["answer"])
