@@ -14,12 +14,14 @@ SOCIB_SOURCE = {
     "label": "SOCIB WMOP/SAPO forecast",
 }
 SOURCE_TIMEOUT_SECONDS = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "900"))
+SOURCE_ATTEMPTS = int(os.getenv("PREDSEA_SOURCE_ATTEMPTS", "1"))
 
 
 def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
     """Fetch all configured forecast sources without letting one source block another."""
     output_dir = Path(output_dir or fetch_data.OUTPUT_DIR)
     timeout_seconds = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", str(SOURCE_TIMEOUT_SECONDS)))
+    attempts = int(os.getenv("PREDSEA_SOURCE_ATTEMPTS", str(SOURCE_ATTEMPTS)))
     source_configs = [
         ("copernicus", output_dir / "copernicus"),
         ("socib", output_dir / "socib_thredds"),
@@ -27,10 +29,11 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
     sources = []
     for source_id, source_output_dir in source_configs:
         print(f"Fetching forecast source: {source_id}", flush=True)
-        source = fetch_source_via_subprocess(
+        source = fetch_source_with_attempts(
             source_id,
             source_output_dir,
             timeout_seconds=timeout_seconds,
+            attempts=attempts,
             dry_run=dry_run,
         )
         if source.get("available"):
@@ -40,6 +43,28 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
         sources.append(source)
     mark_preferred_source(sources)
     return sources
+
+
+def fetch_source_with_attempts(source_id, output_dir, timeout_seconds, attempts=1, dry_run=False):
+    attempts = max(1, int(attempts))
+    last_source = None
+    for attempt in range(1, attempts + 1):
+        if attempt > 1:
+            print(f"Retrying forecast source: {source_id} (attempt {attempt}/{attempts})", flush=True)
+        source = fetch_source_via_subprocess(
+            source_id,
+            output_dir,
+            timeout_seconds=timeout_seconds,
+            dry_run=dry_run,
+        )
+        if source.get("available"):
+            if attempt > 1:
+                source.setdefault("metadata", {})["fetch_attempt"] = attempt
+            return source
+        last_source = source
+    if last_source is not None and attempts > 1:
+        last_source["error"] = f"failed after {attempts} attempt(s): {last_source.get('error')}"
+    return last_source or source_template(source_id)
 
 
 def fetch_source_via_subprocess(source_id, output_dir, timeout_seconds, dry_run=False):

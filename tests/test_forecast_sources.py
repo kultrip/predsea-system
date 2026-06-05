@@ -93,3 +93,33 @@ def test_fetch_available_forecasts_runs_sources_independently(tmp_path, monkeypa
     assert "Fetching forecast source: copernicus" in output
     assert "Forecast source unavailable: copernicus" in output
     assert "Forecast source ready: socib" in output
+
+
+def test_fetch_source_with_attempts_retries_transient_failure(tmp_path, monkeypatch, capsys):
+    calls = []
+
+    def fake_fetch(source_id, output_dir, timeout_seconds, dry_run=False):
+        calls.append(source_id)
+        if len(calls) == 1:
+            return {"id": source_id, "available": False, "error": "temporary timeout"}
+        return {
+            "id": source_id,
+            "available": True,
+            "metadata": {},
+            "waves_path": Path(output_dir) / "waves.nc",
+            "currents_path": Path(output_dir) / "currents.nc",
+        }
+
+    monkeypatch.setattr(forecast_sources, "fetch_source_via_subprocess", fake_fetch)
+
+    result = forecast_sources.fetch_source_with_attempts(
+        "copernicus",
+        tmp_path,
+        timeout_seconds=30,
+        attempts=2,
+    )
+
+    assert len(calls) == 2
+    assert result["available"] is True
+    assert result["metadata"]["fetch_attempt"] == 2
+    assert "Retrying forecast source: copernicus" in capsys.readouterr().out

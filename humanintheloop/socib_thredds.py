@@ -1,4 +1,6 @@
 import datetime
+import os
+import time
 from pathlib import Path
 
 
@@ -15,6 +17,8 @@ SAPO_IB_URL = (
 
 LON_MIN, LON_MAX = 1.0, 4.5
 LAT_MIN, LAT_MAX = 38.5, 40.5
+THREDDS_ATTEMPTS = int(os.getenv("PREDSEA_SOCIB_THREDDS_ATTEMPTS", "3"))
+THREDDS_RETRY_DELAY_SECONDS = int(os.getenv("PREDSEA_SOCIB_THREDDS_RETRY_DELAY_SECONDS", "20"))
 
 
 def get_balearic_forecast(output_dir="./mvp_data/socib_thredds", dry_run=False):
@@ -29,8 +33,8 @@ def get_balearic_forecast(output_dir="./mvp_data/socib_thredds", dry_run=False):
             "metadata": source_metadata(),
         }
 
-    fetch_sapo_waves(waves_path)
-    fetch_wmop_currents(currents_path)
+    with_retries("SOCIB SAPO-IB waves", lambda: fetch_sapo_waves(waves_path))
+    with_retries("SOCIB WMOP currents", lambda: fetch_wmop_currents(currents_path))
     return {
         "waves_path": waves_path,
         "currents_path": currents_path,
@@ -50,6 +54,22 @@ def source_metadata():
 def forecast_window():
     now = datetime.datetime.utcnow()
     return now - datetime.timedelta(hours=6), now + datetime.timedelta(days=1)
+
+
+def with_retries(label, operation, attempts=None, delay_seconds=None):
+    attempts = attempts or THREDDS_ATTEMPTS
+    delay_seconds = THREDDS_RETRY_DELAY_SECONDS if delay_seconds is None else delay_seconds
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return operation()
+        except OSError as error:
+            last_error = error
+            if attempt >= attempts:
+                break
+            print(f"{label} failed on attempt {attempt}/{attempts}: {error}. Retrying in {delay_seconds}s.", flush=True)
+            time.sleep(delay_seconds)
+    raise last_error
 
 
 def fetch_sapo_waves(output_path):
