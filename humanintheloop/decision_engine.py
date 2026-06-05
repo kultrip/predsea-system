@@ -46,7 +46,11 @@ def answer_question(question, snapshot, location_label="shared location", curren
             recommendation = f"use the direct route during the {best_window} window; reassess if leaving later"
         reason = f"after the best window, waves/current can increase fuel burn and comfort risk. Current forecast peak: {wave_max} m around {wave_peak}"
     elif intent == "leave_window":
-        route_window = summarize_best_departure_window(forecast, current_time=current_time)
+        route_window = summarize_best_departure_window(
+            forecast,
+            current_time=current_time,
+            vessel_profile=snapshot.get("vessel_profile"),
+        )
         if route_window and not is_late_day(current_time) and not morning_window_passed:
             recommendation = route_window["recommendation"]
             reason = route_window["reason"]
@@ -216,7 +220,13 @@ def render_decision_line(route_prefix, intent, recommendation, forecast, freshne
     if intent == "leave_window":
         if "practical daylight window has passed" in recommendation:
             return f"{route_prefix}{sentence_case(recommendation)}."
-        if "looks better than" in recommendation or "near the forecast peak" in recommendation:
+        if (
+            "looks better than" in recommendation
+            or "near the forecast peak" in recommendation
+            or "conservative timing" in recommendation
+            or "night-crossing option" in recommendation
+            or "not a comfort recommendation" in recommendation
+        ):
             return f"{route_prefix}{sentence_case(recommendation)}."
         peak_time = forecast.get("wave_peak_time")
         route = route_prefix.replace(": ", "").strip() or "This route"
@@ -233,6 +243,8 @@ def render_best_window(intent, recommendation, forecast):
         peak_wave = forecast.get("wave_max_m")
         peak_text = f", when wave height peaks around {peak_wave:.1f} m" if isinstance(peak_wave, (int, float)) else ""
         if peak_time and peak_time != "N/A":
+            if "daylight" in recommendation:
+                return f"Leave around {best} during the practical daylight window if departing today. Avoid the local peak around {peak_time}{peak_text}."
             return f"Leave around {best} if departing today. Conditions are expected to worsen near {peak_time}{peak_text}."
         return f"Leave around {best} if departing today."
     if "lower sampled window is around" in recommendation:
@@ -247,7 +259,11 @@ def render_best_window(intent, recommendation, forecast):
 
 
 def extract_lower_sampled_window(text):
-    match = re.search(r"lower sampled window is around ([0-2]?\d:[0-5]\d)", text or "", re.IGNORECASE)
+    match = re.search(
+        r"lower sampled (?:practical daylight )?window is around ([0-2]?\d:[0-5]\d)",
+        text or "",
+        re.IGNORECASE,
+    )
     if not match:
         return None
     hour, minute = match.group(1).split(":", 1)
@@ -479,7 +495,7 @@ def summarize_requested_time(requested_time, forecast):
     return {"recommendation": recommendation, "reason": reason}
 
 
-def summarize_best_departure_window(forecast, current_time=None):
+def summarize_best_departure_window(forecast, current_time=None, vessel_profile=None):
     hourly = forecast.get("hourly") or []
     peak_time = forecast.get("wave_peak_time", "N/A")
     peak_wave = forecast.get("wave_max_m")
@@ -492,7 +508,13 @@ def summarize_best_departure_window(forecast, current_time=None):
     if not candidates or peak_wave is None or peak_time == "N/A":
         return None
 
-    best = min(candidates, key=lambda row: row.get("wave_m", 999))
+    practical_candidates = [row for row in candidates if is_practical_daylight_time(row.get("time"))]
+    non_peak_practical_candidates = [
+        row for row in practical_candidates
+        if not is_near_time(row.get("time"), peak_time, minutes=90)
+    ]
+    candidate_pool = non_peak_practical_candidates or practical_candidates or candidates
+    best = best_operational_candidate(candidate_pool)
     best_time = best.get("time")
     best_wave = best.get("wave_m")
     if best_time is None or best_wave is None:
@@ -503,13 +525,62 @@ def summarize_best_departure_window(forecast, current_time=None):
     if peak_direction is not None:
         direction_text = f" Mean wave direction near the peak is about {peak_direction:.0f} degrees"
 
+    practical_note = "practical daylight " if is_practical_daylight_time(best_time) else ""
+    recommendation_prefix = f"avoid the local peak around {peak_time}; the lower sampled {practical_note}window is around {best_time}"
+    if is_night_time(best_time):
+        recommendation_prefix = (
+            f"avoid the {peak_time} peak; the lower sampled window is around {best_time}, "
+            "but that is a night-crossing option"
+        )
+
+    if isinstance(peak_wave, (int, float)) and isinstance(vessel_profile, dict):
+        restricted = vessel_profile.get("restricted_m")
+        manageable = vessel_profile.get("manageable_m")
+        if restricted is not None and peak_wave >= restricted:
+            recommendation_prefix = f"not a comfort recommendation during the local peak around {peak_time}; {recommendation_prefix}"
+        elif manageable is not None and peak_wave >= manageable:
+            recommendation_prefix = f"possible today with conservative timing; {recommendation_prefix}"
+
     return {
-        "recommendation": f"avoid the {peak_time} peak; the lower sampled window is around {best_time}",
+        "recommendation": recommendation_prefix,
         "reason": (
             f"forecast peak is near {peak_wave:.1f} m around {peak_time}, while the sampled route value "
             f"near {best_time} is about {best_wave:.1f} m.{direction_text}"
         ),
     }
+
+
+def is_practical_daylight_time(candidate_time):
+    minutes = time_to_minutes(candidate_time)
+    if minutes is None:
+        return False
+    return 6 * 60 <= minutes <= 20 * 60
+
+
+def best_operational_candidate(candidates, tolerance_m=0.15):
+    if not candidates:
+        return None
+    best_wave = min(row.get("wave_m", 999) for row in candidates)
+    near_best = [
+        row for row in candidates
+        if row.get("wave_m") is not None and row.get("wave_m", 999) <= best_wave + tolerance_m
+    ]
+    return min(near_best or candidates, key=lambda row: time_to_minutes(row.get("time")) or 9999)
+
+
+def is_night_time(candidate_time):
+    minutes = time_to_minutes(candidate_time)
+    if minutes is None:
+        return False
+    return minutes > 20 * 60 or minutes < 6 * 60
+
+
+def is_near_time(candidate_time, target_time, minutes=90):
+    candidate_minutes = time_to_minutes(candidate_time)
+    target_minutes = time_to_minutes(target_time)
+    if candidate_minutes is None or target_minutes is None:
+        return False
+    return abs(candidate_minutes - target_minutes) <= minutes
 
 
 def is_future_or_current_time(candidate_time, current_time):

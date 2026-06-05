@@ -97,3 +97,48 @@ def test_tomorrow_answer_does_not_call_restricted_small_vessel_workable():
     assert "looks workable" not in decision_line
     assert "not a comfort recommendation" in decision_line
     assert "Risk: High for this vessel size" in answer
+
+
+def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
+    snapshot = {
+        "route": "Palma -> Ibiza",
+        "route_id": "palma_ibiza",
+        "vessel_class": "medium",
+        "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+        "forecast": {
+            "wave_min_m": 0.9,
+            "wave_max_m": 2.1,
+            "wave_peak_time": "09:00",
+            "wave_peak_direction_deg": 50.0,
+            "wave_peak_sea_state": "following sea",
+            "current_max_kn": 0.4,
+            "hourly": [
+                {"time": "08:00", "wave_m": 1.9, "wave_sea_state": "following sea"},
+                {"time": "09:00", "wave_m": 2.1, "wave_sea_state": "following sea"},
+                {"time": "12:00", "wave_m": 1.4, "wave_sea_state": "stern quartering sea"},
+                {"time": "16:00", "wave_m": 1.2, "wave_sea_state": "stern quartering sea"},
+                {"time": "22:00", "wave_m": 0.9, "wave_sea_state": "stern quartering sea"},
+            ],
+        },
+        "recommendation": {
+            "best_window": "avoid the exposed peak window",
+            "watch_out": "forecast peak near 2.1 m around 09:00",
+            "confidence": "low",
+            "vessel_advice": "caution for vessels 15-24m; use the best weather window",
+        },
+    }
+
+    result = decision_engine.answer_question(
+        "When is the best moment to leave from Palma to Ibiza today?",
+        snapshot,
+        current_time="07:30",
+    )
+
+    answer = result["answer"]
+    decision_line, best_window_line = answer.split("\n\n", 2)[:2]
+
+    assert "workable today" not in decision_line
+    assert "conservative timing" in decision_line
+    assert "16:00" in best_window_line
+    assert "22:00" not in best_window_line
+    assert "daylight" in answer
