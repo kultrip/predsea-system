@@ -1,4 +1,7 @@
+import copy
 import re
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import captain_knowledge
 
@@ -18,11 +21,20 @@ def classify_question(question):
     return "general_decision"
 
 
-def answer_question(question, snapshot, location_label="shared location", current_time=None):
+LOCAL_TIMEZONE = ZoneInfo("Europe/Madrid")
+
+
+def answer_question(question, snapshot, location_label="shared location", current_time=None, current_date=None):
     intent = classify_question(question)
     requested_time = extract_requested_time(question)
     rec = snapshot.get("recommendation", {})
-    forecast = snapshot.get("forecast", {})
+    timing_context = classify_timing_context(question)
+    forecast = forecast_for_question_context(
+        snapshot.get("forecast", {}),
+        question,
+        timing_context=timing_context,
+        current_date=current_date,
+    )
     best_window = rec.get("best_window", "check manually")
     watch_out = rec.get("watch_out", "conditions require manual review")
     confidence = rec.get("confidence", "low")
@@ -31,7 +43,6 @@ def answer_question(question, snapshot, location_label="shared location", curren
     wave_peak = forecast.get("wave_peak_time", "N/A")
     morning_window_passed = is_morning_window_passed(best_window, current_time)
     requested_time_summary = summarize_requested_time(requested_time, forecast)
-    timing_context = classify_timing_context(question)
 
     if requested_time_summary:
         recommendation = requested_time_summary["recommendation"]
@@ -393,6 +404,143 @@ def classify_timing_context(question):
     if "this afternoon" in text or "afternoon" in text:
         return "afternoon"
     return None
+
+
+def forecast_for_question_context(forecast, question, timing_context=None, current_date=None):
+    target_date = target_local_date_for_question(question, timing_context=timing_context, current_date=current_date)
+    if not target_date:
+        return forecast
+
+    hourly = forecast.get("hourly") or []
+    day_part = requested_day_part(question, timing_context=timing_context)
+    filtered_hourly = [
+        localized_hourly_row(row)
+        for row in hourly
+        if row_local_date(row) == target_date and row_matches_day_part(row, day_part)
+    ]
+    if not filtered_hourly:
+        return forecast
+
+    filtered = copy.deepcopy(forecast)
+    filtered["hourly"] = filtered_hourly
+    filtered["target_local_date"] = target_date.isoformat()
+    filtered["target_period_label"] = day_part or timing_context or "today"
+    # Existing route_segments are aggregate summaries over the whole downloaded package.
+    # Drop them after day filtering so the answer does not cite stale segment peaks.
+    filtered["route_segments"] = {}
+    update_forecast_extrema_from_hourly(filtered)
+    return filtered
+
+
+def requested_day_part(question, timing_context=None):
+    text = question.lower()
+    if "morning" in text:
+        return "morning"
+    if "afternoon" in text or timing_context == "afternoon":
+        return "afternoon"
+    if "evening" in text:
+        return "evening"
+    return None
+
+
+def row_matches_day_part(row, day_part):
+    if not day_part:
+        return True
+    parsed = parse_row_time_utc(row)
+    if parsed is None:
+        return True
+    minutes = parsed.astimezone(LOCAL_TIMEZONE).hour * 60 + parsed.astimezone(LOCAL_TIMEZONE).minute
+    if day_part == "morning":
+        return 6 * 60 <= minutes < 12 * 60
+    if day_part == "afternoon":
+        return 12 * 60 <= minutes < 18 * 60
+    if day_part == "evening":
+        return 18 * 60 <= minutes <= 22 * 60
+    return True
+
+
+def localized_hourly_row(row):
+    localized = copy.deepcopy(row)
+    parsed = parse_row_time_utc(row)
+    if parsed is None:
+        return localized
+    local_time = parsed.astimezone(LOCAL_TIMEZONE)
+    localized.setdefault("time_model", localized.get("time"))
+    localized["time"] = local_time.strftime("%H:%M")
+    localized["time_local"] = local_time.strftime("%Y-%m-%d %H:%M")
+    return localized
+
+
+def target_local_date_for_question(question, timing_context=None, current_date=None):
+    text = question.lower()
+    base_date = parse_local_date(current_date)
+    if base_date is None:
+        return None
+    timing_context = timing_context or classify_timing_context(question)
+    if timing_context == "tomorrow":
+        return base_date + timedelta(days=1)
+    if timing_context == "tonight" or "today" in text:
+        return base_date
+    return None
+
+
+def parse_local_date(value):
+    if isinstance(value, date):
+        return value
+    if not value:
+        return None
+    text = str(value).strip()
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def row_local_date(row):
+    parsed = parse_row_time_utc(row)
+    if parsed is None:
+        return None
+    return parsed.astimezone(LOCAL_TIMEZONE).date()
+
+
+def parse_row_time_utc(row):
+    value = row.get("time_utc")
+    if not value:
+        return None
+    text = str(value).strip().replace(" UTC", "Z")
+    for fmt in ("%Y-%m-%d %H:%MZ", "%Y-%m-%dT%H:%MZ", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=ZoneInfo("UTC"))
+        except ValueError:
+            continue
+    return None
+
+
+def update_forecast_extrema_from_hourly(forecast):
+    hourly = forecast.get("hourly") or []
+    wave_rows = [row for row in hourly if row.get("wave_m") is not None]
+    if wave_rows:
+        min_row = min(wave_rows, key=lambda row: row["wave_m"])
+        peak_row = max(wave_rows, key=lambda row: row["wave_m"])
+        forecast["wave_min_m"] = min_row.get("wave_m")
+        forecast["wave_max_m"] = peak_row.get("wave_m")
+        forecast["wave_peak_time"] = peak_row.get("time")
+        copy_peak_field(forecast, peak_row, "wave_direction_deg", "wave_peak_direction_deg")
+        copy_peak_field(forecast, peak_row, "wave_sea_state", "wave_peak_sea_state")
+        for component in ("swell_1", "swell_2", "wind_wave"):
+            copy_peak_field(forecast, peak_row, f"{component}_height_m", f"{component}_height_m")
+            copy_peak_field(forecast, peak_row, f"{component}_direction_deg", f"{component}_direction_deg")
+
+    current_rows = [row for row in hourly if row.get("current_kn") is not None]
+    if current_rows:
+        current_peak = max(current_rows, key=lambda row: row["current_kn"])
+        forecast["current_max_kn"] = current_peak.get("current_kn")
+        forecast["current_peak_time"] = current_peak.get("time")
+
+
+def copy_peak_field(forecast, peak_row, source_key, target_key):
+    if peak_row.get(source_key) is not None:
+        forecast[target_key] = peak_row.get(source_key)
 
 
 def summarize_route_timing(timing_context, forecast, best_window, watch_out, vessel_profile=None):

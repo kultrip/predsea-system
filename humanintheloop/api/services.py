@@ -40,6 +40,7 @@ def answer_question(snapshot, question_request):
         adjusted,
         location_label=question_request.location_label,
         current_time=question_request.current_time,
+        current_date=question_request.current_date,
     )
     return decision, adjusted, freshness
 

@@ -1103,6 +1103,109 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("swell and wind-wave partition data changes the comfort read", decision["answer"])
         self.assertIn("Evidence note:", decision["answer"])
 
+    def test_tomorrow_question_filters_hourly_forecast_to_tomorrow_local_date(self):
+        import decision_engine
+
+        snapshot = {
+            "route": "Palma -> Ibiza",
+            "vessel_class": "medium",
+            "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+            "forecast": {
+                "wave_min_m": 0.5,
+                "wave_max_m": 1.9,
+                "wave_peak_time": "11:00",
+                "current_max_kn": 0.8,
+                "current_peak_time": "11:00",
+                "route_segments": {
+                    "worst_segment": {
+                        "name": "Ibiza Channel",
+                        "max_wave_m": 1.9,
+                        "peak_time": "11:00",
+                        "sea_state": "following sea",
+                    }
+                },
+                "hourly": [
+                    {
+                        "time": "11:00",
+                        "time_utc": "2026-06-05 11:00 UTC",
+                        "wave_m": 1.9,
+                        "current_kn": 0.8,
+                        "wave_direction_deg": 59.9,
+                        "wave_sea_state": "following sea",
+                        "swell_1_height_m": 0.9,
+                        "swell_1_direction_deg": 8.0,
+                        "swell_2_height_m": 0.7,
+                        "swell_2_direction_deg": 28.0,
+                        "wind_wave_height_m": 1.5,
+                        "wind_wave_direction_deg": 82.0,
+                    },
+                    {
+                        "time": "00:00",
+                        "time_utc": "2026-06-05 22:00 UTC",
+                        "wave_m": 1.2,
+                        "current_kn": 0.4,
+                        "wave_direction_deg": 73.0,
+                        "wave_sea_state": "following sea",
+                        "swell_1_height_m": 0.9,
+                        "swell_1_direction_deg": 73.0,
+                        "swell_2_height_m": 0.7,
+                        "swell_2_direction_deg": 45.0,
+                        "wind_wave_height_m": 0.5,
+                        "wind_wave_direction_deg": 100.0,
+                    },
+                    {
+                        "time": "08:00",
+                        "time_utc": "2026-06-06 06:00 UTC",
+                        "wave_m": 0.8,
+                        "current_kn": 0.3,
+                        "wave_direction_deg": 81.0,
+                        "wave_sea_state": "following sea",
+                        "swell_1_height_m": 0.6,
+                        "swell_1_direction_deg": 80.0,
+                        "swell_2_height_m": 0.5,
+                        "swell_2_direction_deg": 50.0,
+                        "wind_wave_height_m": 0.0,
+                        "wind_wave_direction_deg": 100.0,
+                    },
+                    {
+                        "time": "10:00",
+                        "time_utc": "2026-06-06 08:00 UTC",
+                        "wave_m": 0.7,
+                        "current_kn": 0.2,
+                        "wave_direction_deg": 84.0,
+                        "wave_sea_state": "following sea",
+                        "swell_1_height_m": 0.5,
+                        "swell_1_direction_deg": 85.0,
+                        "swell_2_height_m": 0.4,
+                        "swell_2_direction_deg": 52.0,
+                        "wind_wave_height_m": 0.1,
+                        "wind_wave_direction_deg": 102.0,
+                    },
+                ],
+            },
+            "recommendation": {
+                "best_window": "lower sea-state window",
+                "watch_out": "forecast peak near 1.9 m around 11:00",
+                "confidence": "medium",
+                "vessel_advice": "manageable for vessels 15-24m",
+            },
+        }
+
+        decision = decision_engine.answer_question(
+            "Would Palma to Ibiza feel comfortable for a 15-24m vessel tomorrow morning?",
+            snapshot,
+            current_time="21:00",
+            current_date="2026-06-05",
+        )
+
+        self.assertIn("Tomorrow looks workable", decision["answer"])
+        self.assertIn("0.8 m", decision["answer"])
+        self.assertIn("08:00", decision["answer"])
+        self.assertNotIn("1.9 m", decision["answer"])
+        self.assertNotIn("1.2 m", decision["answer"])
+        self.assertNotIn("Ibiza Channel", decision["answer"])
+        self.assertNotIn("Worst route segment", decision["answer"])
+
     def test_render_decision_screenshot_script_uses_shared_location_and_question(self):
         import decision_engine
 
