@@ -155,6 +155,19 @@ def test_build_passage_evidence_samples_segments_by_eta():
     assert passage["summary"] == "Worst expected section: Mid Palma-Ibiza near 1.5 m around 10:00."
 
 
+def test_closest_hourly_sample_does_not_treat_midnight_as_eta():
+    hourly = [
+        {"time": "09:00", "wave_m": 0.6},
+        {"time": "12:00", "wave_m": 1.1},
+        {"time": "00:00", "wave_m": 0.8},
+    ]
+
+    sample = route_analysis.closest_hourly_sample(hourly, "12:06")
+
+    assert sample["time"] == "12:00"
+    assert sample["wave_m"] == 1.1
+
+
 def test_build_route_snapshot_embeds_passage_evidence_when_segments_exist():
     route = {
         "id": "palma_ibiza",

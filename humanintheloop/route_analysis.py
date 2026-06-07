@@ -721,7 +721,14 @@ def closest_hourly_sample(hourly, eta):
     eta_minutes = time_to_minutes(eta)
     if eta_minutes is None:
         return hourly[0]
-    return min(hourly, key=lambda row: abs((time_to_minutes(row.get("time")) or eta_minutes) - eta_minutes))
+    return min(hourly, key=lambda row: time_distance_minutes(time_to_minutes(row.get("time")), eta_minutes))
+
+
+def time_distance_minutes(candidate_minutes, target_minutes):
+    if candidate_minutes is None:
+        return 24 * 60
+    direct_distance = abs(candidate_minutes - target_minutes)
+    return min(direct_distance, (24 * 60) - direct_distance)
 
 
 def segment_summary_sample(segment):
