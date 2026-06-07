@@ -80,6 +80,18 @@ def build_route_snapshot(observations, forecast=None, route=None, vessel_class="
         current_peak_time,
         vessel_class=vessel_class,
     )
+    if forecast.get("route_segments"):
+        forecast = {
+            **forecast,
+            "passage_evidence": build_passage_evidence(
+                forecast,
+                route,
+                departure_time="08:30",
+                vessel_speed_kn=16,
+                priority="comfort",
+                vessel_class=vessel_class,
+            ),
+        }
 
     return {
         "route": route["name"],
@@ -293,11 +305,20 @@ def summarize_route_point_series(
         wave_direction_points_by_time,
         route_bearing_deg,
         route or load_route(DEFAULT_ROUTE_ID),
+        time_utc_values=time_utc_values,
     )
     return summary
 
 
-def build_route_segments(times, wave_points_by_time, current_points_by_time=None, wave_direction_points_by_time=None, route_bearing_deg=None, route=None):
+def build_route_segments(
+    times,
+    wave_points_by_time,
+    current_points_by_time=None,
+    wave_direction_points_by_time=None,
+    route_bearing_deg=None,
+    route=None,
+    time_utc_values=None,
+):
     sample_points = route_sample_points(route or {})
     if not sample_points or not wave_points_by_time:
         return {}
@@ -317,6 +338,7 @@ def build_route_segments(times, wave_points_by_time, current_points_by_time=None
             current_series,
             direction_series,
             route_bearing_deg,
+            time_utc_values=time_utc_values,
         )
 
     worst_id = max(
@@ -347,7 +369,7 @@ def series_for_point(values_by_time, point_index):
     return series
 
 
-def summarize_route_segment(segment_id, name, times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None):
+def summarize_route_segment(segment_id, name, times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None, time_utc_values=None):
     peak_index = index_of_max_valid(wave_series)
     max_wave = wave_series[peak_index] if peak_index < len(wave_series) else float("nan")
     direction = direction_series[peak_index] if direction_series and peak_index < len(direction_series) else None
@@ -362,7 +384,35 @@ def summarize_route_segment(segment_id, name, times, wave_series, current_series
     }
     if current is not None and current == current:
         segment["current_kn"] = round(current * MPS_TO_KNOTS, 1)
+    segment["hourly"] = segment_hourly_evidence(
+        times,
+        wave_series,
+        current_series=current_series,
+        direction_series=direction_series,
+        route_bearing_deg=route_bearing_deg,
+        time_utc_values=time_utc_values,
+    )
     return segment
+
+
+def segment_hourly_evidence(times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None, time_utc_values=None):
+    hourly = []
+    for index, time in enumerate(times):
+        row = {"time": time}
+        if time_utc_values and index < len(time_utc_values):
+            row["time_utc"] = time_utc_values[index]
+        if index < len(wave_series) and wave_series[index] == wave_series[index]:
+            row["wave_m"] = round(wave_series[index], 1)
+        if direction_series and index < len(direction_series) and direction_series[index] == direction_series[index]:
+            row["wave_direction_deg"] = round(direction_series[index], 1)
+            if route_bearing_deg is not None:
+                sea_state = relative_sea_state(direction_series[index], route_bearing_deg)
+                row["wave_relative_angle_deg"] = sea_state["relative_angle_deg"]
+                row["wave_sea_state"] = sea_state["label"]
+        if current_series and index < len(current_series) and current_series[index] == current_series[index]:
+            row["current_kn"] = round(current_series[index] * MPS_TO_KNOTS, 1)
+        hourly.append(row)
+    return hourly
 
 
 def comparable_segment_wave(segment):
@@ -578,3 +628,180 @@ def transpose_points(points_by_series):
     if not points_by_series:
         return []
     return [list(values) for values in zip(*points_by_series)]
+
+
+def build_passage_evidence(forecast, route, departure_time="08:30", vessel_speed_kn=16, priority="comfort", vessel_class="medium"):
+    route_segments = forecast.get("route_segments") or {}
+    ordered_segment_ids = [
+        "departure_conditions",
+        "open_water_conditions",
+        "arrival_conditions",
+    ]
+    profile = vessel_profile_for(vessel_class)
+    segments = []
+    for segment_id in ordered_segment_ids:
+        segment = route_segments.get(segment_id) or {}
+        if not segment:
+            continue
+        eta = segment_eta(route, segment_id, departure_time, vessel_speed_kn)
+        sample = closest_hourly_sample(segment.get("hourly") or [], eta) or segment_summary_sample(segment)
+        wave = sample.get("wave_m") if sample else None
+        segments.append(
+            {
+                "id": segment_id,
+                "label": segment.get("name", segment_id.replace("_", " ")),
+                "role": passage_segment_role(segment_id),
+                "eta": eta,
+                "sample": sample,
+                "comfort": comfort_from_wave(wave, profile),
+                "risk": risk_from_wave(wave, profile),
+            }
+        )
+
+    worst = worst_passage_segment(segments)
+    return {
+        "departure_time": departure_time,
+        "vessel_speed_kn": vessel_speed_kn,
+        "vessel_class": vessel_class,
+        "priority": priority,
+        "segments": segments,
+        "worst_segment": worst,
+        "summary": passage_summary(worst),
+    }
+
+
+def passage_segment_role(segment_id):
+    roles = {
+        "departure_conditions": "departure",
+        "open_water_conditions": "exposed_leg",
+        "arrival_conditions": "arrival",
+    }
+    return roles.get(segment_id, "route_segment")
+
+
+def segment_eta(route, segment_id, departure_time, vessel_speed_kn):
+    departure_minutes = time_to_minutes(departure_time)
+    if departure_minutes is None or not vessel_speed_kn:
+        return departure_time
+    distance_nm = distance_to_segment_nm(route, segment_id)
+    travel_minutes = int(round((distance_nm / float(vessel_speed_kn)) * 60.0))
+    return minutes_to_time(departure_minutes + travel_minutes)
+
+
+def distance_to_segment_nm(route, segment_id):
+    sample_points = route_sample_points(route or {})
+    indexes = operational_segment_indexes(len(sample_points))
+    point_index = indexes.get(segment_id, 0)
+    if not sample_points or point_index >= len(sample_points):
+        return 0.0
+    origin = (route or {}).get("origin") or sample_points[0]
+    point = sample_points[point_index]
+    return haversine_nm(
+        float(origin["latitude"]),
+        float(origin["longitude"]),
+        float(point["latitude"]),
+        float(point["longitude"]),
+    )
+
+
+def haversine_nm(lat1, lon1, lat2, lon2):
+    earth_radius_nm = 3440.065
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return earth_radius_nm * c
+
+
+def closest_hourly_sample(hourly, eta):
+    if not hourly:
+        return None
+    eta_minutes = time_to_minutes(eta)
+    if eta_minutes is None:
+        return hourly[0]
+    return min(hourly, key=lambda row: abs((time_to_minutes(row.get("time")) or eta_minutes) - eta_minutes))
+
+
+def segment_summary_sample(segment):
+    if segment.get("max_wave_m") is None and segment.get("peak_time") is None:
+        return {}
+    sample = {
+        "time": segment.get("peak_time"),
+        "wave_m": segment.get("max_wave_m"),
+    }
+    for key in ("wave_direction_deg", "sea_state", "current_kn"):
+        if segment.get(key) is not None:
+            target_key = "wave_sea_state" if key == "sea_state" else key
+            sample[target_key] = segment.get(key)
+    return sample
+
+
+def comfort_from_wave(wave_m, vessel_profile):
+    if wave_m is None:
+        return "unknown"
+    if wave_m >= vessel_profile["restricted_m"]:
+        return "poor"
+    if wave_m >= vessel_profile["manageable_m"]:
+        return "moderate_to_poor"
+    if wave_m >= 1.0:
+        return "moderate"
+    return "good"
+
+
+def risk_from_wave(wave_m, vessel_profile):
+    if wave_m is None:
+        return "unknown"
+    if wave_m >= vessel_profile["restricted_m"]:
+        return "high"
+    if wave_m >= vessel_profile["manageable_m"]:
+        return "moderate"
+    return "low_to_moderate"
+
+
+def worst_passage_segment(segments):
+    if not segments:
+        return {}
+    worst = max(segments, key=lambda segment: comparable_wave_from_sample(segment.get("sample") or {}))
+    sample = worst.get("sample") or {}
+    return {
+        "id": worst["id"],
+        "label": worst["label"],
+        "eta": worst.get("eta"),
+        "time": sample.get("time"),
+        "wave_m": sample.get("wave_m"),
+        "sea_state": sample.get("wave_sea_state"),
+        "comfort": worst.get("comfort"),
+        "risk": worst.get("risk"),
+    }
+
+
+def comparable_wave_from_sample(sample):
+    value = sample.get("wave_m")
+    return float(value) if isinstance(value, (int, float)) else -1.0
+
+
+def passage_summary(worst):
+    if not worst:
+        return "No passage segment evidence available."
+    wave = worst.get("wave_m")
+    wave_text = f" near {wave:.1f} m" if isinstance(wave, (int, float)) else ""
+    time = worst.get("time") or worst.get("eta")
+    time_text = f" around {time}" if time else ""
+    return f"Worst expected section: {worst.get('label')}{wave_text}{time_text}."
+
+
+def time_to_minutes(time_text):
+    if not time_text:
+        return None
+    try:
+        hour, minute = str(time_text)[:5].split(":", 1)
+        return int(hour) * 60 + int(minute)
+    except (ValueError, TypeError):
+        return None
+
+
+def minutes_to_time(minutes):
+    minutes = minutes % (24 * 60)
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"

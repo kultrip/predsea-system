@@ -355,6 +355,21 @@ def render_risk(forecast, vessel_advice, vessel_profile):
 
 
 def render_route_segment_reason(forecast):
+    passage = forecast.get("passage_evidence") or {}
+    passage_worst = passage.get("worst_segment") or {}
+    if passage_worst:
+        name = passage_worst.get("label")
+        wave = passage_worst.get("wave_m")
+        time = passage_worst.get("time") or passage_worst.get("eta")
+        comfort = passage_worst.get("comfort")
+        if name and wave is not None:
+            detail = f"Passage scenario: worst expected section is {name}, near {wave:.1f} m"
+            if time:
+                detail = f"{detail} around {time}"
+            if comfort:
+                detail = f"{detail}, with {comfort.replace('_', ' ')} comfort"
+            return f"{detail}."
+
     worst_segment = ((forecast.get("route_segments") or {}).get("worst_segment") or {})
     if not worst_segment:
         return None

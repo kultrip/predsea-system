@@ -73,6 +73,18 @@ def evidence_used(snapshot, forecast_override=None):
         evidence["target_local_date"] = forecast.get("target_local_date")
     if forecast.get("target_period_label"):
         evidence["target_period_label"] = forecast.get("target_period_label")
+    passage = forecast.get("passage_evidence") or {}
+    worst = passage.get("worst_segment") or {}
+    evidence["passage_evidence"] = {
+        "available": bool(passage),
+        "departure_time": passage.get("departure_time"),
+        "vessel_speed_kn": passage.get("vessel_speed_kn"),
+        "priority": passage.get("priority"),
+        "segment_count": len(passage.get("segments") or []),
+        "worst_segment": worst.get("label"),
+        "worst_wave_m": worst.get("wave_m"),
+        "worst_time": worst.get("time"),
+    }
     return evidence
 
 
