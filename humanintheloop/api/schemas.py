@@ -11,6 +11,8 @@ class QuestionRequest(BaseModel):
     date: Optional[str] = None
     run: Optional[str] = None
     vessel_class: VesselClass = "medium"
+    departure_time: Optional[str] = None
+    priority: Literal["comfort", "safety", "schedule"] = "comfort"
     location_label: str = "shared location"
     current_time: Optional[str] = None
     current_date: Optional[str] = None

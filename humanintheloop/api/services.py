@@ -7,12 +7,12 @@ import decision_engine
 import route_analysis
 
 
-def snapshot_for_vessel_class(snapshot, vessel_class):
+def snapshot_for_vessel_class(snapshot, vessel_class, departure_time=None, priority="comfort"):
     adjusted = copy.deepcopy(snapshot)
     adjusted["vessel_class"] = vessel_class
     adjusted["vessel_profile"] = route_analysis.vessel_profile_for(vessel_class)
     forecast = adjusted.get("forecast", {})
-    refresh_passage_evidence(adjusted, forecast, vessel_class)
+    refresh_passage_evidence(adjusted, forecast, vessel_class, departure_time=departure_time, priority=priority)
     observations = adjusted.get("observations", {})
     canal = observations.get("canal_de_ibiza", {})
     wave_now = canal.get("wave_height_m")
@@ -28,7 +28,7 @@ def snapshot_for_vessel_class(snapshot, vessel_class):
     return adjusted
 
 
-def refresh_passage_evidence(snapshot, forecast, vessel_class):
+def refresh_passage_evidence(snapshot, forecast, vessel_class, departure_time=None, priority="comfort"):
     if not forecast.get("route_segments"):
         return
     route_id = snapshot.get("route_id") or route_analysis.DEFAULT_ROUTE_ID
@@ -39,15 +39,20 @@ def refresh_passage_evidence(snapshot, forecast, vessel_class):
     forecast["passage_evidence"] = route_analysis.build_passage_evidence(
         forecast,
         route,
-        departure_time=(forecast.get("passage_evidence") or {}).get("departure_time", "08:30"),
+        departure_time=departure_time or (forecast.get("passage_evidence") or {}).get("departure_time", "08:30"),
         vessel_speed_kn=(forecast.get("passage_evidence") or {}).get("vessel_speed_kn", 16),
-        priority=(forecast.get("passage_evidence") or {}).get("priority", "comfort"),
+        priority=priority or (forecast.get("passage_evidence") or {}).get("priority", "comfort"),
         vessel_class=vessel_class,
     )
 
 
 def answer_question(snapshot, question_request):
-    adjusted = snapshot_for_vessel_class(snapshot, question_request.vessel_class)
+    adjusted = snapshot_for_vessel_class(
+        snapshot,
+        question_request.vessel_class,
+        departure_time=question_request.departure_time,
+        priority=question_request.priority,
+    )
     provided_fields = getattr(question_request, "model_fields_set", None)
     if provided_fields is None:
         provided_fields = getattr(question_request, "__fields_set__", set())
