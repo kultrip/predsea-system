@@ -13,6 +13,8 @@ class QuestionRequest(BaseModel):
     vessel_class: VesselClass = "medium"
     departure_time: Optional[str] = None
     priority: Literal["comfort", "safety", "schedule"] = "comfort"
+    current_latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    current_longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     location_label: str = "shared location"
     current_time: Optional[str] = None
     current_date: Optional[str] = None

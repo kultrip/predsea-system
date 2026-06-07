@@ -630,16 +630,28 @@ def transpose_points(points_by_series):
     return [list(values) for values in zip(*points_by_series)]
 
 
-def build_passage_evidence(forecast, route, departure_time="08:30", vessel_speed_kn=16, priority="comfort", vessel_class="medium"):
+def build_passage_evidence(
+    forecast,
+    route,
+    departure_time="08:30",
+    vessel_speed_kn=16,
+    priority="comfort",
+    vessel_class="medium",
+    current_position=None,
+):
     route_segments = forecast.get("route_segments") or {}
     ordered_segment_ids = [
         "departure_conditions",
         "open_water_conditions",
         "arrival_conditions",
     ]
+    position_context = route_position_context(route, current_position)
+    remaining_segment_ids = position_context.get("remaining_segment_ids") or ordered_segment_ids
     profile = vessel_profile_for(vessel_class)
     segments = []
     for segment_id in ordered_segment_ids:
+        if segment_id not in remaining_segment_ids:
+            continue
         segment = route_segments.get(segment_id) or {}
         if not segment:
             continue
@@ -659,7 +671,7 @@ def build_passage_evidence(forecast, route, departure_time="08:30", vessel_speed
         )
 
     worst = worst_passage_segment(segments)
-    return {
+    passage = {
         "departure_time": departure_time,
         "vessel_speed_kn": vessel_speed_kn,
         "vessel_class": vessel_class,
@@ -668,6 +680,61 @@ def build_passage_evidence(forecast, route, departure_time="08:30", vessel_speed
         "worst_segment": worst,
         "summary": passage_summary(worst),
     }
+    if position_context:
+        passage["position_context"] = position_context
+    return passage
+
+
+def route_position_context(route, current_position, off_route_threshold_nm=15.0):
+    if not current_position:
+        return {}
+    try:
+        latitude = float(current_position["latitude"])
+        longitude = float(current_position["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return {
+            "status": "invalid",
+            "warning": "Position was provided but could not be interpreted; using the full planned route.",
+        }
+    sample_points = route_sample_points(route or {})
+    if not sample_points:
+        return {
+            "status": "unknown",
+            "warning": "Route sample points are unavailable; using the full planned route.",
+        }
+
+    nearest_index, nearest_distance = nearest_route_sample_index(sample_points, latitude, longitude)
+    context = {
+        "status": "on_route" if nearest_distance <= off_route_threshold_nm else "off_route",
+        "current_latitude": round(latitude, 5),
+        "current_longitude": round(longitude, 5),
+        "nearest_route_point": sample_points[nearest_index].get("name"),
+        "nearest_route_point_index": nearest_index,
+        "distance_to_route_nm": round(nearest_distance, 1),
+    }
+    if context["status"] == "off_route":
+        context["warning"] = "Position is not close enough to the planned route; treating this as a location-based forecast instead."
+        return context
+
+    segment_indexes = operational_segment_indexes(len(sample_points))
+    remaining_segment_ids = [
+        segment_id
+        for segment_id in ("departure_conditions", "open_water_conditions", "arrival_conditions")
+        if segment_indexes.get(segment_id, 0) >= nearest_index
+    ]
+    if not remaining_segment_ids:
+        remaining_segment_ids = ["arrival_conditions"]
+    context["remaining_segment_ids"] = remaining_segment_ids
+    return context
+
+
+def nearest_route_sample_index(sample_points, latitude, longitude):
+    distances = [
+        haversine_nm(latitude, longitude, float(point["latitude"]), float(point["longitude"]))
+        for point in sample_points
+    ]
+    nearest_index = min(range(len(distances)), key=lambda index: distances[index])
+    return nearest_index, distances[nearest_index]
 
 
 def passage_segment_role(segment_id):

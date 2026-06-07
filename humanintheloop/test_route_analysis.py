@@ -155,6 +155,77 @@ def test_build_passage_evidence_samples_segments_by_eta():
     assert passage["summary"] == "Worst expected section: Mid Palma-Ibiza near 1.5 m around 10:00."
 
 
+def test_build_passage_evidence_filters_passed_segments_from_current_position():
+    route = {
+        "id": "palma_ibiza",
+        "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
+        "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
+        "sample_points": [
+            {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+            {"name": "Mid Palma-Ibiza", "longitude": 2.04, "latitude": 39.19},
+            {"name": "Ibiza Channel", "longitude": 1.83, "latitude": 38.85},
+        ],
+    }
+    forecast = {
+        "route_segments": {
+            "departure_conditions": {"name": "Palma Bay offshore", "hourly": [{"time": "09:00", "wave_m": 0.5}]},
+            "open_water_conditions": {"name": "Mid Palma-Ibiza", "hourly": [{"time": "11:00", "wave_m": 1.0}]},
+            "arrival_conditions": {"name": "Ibiza Channel", "hourly": [{"time": "12:00", "wave_m": 1.3}]},
+        }
+    }
+
+    passage = route_analysis.build_passage_evidence(
+        forecast,
+        route,
+        departure_time="08:30",
+        vessel_speed_kn=16,
+        current_position={"latitude": 39.19, "longitude": 2.04},
+    )
+
+    assert passage["position_context"]["status"] == "on_route"
+    assert passage["position_context"]["remaining_segment_ids"] == ["open_water_conditions", "arrival_conditions"]
+    assert [segment["id"] for segment in passage["segments"]] == ["open_water_conditions", "arrival_conditions"]
+    assert passage["worst_segment"]["label"] == "Ibiza Channel"
+
+
+def test_build_passage_evidence_marks_far_position_off_route_without_filtering():
+    route = {
+        "id": "palma_ibiza",
+        "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
+        "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
+        "sample_points": [
+            {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+            {"name": "Mid Palma-Ibiza", "longitude": 2.04, "latitude": 39.19},
+            {"name": "Ibiza Channel", "longitude": 1.83, "latitude": 38.85},
+        ],
+    }
+    forecast = {
+        "route_segments": {
+            "departure_conditions": {"name": "Palma Bay offshore", "hourly": [{"time": "09:00", "wave_m": 0.5}]},
+            "open_water_conditions": {"name": "Mid Palma-Ibiza", "hourly": [{"time": "11:00", "wave_m": 1.0}]},
+            "arrival_conditions": {"name": "Ibiza Channel", "hourly": [{"time": "12:00", "wave_m": 1.3}]},
+        }
+    }
+
+    passage = route_analysis.build_passage_evidence(
+        forecast,
+        route,
+        departure_time="08:30",
+        vessel_speed_kn=16,
+        current_position={"latitude": 40.6, "longitude": 5.4},
+    )
+
+    assert passage["position_context"]["status"] == "off_route"
+    assert passage["position_context"]["warning"] == (
+        "Position is not close enough to the planned route; treating this as a location-based forecast instead."
+    )
+    assert [segment["id"] for segment in passage["segments"]] == [
+        "departure_conditions",
+        "open_water_conditions",
+        "arrival_conditions",
+    ]
+
+
 def test_closest_hourly_sample_does_not_treat_midnight_as_eta():
     hourly = [
         {"time": "09:00", "wave_m": 0.6},

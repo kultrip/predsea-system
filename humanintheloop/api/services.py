@@ -7,12 +7,19 @@ import decision_engine
 import route_analysis
 
 
-def snapshot_for_vessel_class(snapshot, vessel_class, departure_time=None, priority="comfort"):
+def snapshot_for_vessel_class(snapshot, vessel_class, departure_time=None, priority="comfort", current_position=None):
     adjusted = copy.deepcopy(snapshot)
     adjusted["vessel_class"] = vessel_class
     adjusted["vessel_profile"] = route_analysis.vessel_profile_for(vessel_class)
     forecast = adjusted.get("forecast", {})
-    refresh_passage_evidence(adjusted, forecast, vessel_class, departure_time=departure_time, priority=priority)
+    refresh_passage_evidence(
+        adjusted,
+        forecast,
+        vessel_class,
+        departure_time=departure_time,
+        priority=priority,
+        current_position=current_position,
+    )
     observations = adjusted.get("observations", {})
     canal = observations.get("canal_de_ibiza", {})
     wave_now = canal.get("wave_height_m")
@@ -28,7 +35,7 @@ def snapshot_for_vessel_class(snapshot, vessel_class, departure_time=None, prior
     return adjusted
 
 
-def refresh_passage_evidence(snapshot, forecast, vessel_class, departure_time=None, priority="comfort"):
+def refresh_passage_evidence(snapshot, forecast, vessel_class, departure_time=None, priority="comfort", current_position=None):
     if not forecast.get("route_segments"):
         return
     route_id = snapshot.get("route_id") or route_analysis.DEFAULT_ROUTE_ID
@@ -43,15 +50,18 @@ def refresh_passage_evidence(snapshot, forecast, vessel_class, departure_time=No
         vessel_speed_kn=(forecast.get("passage_evidence") or {}).get("vessel_speed_kn", 16),
         priority=priority or (forecast.get("passage_evidence") or {}).get("priority", "comfort"),
         vessel_class=vessel_class,
+        current_position=current_position,
     )
 
 
 def answer_question(snapshot, question_request):
+    current_position = current_position_from_request(question_request)
     adjusted = snapshot_for_vessel_class(
         snapshot,
         question_request.vessel_class,
         departure_time=question_request.departure_time,
         priority=question_request.priority,
+        current_position=current_position,
     )
     provided_fields = getattr(question_request, "model_fields_set", None)
     if provided_fields is None:
@@ -67,6 +77,14 @@ def answer_question(snapshot, question_request):
         current_date=question_request.current_date,
     )
     return decision, adjusted, freshness
+
+
+def current_position_from_request(question_request):
+    latitude = getattr(question_request, "current_latitude", None)
+    longitude = getattr(question_request, "current_longitude", None)
+    if latitude is None or longitude is None:
+        return None
+    return {"latitude": latitude, "longitude": longitude}
 
 
 def render_briefing(snapshot, vessel_class, output_format):
@@ -99,6 +117,7 @@ def evidence_used(snapshot, forecast_override=None):
         evidence["target_period_label"] = forecast.get("target_period_label")
     passage = forecast.get("passage_evidence") or {}
     worst = passage.get("worst_segment") or {}
+    position = passage.get("position_context") or {}
     evidence["passage_evidence"] = {
         "available": bool(passage),
         "departure_time": passage.get("departure_time"),
@@ -108,6 +127,11 @@ def evidence_used(snapshot, forecast_override=None):
         "worst_segment": worst.get("label"),
         "worst_wave_m": worst.get("wave_m"),
         "worst_time": worst.get("time"),
+        "position_status": position.get("status"),
+        "position_warning": position.get("warning"),
+        "remaining_segments": position.get("remaining_segment_ids"),
+        "nearest_route_point": position.get("nearest_route_point"),
+        "distance_to_route_nm": position.get("distance_to_route_nm"),
     }
     return evidence
 

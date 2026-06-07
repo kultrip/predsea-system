@@ -356,6 +356,8 @@ def render_risk(forecast, vessel_advice, vessel_profile):
 
 def render_route_segment_reason(forecast):
     passage = forecast.get("passage_evidence") or {}
+    position_context = passage.get("position_context") or {}
+    position_warning = position_context.get("warning")
     passage_worst = passage.get("worst_segment") or {}
     if passage_worst:
         name = passage_worst.get("label")
@@ -368,7 +370,11 @@ def render_route_segment_reason(forecast):
                 detail = f"{detail} around {time}"
             if comfort:
                 detail = f"{detail}, with {comfort.replace('_', ' ')} comfort"
+            if position_warning:
+                detail = f"{position_warning} {detail}"
             return f"{detail}."
+    if position_warning:
+        return position_warning
 
     worst_segment = ((forecast.get("route_segments") or {}).get("worst_segment") or {})
     if not worst_segment:

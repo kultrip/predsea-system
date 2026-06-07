@@ -433,6 +433,83 @@ def test_question_endpoint_uses_requested_departure_time_and_priority_for_passag
     assert passage["worst_time"] == "14:00"
 
 
+def test_question_endpoint_uses_current_position_for_remaining_passage_evidence(tmp_path):
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir.mkdir(parents=True)
+    snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
+    snapshot["forecast"]["route_segments"] = {
+        "departure_conditions": {"name": "Palma Bay offshore", "hourly": [{"time": "09:00", "wave_m": 0.5}]},
+        "open_water_conditions": {"name": "Mid Palma-Ibiza", "hourly": [{"time": "11:00", "wave_m": 1.0}]},
+        "arrival_conditions": {"name": "Ibiza Channel", "hourly": [{"time": "12:00", "wave_m": 1.3}]},
+    }
+    (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (Path(tmp_path) / "2026-06-07" / "latest_run.json").write_text(
+        json.dumps({"run_id": "2026-06-07T1034Z", "path": "runs/2026-06-07T1034Z"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-07",
+            "run": "latest",
+            "question": "What is ahead of us now?",
+            "vessel_class": "medium",
+            "departure_time": "08:30",
+            "current_latitude": 39.19,
+            "current_longitude": 2.04,
+            "current_date": "2026-06-07",
+            "current_time": "10:30",
+        },
+    )
+
+    assert response.status_code == 200
+    passage = response.json()["evidence_used"]["passage_evidence"]
+    assert passage["position_status"] == "on_route"
+    assert passage["remaining_segments"] == ["open_water_conditions", "arrival_conditions"]
+    assert passage["segment_count"] == 2
+    assert passage["worst_segment"] == "Ibiza Channel"
+
+
+def test_question_endpoint_warns_when_current_position_is_far_from_route(tmp_path):
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir.mkdir(parents=True)
+    snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
+    snapshot["forecast"]["route_segments"] = {
+        "departure_conditions": {"name": "Palma Bay offshore", "hourly": [{"time": "09:00", "wave_m": 0.5}]},
+        "open_water_conditions": {"name": "Mid Palma-Ibiza", "hourly": [{"time": "11:00", "wave_m": 1.0}]},
+        "arrival_conditions": {"name": "Ibiza Channel", "hourly": [{"time": "12:00", "wave_m": 1.3}]},
+    }
+    (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (Path(tmp_path) / "2026-06-07" / "latest_run.json").write_text(
+        json.dumps({"run_id": "2026-06-07T1034Z", "path": "runs/2026-06-07T1034Z"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-07",
+            "run": "latest",
+            "question": "What is ahead of us now?",
+            "vessel_class": "medium",
+            "current_latitude": 40.6,
+            "current_longitude": 5.4,
+            "current_date": "2026-06-07",
+            "current_time": "10:30",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    warning = "Position is not close enough to the planned route; treating this as a location-based forecast instead."
+    assert warning in payload["answer"]
+    assert payload["evidence_used"]["passage_evidence"]["position_status"] == "off_route"
+    assert payload["evidence_used"]["passage_evidence"]["position_warning"] == warning
+
+
 def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_path):
     write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
     write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="wave_height")
