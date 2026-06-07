@@ -12,6 +12,7 @@ def snapshot_for_vessel_class(snapshot, vessel_class):
     adjusted["vessel_class"] = vessel_class
     adjusted["vessel_profile"] = route_analysis.vessel_profile_for(vessel_class)
     forecast = adjusted.get("forecast", {})
+    refresh_passage_evidence(adjusted, forecast, vessel_class)
     observations = adjusted.get("observations", {})
     canal = observations.get("canal_de_ibiza", {})
     wave_now = canal.get("wave_height_m")
@@ -25,6 +26,24 @@ def snapshot_for_vessel_class(snapshot, vessel_class):
         vessel_class=vessel_class,
     )
     return adjusted
+
+
+def refresh_passage_evidence(snapshot, forecast, vessel_class):
+    if not forecast.get("route_segments"):
+        return
+    route_id = snapshot.get("route_id") or route_analysis.DEFAULT_ROUTE_ID
+    try:
+        route = route_analysis.load_route(route_id)
+    except (OSError, ValueError):
+        return
+    forecast["passage_evidence"] = route_analysis.build_passage_evidence(
+        forecast,
+        route,
+        departure_time=(forecast.get("passage_evidence") or {}).get("departure_time", "08:30"),
+        vessel_speed_kn=(forecast.get("passage_evidence") or {}).get("vessel_speed_kn", 16),
+        priority=(forecast.get("passage_evidence") or {}).get("priority", "comfort"),
+        vessel_class=vessel_class,
+    )
 
 
 def answer_question(snapshot, question_request):

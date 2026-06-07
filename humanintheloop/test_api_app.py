@@ -324,6 +324,68 @@ def test_question_endpoint_reports_passage_evidence_availability(tmp_path):
     assert evidence_used["passage_evidence"]["departure_time"] == "08:30"
 
 
+def test_question_endpoint_refreshes_stale_passage_evidence_from_route_segments(tmp_path):
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir.mkdir(parents=True)
+    snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
+    snapshot["forecast"]["wave_peak_time"] = "17:00"
+    snapshot["forecast"]["route_segments"] = {
+        "departure_conditions": {
+            "name": "Palma Bay offshore",
+            "hourly": [
+                {"time": "09:00", "wave_m": 0.3, "wave_sea_state": "stern quartering sea"},
+                {"time": "00:00", "wave_m": 0.4, "wave_sea_state": "stern quartering sea"},
+            ],
+        },
+        "open_water_conditions": {
+            "name": "Mid Palma-Ibiza",
+            "hourly": [
+                {"time": "11:00", "wave_m": 0.6, "wave_sea_state": "stern quartering sea"},
+                {"time": "00:00", "wave_m": 0.7, "wave_sea_state": "stern quartering sea"},
+            ],
+        },
+        "arrival_conditions": {
+            "name": "Ibiza Channel",
+            "hourly": [
+                {"time": "12:00", "wave_m": 0.9, "wave_sea_state": "stern quartering sea"},
+                {"time": "00:00", "wave_m": 0.8, "wave_sea_state": "stern quartering sea"},
+            ],
+        },
+    }
+    snapshot["forecast"]["passage_evidence"] = {
+        "departure_time": "08:30",
+        "vessel_speed_kn": 16,
+        "priority": "comfort",
+        "segments": [],
+        "worst_segment": {"label": "Ibiza Channel", "time": "00:00", "wave_m": 0.8},
+        "summary": "Worst expected section: Ibiza Channel near 0.8 m around 00:00.",
+    }
+    (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (Path(tmp_path) / "2026-06-07" / "latest_run.json").write_text(
+        json.dumps({"run_id": "2026-06-07T1034Z", "path": "runs/2026-06-07T1034Z"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-07",
+            "run": "latest",
+            "question": "When is the best moment to leave from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "current_date": "2026-06-07",
+            "current_time": "12:45",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "around 12:00" in payload["answer"]
+    assert "around 00:00" not in payload["answer"]
+    assert payload["evidence_used"]["passage_evidence"]["worst_time"] == "12:00"
+
+
 def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_path):
     write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
     write_map_overlay(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z", variable="wave_height")
