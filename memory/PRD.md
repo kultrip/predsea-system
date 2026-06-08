@@ -49,9 +49,9 @@ Refactor ETL into a Multi-Tiered, High-Resolution Aggregator (AROME, HARMONIE, C
 ## Prioritized Backlog
 
 ### P0 — Required for Production
+- ~~Test ECMWF real download~~ **DONE** — Real ECMWF IFS download verified: 28.2MB GRIB2 → subset to 11x15 Balearic grid, 17 forecast steps (0-48h), wind speed ~5 kn average. Current open data is 0.25° (~27.8km); native 9km coming later 2026.
 - Obtain Météo-France AROME API key and test real data download
 - Obtain AEMET HARMONIE-AROME API key and test real data download
-- Test ECMWF Open Data real download (no key needed but needs network)
 - Validate Puertos del Estado real endpoint responses
 - End-to-end pipeline test with real Copernicus credentials
 
