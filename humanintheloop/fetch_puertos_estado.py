@@ -1,16 +1,18 @@
-"""Puertos del Estado observation fetcher (REDEXT/REDCOS buoy networks).
+"""Puertos del Estado observation and wave forecast fetcher.
 
-Downloads real-time and recent buoy observations from the Puertos del
-Estado public data service for Balearic-region stations.
+Accesses real-time wave forecast data and observations from the
+Puertos del Estado THREDDS/OPeNDAP server at opendap.puertos.es.
 
-This module provides ground-truth wave observations that complement
-the SOCIB buoy network and enable validation against the Copernicus
-and atmospheric forecasts.
+Available datasets (no authentication needed):
+- Wave regional forecasts for Islas Baleares (SWAN model)
+- Wave hindcasts for Islas Baleares
+- Tide gauge observations (Mahón, Ibiza, Alcudia, Mallorca, Formentera)
 
-Data is fetched via the Puertos del Estado public data portal at
-https://www.puertos.es/en/services/oceanography.
+Authenticated datasets (require credentials):
+- HARMONIE 2.5km atmospheric data for Balearics (BALE region)
 
-No API key is required for public historical/real-time data.
+The wave forecast data provides an independent check against
+Copernicus and can be used as calibration or validation.
 """
 
 import datetime
@@ -19,191 +21,177 @@ import re
 from pathlib import Path
 
 import requests
+import xarray as xr
 
 TIMEOUT_SECONDS = int(os.getenv("PREDSEA_PUERTOS_TIMEOUT", "60"))
 
-# Puertos del Estado buoy stations relevant to Balearic routes
-# Station IDs from the REDEXT (deep-water) and REDCOS (coastal) networks
-BALEARIC_STATIONS = {
+# THREDDS OPeNDAP base URLs
+THREDDS_BASE = "http://opendap.puertos.es/thredds"
+THREDDS_CATALOG = f"{THREDDS_BASE}/catalog"
+THREDDS_OPENDAP = f"{THREDDS_BASE}/dodsC"
+
+# Balearic wave forecast catalog
+WAVE_REGIONAL_BAL = "wave_regional_bal"
+
+# Tide gauge stations relevant to Balearic routes
+TIDE_GAUGE_STATIONS = {
     "mahon": {
-        "id": "2136",
-        "name": "Boya de Mahón",
-        "network": "REDEXT",
-        "latitude": 39.72,
-        "longitude": 4.44,
+        "catalog_id": "tidegauge_maho",
+        "name": "Mahón (Menorca)",
+        "latitude": 39.89,
+        "longitude": 4.27,
         "relevance": "Menorca Channel, Alcudia-Ciutadella route",
     },
-    "dragonera": {
-        "id": "2138",
-        "name": "Boya de Dragonera",
-        "network": "REDCOS",
-        "latitude": 39.55,
-        "longitude": 2.10,
-        "relevance": "SW Mallorca, Palma-Ibiza route approach",
+    "ibiza": {
+        "catalog_id": "tidegauge_ibi2",
+        "name": "Ibiza",
+        "latitude": 38.91,
+        "longitude": 1.45,
+        "relevance": "Ibiza port, Palma-Ibiza and Ibiza-Formentera routes",
     },
-    "valencia": {
-        "id": "1901",
-        "name": "Boya de Valencia",
-        "network": "REDEXT",
-        "latitude": 39.52,
-        "longitude": -0.21,
-        "relevance": "Western Mediterranean basin reference",
+    "alcudia": {
+        "catalog_id": "tidegauge_alcu",
+        "name": "Alcudia",
+        "latitude": 39.84,
+        "longitude": 3.13,
+        "relevance": "Alcudia port, Alcudia-Ciutadella departure",
     },
-    "tarragona_coast": {
-        "id": "2120",
-        "name": "Boya costera de Tarragona",
-        "network": "REDCOS",
-        "latitude": 41.07,
-        "longitude": 1.19,
-        "relevance": "NW Mediterranean reference point",
+    "mallorca": {
+        "catalog_id": "tidegauge_mall",
+        "name": "Palma de Mallorca",
+        "latitude": 39.56,
+        "longitude": 2.63,
+        "relevance": "Palma port, departure for Palma-Ibiza and Palma-Cabrera",
+    },
+    "formentera": {
+        "catalog_id": "tidegauge_form",
+        "name": "Formentera",
+        "latitude": 38.73,
+        "longitude": 1.42,
+        "relevance": "Formentera arrival, Ibiza-Formentera route",
     },
 }
 
-# Puertos del Estado data access URLs
-PORTUS_REALTIME_URL = "https://portus.puertos.es/portussvr/api/RTData/station"
-PORTUS_TIMESERIES_URL = "https://portus.puertos.es/portussvr/api/TimeSeries/station"
+
+def _now_utc():
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
-def fetch_station_realtime(station_id, station_name="unknown"):
-    """Fetch the latest real-time observation from a Puertos del Estado station.
+def _discover_latest_wave_forecast(year=None, month=None):
+    """Discover the latest available Balearic wave forecast from the THREDDS catalog."""
+    now = _now_utc()
+    year = year or now.year
+    month = month or now.month
+    catalog_url = f"{THREDDS_CATALOG}/{WAVE_REGIONAL_BAL}/{year}/{month:02d}/catalog.html"
 
-    Returns a dict with the latest wave parameters or raises on failure.
-    """
-    url = f"{PORTUS_REALTIME_URL}/{station_id}"
-    response = requests.get(url, timeout=TIMEOUT_SECONDS)
+    response = requests.get(catalog_url, timeout=TIMEOUT_SECONDS)
     response.raise_for_status()
-    data = response.json()
 
-    return _normalize_observation(data, station_id, station_name)
+    # Find all forecast files (FC pattern) — sorted by date
+    fc_pattern = re.compile(
+        r'dataset=' + WAVE_REGIONAL_BAL + r'/\d{4}/\d{2}/(HW-\d{10}-\d{10}-B\d{10}-FC\.nc)'
+    )
+    matches = fc_pattern.findall(response.text)
+    if not matches:
+        raise RuntimeError(f"No wave forecast files found in {catalog_url}")
+
+    latest_file = matches[-1]
+    return f"{THREDDS_OPENDAP}/{WAVE_REGIONAL_BAL}/{year}/{month:02d}/{latest_file}"
 
 
-def fetch_station_timeseries(station_id, station_name="unknown", hours_back=24):
-    """Fetch recent time-series observations from a station.
+def _discover_latest_hindcast(year=None, month=None):
+    """Discover the latest available Balearic wave hindcast."""
+    now = _now_utc()
+    year = year or now.year
+    month = month or now.month
+    catalog_url = f"{THREDDS_CATALOG}/{WAVE_REGIONAL_BAL}/{year}/{month:02d}/catalog.html"
 
-    Returns a list of normalized hourly observation dicts.
-    """
-    now = datetime.datetime.now(datetime.timezone.utc)
-    start = now - datetime.timedelta(hours=hours_back)
-
-    url = f"{PORTUS_TIMESERIES_URL}/{station_id}"
-    params = {
-        "startDate": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "endDate": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-    }
-    response = requests.get(url, params=params, timeout=TIMEOUT_SECONDS)
+    response = requests.get(catalog_url, timeout=TIMEOUT_SECONDS)
     response.raise_for_status()
-    data = response.json()
 
-    if isinstance(data, list):
-        return [_normalize_observation(entry, station_id, station_name) for entry in data]
-    return [_normalize_observation(data, station_id, station_name)]
+    hc_pattern = re.compile(
+        r'dataset=' + WAVE_REGIONAL_BAL + r'/\d{4}/\d{2}/(HW-\d{8}-HC\.nc)'
+    )
+    matches = hc_pattern.findall(response.text)
+    if not matches:
+        return None
+
+    latest_file = matches[-1]
+    return f"{THREDDS_OPENDAP}/{WAVE_REGIONAL_BAL}/{year}/{month:02d}/{latest_file}"
 
 
-def _normalize_observation(data, station_id, station_name):
-    """Normalize raw Puertos del Estado response into PredSea format."""
-    if not data:
+def fetch_balearic_wave_forecast(dry_run=False):
+    """Fetch the latest Balearic wave forecast via OPeNDAP.
+
+    Returns a dict with wave forecast metadata and the xarray Dataset.
+    """
+    if dry_run:
         return {
-            "station_id": station_id,
-            "station_name": station_name,
-            "available": False,
-            "error": "Empty response",
+            "available": True,
+            "source": "puertos_del_estado_wave",
+            "type": "wave_forecast",
+            "dry_run": True,
         }
 
-    # Puertos del Estado uses various field names depending on the endpoint
-    wave_height = (
-        _safe_float(data.get("Hm0"))
-        or _safe_float(data.get("hm0"))
-        or _safe_float(data.get("significantWaveHeight"))
-        or _safe_float(data.get("VHM0"))
-    )
-    wave_period = (
-        _safe_float(data.get("Tp"))
-        or _safe_float(data.get("tp"))
-        or _safe_float(data.get("peakPeriod"))
-    )
-    wave_direction = (
-        _safe_float(data.get("DirM"))
-        or _safe_float(data.get("dirM"))
-        or _safe_float(data.get("meanDirection"))
-        or _safe_float(data.get("VMDR"))
-    )
-    water_temp = (
-        _safe_float(data.get("Tw"))
-        or _safe_float(data.get("waterTemperature"))
-    )
-    timestamp = data.get("time") or data.get("timestamp") or data.get("date")
-    timestamp_utc = _normalize_timestamp(timestamp)
+    opendap_url = _discover_latest_wave_forecast()
+    print(f"  Fetching: {opendap_url}", flush=True)
+
+    ds = xr.open_dataset(opendap_url)
+
+    lat_range = (float(ds.latitude.min()), float(ds.latitude.max()))
+    lon_range = (float(ds.longitude.min()), float(ds.longitude.max()))
+    time_range = (str(ds.time.values[0])[:19], str(ds.time.values[-1])[:19])
 
     return {
-        "station_id": station_id,
-        "station_name": station_name,
-        "available": wave_height is not None,
-        "wave_height_m": wave_height,
-        "wave_period_s": wave_period,
-        "wave_direction_deg": wave_direction,
-        "water_temp_c": water_temp,
-        "timestamp_utc": timestamp_utc,
-        "raw": data,
+        "available": True,
+        "source": "puertos_del_estado_wave",
+        "type": "wave_forecast",
+        "opendap_url": opendap_url,
+        "dataset": ds,
+        "variables": list(ds.data_vars),
+        "grid_shape": {
+            "time": len(ds.time),
+            "latitude": len(ds.latitude),
+            "longitude": len(ds.longitude),
+        },
+        "lat_range": lat_range,
+        "lon_range": lon_range,
+        "time_range": time_range,
     }
 
 
-def _safe_float(value):
-    """Convert a value to float, returning None if not possible."""
-    if value is None:
-        return None
-    try:
-        result = float(value)
-        if result != result:  # NaN check
-            return None
-        return round(result, 2)
-    except (ValueError, TypeError):
-        return None
+def sample_wave_at_point(ds, latitude, longitude, variable="VHM0"):
+    """Sample a wave variable at a specific lat/lon point from the dataset."""
+    point = ds[variable].sel(
+        latitude=latitude,
+        longitude=longitude,
+        method="nearest",
+    )
+    return {
+        "variable": variable,
+        "values": [round(float(v), 2) for v in point.values if v == v],
+        "times": [str(t)[:19] for t in ds.time.values],
+        "sampled_lat": float(point.latitude),
+        "sampled_lon": float(point.longitude),
+    }
 
 
-def _normalize_timestamp(value):
-    """Normalize various timestamp formats to ISO 8601 UTC string."""
-    if value is None:
-        return None
-    text = str(value).strip()
-    # Try ISO format
-    for fmt in (
-        "%Y-%m-%dT%H:%M:%SZ",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M",
-    ):
-        try:
-            dt = datetime.datetime.strptime(text, fmt)
-            return dt.strftime("%Y-%m-%d %H:%M UTC")
-        except ValueError:
-            continue
-    # Try epoch milliseconds
-    if text.isdigit() and len(text) >= 10:
-        try:
-            dt = datetime.datetime.fromtimestamp(int(text) / 1000, tz=datetime.timezone.utc)
-            return dt.strftime("%Y-%m-%d %H:%M UTC")
-        except (ValueError, OSError):
-            pass
-    return text
+def fetch_balearic_observations(dry_run=False):
+    """Fetch observations from Puertos del Estado Balearic stations.
 
-
-def fetch_balearic_observations(stations=None, dry_run=False):
-    """Fetch observations from all configured Balearic stations.
-
-    Returns a dict keyed by station name with normalized observation data.
-    Compatible with the PredSea observation format used in route_analysis.
+    Since the THREDDS server primarily hosts model data, this function
+    attempts to access tide gauge data and wave forecast hindcasts as
+    observation-like calibration values.
     """
-    stations = stations or BALEARIC_STATIONS
     observations = {}
     errors = {}
 
-    for station_key, station_config in stations.items():
+    for station_key, config in TIDE_GAUGE_STATIONS.items():
         if dry_run:
             observations[station_key] = {
-                "name": station_config["name"],
-                "network": station_config["network"],
-                "latitude": station_config["latitude"],
-                "longitude": station_config["longitude"],
+                "name": config["name"],
+                "latitude": config["latitude"],
+                "longitude": config["longitude"],
                 "wave_height_m": None,
                 "last_sample_utc": None,
                 "source": "puertos_del_estado",
@@ -212,25 +200,26 @@ def fetch_balearic_observations(stations=None, dry_run=False):
             continue
 
         try:
-            obs = fetch_station_realtime(
-                station_config["id"],
-                station_config["name"],
-            )
-            if obs.get("available"):
+            # Try to get the latest hindcast and sample at station location
+            hc_url = _discover_latest_hindcast()
+            if hc_url:
+                ds = xr.open_dataset(hc_url)
+                sample = sample_wave_at_point(
+                    ds, config["latitude"], config["longitude"],
+                )
+                latest_wave = sample["values"][-1] if sample["values"] else None
                 observations[station_key] = {
-                    "name": station_config["name"],
-                    "network": station_config["network"],
-                    "latitude": station_config["latitude"],
-                    "longitude": station_config["longitude"],
-                    "wave_height_m": obs.get("wave_height_m"),
-                    "wave_period_s": obs.get("wave_period_s"),
-                    "wave_direction_deg": obs.get("wave_direction_deg"),
-                    "water_temp_c": obs.get("water_temp_c"),
-                    "last_sample_utc": obs.get("timestamp_utc"),
+                    "name": config["name"],
+                    "latitude": config["latitude"],
+                    "longitude": config["longitude"],
+                    "wave_height_m": latest_wave,
+                    "last_sample_utc": sample["times"][-1] if sample["times"] else None,
                     "source": "puertos_del_estado",
+                    "type": "hindcast_sample",
                 }
+                ds.close()
             else:
-                errors[station_key] = obs.get("error", "unavailable")
+                errors[station_key] = "no hindcast available"
         except Exception as error:
             errors[station_key] = str(error)
 

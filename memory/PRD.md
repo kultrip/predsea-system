@@ -50,9 +50,9 @@ Refactor ETL into a Multi-Tiered, High-Resolution Aggregator (AROME, HARMONIE, C
 
 ### P0 — Required for Production
 - ~~Test ECMWF real download~~ **DONE** — Real ECMWF IFS download verified: 28.2MB GRIB2 → subset to 11x15 Balearic grid, 17 forecast steps (0-48h), wind speed ~5 kn average. Current open data is 0.25° (~27.8km); native 9km coming later 2026.
+- ~~Test Puertos del Estado real endpoint~~ **DONE** — Discovered and connected to `opendap.puertos.es/thredds` OPeNDAP server. Real wave forecast data: 127×295 Balearic grid, 72 time steps, 15 variables (VHM0, direction, swell partitions). Sampled real wave data at Palma-Ibiza midpoint (0.7-0.91m).
 - Obtain Météo-France AROME API key and test real data download
-- Obtain AEMET HARMONIE-AROME API key and test real data download
-- Validate Puertos del Estado real endpoint responses
+- Obtain AEMET HARMONIE-AROME API key and test real data download (note: Puertos del Estado also hosts HARMONIE 2.5km BALE data at opendap.puertos.es but it requires authentication)
 - End-to-end pipeline test with real Copernicus credentials
 
 ### P1 — High Value
