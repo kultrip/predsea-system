@@ -44,7 +44,7 @@ def test_select_wind_forecast_falls_back_to_aemet_then_ecmwf():
     assert aemet_result["source"] == "aemet_harmonie_arome"
     assert aemet_result["resolution_km"] == 2.5
     assert ecmwf_result["source"] == "ecmwf_open_data"
-    assert ecmwf_result["resolution_km"] == 25.0
+    assert ecmwf_result["resolution_km"] == 9.0
 
 
 def test_select_wind_forecast_returns_unavailable_lineage_when_all_fail():

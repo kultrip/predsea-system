@@ -52,7 +52,7 @@ def source_metadata():
 
 
 def forecast_window():
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     return now - datetime.timedelta(hours=6), now + datetime.timedelta(days=1)
 
 
