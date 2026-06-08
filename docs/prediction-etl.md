@@ -25,9 +25,17 @@ Current external sources:
 
 - Copernicus Marine Mediterranean wave forecast.
 - Copernicus Marine Mediterranean surface-current forecast.
-- SOCIB THREDDS SAPO-IB wave forecast.
-- SOCIB THREDDS WMOP surface-current forecast.
+- SOCIB THREDDS SAPO-IB wave forecast, opt-in only with
+  `PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS=1`.
+- SOCIB THREDDS WMOP surface-current forecast, opt-in only with
+  `PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS=1`.
 - SOCIB public observations via DataDiscovery.
+- Optional atmospheric wind evidence:
+  - Météo-France AROME, 1.3 km, when `METEO_FRANCE_API_KEY` is configured and
+    `PREDSEA_ENABLE_ATMOSPHERIC_INGESTION=1`.
+  - AEMET HARMONIE-AROME, 2.5 km, when `AEMET_API_KEY` is configured and
+    `PREDSEA_ENABLE_ATMOSPHERIC_INGESTION=1`.
+  - ECMWF Open Data fallback when atmospheric ingestion is enabled.
 
 Current forecast variables:
 
@@ -38,11 +46,19 @@ Current forecast variables:
 - `VHM0_SW1`: primary swell significant wave height when provided by the
   source.
 
-Copernicus and SOCIB are generated as parallel forecast evidence packages when
-both are available. Copernicus remains the preferred source for the legacy
-top-level route artifacts unless it is unavailable. SOCIB output is normalized
-to the same variable names and units so `route_analysis.py`, map generation, and
-the API can remain source-agnostic.
+Copernicus is the default production forecast source. SOCIB model forecasts are
+kept as an experimental/secondary source because provider monitoring showed
+SOCIB THREDDS can be slow or unavailable from GitHub Actions. When SOCIB model
+forecasts are enabled and available, they are generated as parallel evidence
+packages. Copernicus remains the preferred source for the legacy top-level route
+artifacts unless it is unavailable. SOCIB output is normalized to the same
+variable names and units so `route_analysis.py`, map generation, and the API can
+remain source-agnostic.
+
+Atmospheric wind is now represented as a source-aware evidence layer. It is not
+yet required for the production ETL. When enabled, the ETL records wind lineage
+inside every route evidence package so the Co-Captain can say whether wind
+context came from high-resolution local models or a global fallback.
 
 Current observation variables depend on each SOCIB platform, but can include:
 
@@ -175,6 +191,66 @@ The workflow is:
 
 GitHub cron runs in UTC, so the schedule may need seasonal adjustment if the
 operational promise becomes exact local time all year.
+
+## Production Orchestrator
+
+The production ETL entrypoint is:
+
+```text
+scripts/generate_daily_briefing.py
+```
+
+This script remains the scheduled GitHub Actions path because it already owns:
+
+- route artifact generation
+- source-specific output folders
+- preferred-source copying
+- Leaflet overlay generation
+- `regional_evidence.json`
+- run manifests
+- GCS-ready output layout
+
+`humanintheloop/pipeline.py` remains useful as a reference/orchestration layer
+for the multi-tier architecture, but the production strategy is to evolve
+`generate_daily_briefing.py` gradually rather than replacing it.
+
+Current production-safe multi-tier behavior:
+
+- Copernicus forecast source runs by default.
+- SOCIB model forecasts run only when `PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS=1`.
+- Atmospheric wind ingestion runs only when
+  `PREDSEA_ENABLE_ATMOSPHERIC_INGESTION=1`.
+- If atmospheric ingestion is disabled, route evidence records
+  `data_lineage.wind_forecast.status = "not_configured"`.
+- If atmospheric ingestion is enabled but fails, route evidence records
+  `data_lineage.wind_forecast.status = "error"` and the ETL continues.
+- SOCIB observations continue to populate the ground-truth lineage when
+  available.
+
+Every route snapshot now includes:
+
+```json
+{
+  "data_lineage": {
+    "wind_forecast": {
+      "source": null,
+      "resolution_km": null,
+      "status": "not_configured",
+      "tier": null
+    },
+    "ocean_forecast": {
+      "source": "copernicus_med",
+      "resolution_km": 4.0,
+      "status": "active"
+    },
+    "ground_truth_validation": {
+      "source": "socib_observations",
+      "status": "matched_successfully",
+      "station_count": 3
+    }
+  }
+}
+```
 
 ## Output Layout
 
@@ -393,18 +469,35 @@ Source responsibilities:
 
 - `humanintheloop/fetch_data.py` downloads Copernicus NetCDF subsets.
 - `humanintheloop/socib_thredds.py` downloads and normalizes SOCIB THREDDS
-  WMOP/SAPO files.
+  WMOP/SAPO files when the experimental SOCIB model forecast flag is enabled.
 - `humanintheloop/forecast_sources.py` runs all configured sources
   independently and marks the preferred source.
 - `humanintheloop/fetch_forecast_source.py` fetches one source in a bounded
   subprocess so a slow external provider cannot hang the whole ETL.
+- `humanintheloop/ingest_atmosphere.py` selects the best available atmospheric
+  wind source from AROME, AEMET HARMONIE-AROME, and ECMWF when atmospheric
+  ingestion is enabled.
+- `humanintheloop/fetch_meteo_france.py`, `humanintheloop/fetch_aemet.py`, and
+  `humanintheloop/fetch_ecmwf.py` are the current atmospheric fetcher modules.
+- `humanintheloop/grid_blender.py` can interpolate coarser ocean fields onto the
+  active wind grid for future blended products.
 - `scripts/generate_daily_briefing.py` builds route artifacts for every
-  available source.
+  available source and attaches `data_lineage` to each route snapshot.
 
 `PREDSEA_SOURCE_TIMEOUT_SECONDS` controls the per-source timeout. GitHub
 Actions currently sets it to `900` seconds. If one source times out, the ETL
 records that source as unavailable in `run_manifest.json` and continues with
 any other available source.
+
+Important feature flags:
+
+- `PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS=1`: include SOCIB THREDDS model
+  forecasts as a parallel forecast package.
+- `PREDSEA_ENABLE_ATMOSPHERIC_INGESTION=1`: include atmospheric wind lineage in
+  route evidence. This requires the atmospheric fetcher dependencies and, for
+  AROME/AEMET, provider API keys.
+- `METEO_FRANCE_API_KEY`: enables Météo-France AROME as tier 1 wind source.
+- `AEMET_API_KEY`: enables AEMET HARMONIE-AROME as tier 2 wind source.
 
 ## Where To Add More Variables
 

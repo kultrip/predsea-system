@@ -70,6 +70,7 @@ def load_mvp_modules():
     import chat_figure
     import fetch_data
     import forecast_sources
+    import ingest_atmosphere
     import map_generator
     import route_analysis
 
@@ -78,6 +79,7 @@ def load_mvp_modules():
         chat_figure=chat_figure,
         fetch_data=fetch_data,
         forecast_sources=forecast_sources,
+        ingest_atmosphere=ingest_atmosphere,
         map_generator=map_generator,
         route_analysis=route_analysis,
     )
@@ -338,6 +340,89 @@ def source_manifest_entries(modules, sources):
     ]
 
 
+def atmospheric_ingestion_enabled():
+    return os.environ.get("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION", "0") == "1"
+
+
+def fetch_atmospheric_context(modules, run_dir):
+    if not atmospheric_ingestion_enabled():
+        return {
+            "enabled": False,
+            "wind_result": {"available": False, "source": None},
+            "wind_lineage": {
+                "source": None,
+                "resolution_km": None,
+                "status": "not_configured",
+                "tier": None,
+            },
+        }
+
+    try:
+        atmosphere_dir = Path(run_dir) / "atmosphere"
+        result = modules.ingest_atmosphere.run_atmospheric_ingestion(
+            output_dir=atmosphere_dir,
+            dry_run=False,
+        )
+        result["enabled"] = True
+        return result
+    except Exception as error:
+        return {
+            "enabled": True,
+            "wind_result": {"available": False, "source": None, "error": str(error)},
+            "wind_lineage": {
+                "source": None,
+                "resolution_km": None,
+                "status": "error",
+                "tier": None,
+            },
+        }
+
+
+def ocean_lineage_for_source(source):
+    source_id = source.get("id")
+    if source_id == "socib":
+        return {
+            "source": "socib_wmop_sapo",
+            "resolution_km": source.get("metadata", {}).get("resolution_km"),
+            "status": "active",
+        }
+    return {
+        "source": "copernicus_med",
+        "resolution_km": 4.0,
+        "status": "active",
+    }
+
+
+def ground_truth_lineage_for_observations(observations):
+    if observations:
+        return {
+            "source": "socib_observations",
+            "status": "matched_successfully",
+            "station_count": len(observations),
+        }
+    return {
+        "source": None,
+        "status": "unavailable",
+        "station_count": 0,
+    }
+
+
+def data_lineage_for_snapshot(source, atmospheric_context, observations):
+    return {
+        "wind_forecast": atmospheric_context.get(
+            "wind_lineage",
+            {
+                "source": None,
+                "resolution_km": None,
+                "status": "not_configured",
+                "tier": None,
+            },
+        ),
+        "ocean_forecast": ocean_lineage_for_source(source),
+        "ground_truth_validation": ground_truth_lineage_for_observations(observations),
+    }
+
+
 def annotate_snapshot_with_source(snapshot, source):
     snapshot["forecast_source"] = {
         "id": source.get("id"),
@@ -346,6 +431,11 @@ def annotate_snapshot_with_source(snapshot, source):
     }
     if source.get("metadata"):
         snapshot["forecast_source"]["metadata"] = source["metadata"]
+    return snapshot
+
+
+def annotate_snapshot_with_lineage(snapshot, source, atmospheric_context, observations):
+    snapshot["data_lineage"] = data_lineage_for_snapshot(source, atmospheric_context, observations)
     return snapshot
 
 
@@ -376,6 +466,7 @@ def generate_route_artifacts_for_source(
     logo_path,
     skip_figures,
     skip_maps,
+    atmospheric_context=None,
 ):
     waves_path = Path(source["waves_path"])
     currents_path = Path(source["currents_path"])
@@ -397,6 +488,7 @@ def generate_route_artifacts_for_source(
             vessel_class=vessel_class,
         )
         annotate_snapshot_with_source(snapshot, source)
+        annotate_snapshot_with_lineage(snapshot, source, atmospheric_context or {}, observations)
         route_dir = source_root_dir / route_id
         modules.briefing.write_outputs(
             snapshot,
@@ -458,6 +550,7 @@ def generate_daily_briefings(
         observations = safe_load_observations(modules.briefing)
         sources = fetch_forecast_sources(modules, run_dir)
         preferred_source = preferred_forecast_source(sources)
+        atmospheric_context = fetch_atmospheric_context(modules, run_dir)
 
         for source in available_forecast_sources(sources):
             source_root_dir = run_dir / "sources" / source["id"]
@@ -475,6 +568,7 @@ def generate_daily_briefings(
                 logo_path,
                 skip_figures,
                 skip_maps,
+                atmospheric_context=atmospheric_context,
             )
             if source["id"] == preferred_source["id"]:
                 maybe_generate_leaflet_overlays(run_dir, Path(source["waves_path"]), Path(source["currents_path"]), skip_maps=skip_maps)
@@ -482,6 +576,20 @@ def generate_daily_briefings(
                     copy_preferred_route_artifacts(source_route_dir, run_dir / route_id)
 
     forecast_source_entries = source_manifest_entries(modules, sources)
+    if atmospheric_context.get("enabled") or atmospheric_context.get("wind_lineage", {}).get("status") != "not_configured":
+        forecast_source_entries.append(
+            {
+                "id": "atmospheric_wind",
+                "label": "Tiered atmospheric wind forecast",
+                "available": bool(atmospheric_context.get("wind_result", {}).get("available")),
+                "preferred": False,
+                "metadata": {
+                    "wind_lineage": atmospheric_context.get("wind_lineage"),
+                    "fetchers_configured": atmospheric_context.get("fetchers_configured", []),
+                    "error": atmospheric_context.get("wind_result", {}).get("error"),
+                },
+            }
+        )
     regional_evidence = write_regional_evidence(
         run_dir,
         run_date,
