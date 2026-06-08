@@ -101,6 +101,23 @@ def test_build_route_evidence_package_has_decision_ready_structure():
     package = evidence_package.build_route_evidence_package(sample_snapshot(), sample_route())
 
     assert package["schema_version"] == "predsea.evidence.v1"
+    assert package["evidence_package_id"] == "palma_ibiza_20260531T063000Z"
+    assert package["data_lineage"] == {
+        "wind_forecast": {
+            "source": None,
+            "resolution_km": None,
+            "status": "not_configured",
+        },
+        "ocean_forecast": {
+            "source": "copernicus_med",
+            "resolution_km": 4.0,
+            "status": "active",
+        },
+        "ground_truth_validation": {
+            "source": "socib_observations",
+            "status": "matched_successfully",
+        },
+    }
     assert package["subject"] == {
         "type": "route",
         "id": "palma_ibiza",
@@ -122,6 +139,32 @@ def test_build_route_evidence_package_has_decision_ready_structure():
     assert package["operational_interpretation"]["best_window"] == "before late afternoon"
     assert package["data_quality"]["nearest_wave_truth_source"] == "canal_de_ibiza"
     assert package["decision_context"] == sample_snapshot()
+
+
+def test_build_route_evidence_package_preserves_existing_lineage():
+    snapshot = sample_snapshot()
+    snapshot["evidence_package_id"] = "custom_run_id"
+    snapshot["data_lineage"] = {
+        "wind_forecast": {
+            "source": "meteo_france_arome",
+            "resolution_km": 1.3,
+            "status": "blended",
+        },
+        "ocean_forecast": {
+            "source": "copernicus_med",
+            "resolution_km": 4.0,
+            "status": "interpolated_to_1.3km",
+        },
+        "ground_truth_validation": {
+            "source": "puertos_del_estado_redext",
+            "status": "matched_successfully",
+        },
+    }
+
+    package = evidence_package.build_route_evidence_package(snapshot, sample_route())
+
+    assert package["evidence_package_id"] == "custom_run_id"
+    assert package["data_lineage"] == snapshot["data_lineage"]
 
 
 def test_write_outputs_writes_evidence_json_beside_daily_snapshot(tmp_path):

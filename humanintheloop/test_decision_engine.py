@@ -142,3 +142,79 @@ def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
     assert "16:00" in best_window_line
     assert "22:00" not in best_window_line
     assert "daylight" in answer
+
+
+def test_arome_lineage_adds_high_resolution_wind_context():
+    snapshot = {
+        "route": "Palma -> Ibiza",
+        "route_id": "palma_ibiza",
+        "vessel_class": "medium",
+        "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+        "data_lineage": {
+            "wind_forecast": {
+                "source": "meteo_france_arome",
+                "resolution_km": 1.3,
+                "status": "blended",
+            }
+        },
+        "forecast": {
+            "wave_min_m": 0.7,
+            "wave_max_m": 1.1,
+            "wave_peak_time": "14:00",
+            "current_max_kn": 0.4,
+            "hourly": [{"time": "10:00", "wave_m": 0.8}],
+        },
+        "recommendation": {
+            "best_window": "before midday",
+            "watch_out": "conditions increase after midday",
+            "confidence": "medium",
+            "vessel_advice": "manageable for vessels 15-24m",
+        },
+    }
+
+    result = decision_engine.answer_question(
+        "When is the best moment to leave from Palma to Ibiza today?",
+        snapshot,
+        current_time="08:00",
+    )
+
+    assert "ultra-high-resolution 1.3 km" in result["answer"]
+    assert "coastal breeze" in result["answer"]
+
+
+def test_ecmwf_fallback_lineage_softens_coastal_specificity():
+    snapshot = {
+        "route": "Palma -> Ibiza",
+        "route_id": "palma_ibiza",
+        "vessel_class": "medium",
+        "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+        "data_lineage": {
+            "wind_forecast": {
+                "source": "ecmwf_open_data",
+                "resolution_km": 9.0,
+                "status": "fallback",
+            }
+        },
+        "forecast": {
+            "wave_min_m": 0.7,
+            "wave_max_m": 1.1,
+            "wave_peak_time": "14:00",
+            "current_max_kn": 0.4,
+            "hourly": [{"time": "10:00", "wave_m": 0.8}],
+        },
+        "recommendation": {
+            "best_window": "before midday",
+            "watch_out": "conditions increase after midday",
+            "confidence": "medium",
+            "vessel_advice": "manageable for vessels 15-24m",
+        },
+    }
+
+    result = decision_engine.answer_question(
+        "When is the best moment to leave from Palma to Ibiza today?",
+        snapshot,
+        current_time="08:00",
+    )
+
+    assert "global structural models" in result["answer"]
+    assert "localized coastal land breezes may vary" in result["answer"]

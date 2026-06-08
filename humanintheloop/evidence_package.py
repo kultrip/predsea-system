@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 SCHEMA_VERSION = "predsea.evidence.v1"
 
 
@@ -10,6 +13,8 @@ def build_route_evidence_package(snapshot, route):
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "evidence_package_id": evidence_package_id(snapshot, route),
+        "data_lineage": data_lineage(snapshot, observations),
         "subject": {
             "type": "route",
             "id": route["id"],
@@ -88,6 +93,53 @@ def build_route_evidence_package(snapshot, route):
             "buoy_truth_available": bool(validation.get("truth_source") or current_validation.get("truth_source")),
         },
         "decision_context": snapshot,
+    }
+
+
+def evidence_package_id(snapshot, route):
+    if snapshot.get("evidence_package_id"):
+        return snapshot["evidence_package_id"]
+
+    route_id = snapshot.get("route_id") or route.get("id") or "route"
+    created_at = snapshot.get("created_at_utc") or "unknown"
+    compact_time = compact_timestamp(created_at)
+    return f"{route_id}_{compact_time}"
+
+
+def compact_timestamp(value):
+    text = str(value)
+    for fmt in ("%Y-%m-%d %H:%M UTC", "%Y-%m-%d %H:%M:%S UTC"):
+        try:
+            return datetime.strptime(text, fmt).strftime("%Y%m%dT%H%M%SZ")
+        except ValueError:
+            pass
+    return (
+        text.replace(" UTC", "Z")
+        .replace("-", "")
+        .replace(":", "")
+        .replace(" ", "T")
+    )
+
+
+def data_lineage(snapshot, observations):
+    if snapshot.get("data_lineage"):
+        return snapshot["data_lineage"]
+
+    return {
+        "wind_forecast": {
+            "source": None,
+            "resolution_km": None,
+            "status": "not_configured",
+        },
+        "ocean_forecast": {
+            "source": "copernicus_med",
+            "resolution_km": 4.0,
+            "status": "active",
+        },
+        "ground_truth_validation": {
+            "source": "socib_observations" if observations else None,
+            "status": "matched_successfully" if observations else "unavailable",
+        },
     }
 
 

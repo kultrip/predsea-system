@@ -23,8 +23,8 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
     timeout_seconds = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", str(SOURCE_TIMEOUT_SECONDS)))
     attempts = int(os.getenv("PREDSEA_SOURCE_ATTEMPTS", str(SOURCE_ATTEMPTS)))
     source_configs = [
-        ("copernicus", output_dir / "copernicus"),
-        ("socib", output_dir / "socib_thredds"),
+        (source_id, source_output_dir(source_id, output_dir))
+        for source_id in configured_source_ids()
     ]
     sources = []
     for source_id, source_output_dir in source_configs:
@@ -43,6 +43,20 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
         sources.append(source)
     mark_preferred_source(sources)
     return sources
+
+
+def configured_source_ids():
+    source_ids = ["copernicus"]
+    if os.getenv("PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS") == "1":
+        source_ids.append("socib")
+    return source_ids
+
+
+def source_output_dir(source_id, output_dir):
+    output_dir = Path(output_dir)
+    if source_id == "socib":
+        return output_dir / "socib_thredds"
+    return output_dir / source_id
 
 
 def fetch_source_with_attempts(source_id, output_dir, timeout_seconds, attempts=1, dry_run=False):

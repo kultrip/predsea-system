@@ -123,6 +123,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         forecast=forecast,
         freshness=snapshot.get("evidence_freshness"),
         evidence_note=evidence_note,
+        data_lineage=snapshot.get("data_lineage"),
         captain_rule_matches=captain_rule_matches,
     )
     return {
@@ -148,6 +149,7 @@ def render_captain_answer(
     forecast=None,
     freshness=None,
     evidence_note=None,
+    data_lineage=None,
     captain_rule_matches=None,
 ):
     route_prefix = f"{route}: " if route else ""
@@ -171,6 +173,9 @@ def render_captain_answer(
         why_parts.append(route_segment_reason.rstrip("."))
     if captain_rule_reason:
         why_parts.append(captain_rule_reason.rstrip("."))
+    lineage_guidance = render_lineage_guidance(data_lineage)
+    if lineage_guidance:
+        why_parts.append(lineage_guidance.rstrip("."))
 
     lines = [
         f"Decision: {render_decision_line(route_prefix, intent, display_recommendation, forecast, freshness)}",
@@ -401,6 +406,31 @@ def render_captain_rule_reason(captain_rule_matches):
     if not consequence:
         return None
     return f"Captain knowledge: {consequence}"
+
+
+def render_lineage_guidance(data_lineage):
+    wind = ((data_lineage or {}).get("wind_forecast") or {})
+    source = wind.get("source")
+    status = wind.get("status")
+    resolution = wind.get("resolution_km")
+
+    if source == "meteo_france_arome" and status in ("active", "blended"):
+        resolution_text = f"{resolution:g} km" if isinstance(resolution, (int, float)) else "high-resolution"
+        return (
+            f"Wind context: using ultra-high-resolution {resolution_text} local physics model guidance, "
+            "which improves the read on coastal breeze variations around island channels."
+        )
+    if source == "aemet_harmonie_arome" and status in ("active", "blended", "fallback"):
+        resolution_text = f"{resolution:g} km" if isinstance(resolution, (int, float)) else "high-resolution"
+        return (
+            f"Wind context: using high-resolution {resolution_text} regional model guidance for Spanish coastal detail."
+        )
+    if source == "ecmwf_open_data":
+        return (
+            "Wind context: winds are grounded in global structural models; "
+            "localized coastal land breezes may vary near channel boundaries."
+        )
+    return None
 
 
 def render_what_could_change(forecast, evidence_note, captain_rule_matches=None):
