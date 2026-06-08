@@ -18,3 +18,9 @@ predictions/
 processing/fixtures/gfs_*.nc
 processing/fixtures/wrfout_*_new_domain.nc
 processing/fixtures/wrfout_*_tuned_domain.nc
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
