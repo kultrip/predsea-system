@@ -27,11 +27,11 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
         for source_id in configured_source_ids()
     ]
     sources = []
-    for source_id, source_output_dir in source_configs:
+    for source_id, output_path in source_configs:
         print(f"Fetching forecast source: {source_id}", flush=True)
         source = fetch_source_with_attempts(
             source_id,
-            source_output_dir,
+            output_path,
             timeout_seconds=timeout_seconds,
             attempts=attempts,
             dry_run=dry_run,
