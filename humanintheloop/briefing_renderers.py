@@ -10,6 +10,12 @@ def _recommendation(snapshot):
     return snapshot.get("recommendation", {})
 
 
+def _confidence_label(value):
+    if value in (None, "", "null"):
+        return None
+    return str(value).strip().capitalize()
+
+
 def render_linkedin(snapshot):
     canal = _canal(snapshot)
     forecast = _forecast(snapshot)
@@ -22,7 +28,7 @@ def render_linkedin(snapshot):
             f"Next 24h: forecast wave peak near {forecast.get('wave_max_m', 'N/A')} m around {forecast.get('wave_peak_time', 'N/A')}.",
             f"Captain's read: best crossing window is {rec.get('best_window', 'check manually')}.",
             f"Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
-            f"Confidence: {rec.get('confidence', 'low')}.",
+            f"Confidence: {_confidence_label(rec.get('confidence')) or 'Low'}.",
             "",
             "Illustrative route intelligence example, based on public marine data.",
         ]
@@ -41,7 +47,7 @@ def render_whatsapp(snapshot):
             f"Next 24h: peak near {forecast.get('wave_max_m', 'N/A')} m around {forecast.get('wave_peak_time', 'N/A')}.",
             f"Best window: {rec.get('best_window', 'check manually')}.",
             f"Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
-            f"Confidence: {rec.get('confidence', 'low')}.",
+            f"Confidence: {_confidence_label(rec.get('confidence')) or 'Low'}.",
         ]
     )
 
@@ -58,9 +64,10 @@ def render_whatsapp_screenshot_script(snapshot):
         peak_text = f"{snapshot['route']} peaks near {wave_max:.1f} m later."
     else:
         peak_text = f"{snapshot['route']} needs a manual forecast check."
-    route_is_calm_now = "The route is calm this morning, but exposed wave energy builds later."
+    route_is_calm_now = "The route is manageable this morning, but exposed wave energy builds later."
     if wave_max is not None and wave_max <= 1.0:
-        route_is_calm_now = "The route looks manageable today, with no major wave build-up flagged."
+        route_is_calm_now = "The route looks manageable today, but exposed sections still deserve attention."
+    confidence = _confidence_label(rec.get("confidence")) or "Low"
     return "\n".join(
         [
             "Illustrative WhatsApp screenshot script",
@@ -69,7 +76,7 @@ def render_whatsapp_screenshot_script(snapshot):
             f"PredSea: Go earlier. {route_is_calm_now}",
             f"PredSea: {peak_text}",
             f"PredSea: Operational read: {rec.get('vessel_advice', f'check manually for vessels {vessel_label}')}.",
-            f"PredSea: Confidence: {rec.get('confidence', 'low')}.",
+            f"PredSea: Confidence: {confidence}.",
             "Caption note: illustrative product example based on public marine data.",
         ]
     )

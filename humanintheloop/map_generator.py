@@ -517,7 +517,9 @@ def draw_decision_panel(draw, fonts, snapshot):
     current = forecast.get("current_max_kn")
     current_text = "Current max: unavailable" if current is None else f"Current max: {current:.1f} kn"
     draw.text((760, 1482), current_text, font=fonts["body"], fill=TEXT)
-    draw.text((760, 1538), f"Confidence: {rec.get('confidence', 'low')}", font=fonts["body"], fill=TEXT)
+    confidence = rec.get("confidence")
+    confidence_text = "Low" if confidence in (None, "", "null") else str(confidence).strip().capitalize()
+    draw.text((760, 1538), f"Confidence: {confidence_text}", font=fonts["body"], fill=TEXT)
     draw.text((175, 1622), "Forecast field for human review: waves first, currents second, decision after interpretation.", font=fonts["small"], fill=MUTED)
 
 

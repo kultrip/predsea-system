@@ -259,6 +259,81 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
 
 
+def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
+    run_id = "2026-06-09T0630Z"
+    route_dir = Path(tmp_path) / "2026-06-09" / "runs" / run_id / "palma_ibiza"
+    route_dir.mkdir(parents=True)
+    snapshot = write_snapshot_data("palma_ibiza", wave_max=1.3, created_at_utc="2026-06-09 06:30 UTC")
+    snapshot["observations"]["canal_de_ibiza"]["wave_from_direction_deg"] = 82.0
+    snapshot["forecast"].update(
+        {
+            "wave_peak_direction_deg": 74.0,
+            "swell_1_height_m": 0.8,
+            "swell_1_direction_deg": 45.0,
+            "swell_2_height_m": 0.4,
+            "swell_2_direction_deg": 110.0,
+            "wind_wave_height_m": 0.6,
+            "wind_wave_direction_deg": 72.0,
+            "hourly": [
+                {
+                    "time": "08:00",
+                    "time_utc": "2026-06-09 06:00 UTC",
+                    "wave_m": 1.0,
+                    "wave_direction_deg": 70.0,
+                    "wave_sea_state": "following sea",
+                },
+                {
+                    "time": "10:00",
+                    "time_utc": "2026-06-09 08:00 UTC",
+                    "wave_m": 1.3,
+                    "wave_direction_deg": 74.0,
+                    "wave_sea_state": "stern quartering sea",
+                },
+            ],
+        }
+    )
+    (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
+    (Path(tmp_path) / "2026-06-09" / "latest_run.json").write_text(
+        json.dumps({"run_id": run_id, "path": f"runs/{run_id}"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-09",
+            "run": "latest",
+            "question": "Would Palma to Ibiza feel comfortable this morning?",
+            "vessel_class": "medium",
+            "current_date": "2026-06-09",
+            "current_time": "07:30",
+        },
+    )
+
+    assert response.status_code == 200
+    sea_state = response.json()["evidence_used"]["sea_state"]
+    assert sea_state["wave_direction_deg"]["peak"] == 74.0
+    assert sea_state["wave_direction_deg"]["hourly"] == [
+        {
+            "time": "08:00",
+            "time_utc": "2026-06-09 06:00 UTC",
+            "wave_direction_deg": 70.0,
+            "wave_sea_state": "following sea",
+        },
+        {
+            "time": "10:00",
+            "time_utc": "2026-06-09 08:00 UTC",
+            "wave_direction_deg": 74.0,
+            "wave_sea_state": "stern quartering sea",
+        },
+    ]
+    assert sea_state["components"]["swell_1"]["direction_deg"] == 45.0
+    assert sea_state["components"]["swell_2"]["direction_deg"] == 110.0
+    assert sea_state["components"]["wind_wave"]["direction_deg"] == 72.0
+    assert sea_state["observed_wave_height_m"]["canal_de_ibiza"]["observed_wave_direction_deg"] == 82.0
+
+
 def test_question_endpoint_reports_passage_evidence_availability(tmp_path):
     route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T0630Z" / "palma_ibiza"
     route_dir.mkdir(parents=True)

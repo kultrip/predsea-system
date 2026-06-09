@@ -110,6 +110,7 @@ def evidence_used(snapshot, forecast_override=None):
         "route_segments": sorted((forecast.get("route_segments") or {}).keys()),
         "observations": available_observations,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
+        "sea_state": sea_state_evidence(forecast, observations),
     }
     if forecast.get("target_local_date"):
         evidence["target_local_date"] = forecast.get("target_local_date")
@@ -134,6 +135,69 @@ def evidence_used(snapshot, forecast_override=None):
         "distance_to_route_nm": position.get("distance_to_route_nm"),
     }
     return evidence
+
+
+def sea_state_evidence(forecast, observations):
+    return {
+        "wave_height_m": {
+            "min": forecast.get("wave_min_m"),
+            "max": forecast.get("wave_max_m"),
+            "peak_time": forecast.get("wave_peak_time"),
+            "peak_direction_deg": forecast.get("wave_peak_direction_deg"),
+            "hourly": [
+                {
+                    key: row[key]
+                    for key in ("time", "time_utc", "wave_m", "wave_direction_deg", "wave_sea_state")
+                    if key in row
+                }
+                for row in forecast.get("hourly", [])
+                if row.get("wave_m") is not None
+            ],
+        },
+        "wave_direction_deg": {
+            "peak": forecast.get("wave_peak_direction_deg"),
+            "hourly": [
+                {
+                    key: row[key]
+                    for key in ("time", "time_utc", "wave_direction_deg", "wave_sea_state")
+                    if key in row
+                }
+                for row in forecast.get("hourly", [])
+                if row.get("wave_direction_deg") is not None
+            ],
+        },
+        "components": {
+            "swell_1": {
+                "height_m": forecast.get("swell_1_height_m"),
+                "direction_deg": forecast.get("swell_1_direction_deg"),
+            },
+            "swell_2": {
+                "height_m": forecast.get("swell_2_height_m"),
+                "direction_deg": forecast.get("swell_2_direction_deg"),
+            },
+            "wind_wave": {
+                "height_m": forecast.get("wind_wave_height_m"),
+                "direction_deg": forecast.get("wind_wave_direction_deg"),
+            },
+        },
+        "observed_wave_height_m": observed_wave_height_evidence(observations),
+    }
+
+
+def observed_wave_height_evidence(observations):
+    records = {}
+    for station_id, record in (observations or {}).items():
+        if not isinstance(record, dict) or record.get("wave_height_m") is None:
+            continue
+        records[station_id] = {
+            "station_name": record.get("name"),
+            "wave_height_m": record.get("wave_height_m"),
+            "observed_at_utc": record.get("last_sample_utc"),
+            "observed_wave_direction_deg": (
+                record.get("wave_from_direction_deg") or record.get("wave_direction_deg")
+            ),
+        }
+    return records
 
 
 def evidence_freshness(snapshot, question_request):

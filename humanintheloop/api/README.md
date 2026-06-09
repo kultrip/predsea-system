@@ -89,6 +89,28 @@ Route question responses keep the same top-level shape and add:
     }
   ],
   "evidence_used": {
+    "sea_state": {
+      "wave_height_m": {
+        "min": 0.8,
+        "max": 1.3,
+        "peak_time": "14:00"
+      },
+      "wave_direction_deg": {
+        "peak": 74.0,
+        "hourly": [
+          {
+            "time": "10:00",
+            "wave_direction_deg": 72.0,
+            "wave_sea_state": "stern quartering sea"
+          }
+        ]
+      },
+      "components": {
+        "swell_1": {"height_m": 0.8, "direction_deg": 45.0},
+        "swell_2": {"height_m": 0.4, "direction_deg": 110.0},
+        "wind_wave": {"height_m": 0.6, "direction_deg": 72.0}
+      }
+    },
     "route_segments": [
       "arrival_conditions",
       "best_departure_window",
@@ -101,7 +123,12 @@ Route question responses keep the same top-level shape and add:
 ```
 
 Matt's agent can use `captain_knowledge` as visible reasoning, while the
-captain-facing `answer` remains a concise operational recommendation.
+captain-facing `answer` remains a concise operational recommendation. The
+`sea_state.wave_direction_deg.hourly[].wave_sea_state` field is the
+route-relative interpretation, for example following sea, beam sea, head sea,
+or stern quartering sea when available.
+Confidence is normalized in the rendered text, and the `Confidence:` line is
+omitted entirely when the evidence package does not include a confidence value.
 
 Ask a location-based question from a shared GPS point:
 

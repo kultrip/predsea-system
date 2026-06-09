@@ -222,6 +222,38 @@ Response includes:
 - `captain_knowledge`
 - `evidence_used`
 
+`evidence_used.sea_state` exposes the marine variables that support the answer,
+including combined wave height, combined wave direction, route-relative sea
+state labels, and swell or wind-wave component directions when the model source
+provides them:
+
+```json
+{
+  "sea_state": {
+    "wave_height_m": {
+      "min": 0.8,
+      "max": 1.3,
+      "peak_time": "14:00"
+    },
+    "wave_direction_deg": {
+      "peak": 74.0,
+      "hourly": [
+        {
+          "time": "10:00",
+          "wave_direction_deg": 72.0,
+          "wave_sea_state": "stern quartering sea"
+        }
+      ]
+    },
+    "components": {
+      "swell_1": {"height_m": 0.8, "direction_deg": 45.0},
+      "swell_2": {"height_m": 0.4, "direction_deg": 110.0},
+      "wind_wave": {"height_m": 0.6, "direction_deg": 72.0}
+    }
+  }
+}
+```
+
 The captain-facing `answer` should follow this hierarchy:
 
 ```text
@@ -254,8 +286,11 @@ the worst segment is expected offshore.
 
 What could change: a wind shift, swell timing change, or newer model run.
 
-Confidence: medium.
+Confidence: Medium.
 ```
+
+If confidence is unavailable in the evidence package, the API omits the
+`Confidence:` line rather than printing a placeholder.
 
 ### Location Question
 

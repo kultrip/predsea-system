@@ -165,6 +165,7 @@ def render_captain_answer(
 
     freshness = freshness or {}
     freshness_warning = freshness.get("freshness_warning")
+    confidence_text = render_confidence(confidence, freshness)
 
     route_segment_reason = render_route_segment_reason(forecast)
     captain_rule_reason = render_captain_rule_reason(captain_rule_matches)
@@ -190,7 +191,8 @@ def render_captain_answer(
         what_could_change = f"{freshness_warning} {sentence_case(what_could_change)}"
     lines.append(f"What could change: {what_could_change}")
 
-    lines.append(f"Confidence: {render_confidence(confidence, freshness)}")
+    if confidence_text:
+        lines.append(f"Confidence: {confidence_text}")
     return "\n\n".join(lines)
 
 
@@ -231,7 +233,7 @@ def render_vessel_context(vessel_advice, vessel_profile=None, vessel_class=None,
         return f"For this vessel size: {assumption}{label}."
     if vessel_advice.startswith("manageable for"):
         advice = vessel_advice.replace("manageable for vessels ", "manageable for ")
-        return f"For this vessel size: {assumption}{label}, conditions look manageable."
+        return f"For this vessel size: {assumption}{label}, conditions are manageable."
     if vessel_advice.startswith("restricted for"):
         return f"For this vessel size: {assumption}{label}, treat it as {vessel_advice}."
     if vessel_advice.startswith("caution for"):
@@ -328,16 +330,16 @@ def render_comfort(forecast, vessel_advice, vessel_profile):
 
     if restricted is not None and wave_max >= restricted:
         level = "Poor"
-        detail = "Expect uncomfortable motion on exposed sections."
+        detail = "Expect rough motion on exposed sections."
     elif manageable is not None and wave_max >= manageable:
         level = "Moderate to poor"
-        detail = "Manageable only with conservative timing; guests may find it uncomfortable."
+        detail = "Manageable only with conservative timing; guests may notice motion."
     elif vessel_advice and "caution" in vessel_advice:
         level = "Moderate"
-        detail = "Workable, but not flat calm for guests or sensitive passengers."
+        detail = "Workable, but guests will notice some motion."
     else:
-        level = "Moderate to good"
-        detail = "Generally manageable, with comfort still depending on period, direction, and passenger sensitivity."
+        level = "Moderate"
+        detail = "Generally workable, with comfort still depending on period, direction, and passenger sensitivity."
     return f"{level}. {detail}"
 
 
@@ -455,10 +457,13 @@ def render_what_could_change(forecast, evidence_note, captain_rule_matches=None)
 
 
 def render_confidence(confidence, freshness):
+    if confidence in (None, "", "null"):
+        return None
     warning = freshness.get("freshness_warning")
+    label = str(confidence).strip().capitalize()
     if warning:
-        return f"{confidence}, because the latest evidence package should be confirmed with the next morning run."
-    return f"{confidence}."
+        return f"{label}, because the latest evidence package should be confirmed with the next morning run."
+    return f"{label}."
 
 
 def has_wave_partition_detail(forecast):

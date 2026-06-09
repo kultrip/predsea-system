@@ -54,6 +54,7 @@ def test_answer_uses_captain_knowledge_and_worst_segment():
     assert "Why:" in answer
     assert "What could change:" in answer
     assert "Confidence:" in answer
+    assert "Confidence: Medium" in answer
     assert "Mid Palma-Ibiza" in answer
     assert "small vessels" in answer or "under 15m" in answer
     assert "NW" in answer or "beam sea" in answer
@@ -218,3 +219,64 @@ def test_ecmwf_fallback_lineage_softens_coastal_specificity():
 
     assert "global structural models" in result["answer"]
     assert "localized coastal land breezes may vary" in result["answer"]
+
+
+def test_missing_confidence_is_omitted_from_answer():
+    snapshot = {
+        "route": "Palma -> Ibiza",
+        "route_id": "palma_ibiza",
+        "vessel_class": "medium",
+        "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+        "forecast": {
+            "wave_min_m": 0.7,
+            "wave_max_m": 1.1,
+            "wave_peak_time": "14:00",
+            "current_max_kn": 0.4,
+            "hourly": [{"time": "10:00", "wave_m": 0.8}],
+        },
+        "recommendation": {
+            "best_window": "before midday",
+            "watch_out": "conditions increase after midday",
+            "confidence": None,
+            "vessel_advice": "manageable for vessels 15-24m",
+        },
+    }
+
+    result = decision_engine.answer_question(
+        "When is the best moment to leave from Palma to Ibiza today?",
+        snapshot,
+        current_time="08:00",
+    )
+
+    assert "Confidence:" not in result["answer"]
+
+
+def test_comfort_language_stays_conservative():
+    snapshot = {
+        "route": "Palma -> Ibiza",
+        "route_id": "palma_ibiza",
+        "vessel_class": "small",
+        "vessel_profile": {"label": "under 15m", "manageable_m": 1.2, "restricted_m": 1.8},
+        "forecast": {
+            "wave_min_m": 0.8,
+            "wave_max_m": 1.1,
+            "wave_peak_time": "14:00",
+            "current_max_kn": 0.4,
+            "hourly": [{"time": "10:00", "wave_m": 0.9}],
+        },
+        "recommendation": {
+            "best_window": "before midday",
+            "watch_out": "conditions increase after midday",
+            "confidence": "medium",
+            "vessel_advice": "manageable for vessels under 15m",
+        },
+    }
+
+    result = decision_engine.answer_question(
+        "Would Palma to Ibiza feel comfortable for a 12m vessel tomorrow morning?",
+        snapshot,
+        current_time="08:00",
+    )
+
+    assert "Moderate to good" not in result["answer"]
+    assert "Comfort: Moderate" in result["answer"] or "Comfort: Moderate to poor" in result["answer"]

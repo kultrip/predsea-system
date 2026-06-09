@@ -474,7 +474,7 @@ class BriefingRendererTests(unittest.TestCase):
 
         self.assertIn("Mallorca -> Ibiza", linkedin)
         self.assertIn("before midday", whatsapp)
-        self.assertIn("Confidence: medium", screenshot)
+        self.assertIn("Confidence: Medium", screenshot)
         self.assertIn("Captain:", screenshot)
         self.assertIn("PredSea:", screenshot)
         self.assertIn("Captain: [Shared live location]", screenshot)
@@ -849,7 +849,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("avoid timing your departure near the forecast peak", decision["answer"])
         self.assertNotIn("Recommendation:", decision["answer"])
         self.assertNotIn("Reason:", decision["answer"])
-        self.assertIn("Confidence: medium", decision["answer"])
+        self.assertIn("Confidence: Medium", decision["answer"])
 
     def test_afternoon_question_reframes_morning_to_early_afternoon_window(self):
         import decision_engine
@@ -1214,7 +1214,7 @@ class DecisionEngineTests(unittest.TestCase):
         decision = {
             "intent": "location_safety",
             "question": "Is it safe to stay here?",
-            "answer": "Stay only if you are sheltered.\nWaves build.\nConfidence: medium.",
+            "answer": "Stay only if you are sheltered.\nWaves build.\nConfidence: Medium.",
         }
 
         script = decision_engine.render_decision_screenshot_script(decision)
@@ -1257,7 +1257,7 @@ class ChatFigureTests(unittest.TestCase):
                         "Illustrative WhatsApp screenshot script",
                         "Captain: How is the sea looking for Palma to Ibiza today?",
                         "PredSea: Best window looks before midday.",
-                        "PredSea: Confidence: medium.",
+                        "PredSea: Confidence: Medium.",
                         "Caption note: illustrative product example.",
                     ]
                 ),
