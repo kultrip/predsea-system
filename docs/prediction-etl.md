@@ -309,6 +309,11 @@ outputs/
       RUN_ID/
         run_manifest.json
         regional_evidence.json
+        validation/
+          observation_samples.jsonl
+          forecast_index.jsonl
+          matched_validation.jsonl
+          validation_summary.json
         maps/
           wave_height/
             index.json
@@ -395,6 +400,30 @@ Sampleable grid used by `GET /maps/inspect` and by Phase 1 location questions.
 
 Run-level contract that tells the API which variables, modes, bounds, and
 limitations are officially supported by this run.
+
+`validation/observation_samples.jsonl`
+
+Long-format archive of the latest observation samples fetched by the ETL run.
+Each row records provider, station, observation timestamp, variable, value,
+units, raw value, and collection time. This is the start of the long-term
+forecast-vs-reality database.
+
+`validation/forecast_index.jsonl`
+
+Long-format forecast target index. Each row records route, forecast run ID,
+forecast creation timestamp, target forecast timestamp, variable, forecast
+value, units, source, resolution, truth station, and lead time.
+
+`validation/matched_validation.jsonl`
+
+Rows where an observation sample can be linked to a forecast target by station,
+variable, and timestamp. These rows include forecast value, observed value,
+error, absolute error, lead time, model source, and resolution.
+
+`validation/validation_summary.json`
+
+Run-level validation summary with row counts and simple metrics such as MAE and
+bias by variable when matches are available.
 
 ## How To Run Locally
 
@@ -614,6 +643,75 @@ humanintheloop/test_api_app.py
 
 If a variable only appears on maps, add it to the map/overlay scripts and media
 metadata. If it changes advice, also update `decision_engine.py` and tests.
+
+If a variable should be validated over time, also add it to
+`humanintheloop/validation_archive.py`:
+
+- `OBSERVATION_VARIABLES` for observed station fields
+- `FORECAST_VARIABLES` for forecast target fields
+- unit normalization if the provider returns strings such as compass
+  directions
+
+The validation archive is intentionally long-format so it can grow from waves
+and currents into weather fields such as temperature, rainfall, wind speed,
+wind direction, and gusts.
+
+## Forecast vs Reality Validation Archive
+
+Every production ETL run now writes a validation archive:
+
+```text
+outputs/<date>/runs/<run_id>/validation/
+  observation_samples.jsonl
+  forecast_index.jsonl
+  matched_validation.jsonl
+  validation_summary.json
+```
+
+This is the first implementation of the Graham-style validation database.
+
+What it can answer now:
+
+- Which route forecast matched the available SOCIB buoy wave height?
+- What was the forecast error for a station/time/variable?
+- What was the model source and resolution for the forecast?
+- What was the lead time between the ETL forecast timestamp and the target
+  observation timestamp?
+
+Current validation variables:
+
+- observed SOCIB wave height
+- observed SOCIB wave direction when available
+- water temperature, salinity, sea-level pressure, and air pressure as
+  observation archive fields
+- forecast wave height and direction
+- forecast current speed and direction
+- forecast swell 1, swell 2, and wind-wave height/direction
+
+Current limitations:
+
+- the archive stores the latest observation samples fetched by each ETL run,
+  not a complete provider backfill
+- matched validation only works when station, variable, and timestamp align
+- wave/current validation depends on route-level truth station configuration in
+  `routes.json`
+- weather validation for rainfall, air temperature, wind, and gusts needs AEMET,
+  ECMWF, or other weather-station ingestion added first
+- forecast rows with negative lead time are archived for traceability but
+  excluded from matched validation metrics
+
+This gives PredSea the structure needed to build a 6-12 month accuracy database:
+
+```text
+forecast run -> target time -> location/station -> actual observation -> error
+```
+
+Future work should add:
+
+- AEMET weather station observations
+- ECMWF/AEMET/AROME weather forecast fields
+- rainfall, air temperature, wind speed, wind direction, and gust validation
+- seasonal dashboards with MAE, RMSE, bias, and event-specific diagnostics
 
 ## Where To Add Graham's Captain Knowledge
 

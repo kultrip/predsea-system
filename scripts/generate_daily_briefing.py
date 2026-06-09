@@ -73,6 +73,7 @@ def load_mvp_modules():
     import ingest_atmosphere
     import map_generator
     import route_analysis
+    import validation_archive
 
     return SimpleNamespace(
         briefing=briefing,
@@ -82,6 +83,7 @@ def load_mvp_modules():
         ingest_atmosphere=ingest_atmosphere,
         map_generator=map_generator,
         route_analysis=route_analysis,
+        validation_archive=validation_archive,
     )
 
 
@@ -263,7 +265,30 @@ def regional_evidence_manifest_entry(regional_evidence):
     }
 
 
-def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None, regional_evidence=None):
+def validation_manifest_entry(validation_summary):
+    if not validation_summary:
+        return None
+    return {
+        "path": "validation/validation_summary.json",
+        "observation_samples_path": "validation/observation_samples.jsonl",
+        "forecast_index_path": "validation/forecast_index.jsonl",
+        "matched_validation_path": "validation/matched_validation.jsonl",
+        "observation_rows": validation_summary.get("observation_rows", 0),
+        "forecast_rows": validation_summary.get("forecast_rows", 0),
+        "matched_rows": validation_summary.get("matched_rows", 0),
+        "matched_variables": validation_summary.get("matched_variables", {}),
+    }
+
+
+def load_preferred_snapshots(run_dir, route_ids):
+    snapshots = {}
+    for route_id in route_ids:
+        snapshot_path = Path(run_dir) / route_id / "daily_snapshot.json"
+        snapshots[route_id] = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    return snapshots
+
+
+def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None, regional_evidence=None, validation=None):
     manifest = {
         "run_date": run_date,
         "run_id": run_id,
@@ -272,13 +297,14 @@ def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sou
         "vessel_class": vessel_class,
         "forecast_sources": forecast_sources or [],
         "regional_evidence": regional_evidence,
+        "validation": validation,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
-def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_evidence=None):
+def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_evidence=None, validation=None):
     latest = {
         "run_date": run_date,
         "run_id": run_id,
@@ -287,6 +313,7 @@ def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_e
         "routes": routes,
         "vessel_class": vessel_class,
         "regional_evidence": regional_evidence,
+        "validation": validation,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (day_dir / "latest_run.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
@@ -598,6 +625,17 @@ def generate_daily_briefings(
         forecast_sources=forecast_source_entries,
     )
     regional_manifest_entry = regional_evidence_manifest_entry(regional_evidence)
+    preferred_snapshots = load_preferred_snapshots(run_dir, selected_route_ids)
+    validation_summary = modules.validation_archive.write_validation_archive(
+        run_dir,
+        run_date,
+        run_id,
+        routes,
+        preferred_snapshots,
+        observations,
+        output_root,
+    )
+    validation_entry = validation_manifest_entry(validation_summary)
 
     write_manifest(
         run_dir,
@@ -607,8 +645,17 @@ def generate_daily_briefings(
         vessel_class,
         forecast_sources=forecast_source_entries,
         regional_evidence=regional_manifest_entry,
+        validation=validation_entry,
     )
-    write_latest_run(day_dir, run_date, run_id, selected_route_ids, vessel_class, regional_evidence=regional_manifest_entry)
+    write_latest_run(
+        day_dir,
+        run_date,
+        run_id,
+        selected_route_ids,
+        vessel_class,
+        regional_evidence=regional_manifest_entry,
+        validation=validation_entry,
+    )
     return SimpleNamespace(output_dir=run_dir, day_dir=day_dir, run_id=run_id, routes=selected_route_ids)
 
 

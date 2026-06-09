@@ -29,6 +29,45 @@ def test_daily_generator_writes_manifest_and_latest_run_pointer(tmp_path):
     assert latest["path"] == f"runs/{run_id}"
 
 
+def test_daily_generator_writes_validation_manifest_pointer(tmp_path):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    run_id = "2026-05-31T0630Z"
+    day_dir = tmp_path / "2026-05-31"
+    run_dir = day_dir / "runs" / run_id
+    run_dir.mkdir(parents=True)
+    validation_summary = {
+        "observation_rows": 3,
+        "forecast_rows": 120,
+        "matched_rows": 2,
+        "matched_variables": {"wave_height": 2},
+    }
+    validation_entry = generator.validation_manifest_entry(validation_summary)
+
+    generator.write_manifest(
+        run_dir,
+        "2026-05-31",
+        run_id,
+        ["palma_ibiza"],
+        "medium",
+        validation=validation_entry,
+    )
+    generator.write_latest_run(
+        day_dir,
+        "2026-05-31",
+        run_id,
+        ["palma_ibiza"],
+        "medium",
+        validation=validation_entry,
+    )
+
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    latest = json.loads((day_dir / "latest_run.json").read_text(encoding="utf-8"))
+
+    assert manifest["validation"]["path"] == "validation/validation_summary.json"
+    assert manifest["validation"]["matched_rows"] == 2
+    assert latest["validation"]["forecast_index_path"] == "validation/forecast_index.jsonl"
+
+
 def test_web_demo_exporter_uses_latest_run_folder(tmp_path):
     exporter = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "export_web_demo_bundle.py")
     run_id = "2026-05-31T0630Z"
