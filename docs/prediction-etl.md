@@ -90,6 +90,18 @@ Current forecast variables are normalized into the PredSea names listed in
 wave height/direction, swell partitions, wind-wave partitions, and surface
 current vector components when the provider exposes them.
 
+The current Copernicus routing box is intentionally wider than the original
+Balearic-only setup so PredSea can cover mainland transit lanes to Barcelona
+and Valencia in the same evidence pipeline. The operating box now spans:
+
+- latitude 38.0 to 41.5
+- longitude 0.5 to 4.5
+
+Interpretation is allowed to read coordinate vectors anywhere in that corridor,
+including mainland-to-islands crossings and inter-island routes, but it should
+still speak in route-relative and vessel-relative terms rather than raw grid
+cells.
+
 Copernicus is the default production forecast source. SOCIB model forecasts are
 kept as an experimental/secondary source because provider monitoring showed
 SOCIB THREDDS can be slow or unavailable from GitHub Actions. When SOCIB model
@@ -218,6 +230,7 @@ Each route defines:
 - current validation truth source, when available
 
 Route decisions use the exposed route maximum per hour, not a broad Balearic
+box average.
 box average.
 
 ## Run Frequency

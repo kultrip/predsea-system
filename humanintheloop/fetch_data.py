@@ -30,10 +30,10 @@ WAVE_VARIABLES = [
     *WAVE_PARTITION_VARIABLES,
 ]
 
-# Coordinates for the Balearic Islands
-# Adjusted slightly to ensure we don't hit edge-case rounding errors
-lon_min, lon_max = 1.0, 4.5
-lat_min, lat_max = 38.5, 40.5
+# Coordinates for the expanded Mediterranean routing box
+# Covers the Balearics plus mainland BCN/VLC transit lanes.
+lon_min, lon_max = 0.5, 4.5
+lat_min, lat_max = 38.0, 41.5
 
 # Time window
 start_time = (datetime.datetime.now() - datetime.timedelta(hours=6))
