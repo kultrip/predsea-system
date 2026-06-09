@@ -24,6 +24,32 @@ curl "http://127.0.0.1:8000/routes/palma_ibiza/evidence?date=2026-05-31&run=late
 curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-31&run=latest&vessel_class=medium&format=whatsapp"
 ```
 
+Current route IDs:
+
+- `palma_ibiza`
+- `palma_cabrera`
+- `ibiza_formentera`
+- `alcudia_ciutadella`
+
+Current map variables:
+
+- `wave_height`
+- `swell_1_height`
+- `swell_1_direction`
+- `swell_2_height`
+- `swell_2_direction`
+- `wind_wave_height`
+- `wind_wave_direction`
+- `current_speed`
+
+Current production forecast source:
+
+- Copernicus Marine Mediterranean waves, about 4.2 km, hourly.
+- Copernicus Marine Mediterranean surface currents, about 4.2 km, hourly.
+- SOCIB public observations when fresh station data is available.
+- SOCIB model forecasts and atmospheric wind providers are optional ETL layers
+  controlled by feature flags.
+
 Ask a captain-style question:
 
 ```bash
@@ -32,12 +58,23 @@ curl -X POST http://127.0.0.1:8000/routes/palma_ibiza/question \
   -d '{
     "date": "2026-05-31",
     "run": "latest",
-    "question": "Can I leave Palma at 17:00?",
+    "question": "When is the best moment to leave from Palma to Ibiza today?",
     "vessel_class": "medium",
+    "departure_time": "10:00",
+    "priority": "comfort",
     "location_label": "Palma Marina",
-    "current_time": "09:30"
+    "current_time": "09:30",
+    "current_date": "2026-06-09"
   }'
 ```
+
+Optional route-question fields:
+
+- `departure_time`: requested departure time.
+- `priority`: `comfort`, `safety`, or `schedule`.
+- `current_latitude` and `current_longitude`: shared GPS position for
+  position-aware passage evidence.
+- `current_time` and `current_date`: local request context.
 
 Route question responses keep the same top-level shape and add:
 
@@ -86,6 +123,29 @@ curl -X POST http://127.0.0.1:8000/question \
 forecast map grids around the shared position and returns a conservative
 operational read. It does not yet include seabed type, depth, anchoring
 restrictions, or nearby shelter search.
+
+Get a Leaflet-compatible map overlay:
+
+```bash
+curl "http://127.0.0.1:8000/maps?variable=wave_height&time=14:00&run=latest"
+```
+
+Inspect one map value at a GPS point:
+
+```bash
+curl "http://127.0.0.1:8000/maps/inspect?variable=wave_height&time=14:00&run=latest&lat=39.57&lon=2.64"
+```
+
+Get route media URLs:
+
+```bash
+curl "http://127.0.0.1:8000/routes/palma_ibiza/media?run=latest"
+```
+
+Current public media artifacts are:
+
+- `route_decision_map.png`
+- `predsea_whatsapp_figure.png`
 
 When the ETL has written `regional_evidence.json`, the response also includes:
 

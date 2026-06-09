@@ -19,6 +19,54 @@ external forecasts + SOCIB observations + route sampling
 The API should be able to answer many questions from the latest evidence
 without downloading forecast data during the request.
 
+## Current Availability Snapshot
+
+This is the practical inventory of what PredSea has available today.
+
+| Layer | Production status | Source | Resolution | Time step | Used for |
+| --- | --- | --- | --- | --- | --- |
+| Waves | Default | Copernicus Marine Mediterranean wave forecast | about 4.2 km | hourly | route decisions, maps, route-relative sea state |
+| Currents | Default | Copernicus Marine Mediterranean surface currents | about 4.2 km | hourly | current speed maps, route context, location screening |
+| Observations | Opportunistic | SOCIB public buoy/platform observations | point stations | latest available sample | ground-truth check when fresh |
+| SOCIB model waves | Experimental opt-in | SOCIB THREDDS SAPO-IB | provider native grid | provider dependent | parallel evidence package when enabled |
+| SOCIB model currents | Experimental opt-in | SOCIB THREDDS WMOP | provider native grid | provider dependent | parallel evidence package when enabled |
+| Atmospheric wind | Optional opt-in | Météo-France AROME, AEMET HARMONIE-AROME, ECMWF fallback | 1.3 km, 2.5 km, fallback tier | provider dependent | wind lineage and future wind-aware decisions |
+
+Default production runs currently rely on Copernicus for forecast fields and
+SOCIB only for observations when fresh observations are available. SOCIB model
+forecasts and atmospheric ingestion are available behind feature flags because
+provider availability and credentials vary.
+
+## Available Forecast Variables
+
+These are the normalized variables the ETL can currently expose to evidence,
+maps, or API responses.
+
+| PredSea variable | Source/model variable | Units | Route evidence | Regional map/API overlay | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `wave_height` | `VHM0` | m | yes | yes | Significant wave height; main sea-state field. |
+| `wave_direction` | `VMDR` | degrees, from | yes | no | Used for route-relative sea-state interpretation. |
+| `swell_1_height` | `VHM0_SW1` | m | yes | yes | Primary swell height when provided by source. |
+| `swell_1_direction` | `VMDR_SW1` | degrees, from | yes | yes | Primary swell direction when provided by source. |
+| `swell_2_height` | `VHM0_SW2` | m | yes | yes | Secondary swell height when provided by source. |
+| `swell_2_direction` | `VMDR_SW2` | degrees, from | yes | yes | Secondary swell direction when provided by source. |
+| `wind_wave_height` | `VHM0_WW` | m | yes | yes | Wind-wave component height when provided by source. |
+| `wind_wave_direction` | `VMDR_WW` | degrees, from | yes | yes | Wind-wave component direction when provided by source. |
+| `current_speed` | derived from `uo`, `vo` | m/s on maps, kn in route summaries | yes | yes | Surface current speed. |
+| `current_direction` | derived from `uo`, `vo` | degrees | partial | no | Used mostly as vector/context evidence. |
+| `wind_speed` | atmospheric provider dependent | m/s or kt after normalization | lineage only today | no | Optional layer; not yet a default decision driver. |
+| `wind_direction` | atmospheric provider dependent | degrees | lineage only today | no | Optional layer; not yet a default decision driver. |
+
+Important current gaps:
+
+- wave period is not yet part of the production evidence package
+- wind gusts are not yet part of the default evidence package
+- bathymetry, seabed type, anchoring restrictions, marina constraints, and
+  legal exclusion zones are not included
+- alternate route optimization is not implemented yet
+- model-delta alerts and numeric confidence scores are planned but not exposed
+  as stable API fields yet
+
 ## Current Data Sources
 
 Current external sources:
@@ -37,14 +85,10 @@ Current external sources:
     `PREDSEA_ENABLE_ATMOSPHERIC_INGESTION=1`.
   - ECMWF Open Data fallback when atmospheric ingestion is enabled.
 
-Current forecast variables:
-
-- `VHM0`: significant wave height.
-- `VMDR`: mean wave direction from.
-- `uo`: eastward surface current component.
-- `vo`: northward surface current component.
-- `VHM0_SW1`: primary swell significant wave height when provided by the
-  source.
+Current forecast variables are normalized into the PredSea names listed in
+`Available Forecast Variables` above. The underlying model variables include
+wave height/direction, swell partitions, wind-wave partitions, and surface
+current vector components when the provider exposes them.
 
 Copernicus is the default production forecast source. SOCIB model forecasts are
 kept as an experimental/secondary source because provider monitoring showed
@@ -60,7 +104,8 @@ yet required for the production ETL. When enabled, the ETL records wind lineage
 inside every route evidence package so the Co-Captain can say whether wind
 context came from high-resolution local models or a global fallback.
 
-Current observation variables depend on each SOCIB platform, but can include:
+Current observation variables depend on each SOCIB platform. When available,
+they can include:
 
 - wave height
 - wave direction
@@ -263,6 +308,16 @@ outputs/
     runs/
       RUN_ID/
         run_manifest.json
+        regional_evidence.json
+        maps/
+          wave_height/
+            index.json
+            wave_height_YYYYMMDD_HHMMSSZ.png
+            wave_height_YYYYMMDD_HHMMSSZ.grid.json
+          current_speed/
+            index.json
+            current_speed_YYYYMMDD_HHMMSSZ.png
+            current_speed_YYYYMMDD_HHMMSSZ.grid.json
         palma_ibiza/
           evidence.json
           daily_snapshot.json
@@ -321,6 +376,25 @@ Chat-style figure for demos and posts.
 
 Current oceanographic map artifact. Despite the name, the product direction is
 to show physical sea conditions, not only route advice.
+
+`maps/<variable>/index.json`
+
+Regional map catalog for one variable. The API uses it to select the closest
+overlay to a requested time and return a Leaflet-compatible image overlay.
+
+`maps/<variable>/<variable>_*.png`
+
+Transparent or semi-transparent PNG overlay for the selected regional forecast
+field.
+
+`maps/<variable>/<variable>_*.grid.json`
+
+Sampleable grid used by `GET /maps/inspect` and by Phase 1 location questions.
+
+`regional_evidence.json`
+
+Run-level contract that tells the API which variables, modes, bounds, and
+limitations are officially supported by this run.
 
 ## How To Run Locally
 

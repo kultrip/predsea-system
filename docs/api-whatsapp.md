@@ -55,6 +55,44 @@ PREDSEA_GCS_PREFIX=predictions
 
 ## Current Endpoints
 
+Current route IDs:
+
+- `palma_ibiza`
+- `palma_cabrera`
+- `ibiza_formentera`
+- `alcudia_ciutadella`
+
+Current map variables:
+
+- `wave_height`
+- `swell_1_height`
+- `swell_1_direction`
+- `swell_2_height`
+- `swell_2_direction`
+- `wind_wave_height`
+- `wind_wave_direction`
+- `current_speed`
+
+Current vessel classes:
+
+- `small`
+- `medium`
+- `large`
+
+Current route-question parameters can include:
+
+- `question`: required captain question.
+- `date`: optional `YYYY-MM-DD`; omitted means latest available date.
+- `run`: optional `latest` or a run ID such as `2026-06-09T1512Z`.
+- `vessel_class`: optional, defaults to `medium`.
+- `departure_time`: optional requested departure time, for example `08:30`.
+- `priority`: optional, one of `comfort`, `safety`, or `schedule`.
+- `current_latitude` and `current_longitude`: optional GPS position used for
+  position-aware passage evidence.
+- `location_label`: optional human-readable label.
+- `current_time`: optional local time of the user request.
+- `current_date`: optional local date of the user request.
+
 ### Health
 
 ```bash
@@ -143,23 +181,34 @@ curl -X POST \
   "https://predsea-api-193957983101.europe-west1.run.app/routes/palma_ibiza/question" \
   -H "Content-Type: application/json" \
   -d '{
-    "date": "2026-05-31",
     "run": "latest",
-    "question": "Can I cross to Ibiza this afternoon?",
+    "question": "When is the best moment to leave from Palma to Ibiza today?",
     "vessel_class": "small",
+    "departure_time": "10:00",
+    "priority": "comfort",
     "location_label": "Palma Marina",
-    "current_time": "09:30"
+    "current_time": "09:30",
+    "current_date": "2026-06-09"
   }'
 ```
 
 Request fields:
 
-- `question`: required free text from the captain.
-- `date`: optional. If omitted, the API uses the latest available date.
+- `question`: required captain question.
+- `date`: optional `YYYY-MM-DD`; omitted means latest available date.
 - `run`: optional. Use `latest` for the newest run of the selected date.
-- `vessel_class`: optional. Defaults to `medium`.
+- `vessel_class`: optional, defaults to `medium`.
+- `departure_time`: optional requested departure time.
+- `priority`: optional operational priority, currently `comfort`, `safety`, or
+  `schedule`.
+- `current_latitude` and `current_longitude`: optional shared GPS position. If
+  the position is close enough to the route, the decision engine uses it to
+  focus on remaining passage segments. If it is far from the route, the answer
+  warns that the position is not close enough and treats the question more
+  conservatively.
 - `location_label`: optional human-readable label.
-- `current_time`: optional local time used for timing-sensitive demos.
+- `current_time`: optional local time of the user request.
+- `current_date`: optional local date of the user request.
 
 Response includes:
 
@@ -167,25 +216,129 @@ Response includes:
 - `intent`
 - `date`
 - `run`
+- `evidence_timestamp`
+- `freshness_status`
+- `freshness_warning`
+- `captain_knowledge`
 - `evidence_used`
 
-The `answer` intentionally avoids rigid labels such as `Recommendation:` and
-`Reason:`. Those fields were useful during prototyping, but they made the
-WhatsApp response feel repetitive. The API still returns `intent` and
-`evidence_used` as structured fields for Relay AI, debugging, and future UI
+The captain-facing `answer` should follow this hierarchy:
+
+```text
+Decision
+Best window
+Comfort
+Risk
+Why
+What could change
+Confidence
+```
+
+The API also returns structured fields for Relay AI, debugging, and future UI
 explainability.
 
 Example captain-facing answer:
 
 ```text
-Palma -> Ibiza: conditions look workable for the next operational window.
+Decision: Palma -> Ibiza is workable today with conservative timing.
 
-Forecast wave peak is only near 0.3 m around 15:00, with no major wave build-up.
+Best window: Leave before the exposed peak if possible; avoid the roughest
+sampled period.
 
-For this vessel class, it looks manageable for 15-24m.
+Comfort: Moderate. For this vessel size: use the calmest available window.
+
+Risk: Low to moderate.
+
+Why: The route sample shows lower wave height before the forecast peak, and
+the worst segment is expected offshore.
+
+What could change: a wind shift, swell timing change, or newer model run.
 
 Confidence: medium.
 ```
+
+### Location Question
+
+Ask from a shared GPS position:
+
+```bash
+curl -X POST \
+  "https://predsea-api-193957983101.europe-west1.run.app/question" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "run": "latest",
+    "question": "I am at this position, can I stay here tonight?",
+    "latitude": 39.45,
+    "longitude": 2.10,
+    "vessel_class": "small",
+    "location_label": "shared WhatsApp live location",
+    "current_time": "19:00"
+  }'
+```
+
+This is Phase 1 location intelligence. It samples the nearest generated map
+grids, currently wave height, current speed, and primary swell height. It is a
+screening layer, not final anchoring clearance.
+
+Known limitations returned by the API:
+
+- no seabed type
+- no depth or bathymetry
+- no anchoring restrictions
+- no nearby shelter search
+
+### Maps
+
+Get a Leaflet-compatible map overlay:
+
+```bash
+curl "https://predsea-api-193957983101.europe-west1.run.app/maps?variable=wave_height&time=14:00&run=latest"
+```
+
+Response includes:
+
+- `overlay_url`: PNG image overlay URL
+- `bounds`: south, west, north, east
+- `opacity`
+- `units`
+- `color_scale`
+- `time`: closest forecast time actually selected
+- `leaflet.method`: currently `L.imageOverlay`
+
+Supported variables are the map variables listed at the top of this document.
+If the requested time is not exactly available, the API returns the closest
+available forecast overlay for that run.
+
+Inspect one forecast value at a point:
+
+```bash
+curl "https://predsea-api-193957983101.europe-west1.run.app/maps/inspect?variable=wave_height&time=14:00&run=latest&lat=39.57&lon=2.64"
+```
+
+Response includes:
+
+- `value`
+- `units`
+- `sampled_lat`
+- `sampled_lon`
+- `inside_domain`
+- `grid_indices`
+
+### Media
+
+Get route media URLs for WhatsApp, web, or download:
+
+```bash
+curl "https://predsea-api-193957983101.europe-west1.run.app/routes/palma_ibiza/media?run=latest"
+```
+
+Current public media artifacts:
+
+- `route_decision_map.png`
+- `predsea_whatsapp_figure.png`
+
+Response includes `api_url`, optional `signed_url`, `download_url`, and
+`media_type` for each artifact.
 
 ## Recommended WhatsApp Flow
 
@@ -226,129 +379,53 @@ run=2026-05-31T0058Z
 If no run is supplied, the API also resolves the latest run when a run-based
 folder exists. Explicit `run=latest` is clearer for Matt's integration.
 
-## Route-Based Limitation
+## Supported Question Types
 
-The current `/question` endpoint is route-based:
+The route question endpoint currently handles:
 
-```text
-/routes/{route_id}/question
-```
+- departure windows: "When should I leave?"
+- go/no-go reads: "Is today a good day to cross?"
+- route timing: "Can I cross tonight/tomorrow?"
+- near-future conditions: "How will it be in four hours?"
+- vessel comfort: "Would this feel comfortable for a 12m vessel?"
+- fuel/current context: "Can I save fuel by using another route?"
+- position-aware passage context when GPS is supplied
 
-That works for questions like:
+The location question endpoint currently handles:
 
-- "Can I cross Palma to Ibiza this afternoon?"
-- "What is the best window for Alcudia to Ciutadella?"
-- "Is Ibiza to Formentera comfortable for a small vessel?"
+- "Can I stay here?"
+- "Is this position workable tonight?"
+- first-pass anchoring screening from a shared GPS point
 
-It is not yet a full free-location anchoring engine.
+Questions that need seabed, bathymetry, local legal restrictions, marina
+availability, or true alternate-route optimization should be answered
+conservatively and identified as outside the current evidence package.
 
-If a captain asks:
+## Current API Limits
 
-```text
-I am in Formentera. Where should I anchor tonight?
-```
+Important limitations:
 
-the system should not pretend to know a precise anchorage unless the evidence
-package includes location/region/anchorage evidence.
+- `/question` can screen a GPS point but cannot yet recommend the best nearby
+  anchorage.
+- The API does not calculate alternate routes yet.
+- The API does not yet expose a stable `confidence_score: 0-100`; it exposes
+  qualitative confidence and freshness metadata.
+- The API does not yet expose a stable forecast-delta endpoint such as
+  `/routes/{route_id}/changes?since=...`.
+- Wind is not yet a default production decision variable unless atmospheric
+  ingestion is enabled and evidence lineage confirms the wind source.
+- Wave period and bathymetry are not yet in production evidence.
 
-Near-term fallback answer should ask for:
+## Next Useful API Additions
 
-- shared GPS location
-- intended anchorage
-- vessel class
-- time window
+The next high-value additions are:
 
-## Next API Additions
-
-### 1. Location-Aware Questions
-
-Add optional fields:
-
-```json
-{
-  "location": {
-    "lat": 38.72,
-    "lon": 1.43
-  },
-  "destination": {
-    "lat": 39.57,
-    "lon": 2.64
-  },
-  "time_window": "tonight"
-}
-```
-
-This will let the API choose between:
-
-- route evidence
-- point evidence
-- region evidence
-- anchorage evidence
-
-### 2. Intent Router
-
-Before answering, classify the captain question into an operational intent:
-
-- `route_timing`
-- `sea_state_here`
-- `anchoring_advice`
-- `fuel_efficiency`
-- `go_no_go`
-- `compare_routes`
-- `general_forecast`
-- `unsupported_question`
-
-Unsupported questions should fail gracefully:
-
-```text
-I do not have enough local anchorage evidence to recommend a specific spot yet.
-Share your position or intended anchorage and I can assess exposure and timing.
-```
-
-### 3. Media Responses
-
-To send maps through WhatsApp, the API should return media metadata:
-
-```json
-{
-  "answer": "...",
-  "media": [
-    {
-      "type": "image",
-      "title": "Balearic wave forecast",
-      "url": "https://..."
-    }
-  ]
-}
-```
-
-The image should be stored in GCS and exposed through a signed URL or controlled
-public URL. Matt's platform can then send the media URL through WhatsApp.
-
-### 4. Map Endpoint
-
-Add endpoints such as:
-
-```text
-GET /maps?date=2026-05-31&run=latest&variable=wave_height&time=16:00
-GET /routes/{route_id}/media?run=latest
-```
-
-These should return GCS URLs, not local file paths.
-
-### 5. Evidence Package Endpoint
-
-Eventually `/evidence` should expose the full `evidence.json`, while
-`/question` continues using `decision_context` internally.
-
-This allows a SaaS/web UI to show:
-
-- decision text
-- map
-- route status
-- data quality
-- model comparison
-- evidence used
+- forecast-delta endpoint for "what changed since my last check?"
+- numeric confidence score with a clear explanation
+- richer waypoint/segment output for long passages
+- map overlays for future wind variables once atmospheric ingestion is stable
+- full evidence endpoint that exposes model comparison, not only the compact
+  decision context
 
 ## SaaS / Webpage Integration
 
@@ -361,15 +438,18 @@ GET /health
 GET /routes?run=latest
 GET /routes/{route_id}/evidence?run=latest
 GET /routes/{route_id}/briefing?run=latest&format=whatsapp
+GET /maps?variable=wave_height&time=14:00&run=latest
+GET /maps/inspect?variable=wave_height&time=14:00&run=latest&lat=...&lon=...
+GET /routes/{route_id}/media?run=latest
+POST /question
 POST /routes/{route_id}/question
 ```
 
 Future calls:
 
 ```text
-GET /maps
 GET /regions/{region_id}/evidence
-POST /question
+GET /routes/{route_id}/changes?since=...
 ```
 
 The web app should display the same operational pair that captains understand:
@@ -380,7 +460,8 @@ decision + map evidence
 
 The public `predsea.com` demo currently uses that pattern:
 
-- the map panel loads the latest generated route map artifact from the API
+- the map panel can load generated route media or regional Leaflet overlays
+  from the API
 - the chat panel calls `POST /routes/palma_ibiza/question`
 - the three suggested questions plus one optional custom question use the live
   API response
@@ -411,12 +492,11 @@ Avoid:
 
 Current answer style rules:
 
-- Lead with the operational read for the route or location.
-- Explain the evidence in one short paragraph.
-- Mention vessel class naturally when it changes the recommendation.
-- Keep `Confidence: low|medium|high` visible.
-- Do not expose raw internal labels such as `Recommendation:` or `Reason:` in
-  the captain-facing text.
+- Lead with the decision.
+- Then give best window, comfort, risk, why, what could change, and confidence.
+- Mention vessel size naturally when it changes the recommendation.
+- Keep freshness warnings visible when the latest evidence package is stale.
+- Avoid repeating the same sentence across sections.
 
 Where this lives:
 
