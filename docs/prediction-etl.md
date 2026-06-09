@@ -713,6 +713,40 @@ Future work should add:
 - rainfall, air temperature, wind speed, wind direction, and gust validation
 - seasonal dashboards with MAE, RMSE, bias, and event-specific diagnostics
 
+### Backfill Validation Archives From GCS
+
+Historical run-based ETL outputs can be backfilled directly in Google Cloud
+Storage with:
+
+```bash
+python scripts/backfill_validation_archive.py \
+  --bucket predsea-daily-outputs \
+  --prefix predictions \
+  --auth gcloud
+```
+
+By default this is a dry-run. To write the validation files:
+
+```bash
+python scripts/backfill_validation_archive.py \
+  --bucket predsea-daily-outputs \
+  --prefix predictions \
+  --auth gcloud \
+  --apply
+```
+
+Useful options:
+
+- `--date-from YYYY-MM-DD`
+- `--date-to YYYY-MM-DD`
+- `--run-id 2026-06-09T1623Z`
+- `--limit 5`
+- `--overwrite`
+
+On Charles' local machine, `--auth gcloud` is preferred because the active
+`gcloud` account is `hello@predsea.com`, while local Application Default
+Credentials may point to another Google account.
+
 ## Where To Add Graham's Captain Knowledge
 
 Captain knowledge should not live in the ETL. It belongs in the decision layer
