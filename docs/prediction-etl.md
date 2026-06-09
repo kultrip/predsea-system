@@ -102,6 +102,10 @@ including mainland-to-islands crossings and inter-island routes, but it should
 still speak in route-relative and vessel-relative terms rather than raw grid
 cells.
 
+The atmospheric wind layer uses the same expanded mainland corridor, so AROME,
+AEMET HARMONIE-AROME, and ECMWF all cover the same broader decision area when
+their credentials or open data availability allow it.
+
 Copernicus is the default production forecast source. SOCIB model forecasts are
 kept as an experimental/secondary source because provider monitoring showed
 SOCIB THREDDS can be slow or unavailable from GitHub Actions. When SOCIB model

@@ -1,7 +1,7 @@
 """Atmospheric provider tier selection with real fetcher integration.
 
-Defines the tiered atmospheric provider hierarchy for the Balearic
-bounding box:
+Defines the tiered atmospheric provider hierarchy for the expanded
+Mediterranean routing box:
 
   Tier 1: Météo-France AROME (1.3 km)
   Tier 2: AEMET HARMONIE-AROME (2.5 km)
@@ -20,8 +20,8 @@ import os
 
 BALEARIC_BBOX = {
     "south": 38.0,
-    "north": 40.5,
-    "west": 1.0,
+    "north": 41.5,
+    "west": 0.5,
     "east": 4.5,
 }
 
