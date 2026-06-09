@@ -1,0 +1,95 @@
+import json
+from pathlib import Path
+
+import bigquery_export
+
+
+def write_validation_archive(tmp_path):
+    validation_dir = Path(tmp_path) / "validation"
+    validation_dir.mkdir(parents=True)
+    observation_rows = [
+        {
+            "schema_version": "predsea.validation.v1",
+            "record_type": "observation",
+            "run_date": "2026-06-10",
+            "run_id": "2026-06-10T0600Z",
+            "provider": "socib",
+            "station_id": "canal_de_ibiza",
+            "station_name": "Buoy Canal de Ibiza",
+            "observed_at_utc": "2026-06-10 06:00 UTC",
+            "variable": "wave_height",
+            "source_field": "wave_height_m",
+            "value": 0.47,
+            "units": "m",
+        }
+    ]
+    forecast_rows = [
+        {
+            "schema_version": "predsea.validation.v1",
+            "record_type": "forecast",
+            "run_date": "2026-06-10",
+            "run_id": "2026-06-10T0600Z",
+            "route_id": "palma_ibiza",
+            "route_name": "Palma -> Ibiza",
+            "forecast_created_at_utc": "2026-06-10 06:00 UTC",
+            "forecast_source_id": "copernicus",
+            "forecast_source_label": "Copernicus",
+            "ocean_source": "copernicus_med",
+            "truth_station_id": "canal_de_ibiza",
+            "truth_station_name": "Buoy Canal de Ibiza",
+            "target_time_utc": "2026-06-10T16:00:00Z",
+            "target_local_time": "18:00",
+            "variable": "wave_height",
+            "source_field": "wave_m",
+            "value": 0.9,
+            "units": "m",
+            "lead_time_hours": 10.0,
+            "resolution_km": 4.0,
+        }
+    ]
+    (validation_dir / "observation_samples.jsonl").write_text(
+        "".join(json.dumps(row) + "\n" for row in observation_rows),
+        encoding="utf-8",
+    )
+    (validation_dir / "forecast_index.jsonl").write_text(
+        "".join(json.dumps(row) + "\n" for row in forecast_rows),
+        encoding="utf-8",
+    )
+    return validation_dir
+
+
+def test_build_normalized_rows_combines_forecast_and_observation(tmp_path):
+    validation_dir = write_validation_archive(tmp_path)
+
+    rows = bigquery_export.build_normalized_rows(
+        bigquery_export.validation_archive.read_jsonl(validation_dir / "observation_samples.jsonl"),
+        bigquery_export.validation_archive.read_jsonl(validation_dir / "forecast_index.jsonl"),
+    )
+
+    assert len(rows) == 2
+    observation = next(row for row in rows if row["record_type"] == "observation")
+    forecast = next(row for row in rows if row["record_type"] == "forecast")
+
+    assert observation["reference_station_id"] == "canal_de_ibiza"
+    assert observation["sample_time_utc"] == "2026-06-10T06:00:00Z"
+    assert observation["row_hash"]
+    assert forecast["route_id"] == "palma_ibiza"
+    assert forecast["reference_station_id"] == "canal_de_ibiza"
+    assert forecast["sample_time_utc"] == "2026-06-10T16:00:00Z"
+    assert forecast["lead_time_hours"] == 10.0
+    assert forecast["resolution_km"] == 4.0
+    assert forecast["row_hash"]
+
+
+def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, monkeypatch):
+    write_validation_archive(tmp_path)
+    monkeypatch.delenv("PREDSEA_BIGQUERY_PROJECT", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("PREDSEA_BIGQUERY_DATASET", raising=False)
+    monkeypatch.delenv("PREDSEA_BIGQUERY_TABLE", raising=False)
+
+    result = bigquery_export.export_validation_archive_to_bigquery(tmp_path / "validation")
+
+    assert result["status"] == "skipped"
+    assert result["exported_rows"] == 0
+

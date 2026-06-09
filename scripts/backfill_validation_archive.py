@@ -12,6 +12,7 @@ if str(HUMANINTHELOOP_DIR) not in sys.path:
 
 import validation_archive
 import route_analysis
+import bigquery_export
 
 
 DEFAULT_BUCKET = "predsea-daily-outputs"
@@ -330,6 +331,13 @@ def backfill_validation_archives(
         }
         if apply:
             result["uploaded"] = upload_run_archive(store, run_date, candidate_run_id, archive, latest_run_id)
+            result["bigquery"] = bigquery_export.export_validation_rows_to_bigquery(
+                archive["observation_rows"],
+                archive["forecast_rows"],
+                run_date=run_date,
+                run_id=candidate_run_id,
+                dry_run=False,
+            )
         results.append(result)
         historical_forecast_rows.extend(archive["forecast_rows"])
 

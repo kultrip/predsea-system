@@ -66,6 +66,7 @@ def load_mvp_modules():
     if human_path not in sys.path:
         sys.path.insert(0, human_path)
 
+    import bigquery_export
     import briefing
     import chat_figure
     import fetch_data
@@ -78,6 +79,7 @@ def load_mvp_modules():
     return SimpleNamespace(
         briefing=briefing,
         chat_figure=chat_figure,
+        bigquery_export=bigquery_export,
         fetch_data=fetch_data,
         forecast_sources=forecast_sources,
         ingest_atmosphere=ingest_atmosphere,
@@ -634,6 +636,15 @@ def generate_daily_briefings(
         preferred_snapshots,
         observations,
         output_root,
+    )
+    bigquery_export_result = modules.bigquery_export.export_validation_archive_to_bigquery(
+        run_dir,
+        dry_run=False,
+    )
+    print(
+        f"BigQuery export: {bigquery_export_result.get('status')} "
+        f"({bigquery_export_result.get('exported_rows', 0)} rows)",
+        flush=True,
     )
     validation_entry = validation_manifest_entry(validation_summary)
 
