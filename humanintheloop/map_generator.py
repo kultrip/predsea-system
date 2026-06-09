@@ -112,7 +112,7 @@ def draw_header(draw, fonts, route, time_label):
     draw.text((80, 70), "PredSea", font=fonts["brand"], fill=TEXT)
     draw.text((80, 165), "OCEANOGRAPHIC CONDITIONS MAP", font=fonts["title"], fill=TEXT)
     draw.line((80, 245, 760, 245), fill=CYAN, width=4)
-    draw.text((80, 278), "Balearic forecast region", font=fonts["subtitle"], fill=CYAN)
+    draw.text((80, 278), "Mediterranean corridor forecast region", font=fonts["subtitle"], fill=CYAN)
     draw.text((980, 92), f"Model slice: {time_label}", font=fonts["small"], fill=MUTED)
 
 

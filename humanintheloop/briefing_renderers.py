@@ -22,7 +22,7 @@ def render_linkedin(snapshot):
     rec = _recommendation(snapshot)
     return "\n".join(
         [
-            f"PredSea Balearic Briefing | {snapshot['route']}",
+            f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
             "",
             f"Now: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
             f"Next 24h: forecast wave peak near {forecast.get('wave_max_m', 'N/A')} m around {forecast.get('wave_peak_time', 'N/A')}.",
