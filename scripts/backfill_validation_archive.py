@@ -281,6 +281,10 @@ def backfill_validation_archives(
     apply=False,
     overwrite=False,
     limit=None,
+    bigquery_project=None,
+    bigquery_dataset=None,
+    bigquery_table=None,
+    bigquery_location=None,
 ):
     store = GcsValidationBackfill(bucket_name=bucket_name, prefix=prefix, auth_mode=auth_mode)
     routes = route_analysis.load_routes()
@@ -334,6 +338,10 @@ def backfill_validation_archives(
             result["bigquery"] = bigquery_export.export_validation_rows_to_bigquery(
                 archive["observation_rows"],
                 archive["forecast_rows"],
+                project_id=bigquery_project,
+                dataset_id=bigquery_dataset,
+                table_id=bigquery_table,
+                location=bigquery_location,
                 run_date=run_date,
                 run_id=candidate_run_id,
                 dry_run=False,
@@ -368,6 +376,10 @@ def parse_args():
     parser.add_argument("--limit", type=int)
     parser.add_argument("--overwrite", action="store_true", help="Rewrite validation files if they already exist.")
     parser.add_argument("--apply", action="store_true", help="Write validation files to GCS. Without this, runs dry.")
+    parser.add_argument("--bigquery-project")
+    parser.add_argument("--bigquery-dataset")
+    parser.add_argument("--bigquery-table")
+    parser.add_argument("--bigquery-location")
     return parser.parse_args()
 
 
@@ -383,6 +395,10 @@ def main():
         apply=args.apply,
         overwrite=args.overwrite,
         limit=args.limit,
+        bigquery_project=args.bigquery_project,
+        bigquery_dataset=args.bigquery_dataset,
+        bigquery_table=args.bigquery_table,
+        bigquery_location=args.bigquery_location,
     )
     print_results(results)
 

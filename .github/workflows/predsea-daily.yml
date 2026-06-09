@@ -37,8 +37,21 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Run PredSea briefing script
         env:
+          GOOGLE_CLOUD_PROJECT: predsea-api
+          PREDSEA_BIGQUERY_PROJECT: predsea-api
+          PREDSEA_BIGQUERY_DATASET: predsea_validation
+          PREDSEA_BIGQUERY_TABLE: evidence_rows
+          PREDSEA_BIGQUERY_LOCATION: europe-west1
           COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
           COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
           PREDSEA_LOGO_PATH: assets/predsea_logo.png
@@ -48,14 +61,6 @@ jobs:
           PREDSEA_SOCIB_THREDDS_RETRY_DELAY_SECONDS: "20"
         run: |
           python -u scripts/generate_daily_briefing.py
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
 
       - name: Upload prediction outputs to Cloud Storage
         run: |

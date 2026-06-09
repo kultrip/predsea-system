@@ -103,3 +103,96 @@ def test_backfill_jsonl_round_trip():
 
     assert backfill.parse_jsonl(text) == rows
     assert json.loads(text.splitlines()[0]) == {"a": 1}
+
+
+def test_backfill_threads_bigquery_settings_through_apply(monkeypatch):
+    backfill = load_backfill_module()
+
+    class FakeStore:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def list_dates(self):
+            return ["2026-06-09"]
+
+        def list_runs(self, run_date):
+            return ["2026-06-09T1600Z"]
+
+        def list_route_ids(self, run_date, run_id):
+            return ["palma_ibiza"]
+
+        def load_snapshot(self, run_date, run_id, route_id):
+            return {
+                "route": "Palma -> Ibiza",
+                "route_id": route_id,
+                "created_at_utc": "2026-06-09 16:00 UTC",
+                "forecast_source": {"id": "copernicus"},
+                "data_lineage": {"ocean_forecast": {"source": "copernicus_med", "resolution_km": 4.0}},
+                "observations": {
+                    "canal_de_ibiza": {
+                        "name": "Buoy Canal de Ibiza",
+                        "last_sample_utc": "2026-06-09 16:00 UTC",
+                        "wave_height_m": 0.43,
+                    }
+                },
+                "forecast": {
+                    "hourly": [
+                        {
+                            "time": "20:00",
+                            "time_utc": "2026-06-09 20:00 UTC",
+                            "wave_m": 0.8,
+                        }
+                    ]
+                },
+            }
+
+        def validation_exists(self, run_date, run_id):
+            return False
+
+        def latest_run_id(self, run_date):
+            return "2026-06-09T1600Z"
+
+        def download_json(self, *parts):
+            return None
+
+        def upload_text(self, text, *parts):
+            return "/".join(parts)
+
+        def upload_json(self, payload, *parts):
+            return "/".join(parts)
+
+    captured = {}
+
+    def fake_load_routes():
+        return {
+            "palma_ibiza": {
+                "id": "palma_ibiza",
+                "name": "Palma -> Ibiza",
+                "validation": {"truth_source": "canal_de_ibiza"},
+                "current_validation": {"truth_source": None},
+            }
+        }
+
+    def fake_bq_export(observation_rows, forecast_rows, **kwargs):
+        captured["observation_rows"] = observation_rows
+        captured["forecast_rows"] = forecast_rows
+        captured["kwargs"] = kwargs
+        return {"status": "written", "exported_rows": len(observation_rows) + len(forecast_rows)}
+
+    monkeypatch.setattr(backfill, "GcsValidationBackfill", FakeStore)
+    monkeypatch.setattr(backfill.route_analysis, "load_routes", fake_load_routes)
+    monkeypatch.setattr(backfill.bigquery_export, "export_validation_rows_to_bigquery", fake_bq_export)
+
+    results = backfill.backfill_validation_archives(
+        apply=True,
+        bigquery_project="predsea-api",
+        bigquery_dataset="predsea_validation",
+        bigquery_table="evidence_rows",
+        bigquery_location="europe-west1",
+    )
+
+    assert results[0]["status"] == "written"
+    assert captured["kwargs"]["project_id"] == "predsea-api"
+    assert captured["kwargs"]["dataset_id"] == "predsea_validation"
+    assert captured["kwargs"]["table_id"] == "evidence_rows"
+    assert captured["kwargs"]["location"] == "europe-west1"

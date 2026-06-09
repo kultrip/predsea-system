@@ -59,10 +59,24 @@ Every row also has:
 ### Daily ETL
 
 `../scripts/generate_daily_briefing.py` now exports the day’s validation archive to BigQuery after the validation JSONL files are written.
+In GitHub Actions, Google Cloud authentication must happen before that script runs so the export can create and write the table.
 
 ### Backfill
 
 `../scripts/backfill_validation_archive.py` exports the in-memory backfill rows to the same table when `--apply` is used.
+You can pass the same BigQuery settings explicitly on the command line:
+
+```bash
+python scripts/backfill_validation_archive.py \
+  --bucket predsea-daily-outputs \
+  --prefix predictions \
+  --auth gcloud \
+  --apply \
+  --bigquery-project predsea-api \
+  --bigquery-dataset predsea_validation \
+  --bigquery-table evidence_rows \
+  --bigquery-location europe-west1
+```
 
 ## Configuration
 
@@ -80,4 +94,3 @@ If the dataset/table variables are missing, the export is skipped and the ETL co
 - The export is best-effort. BigQuery problems should not break the maritime ETL.
 - The table is partitioned by `run_date` and clustered by `record_type`, `route_id`, `variable`, and `source_system`.
 - The table is intentionally normalized. No raw JSON payloads are stored.
-
