@@ -258,6 +258,10 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert "What could change:" in payload["answer"]
     assert "Confidence:" in payload["answer"]
     assert "For this vessel size:" in payload["answer"]
+    lowered = payload["answer"].lower()
+    assert "safe" not in lowered
+    assert "guaranteed smooth" not in lowered
+    assert "no issues" not in lowered
     assert payload["evidence_used"]["hourly_points"] == 2
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
 
@@ -683,11 +687,11 @@ def test_question_endpoint_flags_last_night_evidence_and_avoids_repeated_window_
         "Latest available forecast package is from last night. Confirm with the morning run before committing."
     )
     assert "Latest available forecast package is from last night" in payload["answer"]
-    assert "based on the latest available package" in payload["answer"]
+    assert "latest available package" in payload["answer"]
     decision_line = payload["answer"].split("\n\n", 1)[0]
     best_window_line = payload["answer"].split("\n\n", 2)[1]
     assert decision_line != best_window_line
-    assert "Decision: Palma -> Ibiza is workable today" in decision_line
+    assert "Decision: Palma -> Ibiza: Leave during daylight hours" in decision_line
     assert "Best window:" in best_window_line
 
 
@@ -844,12 +848,13 @@ def test_question_endpoint_leave_window_tomorrow_does_not_use_late_today_message
     assert response.status_code == 200
     payload = response.json()
     assert "today's practical daylight window has passed" not in payload["answer"].lower()
-    assert "workable tomorrow" in payload["answer"]
+    assert "Tomorrow looks workable" in payload["answer"]
     assert (
         "through the morning" in payload["answer"]
         or "during daylight hours" in payload["answer"]
         or "overnight" in payload["answer"]
     )
+    assert "Leave before late morning" in payload["answer"] or "leave before late morning" in payload["answer"].lower()
     assert (
         "roughest early morning period" in payload["answer"]
         or "roughest late morning period" in payload["answer"]

@@ -343,7 +343,7 @@ def render_decision_line(route_prefix, intent, recommendation, forecast, freshne
         leave_match = re.search(r"\b(leave|depart)\b.*", recommendation, re.IGNORECASE)
         if leave_match:
             clause = recommendation[leave_match.start() :].split(";", 1)[0].split("—", 1)[0].strip()
-            return f"{route_prefix}{sentence_case(clause)}."
+            return f"{route_prefix}{sentence_case(clause)}{qualifier}."
         peak_time = forecast.get("wave_peak_time")
         route = route_prefix.replace(": ", "").strip() or "This route"
         target_label = render_target_window_label(forecast)
@@ -422,17 +422,17 @@ def render_comfort(forecast, vessel_advice, vessel_profile):
         restricted = vessel_profile.get("restricted_m")
 
     if restricted is not None and wave_max >= restricted:
-        level = "Poor"
-        detail = "Expect rough motion on exposed sections."
+        level = "Less favourable"
+        detail = "Expect pronounced motion on exposed sections."
     elif manageable is not None and wave_max >= manageable:
-        level = "Moderate to poor"
-        detail = "Manageable only with conservative timing; guests may notice motion."
+        level = "Moderate"
+        detail = "Reduced comfort margin; expect increased motion."
     elif vessel_advice and "caution" in vessel_advice:
         level = "Moderate"
-        detail = "Workable, but guests will notice some motion."
+        detail = "More comfortable than the rougher sections, but guests will still notice some motion."
     else:
-        level = "Moderate"
-        detail = "Generally workable, with comfort still depending on period, direction, and passenger sensitivity."
+        level = "More comfortable"
+        detail = "Practical for the selected vessel size, with comfort still depending on period, direction, and passenger sensitivity."
     return f"{level}. {detail}"
 
 

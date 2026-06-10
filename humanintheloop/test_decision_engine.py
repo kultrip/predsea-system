@@ -325,5 +325,9 @@ def test_comfort_language_stays_conservative():
         current_time="08:00",
     )
 
-    assert "Moderate to good" not in result["answer"]
-    assert "Comfort: Moderate" in result["answer"] or "Comfort: Moderate to poor" in result["answer"]
+    answer = result["answer"].lower()
+    assert "safe" not in answer
+    assert "guaranteed smooth" not in answer
+    assert "no issues" not in answer
+    assert "comfort:" in answer
+    assert "more comfortable" in answer or "reduced comfort margin" in answer or "less favourable" in answer
