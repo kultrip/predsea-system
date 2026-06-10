@@ -493,6 +493,15 @@ def render_route_segment_reason(forecast):
     return f"{detail}."
 
 
+def format_local_time(time_text):
+    if not time_text:
+        return "the local time window"
+    match = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", str(time_text))
+    if not match:
+        return str(time_text)
+    return f"{int(match.group(1)):02d}:{match.group(2)} LT"
+
+
 def render_captain_rule_reason(captain_rule_matches):
     if not captain_rule_matches:
         return None
@@ -826,13 +835,16 @@ def summarize_requested_time(requested_time, forecast):
         return None
 
     if requested_time == peak_time:
-        recommendation = f"{requested_time} is near the forecast peak; avoid it if comfort matters"
+        recommendation = f"{format_local_time(requested_time)} is near the forecast peak; avoid it if comfort matters"
     elif wave < peak_wave:
-        recommendation = f"{requested_time} looks better than the {peak_time} peak"
+        recommendation = f"{format_local_time(requested_time)} looks better than the {format_local_time(peak_time)} peak"
     else:
-        recommendation = f"{requested_time} still looks exposed; reassess closer to departure"
+        recommendation = f"{format_local_time(requested_time)} still looks exposed; reassess closer to departure"
 
-    reason = f"forecast is about {wave:.1f} m at {requested_time}, versus the peak near {peak_wave:.1f} m around {peak_time}"
+    reason = (
+        f"forecast is about {wave:.1f} m at {format_local_time(requested_time)}, "
+        f"versus the peak near {peak_wave:.1f} m around {format_local_time(peak_time)}"
+    )
     current = row.get("current_kn")
     if current is not None:
         reason = f"{reason}; current about {current:.1f} kn"

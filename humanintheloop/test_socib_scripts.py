@@ -911,7 +911,7 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="12:20",
         )
 
-        self.assertIn("17:00 looks better than the 14:00 peak", decision["answer"])
+        self.assertIn("17:00 LT looks better than the 14:00 LT peak", decision["answer"])
         self.assertIn("1.2 m", decision["answer"])
 
     def test_agent_does_not_recommend_forecast_peak_as_best_departure(self):
