@@ -251,6 +251,51 @@ def test_missing_confidence_is_omitted_from_answer():
     assert "Confidence:" not in result["answer"]
 
 
+def test_answer_includes_operational_stance():
+    import decision_engine
+
+    snapshot = {
+        "route": "Palma -> Ibiza",
+        "route_id": "palma_ibiza",
+        "vessel_class": "medium",
+        "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
+        "forecast": {
+            "wave_min_m": 0.8,
+            "wave_max_m": 1.3,
+            "wave_peak_time": "14:00",
+            "current_max_kn": 0.4,
+            "current_peak_time": "14:00",
+            "hourly": [
+                {"time": "09:00", "wave_m": 0.8, "current_kn": 0.2},
+                {"time": "14:00", "wave_m": 1.3, "current_kn": 0.4},
+            ],
+        },
+        "recommendation": {
+            "best_window": "before late morning",
+            "watch_out": "conditions build steadily through the day",
+            "confidence": "medium",
+            "vessel_advice": "caution for vessels 15-24m; use the best weather window",
+        },
+        "evidence_freshness": {"freshness_status": "current", "freshness_warning": None},
+    }
+
+    result = decision_engine.answer_question(
+        "When is the best time to leave from Palma to Ibiza?",
+        snapshot,
+        current_time="09:00",
+        current_date="2026-06-10",
+    )
+
+    stance = result["operational_stance"]
+
+    assert stance["decision"] == "Leave before late morning."
+    assert stance["best_window"] == "before late morning"
+    assert stance["comfort"] == "Moderate"
+    assert stance["risk"] == "Moderate"
+    assert stance["confidence"] == "Medium"
+    assert stance["freshness_status"] == "current"
+
+
 def test_comfort_language_stays_conservative():
     snapshot = {
         "route": "Palma -> Ibiza",

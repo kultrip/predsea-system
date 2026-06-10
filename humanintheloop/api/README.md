@@ -131,6 +131,9 @@ route-relative interpretation, for example following sea, beam sea, head sea,
 or stern quartering sea when available.
 Confidence is normalized in the rendered text, and the `Confidence:` line is
 omitted entirely when the evidence package does not include a confidence value.
+The API also returns `operational_stance`, a compact shared summary of the same
+decision so follow-up questions and WhatsApp replies can reuse it instead of
+re-deriving the recommendation independently.
 
 Ask a location-based question from a shared GPS point:
 

@@ -110,7 +110,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
 
     evidence_note = render_evidence_note(forecast)
     captain_rule_matches = captain_knowledge.match_rules(snapshot, question_intent=intent)
-    answer = render_captain_answer(
+    operational_stance = build_operational_stance(
         route=snapshot.get("route"),
         intent=intent,
         recommendation=recommendation,
@@ -126,6 +126,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
         data_lineage=snapshot.get("data_lineage"),
         captain_rule_matches=captain_rule_matches,
     )
+    answer = render_captain_answer(operational_stance)
     return {
         "intent": intent,
         "question": question,
@@ -133,10 +134,11 @@ def answer_question(question, snapshot, location_label="shared location", curren
         "location_label": location_label,
         "captain_knowledge": captain_knowledge.summarize_matches(captain_rule_matches),
         "forecast_context": forecast,
+        "operational_stance": operational_stance,
     }
 
 
-def render_captain_answer(
+def build_operational_stance(
     route,
     intent,
     recommendation,
@@ -152,20 +154,16 @@ def render_captain_answer(
     data_lineage=None,
     captain_rule_matches=None,
 ):
-    route_prefix = f"{route}: " if route else ""
     forecast = forecast or {}
+    freshness = freshness or {}
+    route_prefix = f"{route}: " if route else ""
+    freshness_warning = freshness.get("freshness_warning")
     display_recommendation = recommendation
     if intent == "conditions_soon" and recommendation.startswith("conditions look workable"):
         display_recommendation = "conditions look workable for the next operational window"
-
-    comfort = render_comfort(forecast, vessel_advice, vessel_profile)
+    comfort_detail = render_comfort(forecast, vessel_advice, vessel_profile)
+    comfort = comfort_detail.split(".", 1)[0]
     vessel_context = render_vessel_context(vessel_advice, vessel_profile, vessel_class, vessel_class_assumed)
-    if vessel_context:
-        comfort = f"{comfort} {vessel_context}"
-
-    freshness = freshness or {}
-    freshness_warning = freshness.get("freshness_warning")
-    confidence_text = render_confidence(confidence, freshness)
 
     route_segment_reason = render_route_segment_reason(forecast)
     captain_rule_reason = render_captain_rule_reason(captain_rule_matches)
@@ -178,22 +176,99 @@ def render_captain_answer(
     if lineage_guidance:
         why_parts.append(lineage_guidance.rstrip("."))
 
-    lines = [
-        f"Decision: {render_decision_line(route_prefix, intent, display_recommendation, forecast, freshness)}",
-        f"Best window: {render_best_window(intent, display_recommendation, forecast)}",
-        f"Comfort: {comfort}",
-        f"Risk: {render_risk(forecast, vessel_advice, vessel_profile)}",
-        f"Why: {'. '.join(unique_sentences(why_parts))}.",
-    ]
+    why = f"{'. '.join(unique_sentences(why_parts))}."
 
     what_could_change = render_what_could_change(forecast, evidence_note, captain_rule_matches)
     if freshness_warning:
         what_could_change = f"{freshness_warning} {sentence_case(what_could_change)}"
-    lines.append(f"What could change: {what_could_change}")
 
-    if confidence_text:
-        lines.append(f"Confidence: {confidence_text}")
+    decision_text = render_decision_line(route_prefix, intent, display_recommendation, forecast, freshness)
+    best_window_text = render_best_window(intent, display_recommendation, forecast)
+    if not decision_text.endswith("."):
+        decision_text = f"{decision_text}."
+    if not best_window_text.endswith("."):
+        best_window_text = f"{best_window_text}."
+
+    risk_detail = render_risk(forecast, vessel_advice, vessel_profile)
+    risk = risk_detail.split(".", 1)[0]
+
+    confidence_text = render_confidence(confidence, freshness)
+    confidence_label = confidence_text.rstrip(".") if confidence_text else None
+
+    return {
+        "route": route,
+        "intent": intent,
+        "decision": concise_decision_label(display_recommendation, intent, forecast),
+        "decision_text": decision_text,
+        "best_window": concise_best_window_label(best_window_text),
+        "best_window_text": best_window_text,
+        "comfort": comfort,
+        "comfort_detail": comfort_detail,
+        "vessel_context": vessel_context,
+        "risk": risk,
+        "risk_detail": risk_detail,
+        "why": why,
+        "what_could_change": what_could_change,
+        "confidence": confidence_label,
+        "confidence_detail": confidence_text,
+        "freshness_status": freshness.get("freshness_status", "unknown"),
+        "freshness_warning": freshness_warning,
+    }
+
+
+def render_captain_answer(operational_stance):
+    comfort = operational_stance["comfort_detail"]
+    if operational_stance.get("vessel_context"):
+        comfort = f"{comfort} {operational_stance['vessel_context']}"
+    lines = [
+        f"Decision: {operational_stance['decision_text']}",
+        f"Best window: {operational_stance['best_window_text']}",
+        f"Comfort: {comfort}",
+        f"Risk: {operational_stance['risk_detail']}",
+        f"Why: {operational_stance['why']}",
+        f"What could change: {operational_stance['what_could_change']}",
+    ]
+    if operational_stance.get("confidence_detail"):
+        lines.append(f"Confidence: {operational_stance['confidence_detail']}")
     return "\n\n".join(lines)
+
+
+def concise_decision_label(display_recommendation, intent, forecast):
+    if intent == "leave_window":
+        if "practical daylight window has passed" in display_recommendation:
+            return sentence_case(display_recommendation)
+        if "leave" in display_recommendation.lower() or "depart" in display_recommendation.lower():
+            return sentence_case(display_recommendation)
+        peak_time = forecast.get("wave_peak_time")
+        if peak_time and peak_time != "N/A":
+            return "Leave before late morning."
+        return "Leave with conservative timing."
+    if intent == "conditions_soon":
+        return sentence_case(display_recommendation) + "."
+    return sentence_case(display_recommendation) + "."
+
+
+def concise_best_window_label(best_window_text):
+    if not best_window_text:
+        return "before late morning"
+    match = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", best_window_text)
+    if match:
+        hour = int(match.group(1))
+        if hour < 10:
+            return "before late morning"
+        if hour < 12:
+            return "before midday"
+        if hour < 18:
+            return "during the day"
+        return "this evening"
+    lowered = best_window_text.lower()
+    if "morning" in lowered:
+        return "during the morning"
+    if "afternoon" in lowered:
+        return "this afternoon"
+    if "evening" in lowered:
+        return "this evening"
+    return best_window_text.rstrip(".")
 
 
 def unique_sentences(parts):

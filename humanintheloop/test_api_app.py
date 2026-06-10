@@ -246,6 +246,9 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert payload["freshness_status"] == "current"
     assert payload["freshness_warning"] is None
     assert payload["evidence_timestamp"] == "2026-05-29T06:30Z"
+    assert payload["operational_stance"]["decision"] == "Conditions look workable for the next operational window."
+    assert payload["operational_stance"]["best_window"] == "before late morning"
+    assert payload["operational_stance"]["confidence"] == "Medium"
     assert "Conditions look workable" in payload["answer"]
     assert "Decision:" in payload["answer"]
     assert "Best window:" in payload["answer"]

@@ -45,6 +45,7 @@ class QuestionResponse(BaseModel):
     freshness_status: str
     freshness_warning: Optional[str] = None
     captain_knowledge: List[Dict[str, Any]] = Field(default_factory=list)
+    operational_stance: Dict[str, Any] = Field(default_factory=dict)
     evidence_used: Dict[str, Any]
 
 
