@@ -31,6 +31,38 @@
       {"name": "Ibiza Channel", "longitude": 1.83, "latitude": 38.85}
     ]
   },
+  "palma_barcelona": {
+    "id": "palma_barcelona",
+    "name": "Palma -> Barcelona",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only mainland transit lane until a trusted validation source is added"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Mainland transit lane to Barcelona; forecast coverage is available, while validation will be added later when a trusted observation source is chosen.",
+    "sample_points": [
+      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+      {"name": "Mid Palma-Barcelona", "longitude": 2.35, "latitude": 40.45},
+      {"name": "Barcelona approach", "longitude": 2.19, "latitude": 41.20}
+    ]
+  },
   "palma_cabrera": {
     "id": "palma_cabrera",
     "name": "Palma -> Cabrera",
@@ -61,6 +93,38 @@
       {"name": "Palma Bay south", "longitude": 2.58, "latitude": 39.42},
       {"name": "Mid Palma-Cabrera", "longitude": 2.73, "latitude": 39.30},
       {"name": "Cabrera approach", "longitude": 2.91, "latitude": 39.16}
+    ]
+  },
+  "palma_valencia": {
+    "id": "palma_valencia",
+    "name": "Palma -> Valencia",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Valencia",
+      "longitude": -0.3763,
+      "latitude": 39.4699
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only mainland transit lane until a trusted validation source is added"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Mainland transit lane to Valencia; forecast coverage is available, while validation will be added later when a trusted observation source is chosen. Until the data domain is widened further west, the far-west end of the lane is only approximate.",
+    "sample_points": [
+      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+      {"name": "Mid Palma-Valencia", "longitude": 1.20, "latitude": 39.48},
+      {"name": "Valencia approach", "longitude": 0.55, "latitude": 39.47}
     ]
   },
   "ibiza_formentera": {

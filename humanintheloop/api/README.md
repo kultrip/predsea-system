@@ -27,7 +27,9 @@ curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-31&run=late
 Current route IDs:
 
 - `palma_ibiza`
+- `palma_barcelona`
 - `palma_cabrera`
+- `palma_valencia`
 - `ibiza_formentera`
 - `alcudia_ciutadella`
 

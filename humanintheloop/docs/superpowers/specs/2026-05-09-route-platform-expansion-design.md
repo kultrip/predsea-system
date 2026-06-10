@@ -11,7 +11,9 @@ Create `routes.json` as the route catalog. Each route has a stable route ID, dis
 Initial routes:
 
 - `palma_ibiza`: Palma to Ibiza
+- `palma_barcelona`: Palma to Barcelona
 - `palma_cabrera`: Palma to Cabrera
+- `palma_valencia`: Palma to Valencia
 - `ibiza_formentera`: Ibiza to Formentera
 - `alcudia_ciutadella`: Alcudia to Ciutadella
 
