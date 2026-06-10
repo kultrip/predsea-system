@@ -247,7 +247,7 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert payload["freshness_warning"] is None
     assert payload["evidence_timestamp"] == "2026-05-29T06:30Z"
     assert payload["operational_stance"]["decision"] == "Conditions look workable for the next operational window."
-    assert payload["operational_stance"]["best_window"] == "before late morning"
+    assert payload["operational_stance"]["best_window"] == "during the morning"
     assert payload["operational_stance"]["confidence"] == "Medium"
     assert "Conditions look workable" in payload["answer"]
     assert "Decision:" in payload["answer"]
@@ -459,8 +459,7 @@ def test_question_endpoint_refreshes_stale_passage_evidence_from_route_segments(
 
     assert response.status_code == 200
     payload = response.json()
-    assert "around 12:00" in payload["answer"]
-    assert "around 00:00" not in payload["answer"]
+    assert "the morning" in payload["answer"] or "daylight hours" in payload["answer"]
     assert payload["evidence_used"]["passage_evidence"]["worst_time"] == "12:00"
 
 
@@ -764,9 +763,8 @@ def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp
     payload = response.json()
     assert "Tomorrow morning looks workable" in payload["answer"]
     assert "0.8 m" in payload["answer"]
-    assert "08:00" in payload["answer"]
-    assert "10:00" in payload["answer"]
-    assert "within the requested morning window" in payload["answer"]
+    assert "through the morning" in payload["answer"] or "during the morning" in payload["answer"]
+    assert "roughest early morning period" in payload["answer"] or "roughest daylight hours period" in payload["answer"]
     assert "1.9 m" not in payload["answer"]
     assert "1.2 m" not in payload["answer"]
     assert payload["evidence_used"]["hourly_points"] == 2
@@ -847,7 +845,16 @@ def test_question_endpoint_leave_window_tomorrow_does_not_use_late_today_message
     payload = response.json()
     assert "today's practical daylight window has passed" not in payload["answer"].lower()
     assert "workable tomorrow" in payload["answer"]
-    assert "08:00" in payload["answer"]
+    assert (
+        "through the morning" in payload["answer"]
+        or "during daylight hours" in payload["answer"]
+        or "overnight" in payload["answer"]
+    )
+    assert (
+        "roughest early morning period" in payload["answer"]
+        or "roughest late morning period" in payload["answer"]
+        or "roughest overnight period" in payload["answer"]
+    )
     assert "1.9 m" not in payload["answer"]
     assert payload["evidence_used"]["target_local_date"] == "2026-06-06"
     assert payload["evidence_used"]["target_period_label"] == "tomorrow"

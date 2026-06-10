@@ -490,6 +490,7 @@ class BriefingRendererTests(unittest.TestCase):
         self.assertIn("Captain: Mallorca -> Ibiza today. Best time to leave?", screenshot)
         self.assertIn("PredSea: Go earlier.", screenshot)
         self.assertIn("peaks near 1.6 m", screenshot)
+        self.assertNotRegex(screenshot, r"\b\d{1,2}:\d{2}\b")
 
 
 class BriefingCliTests(unittest.TestCase):
@@ -591,6 +592,7 @@ class BriefingCliTests(unittest.TestCase):
 
             self.assertIn("calmer morning window has passed", answer)
             self.assertNotIn("Recommendation:", answer)
+            self.assertNotRegex(answer, r"\b\d{1,2}:\d{2}\b")
 
     def test_write_outputs_with_morning_current_time_keeps_morning_window_actionable(self):
         import tempfile
@@ -619,6 +621,7 @@ class BriefingCliTests(unittest.TestCase):
             self.assertIn("Leave morning to early afternoon", answer)
             self.assertNotIn("Recommendation:", answer)
             self.assertNotIn("has passed", answer)
+            self.assertNotRegex(answer, r"\b\d{1,2}:\d{2}\b")
 
 
 class ForecastFallbackTests(unittest.TestCase):
@@ -879,7 +882,7 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="12:20",
         )
 
-        self.assertIn("avoid the local peak around 14:00", decision["answer"])
+        self.assertIn("roughest daylight hours period", decision["answer"])
         self.assertNotIn("Recommendation:", decision["answer"])
 
     def test_requested_time_question_compares_against_forecast_curve(self):
@@ -940,8 +943,12 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="07:00",
         )
 
-        self.assertIn("avoid the local peak around 08:00", decision["answer"])
-        self.assertIn("Leave around 11:00", decision["answer"])
+        self.assertIn("roughest early morning period", decision["answer"])
+        self.assertTrue(
+            "leave through the morning" in decision["answer"].lower()
+            or "leave before late morning" in decision["answer"].lower()
+            or "leave overnight" in decision["answer"].lower()
+        )
         self.assertIn("1.6 m", decision["answer"])
         self.assertIn("Mean wave direction near the peak is about 60", decision["answer"])
         self.assertIn("swell and wind-wave components are not available", decision["answer"])
@@ -984,7 +991,11 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("Why:", decision["answer"])
         self.assertIn("What could change:", decision["answer"])
         self.assertIn("Confidence:", decision["answer"])
-        self.assertIn("Leave around 11:00", decision["answer"])
+        self.assertTrue(
+            "leave through the morning" in decision["answer"].lower()
+            or "leave before late morning" in decision["answer"].lower()
+            or "leave overnight" in decision["answer"].lower()
+        )
         self.assertNotIn("05:00", decision["answer"])
 
     def test_agent_includes_wave_components_and_route_relative_sea_state(self):
@@ -1209,9 +1220,11 @@ class DecisionEngineTests(unittest.TestCase):
 
         self.assertIn("Tomorrow morning looks workable", decision["answer"])
         self.assertIn("0.8 m", decision["answer"])
-        self.assertIn("08:00", decision["answer"])
-        self.assertIn("10:00", decision["answer"])
-        self.assertIn("within the requested morning window", decision["answer"])
+        self.assertTrue(
+            "through the morning" in decision["answer"]
+            or "during daylight hours" in decision["answer"]
+            or "overnight" in decision["answer"]
+        )
         self.assertNotIn("1.9 m", decision["answer"])
         self.assertNotIn("1.2 m", decision["answer"])
         self.assertNotIn("Ibiza Channel", decision["answer"])

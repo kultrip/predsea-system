@@ -237,8 +237,14 @@ def concise_decision_label(display_recommendation, intent, forecast):
     if intent == "leave_window":
         if "practical daylight window has passed" in display_recommendation:
             return sentence_case(display_recommendation)
-        if "leave" in display_recommendation.lower() or "depart" in display_recommendation.lower():
-            return sentence_case(display_recommendation)
+        lower = display_recommendation.lower()
+        leave_match = re.search(r"\b(leave|depart)\b.*", lower)
+        if leave_match:
+            clause = display_recommendation[leave_match.start() :].split(";", 1)[0].split("—", 1)[0].strip()
+            return sentence_case(clause) + "."
+        primary = re.split(r"[;—]", display_recommendation, maxsplit=1)[0].strip()
+        if "leave" in primary.lower() or "depart" in primary.lower():
+            return sentence_case(primary) + "."
         peak_time = forecast.get("wave_peak_time")
         if peak_time and peak_time != "N/A":
             return "Leave before late morning."
@@ -251,17 +257,19 @@ def concise_decision_label(display_recommendation, intent, forecast):
 def concise_best_window_label(best_window_text):
     if not best_window_text:
         return "before late morning"
-    match = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", best_window_text)
-    if match:
-        hour = int(match.group(1))
-        if hour < 10:
-            return "before late morning"
-        if hour < 12:
-            return "before midday"
-        if hour < 18:
-            return "during the day"
-        return "this evening"
     lowered = best_window_text.lower()
+    if "before late morning" in lowered:
+        return "before late morning"
+    if "before midday" in lowered:
+        return "before midday"
+    if "through the morning" in lowered:
+        return "through the morning"
+    if "during daylight hours" in lowered:
+        return "during daylight hours"
+    if "this evening" in lowered:
+        return "this evening"
+    if "overnight" in lowered:
+        return "overnight"
     if "morning" in lowered:
         return "during the morning"
     if "afternoon" in lowered:
@@ -332,11 +340,16 @@ def render_decision_line(route_prefix, intent, recommendation, forecast, freshne
             or "not a comfort recommendation" in recommendation
         ):
             return f"{route_prefix}{sentence_case(recommendation)}."
+        leave_match = re.search(r"\b(leave|depart)\b.*", recommendation, re.IGNORECASE)
+        if leave_match:
+            clause = recommendation[leave_match.start() :].split(";", 1)[0].split("—", 1)[0].strip()
+            return f"{route_prefix}{sentence_case(clause)}."
         peak_time = forecast.get("wave_peak_time")
         route = route_prefix.replace(": ", "").strip() or "This route"
         target_label = render_target_window_label(forecast)
+        peak_window = peak_period_label(peak_time)
         if peak_time and peak_time != "N/A":
-            return f"{route} is workable {target_label}{qualifier}, but avoid the local peak around {peak_time}."
+            return f"{route} is workable {target_label}{qualifier}, but avoid the roughest {peak_window} period."
         return f"{route} is workable {target_label}{qualifier}; no sharp peak is flagged in the available package."
     return f"{route_prefix}{sentence_case(recommendation)}."
 
@@ -362,19 +375,24 @@ def render_best_window(intent, recommendation, forecast):
     elif forecast.get("target_local_date"):
         departure_context = "within the requested forecast day"
     if best:
-        peak_wave = forecast.get("wave_max_m")
-        peak_text = f", when wave height peaks around {peak_wave:.1f} m" if isinstance(peak_wave, (int, float)) else ""
+        best_window_label = departure_window_label(best)
         if peak_time and peak_time != "N/A":
             if "daylight" in recommendation:
-                return f"Leave around {best} {departure_context}. Avoid the local peak around {peak_time}{peak_text}."
-            return f"Leave around {best} {departure_context}. Conditions are expected to worsen near {peak_time}{peak_text}."
-        return f"Leave around {best} {departure_context}."
+                return (
+                    f"Leave {best_window_label} {departure_context}. "
+                    f"Avoid the roughest {peak_period_label(peak_time)} period."
+                )
+            return (
+                f"Leave {best_window_label} {departure_context}. "
+                f"Conditions are expected to worsen in the roughest {peak_period_label(peak_time)} period."
+            )
+        return f"Leave {best_window_label} {departure_context}."
     if "lower sampled window is around" in recommendation:
         return sentence_case(recommendation) + "."
     if "leave " in recommendation.lower() or "depart" in recommendation.lower():
         return sentence_case(recommendation) + "."
     if peak_time and peak_time != "N/A":
-        return f"Prefer the lower sea-state window and avoid the forecast peak around {peak_time}."
+        return f"Prefer the calmer window and avoid the roughest {peak_period_label(peak_time)} period."
     if intent == "location_safety":
         return "Stay only while sheltered; move earlier if exposure increases."
     return "No narrow departure window identified from the available evidence."
@@ -432,7 +450,7 @@ def render_risk(forecast, vessel_advice, vessel_profile):
 
     peak = f" Peak wave height is near {wave_max:.1f} m"
     if peak_time and peak_time != "N/A":
-        peak = f"{peak} around {peak_time}"
+        peak = f"{peak} during the roughest {peak_period_label(peak_time)} period"
     return f"{level}.{peak}."
 
 
@@ -449,7 +467,7 @@ def render_route_segment_reason(forecast):
         if name and wave is not None:
             detail = f"Passage scenario: worst expected section is {name}, near {wave:.1f} m"
             if time:
-                detail = f"{detail} around {time}"
+                detail = f"{detail} during the {period_label(time)}"
             if comfort:
                 detail = f"{detail}, with {comfort.replace('_', ' ')} comfort"
             if position_warning:
@@ -469,7 +487,7 @@ def render_route_segment_reason(forecast):
         return None
     detail = f"Worst route segment is {name}, near {wave:.1f} m"
     if peak_time:
-        detail = f"{detail} around {peak_time}"
+        detail = f"{detail} during the {period_label(peak_time)}"
     if sea_state:
         detail = f"{detail}, with a {sea_state}"
     return f"{detail}."
@@ -714,7 +732,7 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
         return {
             "recommendation": "Tonight looks workable on sea state, but treat it as a night crossing rather than a simple green light",
             "reason": (
-                f"forecast wave peak is near {wave_max} m around {wave_peak}, with the main watch-out: {watch_out}."
+                f"forecast wave peak is near {wave_max} m during the roughest {peak_period_label(wave_peak)} period, with the main watch-out: {watch_out}."
                 f"{current_text} Recheck the latest buoy observations before departure because darkness reduces visual margin"
             ),
         }
@@ -732,7 +750,7 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
                 return {
                     "recommendation": "tomorrow morning is not a comfort recommendation for this vessel size unless the morning run improves",
                     "reason": (
-                        f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                        f"forecast peak is near {wave_max} m during the roughest {peak_period_label(wave_peak)} period{coverage}. "
                         "That is above this vessel profile's restricted threshold, so the morning peak is the watch-out, not the best window"
                     ),
                 }
@@ -761,14 +779,14 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
         return {
             "recommendation": "Tomorrow looks workable based on the latest forecast package",
             "reason": (
-                f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                f"forecast peak is near {wave_max} m during the roughest {peak_period_label(wave_peak)} period{coverage}. "
                 "Morning should be the better planning window; confirm with the morning run before committing"
             ),
         }
     if timing_context == "afternoon":
         return {
             "recommendation": f"for the afternoon, use the {best_window} guidance and avoid any local peak window",
-            "reason": f"main watch-out is: {watch_out}; forecast wave peak is near {wave_max} m around {wave_peak}.{current_text}",
+            "reason": f"main watch-out is: {watch_out}; forecast wave peak is near {wave_max} m during the roughest {peak_period_label(wave_peak)} period.{current_text}",
         }
     return {
         "recommendation": best_window,
@@ -851,27 +869,25 @@ def summarize_best_departure_window(forecast, current_time=None, vessel_profile=
     if peak_direction is not None:
         direction_text = f" Mean wave direction near the peak is about {peak_direction:.0f} degrees"
 
-    practical_note = "practical daylight " if is_practical_daylight_time(best_time) else ""
-    recommendation_prefix = f"avoid the local peak around {peak_time}; the lower sampled {practical_note}window is around {best_time}"
+    best_window_label = departure_window_label(best_time)
+    peak_window = peak_period_label(peak_time)
+    recommendation_prefix = f"leave {best_window_label}; avoid the roughest {peak_window} period"
     if is_night_time(best_time):
-        recommendation_prefix = (
-            f"avoid the {peak_time} peak; the lower sampled window is around {best_time}, "
-            "but that is a night-crossing option"
-        )
+        recommendation_prefix = "leave this evening; that is a night-crossing option"
 
     if isinstance(peak_wave, (int, float)) and isinstance(vessel_profile, dict):
         restricted = vessel_profile.get("restricted_m")
         manageable = vessel_profile.get("manageable_m")
         if restricted is not None and peak_wave >= restricted:
-            recommendation_prefix = f"not a comfort recommendation during the local peak around {peak_time}; {recommendation_prefix}"
+            recommendation_prefix = f"not a comfort recommendation during the roughest {peak_window} period; {recommendation_prefix}"
         elif manageable is not None and peak_wave >= manageable:
             recommendation_prefix = f"possible today with conservative timing; {recommendation_prefix}"
 
     return {
         "recommendation": recommendation_prefix,
         "reason": (
-            f"forecast peak is near {peak_wave:.1f} m around {peak_time}, while the sampled route value "
-            f"near {best_time} is about {best_wave:.1f} m.{direction_text}"
+            f"forecast peak is near {peak_wave:.1f} m during the roughest {peak_window} period, while the sampled route value "
+            f"in the calmer window is about {best_wave:.1f} m.{direction_text}"
         ),
     }
 
@@ -924,6 +940,57 @@ def time_to_minutes(value):
     if not match:
         return None
     return int(match.group(1)) * 60 + int(match.group(2) or "00")
+
+
+def departure_window_label(time_text):
+    minutes = time_to_minutes(time_text)
+    if minutes is None:
+        return "the best available window"
+    if minutes < 6 * 60:
+        return "overnight"
+    if minutes < 10 * 60:
+        return "before late morning"
+    if minutes < 12 * 60:
+        return "through the morning"
+    if minutes < 18 * 60:
+        return "during daylight hours"
+    if minutes < 22 * 60:
+        return "this evening"
+    return "overnight"
+
+
+def period_label(time_text):
+    minutes = time_to_minutes(time_text)
+    if minutes is None:
+        return "the available period"
+    if minutes < 6 * 60:
+        return "overnight"
+    if minutes < 10 * 60:
+        return "early morning"
+    if minutes < 12 * 60:
+        return "the morning"
+    if minutes < 18 * 60:
+        return "daylight hours"
+    if minutes < 22 * 60:
+        return "this evening"
+    return "overnight"
+
+
+def peak_period_label(time_text):
+    minutes = time_to_minutes(time_text)
+    if minutes is None:
+        return "available period"
+    if minutes < 6 * 60:
+        return "overnight"
+    if minutes < 10 * 60:
+        return "early morning"
+    if minutes < 12 * 60:
+        return "late morning"
+    if minutes < 18 * 60:
+        return "daylight hours"
+    if minutes < 22 * 60:
+        return "this evening"
+    return "overnight"
 
 
 def render_evidence_note(forecast):

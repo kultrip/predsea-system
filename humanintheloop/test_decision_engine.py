@@ -140,8 +140,10 @@ def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
 
     assert "workable today" not in decision_line
     assert "conservative timing" in decision_line
-    assert "16:00" in best_window_line
-    assert "22:00" not in best_window_line
+    assert "during daylight hours" in best_window_line
+    assert "roughest early morning period" in answer
+    assert "16:00" not in answer
+    assert "22:00" not in answer
     assert "daylight" in answer
 
 

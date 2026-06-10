@@ -21,11 +21,11 @@ def render_linkedin(snapshot):
     forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
     return "\n".join(
-        [
-            f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
-            "",
-            f"Now: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
-            f"Next 24h: forecast wave peak near {forecast.get('wave_max_m', 'N/A')} m around {forecast.get('wave_peak_time', 'N/A')}.",
+            [
+                f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
+                "",
+                f"Now: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
+            f"Next 24h: forecast wave peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
             f"Captain's read: best crossing window is {rec.get('best_window', 'check manually')}.",
             f"Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
             f"Confidence: {_confidence_label(rec.get('confidence')) or 'Low'}.",
@@ -44,7 +44,7 @@ def render_whatsapp(snapshot):
             "PredSea Captain's Briefing",
             f"Route: {snapshot['route']}",
             f"Now: {canal.get('wave_height_m', 'N/A')} m waves, water {canal.get('water_temp_c', 'N/A')} C.",
-            f"Next 24h: peak near {forecast.get('wave_max_m', 'N/A')} m around {forecast.get('wave_peak_time', 'N/A')}.",
+            f"Next 24h: peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
             f"Best window: {rec.get('best_window', 'check manually')}.",
             f"Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
             f"Confidence: {_confidence_label(rec.get('confidence')) or 'Low'}.",
@@ -59,7 +59,7 @@ def render_whatsapp_screenshot_script(snapshot):
     wave_max = forecast.get("wave_max_m")
     peak_time = forecast.get("wave_peak_time")
     if wave_max is not None and peak_time and peak_time != "N/A":
-        peak_text = f"{snapshot['route']} peaks near {wave_max:.1f} m {operational_time_phrase(peak_time)}."
+        peak_text = f"{snapshot['route']} peaks near {wave_max:.1f} m during the {peak_period_label(peak_time)} period."
     elif wave_max is not None:
         peak_text = f"{snapshot['route']} peaks near {wave_max:.1f} m later."
     else:
@@ -82,13 +82,19 @@ def render_whatsapp_screenshot_script(snapshot):
     )
 
 
-def operational_time_phrase(time_text):
+def peak_period_label(time_text):
     try:
         hour = int(str(time_text).split(":", 1)[0])
     except (TypeError, ValueError):
-        return f"around {time_text}"
-    if hour >= 20:
-        return "late evening"
-    if hour <= 3:
+        return "available period"
+    if hour < 6:
         return "overnight"
-    return f"around {time_text}"
+    if hour < 10:
+        return "early morning"
+    if hour < 12:
+        return "late morning"
+    if hour < 18:
+        return "daylight hours"
+    if hour < 22:
+        return "this evening"
+    return "overnight"
