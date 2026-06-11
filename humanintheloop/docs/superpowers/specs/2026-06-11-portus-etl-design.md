@@ -36,10 +36,10 @@ The package-style refactor can happen later if Portus grows substantially.
 - Retry/backoff/timeout behavior for transient failures
 - ETL integration through the existing observation ingestion path
 - Tests for parsing and dry-run behavior
+- First-pass observation parameters for wave, wind, current, and temperature variables
 
 ### Out of Scope for First Pass
 
-- Wind/current/temperature/pressure expansion beyond the first observation parameters
 - Full route intelligence based on Portus model points
 - ETL package restructuring into a new `src/etl/puertos/` tree
 - New API endpoints
@@ -89,6 +89,7 @@ Rules:
 - treat `-9999.9` as missing
 - keep raw JSON cache
 - convert timestamps to UTC-aware datetimes during normalization
+- include the first observation pass for wave, wind, current, and temperature fields whenever the endpoint exposes them
 
 Normalized names for the first scope:
 
@@ -96,6 +97,9 @@ Normalized names for the first scope:
 - `Hmax (m)` -> `hmax_m`
 - `Tm02 (s)` -> `tm02_s`
 - `Tp (s)` -> `tp_s`
+- wind variables -> normalized wind speed / direction fields
+- current variables -> normalized current speed / direction fields
+- temperature variables -> normalized temperature fields
 
 ### 2. Predictions / Model Point Discovery
 
@@ -299,4 +303,3 @@ The first implementation is successful if:
 - QC flags are preserved
 - the ETL continues even if Portus is down
 - the current pipeline still works for existing sources
-
