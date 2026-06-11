@@ -6,16 +6,17 @@ from pathlib import Path
 import briefing_renderers
 import decision_engine
 import evidence_package
+import ingest_observations
 import fetch_data
 import route_analysis
-import socib_public
 
 
 OUTPUT_DIR = Path("mvp_data")
 
 
 def load_observations():
-    return socib_public.fetch_public_observations()
+    result = ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
+    return result.get("observations", {})
 
 
 def build_forecast_summary(route):
