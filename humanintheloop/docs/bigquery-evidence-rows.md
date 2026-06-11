@@ -1,6 +1,6 @@
 # PredSea BigQuery evidence rows
 
-PredSea now exports the normalized validation rows that already exist in the ETL:
+PredSea exports the normalized validation rows that already exist in the ETL:
 
 - `validation/observation_samples.jsonl`
 - `validation/forecast_index.jsonl`
@@ -9,6 +9,14 @@ Those rows are combined into one BigQuery fact table:
 
 - dataset: `predsea_validation`
 - table: `evidence_rows`
+
+The observation rows now include the active observation sources used by the ETL:
+
+- SOCIB observations via `api.socib.es`
+- Puertos del Estado / REDEXT observations
+- Portus observations and model-point outputs
+
+Observation records are written whenever the hourly ETL run finds fresh samples from a source. Forecast records are written for every route/hourly forecast sample in the validation archive.
 
 ## What goes into the table
 
@@ -44,6 +52,14 @@ Observation rows contain:
 - `sample_time_utc`
 - `observed_at_utc`
 
+For Portus and Puertos del Estado records, the source label is preserved in `source_system`, so you can group rows by source and station and see exactly which stations are contributing to the validation archive.
+
+Typical `source_system` values include:
+
+- `socib`
+- `puertos_del_estado`
+- `puertos_portus`
+
 Every row also has:
 
 - `schema_version`
@@ -60,6 +76,8 @@ Every row also has:
 
 `../scripts/generate_daily_briefing.py` now exports the day’s validation archive to BigQuery after the validation JSONL files are written.
 In GitHub Actions, Google Cloud authentication must happen before that script runs so the export can create and write the table.
+
+The scheduled briefing workflow now runs hourly and the validation archive is refreshed on each run, so BigQuery receives a fresh observation/forecast slice whenever new source data is available.
 
 ### Backfill
 
@@ -94,3 +112,4 @@ If the dataset/table variables are missing, the export is skipped and the ETL co
 - The export is best-effort. BigQuery problems should not break the maritime ETL.
 - The table is partitioned by `run_date` and clustered by `record_type`, `route_id`, `variable`, and `source_system`.
 - The table is intentionally normalized. No raw JSON payloads are stored.
+- The freshest timestamp to query is `ingested_at_utc`; `observed_at_utc` and `forecast_created_at_utc` reflect the source timestamps.

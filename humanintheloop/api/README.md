@@ -48,9 +48,14 @@ Current production forecast source:
 
 - Copernicus Marine Mediterranean waves, about 4.2 km, hourly.
 - Copernicus Marine Mediterranean surface currents, about 4.2 km, hourly.
-- SOCIB public observations when fresh station data is available.
-- SOCIB model forecasts and atmospheric wind providers are optional ETL layers
-  controlled by feature flags.
+- SOCIB observations via `api.socib.es` when fresh station data is available.
+- Puertos del Estado / REDEXT observations.
+- Portus observations and model-point metadata.
+- SOCIB model forecasts and atmospheric wind providers remain optional ETL
+  layers controlled by feature flags.
+
+The scheduled ETL runs hourly at `:49` UTC and refreshes the validation archive
+used by the API, BigQuery export, and WhatsApp outputs.
 
 Ask a captain-style question:
 
@@ -135,6 +140,10 @@ The API also returns `operational_stance`, a compact shared summary of the same
 decision so follow-up questions and WhatsApp replies can reuse it instead of
 re-deriving the recommendation independently.
 
+`operational_stance` is the canonical source for the visible recommendation.
+The API and WhatsApp layers should render from it rather than generating fresh
+reasoning for each follow-up question.
+
 Ask a location-based question from a shared GPS point:
 
 ```bash
@@ -196,6 +205,13 @@ When the ETL has written `regional_evidence.json`, the response also includes:
 This tells the WhatsApp agent which modes and variables the current run
 officially supports. Older runs without `regional_evidence.json` still answer,
 but return `"available": false` for that metadata block.
+
+The most useful source freshness fields for operators are:
+
+- `freshness_status`
+- `freshness_warning`
+- `evidence_timestamp`
+- `operational_stance.confidence`
 
 By default, the API loads local files from
 `predictions/YYYY-MM-DD/runs/RUN_ID/<route_id>/evidence.json`. If that richer
