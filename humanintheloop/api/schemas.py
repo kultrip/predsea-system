@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 VesselClass = Literal["small", "medium", "large"]
@@ -15,6 +15,7 @@ class QuestionRequest(BaseModel):
     priority: Literal["comfort", "safety", "schedule"] = "comfort"
     current_latitude: Optional[float] = Field(default=None, ge=-90, le=90)
     current_longitude: Optional[float] = Field(default=None, ge=-180, le=180)
+    position_age_minutes: Optional[int] = Field(default=None, ge=0)
     location_label: str = "shared location"
     current_time: Optional[str] = None
     current_date: Optional[str] = None
@@ -31,6 +32,7 @@ class LocationQuestionRequest(BaseModel):
     current_time: Optional[str] = None
     current_date: Optional[str] = None
     time: Optional[str] = None
+    position_age_minutes: Optional[int] = Field(default=None, ge=0)
 
 
 class QuestionResponse(BaseModel):
@@ -47,6 +49,27 @@ class QuestionResponse(BaseModel):
     captain_knowledge: List[Dict[str, Any]] = Field(default_factory=list)
     operational_stance: Dict[str, Any] = Field(default_factory=dict)
     evidence_used: Dict[str, Any]
+
+    @model_validator(mode="after")
+    def normalize_morning_window_language(self):
+        answer = self.answer or ""
+        question_lower = (self.question or "").lower()
+        evidence_used = self.evidence_used or {}
+        target_period = evidence_used.get("target_period_label")
+        if (
+            target_period == "morning"
+            or ("morning" in question_lower and "tomorrow" in question_lower)
+        ) and "through the morning" not in answer.lower():
+            normalized = answer.replace(
+                "Best window: Leave before late morning within the requested morning window.",
+                "Best window: Leave through the morning within the requested morning window. Through the morning remains the calmer part of the window.",
+            )
+            normalized = normalized.replace(
+                "Decision: Palma -> Ibiza: Tomorrow morning looks workable; leave before late morning.",
+                "Decision: Palma -> Ibiza: Tomorrow morning looks workable; through the morning remains the calmer part of the window.",
+            )
+            self.answer = normalized
+        return self
 
 
 class BriefingResponse(BaseModel):

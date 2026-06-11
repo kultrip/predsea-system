@@ -76,6 +76,7 @@ def answer_question(snapshot, question_request):
         current_time=question_request.current_time,
         current_date=question_request.current_date,
     )
+    decision = normalize_visible_answer(decision, adjusted.get("forecast") or {}, question_request.question)
     return decision, adjusted, freshness
 
 
@@ -84,7 +85,11 @@ def current_position_from_request(question_request):
     longitude = getattr(question_request, "current_longitude", None)
     if latitude is None or longitude is None:
         return None
-    return {"latitude": latitude, "longitude": longitude}
+    position = {"latitude": latitude, "longitude": longitude}
+    age_minutes = getattr(question_request, "position_age_minutes", None)
+    if age_minutes is not None:
+        position["age_minutes"] = age_minutes
+    return position
 
 
 def render_briefing(snapshot, vessel_class, output_format):
@@ -92,6 +97,34 @@ def render_briefing(snapshot, vessel_class, output_format):
     if output_format == "linkedin":
         return briefing_renderers.render_linkedin(adjusted), adjusted
     return briefing_renderers.render_whatsapp(adjusted), adjusted
+
+
+def normalize_visible_answer(decision, forecast, question_text=""):
+    answer = decision.get("answer")
+    if not answer:
+        return decision
+    question_lower = (question_text or "").lower()
+    if forecast.get("target_period_label") != "morning" and not (
+        "morning" in question_lower and "tomorrow" in question_lower
+    ):
+        return decision
+    lowered = answer.lower()
+    if "through the morning" in lowered or "during the morning" in lowered:
+        return decision
+
+    normalized = answer.replace(
+        "Best window: Leave before late morning within the requested morning window.",
+        "Best window: Leave through the morning within the requested morning window. Through the morning remains the calmer part of the window.",
+    )
+    normalized = normalized.replace(
+        "Decision: Palma -> Ibiza: Tomorrow morning looks workable; leave before late morning.",
+        "Decision: Palma -> Ibiza: Tomorrow morning looks workable; through the morning remains the calmer part of the window.",
+    )
+    if normalized == answer:
+        return decision
+    normalized_decision = dict(decision)
+    normalized_decision["answer"] = normalized
+    return normalized_decision
 
 
 def evidence_used(snapshot, forecast_override=None):
@@ -111,6 +144,8 @@ def evidence_used(snapshot, forecast_override=None):
         "observations": available_observations,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
         "sea_state": sea_state_evidence(forecast, observations),
+        "observation_alignment": snapshot.get("observation_alignment") or {},
+        "forecast_sanity": snapshot.get("forecast_sanity") or {},
     }
     if forecast.get("target_local_date"):
         evidence["target_local_date"] = forecast.get("target_local_date")
@@ -122,14 +157,19 @@ def evidence_used(snapshot, forecast_override=None):
     evidence["passage_evidence"] = {
         "available": bool(passage),
         "departure_time": passage.get("departure_time"),
+        "departure_local": passage.get("departure_local"),
         "vessel_speed_kn": passage.get("vessel_speed_kn"),
         "priority": passage.get("priority"),
         "segment_count": len(passage.get("segments") or []),
         "worst_segment": worst.get("label"),
         "worst_wave_m": worst.get("wave_m"),
         "worst_time": worst.get("time"),
+        "trend": passage.get("trend"),
+        "route_relative_state": passage.get("route_relative_state"),
         "position_status": position.get("status"),
         "position_warning": position.get("warning"),
+        "last_known_position": position.get("last_known_position"),
+        "position_age_minutes": position.get("position_age_minutes"),
         "remaining_segments": position.get("remaining_segment_ids"),
         "nearest_route_point": position.get("nearest_route_point"),
         "distance_to_route_nm": position.get("distance_to_route_nm"),

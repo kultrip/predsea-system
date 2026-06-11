@@ -8,7 +8,7 @@ observation layer for route validation and evidence packages.
 import os
 
 import fetch_portus
-import socib_public
+import socib_api
 
 
 def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=False):
@@ -21,12 +21,15 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
     lineage_sources = []
     errors = {}
 
-    # SOCIB public observations (existing baseline)
+    # SOCIB observations via api.socib.es (hard cutover)
     try:
-        socib_obs = socib_public.fetch_public_observations()
+        socib_bundle = socib_api.fetch_socib_bundle(dry_run=dry_run)
+        socib_obs = socib_bundle.get("observations", {})
         all_observations.update(socib_obs)
         if socib_obs:
             lineage_sources.append("socib_observations")
+        if socib_bundle.get("errors"):
+            errors["socib"] = socib_bundle["errors"]
     except Exception as error:
         errors["socib"] = str(error)
 
@@ -71,6 +74,8 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
         "ground_truth_lineage": ground_truth_lineage,
         "errors": errors,
     }
+    if "socib_bundle" in locals():
+        result["socib"] = socib_bundle
     if include_portus and _portus_enabled():
         result["portus"] = portus_result if "portus_result" in locals() else {
             "observations": {},

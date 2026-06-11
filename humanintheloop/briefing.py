@@ -1,9 +1,12 @@
 import argparse
+import copy
 import json
 from datetime import datetime
 from pathlib import Path
 
 import briefing_renderers
+import forecast_sanity
+import observation_alignment
 import decision_engine
 import evidence_package
 import ingest_observations
@@ -35,7 +38,11 @@ def route_output_dir(root, route):
 def write_outputs(snapshot, output_dir=OUTPUT_DIR, question=None, location_label="Palma Marina", current_time=None, route=None):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    briefing = build_daily_briefing_summary(snapshot)
+    snapshot = copy.deepcopy(snapshot)
+    snapshot["daily_briefing"] = briefing
     (output_path / "daily_snapshot.json").write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+    (output_path / "daily_briefing.json").write_text(json.dumps(briefing, indent=2), encoding="utf-8")
     if route or snapshot.get("route_id"):
         route = route or route_analysis.load_route(snapshot["route_id"])
         evidence = evidence_package.build_route_evidence_package(snapshot, route)
@@ -53,6 +60,51 @@ def write_outputs(snapshot, output_dir=OUTPUT_DIR, question=None, location_label
         (output_path / "decision_answer.txt").write_text(decision["answer"], encoding="utf-8")
         screenshot_script = decision_engine.render_decision_screenshot_script(decision)
     (output_path / "briefing_whatsapp_screenshot_script.txt").write_text(screenshot_script, encoding="utf-8")
+
+
+def build_daily_briefing_summary(snapshot):
+    forecast = snapshot.get("forecast", {})
+    recommendation = snapshot.get("recommendation", {})
+    alignment = snapshot.get("observation_alignment") or observation_alignment.compute_observation_alignment(snapshot)
+    sanity = snapshot.get("forecast_sanity") or forecast_sanity.forecast_sanity(forecast)
+    created_at = snapshot.get("created_at_utc")
+    return {
+        "summary_type": "daily_marine_briefing",
+        "valid_for": "24h",
+        "issued_at_utc": created_at,
+        "issued_at_local": _to_local_time(created_at),
+        "wind_trend": _trend_text(forecast, "current_max_kn"),
+        "wave_trend": _trend_text(forecast, "wave_max_m"),
+        "swell_direction": forecast.get("wave_peak_direction_deg"),
+        "current_trend": _trend_text(forecast, "current_max_kn"),
+        "thunderstorm_probability": forecast.get("thunderstorm_probability"),
+        "sunrise": forecast.get("sunrise_local"),
+        "sunset": forecast.get("sunset_local"),
+        "moon": forecast.get("moon_phase"),
+        "confidence": recommendation.get("confidence", "Low").capitalize(),
+        "watch_out": recommendation.get("watch_out"),
+        "observation_alignment": alignment,
+        "forecast_sanity": sanity,
+    }
+
+
+def _to_local_time(value):
+    if not value:
+        return None
+    return value.replace(" UTC", " LT")
+
+
+def _trend_text(forecast, key):
+    hourly = forecast.get("hourly") or []
+    values = [row.get("wave_m") if key == "wave_max_m" else row.get("current_kn") for row in hourly]
+    values = [value for value in values if isinstance(value, (int, float))]
+    if len(values) < 2:
+        return "steady"
+    if values[-1] > values[0] + 0.2:
+        return "building"
+    if values[-1] < values[0] - 0.2:
+        return "easing"
+    return "steady"
 
 
 def main():

@@ -91,7 +91,10 @@ def build_route_evidence_package(snapshot, route):
             "nearest_current_truth_source": current_validation.get("truth_source"),
             "current_truth_suitability": current_validation.get("suitability"),
             "buoy_truth_available": bool(validation.get("truth_source") or current_validation.get("truth_source")),
+            "observation_alignment": snapshot.get("observation_alignment") or {},
+            "forecast_sanity": snapshot.get("forecast_sanity") or {},
         },
+        "daily_briefing": snapshot.get("daily_briefing"),
         "decision_context": snapshot,
     }
 

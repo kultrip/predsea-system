@@ -158,16 +158,16 @@ def recommend_window(wave_now, wave_min, wave_max, wave_peak_time, current_max, 
 
     if wave_build:
         best_window = "avoid the exposed peak window" if severity == "restricted" else "before midday"
-        watch_out = f"waves build toward {wave_max:.1f} m around {wave_peak_time}"
+        watch_out = f"waves build toward {wave_max:.1f} m during the {peak_window_label(wave_peak_time)} period"
     elif wave_max <= 1.0:
         best_window = "most daylight windows look manageable"
         watch_out = "no major wave build-up in the 24h forecast"
     else:
         best_window = "morning to early afternoon"
-        watch_out = f"forecast peak near {wave_max:.1f} m around {wave_peak_time}"
+        watch_out = f"forecast peak near {wave_max:.1f} m during the {peak_window_label(wave_peak_time)} period"
 
     if strong_current:
-        watch_out = f"{watch_out}; current may reach {current_max:.1f} kn around {current_peak_time}"
+        watch_out = f"{watch_out}; current may reach {current_max:.1f} kn during the {peak_window_label(current_peak_time)} period"
 
     confidence = "medium" if wave_now is not None else "low"
     return {
@@ -177,6 +177,24 @@ def recommend_window(wave_now, wave_min, wave_max, wave_peak_time, current_max, 
         "vessel_severity": severity,
         "vessel_advice": vessel_advice,
     }
+
+
+def peak_window_label(time_text):
+    try:
+        hour = int(str(time_text).split(":", 1)[0])
+    except (TypeError, ValueError):
+        return "available"
+    if hour < 6:
+        return "overnight"
+    if hour < 10:
+        return "early morning"
+    if hour < 12:
+        return "late morning"
+    if hour < 18:
+        return "daylight hours"
+    if hour < 22:
+        return "this evening"
+    return "overnight"
 
 
 def summarize_forecast_series(
@@ -671,18 +689,37 @@ def build_passage_evidence(
         )
 
     worst = worst_passage_segment(segments)
+    route_trend = route_passage_trend(segments)
     passage = {
         "departure_time": departure_time,
+        "departure_local": departure_time,
         "vessel_speed_kn": vessel_speed_kn,
         "vessel_class": vessel_class,
         "priority": priority,
         "segments": segments,
         "worst_segment": worst,
         "summary": passage_summary(worst),
+        "trend": route_trend,
+        "route_relative_state": worst.get("sea_state") if worst else None,
     }
     if position_context:
         passage["position_context"] = position_context
     return passage
+
+
+def route_passage_trend(segments):
+    wave_values = []
+    for segment in segments:
+        sample = segment.get("sample") or {}
+        if isinstance(sample.get("wave_m"), (int, float)):
+            wave_values.append(sample["wave_m"])
+    if len(wave_values) < 2:
+        return "steady"
+    if wave_values[-1] > wave_values[0] + 0.2:
+        return "deteriorating"
+    if wave_values[-1] < wave_values[0] - 0.2:
+        return "improving"
+    return "steady"
 
 
 def route_position_context(route, current_position, off_route_threshold_nm=15.0):
@@ -696,6 +733,7 @@ def route_position_context(route, current_position, off_route_threshold_nm=15.0)
             "status": "invalid",
             "warning": "Position was provided but could not be interpreted; using the full planned route.",
         }
+    age_minutes = current_position.get("age_minutes")
     sample_points = route_sample_points(route or {})
     if not sample_points:
         return {
@@ -708,10 +746,16 @@ def route_position_context(route, current_position, off_route_threshold_nm=15.0)
         "status": "on_route" if nearest_distance <= off_route_threshold_nm else "off_route",
         "current_latitude": round(latitude, 5),
         "current_longitude": round(longitude, 5),
+        "last_known_position": {
+            "latitude": round(latitude, 5),
+            "longitude": round(longitude, 5),
+        },
         "nearest_route_point": sample_points[nearest_index].get("name"),
         "nearest_route_point_index": nearest_index,
         "distance_to_route_nm": round(nearest_distance, 1),
     }
+    if age_minutes is not None:
+        context["position_age_minutes"] = age_minutes
     if context["status"] == "off_route":
         context["warning"] = "Position is not close enough to the planned route; treating this as a location-based forecast instead."
         return context

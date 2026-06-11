@@ -16,19 +16,28 @@ def _confidence_label(value):
     return str(value).strip().capitalize()
 
 
+def _soften_clock_times(text, replacement="the relevant window"):
+    if not text:
+        return text
+    return re.sub(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", replacement, str(text))
+
+
 def render_linkedin(snapshot):
     canal = _canal(snapshot)
     forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
+    briefing = snapshot.get("daily_briefing") or {}
     return "\n".join(
-            [
-                f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
-                "",
-                f"Now: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
-            f"Next 24h: forecast wave peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
-            f"Captain's read: best crossing window is {rec.get('best_window', 'check manually')}.",
-            f"Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
+        [
+            f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
+            "",
+            f"Current: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
+            f"Trend: {briefing.get('wave_trend', 'steady')} seas, with swell direction {briefing.get('swell_direction', 'N/A')}.",
+            f"Best window: {rec.get('best_window', 'check manually')}.",
+            f"Windows: best crossing window is {rec.get('best_window', 'check manually')}.",
+            f"Watch out: {_soften_clock_times(rec.get('watch_out', 'conditions require manual review'))}.",
             f"Confidence: {_confidence_label(rec.get('confidence')) or 'Low'}.",
+            f"Next 24h: forecast wave peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
             "",
             "Illustrative route intelligence example, based on public marine data.",
         ]
@@ -39,15 +48,18 @@ def render_whatsapp(snapshot):
     canal = _canal(snapshot)
     forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
+    briefing = snapshot.get("daily_briefing") or {}
     return "\n".join(
         [
             "PredSea Captain's Briefing",
             f"Route: {snapshot['route']}",
-            f"Now: {canal.get('wave_height_m', 'N/A')} m waves, water {canal.get('water_temp_c', 'N/A')} C.",
-            f"Next 24h: peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
+            f"Current: {canal.get('wave_height_m', 'N/A')} m waves, water {canal.get('water_temp_c', 'N/A')} C.",
+            f"Trend: {briefing.get('wave_trend', 'steady')} seas; swell direction {briefing.get('swell_direction', 'N/A')}.",
             f"Best window: {rec.get('best_window', 'check manually')}.",
-            f"Watch-out: {rec.get('watch_out', 'conditions require manual review')}.",
+            f"Windows: {rec.get('best_window', 'check manually')}.",
+            f"Watch out: {_soften_clock_times(rec.get('watch_out', 'conditions require manual review'))}.",
             f"Confidence: {_confidence_label(rec.get('confidence')) or 'Low'}.",
+            f"Next 24h: peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
         ]
     )
 
@@ -76,6 +88,7 @@ def render_whatsapp_screenshot_script(snapshot):
             f"PredSea: Go earlier. {route_is_calm_now}",
             f"PredSea: {peak_text}",
             f"PredSea: Operational read: {rec.get('vessel_advice', f'check manually for vessels {vessel_label}')}.",
+            f"PredSea: Watch out: {_soften_clock_times(rec.get('watch_out', 'conditions require manual review'))}.",
             f"PredSea: Confidence: {confidence}.",
             "Caption note: illustrative product example based on public marine data.",
         ]
@@ -98,3 +111,4 @@ def peak_period_label(time_text):
     if hour < 22:
         return "this evening"
     return "overnight"
+import re

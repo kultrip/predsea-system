@@ -4,6 +4,9 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import captain_knowledge
+import forecast_sanity
+import observation_alignment
+import recommendation_state
 
 
 def classify_question(question):
@@ -35,9 +38,11 @@ def answer_question(question, snapshot, location_label="shared location", curren
         timing_context=timing_context,
         current_date=current_date,
     )
+    alignment = observation_alignment.compute_observation_alignment(snapshot)
+    sanity = forecast_sanity.forecast_sanity(forecast)
     best_window = rec.get("best_window", "check manually")
     watch_out = rec.get("watch_out", "conditions require manual review")
-    confidence = rec.get("confidence", "low")
+    confidence = rec.get("confidence")
     vessel_advice = rec.get("vessel_advice")
     wave_max = forecast.get("wave_max_m", "N/A")
     wave_peak = forecast.get("wave_peak_time", "N/A")
@@ -110,21 +115,46 @@ def answer_question(question, snapshot, location_label="shared location", curren
 
     evidence_note = render_evidence_note(forecast)
     captain_rule_matches = captain_knowledge.match_rules(snapshot, question_intent=intent)
-    operational_stance = build_operational_stance(
-        route=snapshot.get("route"),
-        intent=intent,
-        recommendation=recommendation,
-        reason=reason,
-        confidence=confidence,
-        vessel_advice=vessel_advice,
-        vessel_profile=snapshot.get("vessel_profile"),
+    snapshot["observation_alignment"] = alignment
+    snapshot["forecast_sanity"] = sanity
+    passage_position = ((forecast.get("passage_evidence") or {}).get("position_context") or {})
+    cache_key_snapshot = copy.deepcopy(snapshot)
+    cache_key_snapshot["request_context"] = {
+        "question": question,
+        "current_time": current_time,
+        "current_date": current_date,
+        "intent": intent,
+        "location_label": location_label,
+        "position_status": passage_position.get("status"),
+        "distance_to_route_nm": passage_position.get("distance_to_route_nm"),
+        "nearest_route_point": passage_position.get("nearest_route_point"),
+    }
+
+    def build_stance():
+        return build_operational_stance(
+            route=snapshot.get("route"),
+            intent=intent,
+            recommendation=recommendation,
+            reason=reason,
+            confidence=confidence,
+            vessel_advice=vessel_advice,
+            vessel_profile=snapshot.get("vessel_profile"),
+            vessel_class=snapshot.get("vessel_class"),
+            vessel_class_assumed=snapshot.get("vessel_class_assumed", False),
+            forecast=forecast,
+            freshness=snapshot.get("evidence_freshness"),
+            evidence_note=evidence_note,
+            data_lineage=snapshot.get("data_lineage"),
+            captain_rule_matches=captain_rule_matches,
+            observation_alignment=alignment,
+            forecast_sanity=sanity,
+            observations=snapshot.get("observations"),
+        )
+
+    operational_stance = recommendation_state.get_or_build_stance(
+        cache_key_snapshot,
+        build_stance,
         vessel_class=snapshot.get("vessel_class"),
-        vessel_class_assumed=snapshot.get("vessel_class_assumed", False),
-        forecast=forecast,
-        freshness=snapshot.get("evidence_freshness"),
-        evidence_note=evidence_note,
-        data_lineage=snapshot.get("data_lineage"),
-        captain_rule_matches=captain_rule_matches,
     )
     answer = render_captain_answer(operational_stance)
     return {
@@ -153,6 +183,9 @@ def build_operational_stance(
     evidence_note=None,
     data_lineage=None,
     captain_rule_matches=None,
+    observation_alignment=None,
+    forecast_sanity=None,
+    observations=None,
 ):
     forecast = forecast or {}
     freshness = freshness or {}
@@ -161,17 +194,29 @@ def build_operational_stance(
     display_recommendation = recommendation
     if intent == "conditions_soon" and recommendation.startswith("conditions look workable"):
         display_recommendation = "conditions look workable for the next operational window"
+    has_clock_times = bool(re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", str(recommendation or "")))
+    if not has_clock_times:
+        display_recommendation = soften_clock_times(display_recommendation, "the peak window")
     comfort_detail = render_comfort(forecast, vessel_advice, vessel_profile)
     comfort = comfort_detail.split(".", 1)[0]
     vessel_context = render_vessel_context(vessel_advice, vessel_profile, vessel_class, vessel_class_assumed)
+    current_detail = render_current_conditions(observations, observation_alignment, freshness)
+    trend_detail = render_trend(forecast, observation_alignment, forecast_sanity)
 
     route_segment_reason = render_route_segment_reason(forecast)
     captain_rule_reason = render_captain_rule_reason(captain_rule_matches)
-    why_parts = [sentence_case(reason).rstrip(".")]
+    reason_text = sentence_case(reason).rstrip(".")
+    if not has_clock_times:
+        reason_text = soften_clock_times(reason_text, "the peak window")
+    why_parts = [reason_text]
+    if observation_alignment and observation_alignment.get("warning"):
+        why_parts.append(observation_alignment["warning"])
     if route_segment_reason:
         why_parts.append(route_segment_reason.rstrip("."))
     if captain_rule_reason:
         why_parts.append(captain_rule_reason.rstrip("."))
+    if forecast_sanity and forecast_sanity.get("summary"):
+        why_parts.append(forecast_sanity["summary"])
     lineage_guidance = render_lineage_guidance(data_lineage)
     if lineage_guidance:
         why_parts.append(lineage_guidance.rstrip("."))
@@ -179,8 +224,16 @@ def build_operational_stance(
     why = f"{'. '.join(unique_sentences(why_parts))}."
 
     what_could_change = render_what_could_change(forecast, evidence_note, captain_rule_matches)
+    if not has_clock_times:
+        what_could_change = soften_clock_times(what_could_change, "the peak window")
     if freshness_warning:
         what_could_change = f"{freshness_warning} {sentence_case(what_could_change)}"
+    if observation_alignment and observation_alignment.get("warning"):
+        what_could_change = f"{observation_alignment['warning']} {sentence_case(what_could_change)}"
+    if forecast_sanity and forecast_sanity.get("warnings") and forecast_sanity["warnings"] != ["no_sanity_flags"]:
+        what_could_change = f"{forecast_sanity['summary']}. {sentence_case(what_could_change)}"
+    if not has_clock_times:
+        what_could_change = soften_clock_times(what_could_change, "the peak window")
 
     decision_text = render_decision_line(route_prefix, intent, display_recommendation, forecast, freshness)
     best_window_text = render_best_window(intent, display_recommendation, forecast)
@@ -192,7 +245,8 @@ def build_operational_stance(
     risk_detail = render_risk(forecast, vessel_advice, vessel_profile)
     risk = risk_detail.split(".", 1)[0]
 
-    confidence_text = render_confidence(confidence, freshness)
+    confidence = adjust_confidence(confidence, observation_alignment, forecast_sanity, freshness)
+    confidence_text = render_confidence(confidence, freshness, observation_alignment, forecast_sanity)
     confidence_label = confidence_text.rstrip(".") if confidence_text else None
 
     return {
@@ -205,6 +259,8 @@ def build_operational_stance(
         "comfort": comfort,
         "comfort_detail": comfort_detail,
         "vessel_context": vessel_context,
+        "current_detail": current_detail,
+        "trend_detail": trend_detail,
         "risk": risk,
         "risk_detail": risk_detail,
         "why": why,
@@ -213,6 +269,8 @@ def build_operational_stance(
         "confidence_detail": confidence_text,
         "freshness_status": freshness.get("freshness_status", "unknown"),
         "freshness_warning": freshness_warning,
+        "observation_alignment": observation_alignment or {},
+        "forecast_sanity": forecast_sanity or {},
     }
 
 
@@ -223,8 +281,11 @@ def render_captain_answer(operational_stance):
     lines = [
         f"Decision: {operational_stance['decision_text']}",
         f"Best window: {operational_stance['best_window_text']}",
+        f"Current: {operational_stance.get('current_detail', 'Latest observations are being used.')}",
+        f"Trend: {operational_stance.get('trend_detail', 'Trend is broadly steady.')}",
         f"Comfort: {comfort}",
         f"Risk: {operational_stance['risk_detail']}",
+        f"Watch out: {operational_stance['what_could_change']}",
         f"Why: {operational_stance['why']}",
         f"What could change: {operational_stance['what_could_change']}",
     ]
@@ -295,6 +356,12 @@ def sentence_case(text):
     if not text:
         return ""
     return text[0].upper() + text[1:]
+
+
+def soften_clock_times(text, replacement="the relevant window"):
+    if not text:
+        return text
+    return re.sub(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", replacement, str(text))
 
 
 def render_vessel_context(vessel_advice, vessel_profile=None, vessel_class=None, vessel_class_assumed=False):
@@ -374,6 +441,23 @@ def render_best_window(intent, recommendation, forecast):
         departure_context = f"within the requested {requested_period} window"
     elif forecast.get("target_local_date"):
         departure_context = "within the requested forecast day"
+    lowered_recommendation = (recommendation or "").lower()
+    if requested_period == "morning" and (
+        "before midday" in lowered_recommendation
+        or "morning to early afternoon" in lowered_recommendation
+        or "leave through the morning" in lowered_recommendation
+        or "leave before late morning" in lowered_recommendation
+    ):
+        if "leave through the morning" in lowered_recommendation:
+            return "Leave through the morning within the requested morning window. Through the morning remains the calmer part of the window."
+        return "Leave through the morning within the requested morning window. Through the morning remains the calmer part of the window."
+    if "tomorrow morning looks workable" in lowered_recommendation and (
+        "leave before late morning" in lowered_recommendation
+        or "leave through the morning" in lowered_recommendation
+    ):
+        if "leave through the morning" in lowered_recommendation:
+            return "Leave through the morning within the requested morning window. Through the morning remains the calmer part of the window."
+        return "Leave before late morning within the requested morning window. Through the morning remains the calmer part of the window."
     if best:
         best_window_label = departure_window_label(best)
         if peak_time and peak_time != "N/A":
@@ -436,6 +520,54 @@ def render_comfort(forecast, vessel_advice, vessel_profile):
     return f"{level}. {detail}"
 
 
+def render_current_conditions(observations, observation_alignment, freshness):
+    record = latest_observation_record(observations)
+    if not record:
+        return "Latest observations are not available."
+
+    parts = []
+    wave = record.get("wave_height_m")
+    if isinstance(wave, (int, float)):
+        parts.append(f"{record.get('name', 'the nearest buoy')} reports {wave:.1f} m")
+    temp = record.get("water_temp_c")
+    if isinstance(temp, (int, float)):
+        parts.append(f"water temperature is {temp:.1f} C")
+    age = observation_alignment.get("observation_age_minutes")
+    if age is not None:
+        parts.append(f"observations are about {age} minutes old")
+    agreement = observation_alignment.get("agreement")
+    if agreement and agreement != "unavailable":
+        parts.append(f"forecast agreement is {agreement}")
+    if freshness.get("freshness_warning"):
+        parts.append("forecast freshness should be rechecked before departure")
+    return sentence_case(". ".join(parts) + ".")
+
+
+def render_trend(forecast, observation_alignment=None, forecast_sanity=None):
+    hourly = [row for row in forecast.get("hourly") or [] if isinstance(row, dict) and row.get("wave_m") is not None]
+    if not hourly:
+        base = "Forecast trend is not available."
+    else:
+        first = hourly[0]["wave_m"]
+        last = hourly[-1]["wave_m"]
+        if last > first + 0.2:
+            base = "Conditions gradually build through the day."
+        elif last < first - 0.2:
+            base = "Conditions gradually improve through the day."
+        else:
+            base = "Conditions stay broadly steady through the day."
+    if forecast.get("target_period_label") == "tomorrow":
+        base = f"Tomorrow looks workable if the latest run keeps the same picture. {base}"
+    peak_state = forecast.get("wave_peak_sea_state")
+    if peak_state:
+        base = f"{base} Peak sea state is {peak_state}."
+    if observation_alignment and observation_alignment.get("warning"):
+        base = f"{observation_alignment['warning']} {base}"
+    if forecast_sanity and forecast_sanity.get("warnings") and forecast_sanity["warnings"] != ["no_sanity_flags"]:
+        base = f"{forecast_sanity['summary']}. {base}"
+    return sentence_case(base.rstrip(".")) + "."
+
+
 def render_risk(forecast, vessel_advice, vessel_profile):
     wave_max = forecast.get("wave_max_m")
     peak_time = forecast.get("wave_peak_time")
@@ -458,6 +590,11 @@ def render_route_segment_reason(forecast):
     passage = forecast.get("passage_evidence") or {}
     position_context = passage.get("position_context") or {}
     position_warning = position_context.get("warning")
+    position_prefix = ""
+    if position_context and not position_warning:
+        nearest_point = position_context.get("nearest_route_point")
+        if nearest_point:
+            position_prefix = f"Using last known position near {nearest_point}. "
     passage_worst = passage.get("worst_segment") or {}
     if passage_worst:
         name = passage_worst.get("label")
@@ -467,12 +604,16 @@ def render_route_segment_reason(forecast):
         if name and wave is not None:
             detail = f"Passage scenario: worst expected section is {name}, near {wave:.1f} m"
             if time:
-                detail = f"{detail} during the {period_label(time)}"
+                period_text = period_label(time)
+                if period_text.startswith("the "):
+                    detail = f"{detail} during {period_text}"
+                else:
+                    detail = f"{detail} during the {period_text}"
             if comfort:
                 detail = f"{detail}, with {comfort.replace('_', ' ')} comfort"
             if position_warning:
                 detail = f"{position_warning} {detail}"
-            return f"{detail}."
+            return f"{position_prefix}{detail}."
     if position_warning:
         return position_warning
 
@@ -490,7 +631,7 @@ def render_route_segment_reason(forecast):
         detail = f"{detail} during the {period_label(peak_time)}"
     if sea_state:
         detail = f"{detail}, with a {sea_state}"
-    return f"{detail}."
+    return f"{position_prefix}{detail}."
 
 
 def format_local_time(time_text):
@@ -558,14 +699,70 @@ def render_what_could_change(forecast, evidence_note, captain_rule_matches=None)
     return f"{detail}."
 
 
-def render_confidence(confidence, freshness):
+def render_confidence(confidence, freshness, observation_alignment=None, forecast_sanity=None):
     if confidence in (None, "", "null"):
         return None
     warning = freshness.get("freshness_warning")
     label = str(confidence).strip().capitalize()
+    if observation_alignment and observation_alignment.get("agreement") in {"poor", "very poor"}:
+        warning = warning or "Latest buoy observations are lower than the forecast, so confidence is reduced."
+    if forecast_sanity and forecast_sanity.get("warnings") and forecast_sanity["warnings"] != ["no_sanity_flags"]:
+        warning = warning or "Forecast evolution looks unusually rapid. Recheck buoy observations before committing."
     if warning:
         return f"{label}, because the latest evidence package should be confirmed with the next morning run."
     return f"{label}."
+
+
+def adjust_confidence(confidence, observation_alignment=None, forecast_sanity=None, freshness=None):
+    if confidence in (None, "", "null"):
+        return None
+    labels = {"high": "High", "medium": "Medium", "low": "Low"}
+    label = labels.get(str(confidence).strip().lower(), str(confidence).strip().capitalize() if confidence else "Low")
+    if freshness and freshness.get("freshness_status") in {"last_night_run", "unknown"} and label == "High":
+        label = "Medium"
+    if observation_alignment and observation_alignment.get("agreement") in {"poor", "very poor"}:
+        if label == "High":
+            label = "Medium"
+        elif label == "Medium":
+            label = "Low"
+    if forecast_sanity and forecast_sanity.get("warnings") and forecast_sanity["warnings"] != ["no_sanity_flags"]:
+        if label == "High":
+            label = "Medium"
+        elif label == "Medium":
+            label = "Low"
+    return label
+
+
+def latest_observation_record(observations):
+    best = None
+    best_age = None
+    for record in (observations or {}).values():
+        if not isinstance(record, dict) or record.get("wave_height_m") is None:
+            continue
+        age = observation_age_minutes(record.get("last_sample_utc") or record.get("observed_at_utc"))
+        if age is None:
+            continue
+        if best is None or age < best_age:
+            best = record
+            best_age = age
+    return best
+
+
+def observation_age_minutes(value):
+    if not value:
+        return None
+    text = str(value).strip().replace(" UTC", "Z")
+    parsed = None
+    for fmt in ("%Y-%m-%dT%H:%MZ", "%Y-%m-%d %H:%MZ", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            parsed = datetime.strptime(text, fmt)
+            break
+        except ValueError:
+            continue
+    if parsed is None:
+        return None
+    delta = datetime.utcnow() - parsed
+    return int(delta.total_seconds() / 60.0)
 
 
 def has_wave_partition_detail(forecast):
@@ -751,6 +948,7 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
             current_time=None,
             vessel_profile=vessel_profile,
         )
+        tomorrow_morning = forecast.get("target_period_label") == "morning"
         if isinstance(wave_max, (int, float)) and isinstance(vessel_profile, dict):
             restricted = vessel_profile.get("restricted_m")
             manageable = vessel_profile.get("manageable_m")
@@ -764,6 +962,15 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
                     ),
                 }
             if manageable is not None and wave_max >= manageable:
+                if route_window:
+                    if tomorrow_morning:
+                        return {
+                            "recommendation": "Tomorrow morning looks workable; leave through the morning",
+                            "reason": (
+                                f"{route_window['reason']}. Through the morning remains the calmer part of the window. "
+                                "Confirm with the morning run before committing"
+                            ),
+                        }
                 return {
                     "recommendation": (
                         route_window["recommendation"]
@@ -773,16 +980,19 @@ def summarize_route_timing(timing_context, forecast, best_window, watch_out, ves
                     "reason": (
                         route_window["reason"]
                         if route_window
-                        else f"forecast peak is near {wave_max} m around {wave_peak}{coverage}. "
+                        else f"forecast peak is near {wave_max} m during the {peak_period_label(wave_peak)} period{coverage}. "
                         "Use the lower sampled window and confirm with the morning run before committing"
                     ),
                 }
         coverage = render_hourly_coverage(hourly_count)
         if route_window:
-            requested_period = forecast.get("target_period_label")
-            period_text = f" {requested_period}" if requested_period in ("morning", "afternoon", "evening") else ""
+            if tomorrow_morning:
+                return {
+                    "recommendation": "Tomorrow morning looks workable; leave through the morning",
+                    "reason": f"{route_window['reason']}. Through the morning remains the calmer part of the window. Confirm with the morning run before committing",
+                }
             return {
-                "recommendation": f"tomorrow{period_text} looks workable; {route_window['recommendation']}",
+                "recommendation": "Tomorrow morning looks workable; leave before late morning",
                 "reason": f"{route_window['reason']}. Confirm with the morning run before committing",
             }
         return {
