@@ -25,6 +25,27 @@ def _unpack_payload(result):
     return result, None
 
 
+def _normalized_latest_portus_observation(latest):
+    normalized = dict(latest or {})
+    if "hs_m" in normalized and normalized.get("hs_m") is not None:
+        normalized.setdefault("wave_height_m", normalized.get("hs_m"))
+    if "wave_direction_deg" in normalized and normalized.get("wave_direction_deg") is not None:
+        normalized.setdefault("wave_from_direction_deg", normalized.get("wave_direction_deg"))
+    if "wind_speed_mps" in normalized and normalized.get("wind_speed_mps") is not None:
+        normalized.setdefault("wind_speed_mps", normalized.get("wind_speed_mps"))
+    if "wind_direction_deg" in normalized and normalized.get("wind_direction_deg") is not None:
+        normalized.setdefault("wind_direction_deg", normalized.get("wind_direction_deg"))
+    if "current_speed_mps" in normalized and normalized.get("current_speed_mps") is not None:
+        normalized.setdefault("current_speed_mps", normalized.get("current_speed_mps"))
+    if "current_direction_deg" in normalized and normalized.get("current_direction_deg") is not None:
+        normalized.setdefault("current_direction_deg", normalized.get("current_direction_deg"))
+    if "temperature_c" in normalized and normalized.get("temperature_c") is not None:
+        normalized.setdefault("temperature_c", normalized.get("temperature_c"))
+    if "water_temperature_c" in normalized and normalized.get("water_temperature_c") is not None:
+        normalized.setdefault("water_temperature_c", normalized.get("water_temperature_c"))
+    return normalized
+
+
 def fetch_station_observation_series(
     station_code,
     *,
@@ -167,6 +188,7 @@ def fetch_portus_observations(
                 key: value.isoformat() if hasattr(value, "isoformat") else value
                 for key, value in latest.items()
             }
+            latest = _normalized_latest_portus_observation(latest)
             observations[station["key"]] = {
                 "source": "puertos_portus",
                 "station_code": str(station_code),

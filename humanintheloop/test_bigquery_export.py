@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import bigquery_export
+import validation_archive
 
 
 def write_validation_archive(tmp_path):
@@ -81,6 +82,38 @@ def test_build_normalized_rows_combines_forecast_and_observation(tmp_path):
     assert forecast["row_hash"]
 
 
+def test_build_normalized_rows_supports_portus_observation_aliases():
+    observation_records = {
+        "portus_3545": {
+            "source": "puertos_portus",
+            "station_name": "Portus station 3545",
+            "last_sample_utc": "2026-06-11 17:00 UTC",
+            "wave_height_m": 0.42,
+            "wind_speed_mps": 4.3,
+            "current_speed_mps": 0.56,
+            "temperature_c": 21.2,
+            "water_temperature_c": 22.4,
+        }
+    }
+    observation_rows = validation_archive.build_observation_rows(
+        observation_records,
+        "2026-06-11",
+        "2026-06-11T1755Z",
+    )
+
+    rows = bigquery_export.build_normalized_rows(observation_rows, [])
+
+    assert len(rows) == 5
+    row_types = {row["variable"] for row in rows}
+    assert {"wave_height", "wind_speed", "current_speed", "air_temperature", "water_temperature"}.issubset(row_types)
+    wave_row = next(row for row in rows if row["variable"] == "wave_height")
+    assert wave_row["source_system"] == "puertos_portus"
+    assert wave_row["station_id"] == "portus_3545"
+    assert wave_row["value"] == 0.42
+    assert wave_row["sample_time_utc"] == "2026-06-11T17:00:00Z"
+    assert wave_row["row_hash"]
+
+
 def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, monkeypatch):
     write_validation_archive(tmp_path)
     monkeypatch.delenv("PREDSEA_BIGQUERY_PROJECT", raising=False)
@@ -92,4 +125,3 @@ def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, mo
 
     assert result["status"] == "skipped"
     assert result["exported_rows"] == 0
-
