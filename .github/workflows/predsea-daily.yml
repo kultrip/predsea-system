@@ -52,6 +52,7 @@ jobs:
           PREDSEA_BIGQUERY_DATASET: predsea_validation
           PREDSEA_BIGQUERY_TABLE: evidence_rows
           PREDSEA_BIGQUERY_LOCATION: europe-west1
+          SOCIB_API_KEY: ${{ secrets.SOCIB_API_KEY }}
           COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
           COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
           PREDSEA_LOGO_PATH: assets/predsea_logo.png
