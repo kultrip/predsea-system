@@ -23,6 +23,11 @@ def test_puertos_enabled_by_env_var(monkeypatch):
     assert ingest_observations._puertos_enabled()
 
 
+def test_portus_enabled_by_default(monkeypatch):
+    monkeypatch.delenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", raising=False)
+    assert ingest_observations._portus_enabled()
+
+
 def test_ground_truth_lineage_with_both_sources():
     observations = {"canal_de_ibiza": {}, "puertos_mahon": {}}
     lineage = ingest_observations._build_ground_truth_lineage(

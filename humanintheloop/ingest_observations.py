@@ -7,10 +7,11 @@ observation layer for route validation and evidence packages.
 
 import os
 
+import fetch_portus
 import socib_public
 
 
-def fetch_all_observations(include_puertos=True, dry_run=False):
+def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=False):
     """Fetch observations from all configured sources.
 
     Returns a merged dict of observations and a lineage record
@@ -46,20 +47,47 @@ def fetch_all_observations(include_puertos=True, dry_run=False):
         except Exception as error:
             errors["puertos_del_estado"] = str(error)
 
+    # Portus JSON observations and prediction/model metadata
+    if include_portus and _portus_enabled():
+        try:
+            portus_result = fetch_portus.fetch_portus_bundle(dry_run=dry_run)
+            portus_obs = portus_result.get("observations", {})
+            for key, value in portus_obs.items():
+                prefixed_key = key if key.startswith("portus_") else f"portus_{key}"
+                all_observations[prefixed_key] = value
+            if portus_obs:
+                lineage_sources.append("puertos_portus")
+            if portus_result.get("errors"):
+                errors["puertos_portus"] = portus_result["errors"]
+        except Exception as error:
+            errors["puertos_portus"] = str(error)
+
     ground_truth_lineage = _build_ground_truth_lineage(
         all_observations, lineage_sources, errors,
     )
 
-    return {
+    result = {
         "observations": all_observations,
         "ground_truth_lineage": ground_truth_lineage,
         "errors": errors,
     }
+    if include_portus and _portus_enabled():
+        result["portus"] = portus_result if "portus_result" in locals() else {
+            "observations": {},
+            "predictions": {},
+            "errors": errors.get("puertos_portus", {}),
+        }
+    return result
 
 
 def _puertos_enabled():
     """Check if Puertos del Estado ingestion is enabled."""
     return os.environ.get("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0") == "1"
+
+
+def _portus_enabled():
+    """Check if Portus ingestion is enabled."""
+    return os.environ.get("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "1") == "1"
 
 
 def _build_ground_truth_lineage(observations, sources, errors):
@@ -72,10 +100,18 @@ def _build_ground_truth_lineage(observations, sources, errors):
         }
 
     # Determine primary source based on availability
-    if "puertos_del_estado" in sources and "socib_observations" in sources:
-        source = "socib_and_puertos_del_estado"
+    portus_present = "puertos_portus" in sources
+    puertos_present = "puertos_del_estado" in sources
+    if "socib_observations" in sources and (puertos_present or portus_present):
+        if portus_present and not puertos_present:
+            source = "socib_and_puertos_portus"
+        else:
+            source = "socib_and_puertos_del_estado"
         status = "matched_successfully"
-    elif "puertos_del_estado" in sources:
+    elif portus_present:
+        source = "puertos_portus"
+        status = "matched_successfully"
+    elif puertos_present:
         source = "puertos_del_estado_redext"
         status = "matched_successfully"
     elif "socib_observations" in sources:

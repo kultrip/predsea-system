@@ -63,6 +63,38 @@ def test_step_build_snapshot_attaches_lineage():
     assert snapshot["data_lineage"]["ocean_forecast"]["source"] == "copernicus_med"
 
 
+def test_step_build_snapshot_attaches_portus_lineage():
+    import route_analysis
+
+    route = route_analysis.load_route("palma_ibiza")
+    atmo_result = {
+        "wind_result": {"available": True, "source": "ecmwf_open_data"},
+        "wind_lineage": {"source": "ecmwf_open_data", "resolution_km": 9.0, "status": "active", "tier": 3},
+    }
+    ocean_result = {
+        "available": True,
+        "forecast": route_analysis.default_forecast_summary(),
+        "lineage": {"source": "copernicus_med", "resolution_km": 4.0, "status": "active"},
+    }
+    obs_result = {
+        "observations": {},
+        "ground_truth_lineage": {"source": None, "status": "unavailable"},
+        "portus": {
+            "observations_lineage": {"source": "puertos_portus", "status": "matched_successfully"},
+            "predictions_lineage": {"source": "puertos_portus_predictions", "status": "matched_successfully"},
+        },
+    }
+    blend_result = {"blended": False}
+
+    snapshot = pipeline._step_build_snapshot(
+        route, "medium", ocean_result, obs_result, atmo_result, blend_result,
+    )
+
+    assert snapshot["data_lineage"]["portus_observations"]["source"] == "puertos_portus"
+    assert snapshot["data_lineage"]["portus_predictions"]["source"] == "puertos_portus_predictions"
+    assert snapshot["portus"]["observations_lineage"]["source"] == "puertos_portus"
+
+
 def test_evidence_package_preserves_pipeline_lineage():
     import evidence_package
     import route_analysis

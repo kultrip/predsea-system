@@ -252,6 +252,7 @@ def _step_observations(dry_run, skip_puertos):
     try:
         result = ingest_observations.fetch_all_observations(
             include_puertos=not skip_puertos,
+            include_portus=True,
             dry_run=dry_run,
         )
         obs_count = len(result.get("observations", {}))
@@ -295,6 +296,7 @@ def _step_build_snapshot(route, vessel_class, ocean_result, obs_result, atmo_res
         "source": None,
         "status": "unavailable",
     })
+    portus_result = obs_result.get("portus")
 
     # If blending happened, update ocean lineage
     if blend_result.get("blended") and blend_result.get("lineage"):
@@ -308,6 +310,16 @@ def _step_build_snapshot(route, vessel_class, ocean_result, obs_result, atmo_res
         "ocean_forecast": ocean_lineage,
         "ground_truth_validation": ground_truth,
     }
+    if portus_result:
+        snapshot["data_lineage"]["portus_observations"] = portus_result.get(
+            "observations_lineage",
+            {"source": None, "status": "unavailable"},
+        )
+        snapshot["data_lineage"]["portus_predictions"] = portus_result.get(
+            "predictions_lineage",
+            {"source": None, "status": "unavailable"},
+        )
+        snapshot["portus"] = portus_result
 
     return snapshot
 
