@@ -47,18 +47,19 @@ def test_answer_uses_captain_knowledge_and_worst_segment():
 
     answer = result["answer"]
 
-    assert "Decision:" in answer
-    assert "Best window:" in answer
-    assert "Comfort:" in answer
-    assert "Risk:" in answer
-    assert "Why:" in answer
+    assert "Recommendation:" in answer
+    assert "CURRENT:" in answer
+    assert "TREND:" in answer
+    assert "WINDOWS:" in answer
+    assert "COMFORT:" in answer
+    assert "WATCH OUT:" in answer
     assert "What could change:" in answer
     assert "Confidence:" in answer
     assert "Confidence: Medium" in answer
-    assert "Mid Palma-Ibiza" in answer
     assert "small vessels" in answer or "under 15m" in answer
     assert "NW" in answer or "beam sea" in answer
     assert "committing Captain knowledge" not in answer
+    assert "Sea-state detail:" in answer
 
 
 def test_tomorrow_answer_does_not_call_restricted_small_vessel_workable():
@@ -93,11 +94,12 @@ def test_tomorrow_answer_does_not_call_restricted_small_vessel_workable():
     )
 
     answer = result["answer"]
-    decision_line = answer.split("\n\n", 1)[0]
+    recommendation_line = answer.split("\n\n", 1)[0]
 
-    assert "looks workable" not in decision_line
-    assert "not a comfort recommendation" in decision_line
-    assert "Risk: High for this vessel size" in answer
+    assert "looks workable" not in recommendation_line
+    assert "not a comfort recommendation" in recommendation_line
+    assert "Confidence: Low" in answer
+    assert "Sea-state detail:" in answer
 
 
 def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
@@ -136,11 +138,11 @@ def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
     )
 
     answer = result["answer"]
-    decision_line, best_window_line = answer.split("\n\n", 2)[:2]
+    recommendation_line, current_line, trend_line, windows_line = answer.split("\n\n", 4)[:4]
 
-    assert "workable today" not in decision_line
-    assert "conservative timing" in decision_line
-    assert "during daylight hours" in best_window_line
+    assert "workable today" not in recommendation_line
+    assert "conservative timing" in recommendation_line
+    assert "during daylight hours" in windows_line
     assert "roughest early morning period" in answer
     assert "16:00" not in answer
     assert "22:00" not in answer

@@ -36,14 +36,11 @@ Visible answers should:
 
 Typical answer sections:
 
-- Decision
-- Best window
 - Current
 - Trend
+- Windows
 - Comfort
-- Risk
 - Watch out
-- Why
 - What could change
 - Confidence
 

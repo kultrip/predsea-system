@@ -279,18 +279,16 @@ def render_captain_answer(operational_stance):
     if operational_stance.get("vessel_context"):
         comfort = f"{comfort} {operational_stance['vessel_context']}"
     lines = [
-        f"Decision: {operational_stance['decision_text']}",
-        f"Best window: {operational_stance['best_window_text']}",
-        f"Current: {operational_stance.get('current_detail', 'Latest observations are being used.')}",
-        f"Trend: {operational_stance.get('trend_detail', 'Trend is broadly steady.')}",
-        f"Comfort: {comfort}",
-        f"Risk: {operational_stance['risk_detail']}",
-        f"Watch out: {operational_stance['what_could_change']}",
-        f"Why: {operational_stance['why']}",
+        f"Recommendation: {operational_stance['decision_text']}",
+        f"CURRENT: {operational_stance.get('current_detail', 'Latest observations are being used.')}",
+        f"TREND: {operational_stance.get('trend_detail', 'Trend is broadly steady.')}",
+        f"WINDOWS: {operational_stance['best_window_text']}",
+        f"COMFORT: {comfort}",
+        f"WATCH OUT: {operational_stance['what_could_change']}",
+        f"Confidence: {operational_stance['confidence_detail']}" if operational_stance.get("confidence_detail") else None,
         f"What could change: {operational_stance['what_could_change']}",
     ]
-    if operational_stance.get("confidence_detail"):
-        lines.append(f"Confidence: {operational_stance['confidence_detail']}")
+    lines = [line for line in lines if line]
     return "\n\n".join(lines)
 
 
@@ -709,7 +707,7 @@ def render_confidence(confidence, freshness, observation_alignment=None, forecas
     if forecast_sanity and forecast_sanity.get("warnings") and forecast_sanity["warnings"] != ["no_sanity_flags"]:
         warning = warning or "Forecast evolution looks unusually rapid. Recheck buoy observations before committing."
     if warning:
-        return f"{label}, because the latest evidence package should be confirmed with the next morning run."
+        return f"{label}. {sentence_case(warning)}"
     return f"{label}."
 
 

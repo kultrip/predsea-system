@@ -294,11 +294,12 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert payload["operational_stance"]["best_window"] == "during the morning"
     assert payload["operational_stance"]["confidence"] == "Medium"
     assert "Conditions look workable" in payload["answer"]
-    assert "Decision:" in payload["answer"]
-    assert "Best window:" in payload["answer"]
-    assert "Comfort:" in payload["answer"]
-    assert "Risk:" in payload["answer"]
-    assert "Why:" in payload["answer"]
+    assert "Recommendation:" in payload["answer"]
+    assert "CURRENT:" in payload["answer"]
+    assert "TREND:" in payload["answer"]
+    assert "WINDOWS:" in payload["answer"]
+    assert "COMFORT:" in payload["answer"]
+    assert "WATCH OUT:" in payload["answer"]
     assert "What could change:" in payload["answer"]
     assert "Confidence:" in payload["answer"]
     assert "For this vessel size:" in payload["answer"]
