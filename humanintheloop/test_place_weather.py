@@ -89,7 +89,8 @@ def test_available_place_ids_include_new_locations():
 def test_portocolom_is_supported_and_prefers_its_observation_key():
     place = place_definition("portocolom")
     assert place["name"] == "Portocolom"
-    assert "porto_colom" in place["observation_keys"]
+    assert place["observation_keys"][0] == "porto_colom"
+    assert "alcudia" in place["observation_keys"]
 
     observation = {
         "station_id": "porto_colom",
@@ -99,3 +100,18 @@ def test_portocolom_is_supported_and_prefers_its_observation_key():
     selected = select_observation_for_place("portocolom", {"porto_colom": observation})
     assert selected["station_id"] == "porto_colom"
     assert selected["station_name"] == "Portocolom"
+
+
+def test_portocolom_falls_back_to_nearest_balearic_observation():
+    selected = select_observation_for_place(
+        "portocolom",
+        {
+            "alcudia": {
+                "station_id": "alcudia",
+                "station_name": "Alcudia",
+                "wave_height_m": 0.6,
+            }
+        },
+    )
+    assert selected["station_id"] == "alcudia"
+    assert selected["station_name"] == "Alcudia"

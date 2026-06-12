@@ -90,7 +90,7 @@ PLACE_CATALOG = {
         "name": "Portocolom",
         "latitude": 39.41,
         "longitude": 3.27,
-        "observation_keys": ("porto_colom", "portocolom"),
+        "observation_keys": ("porto_colom", "portocolom", "alcudia", "mallorca"),
         "aliases": ("portocolom", "porto colom", "port de portocolom"),
     },
 }
