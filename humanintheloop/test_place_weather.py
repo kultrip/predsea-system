@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from place_weather import available_place_ids, build_place_weather_record
+from place_weather import (
+    available_place_ids,
+    build_place_weather_record,
+    place_definition,
+    select_observation_for_place,
+)
 
 
 def test_build_place_weather_record_uses_place_weather_fields():
@@ -78,3 +83,19 @@ def test_available_place_ids_include_new_locations():
     assert "ciutadella" in place_ids
     assert "alcudia" in place_ids
     assert "soller" in place_ids
+    assert "portocolom" in place_ids
+
+
+def test_portocolom_is_supported_and_prefers_its_observation_key():
+    place = place_definition("portocolom")
+    assert place["name"] == "Portocolom"
+    assert "porto_colom" in place["observation_keys"]
+
+    observation = {
+        "station_id": "porto_colom",
+        "station_name": "Portocolom",
+        "wave_height_m": 0.7,
+    }
+    selected = select_observation_for_place("portocolom", {"porto_colom": observation})
+    assert selected["station_id"] == "porto_colom"
+    assert selected["station_name"] == "Portocolom"
