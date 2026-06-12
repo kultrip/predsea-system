@@ -109,6 +109,8 @@ class PlaceWeatherResponse(BaseModel):
     wind_wave_direction_deg: Optional[float] = None
     wind_kn: Optional[float] = None
     wind_direction_deg: Optional[float] = None
+    water_temperature_c: Optional[float] = None
+    air_temperature_c: Optional[float] = None
     current_kn: Optional[float] = None
     current_direction_deg: Optional[float] = None
     source: Optional[str] = None

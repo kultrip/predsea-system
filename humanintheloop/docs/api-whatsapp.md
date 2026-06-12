@@ -21,6 +21,7 @@ The contract for those surfaces is:
 - **daily briefing**: a stable morning summary that anchors the day
 - **route questions**: operational answers for passage planning and follow-ups
 - **place weather**: wave, swell, wind, current, and freshness for a place or coordinate
+  - when available, water temperature and air temperature are included too
 
 Anything beyond that remains additive, not required for the minimum supported product.
 

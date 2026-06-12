@@ -42,6 +42,19 @@ Current route IDs:
 - `ibiza_formentera`
 - `alcudia_ciutadella`
 
+Current place-weather IDs:
+
+- `ibiza`
+- `palma`
+- `formentera`
+- `menorca`
+- `cabrera`
+- `ciutadella`
+- `alcudia`
+- `soller`
+- `barcelona`
+- `valencia`
+
 Current map variables:
 
 - `wave_height`
@@ -201,7 +214,8 @@ curl "http://127.0.0.1:8000/places/ibiza/weather?date=2026-06-12&run=latest&lat=
 
 The place weather endpoint returns the weather-only layer for the selected
 place. It includes wave height and direction, swell components, wind, current
-when available, freshness metadata, and the nearest supported place when a
+when available, water temperature when available, air temperature when
+available, freshness metadata, and the nearest supported place when a
 coordinate override is provided.
 
 Current public media artifacts are:

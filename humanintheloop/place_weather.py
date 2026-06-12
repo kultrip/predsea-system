@@ -18,50 +18,71 @@ LOCAL_TIMEZONE = "Europe/Madrid"
 PLACE_CATALOG = {
     "ibiza": {
         "name": "Ibiza",
-        "latitude": 38.98,
-        "longitude": 1.43,
+        "latitude": 38.92,
+        "longitude": 1.49,
         "observation_keys": ("canal_de_ibiza", "ibiza"),
         "aliases": ("ibiza", "ibiza island"),
     },
     "palma": {
         "name": "Palma",
-        "latitude": 39.57,
-        "longitude": 2.65,
+        "latitude": 39.52,
+        "longitude": 2.58,
         "observation_keys": ("bahia_de_palma", "palma"),
         "aliases": ("palma", "palma de mallorca"),
     },
     "formentera": {
         "name": "Formentera",
-        "latitude": 38.70,
-        "longitude": 1.45,
+        "latitude": 38.68,
+        "longitude": 1.49,
         "observation_keys": ("formentera", "canal_de_ibiza"),
         "aliases": ("formentera",),
     },
     "menorca": {
         "name": "Menorca",
-        "latitude": 39.95,
-        "longitude": 4.07,
+        "latitude": 40.02,
+        "longitude": 4.12,
         "observation_keys": ("menorca", "pollensa"),
         "aliases": ("menorca",),
     },
     "cabrera": {
         "name": "Cabrera",
-        "latitude": 39.17,
-        "longitude": 2.95,
+        "latitude": 39.14,
+        "longitude": 2.92,
         "observation_keys": ("cabrera", "canal_de_ibiza"),
         "aliases": ("cabrera",),
     },
+    "ciutadella": {
+        "name": "Ciutadella",
+        "latitude": 40.02,
+        "longitude": 3.82,
+        "observation_keys": ("menorca", "pollensa"),
+        "aliases": ("ciutadella", "ciutadella de menorca"),
+    },
+    "alcudia": {
+        "name": "Alcudia",
+        "latitude": 39.84,
+        "longitude": 3.14,
+        "observation_keys": ("pollensa", "menorca"),
+        "aliases": ("alcudia", "alcudia de mallorca"),
+    },
+    "soller": {
+        "name": "Soller",
+        "latitude": 39.81,
+        "longitude": 2.74,
+        "observation_keys": ("bahia_de_palma", "pollensa"),
+        "aliases": ("soller", "port de soller"),
+    },
     "barcelona": {
         "name": "Barcelona",
-        "latitude": 41.39,
-        "longitude": 2.17,
+        "latitude": 41.32,
+        "longitude": 2.22,
         "observation_keys": ("barcelona", "pollensa"),
         "aliases": ("barcelona",),
     },
     "valencia": {
         "name": "Valencia",
-        "latitude": 39.47,
-        "longitude": -0.38,
+        "latitude": 39.38,
+        "longitude": -0.28,
         "observation_keys": ("valencia", "pollensa"),
         "aliases": ("valencia",),
     },
@@ -92,8 +113,28 @@ def place_route(place_id):
         "name": place["name"],
         "origin": point,
         "destination": point,
-        "sample_points": [point],
+        "sample_points": place_sample_points(place),
     }
+
+
+def place_sample_points(place):
+    latitude = float(place["latitude"])
+    longitude = float(place["longitude"])
+    offsets = [
+        (0.0, 0.0),
+        (0.02, 0.0),
+        (-0.02, 0.0),
+        (0.0, 0.02),
+        (0.0, -0.02),
+    ]
+    return [
+        {
+            "name": place["name"],
+            "latitude": round(latitude + lat_offset, 5),
+            "longitude": round(longitude + lon_offset, 5),
+        }
+        for lat_offset, lon_offset in offsets
+    ]
 
 
 def resolve_place(place_id, latitude=None, longitude=None):
@@ -191,6 +232,8 @@ def build_place_weather_record(
         "current_direction_deg": sample.get("current_direction_deg"),
         "wind_kn": observation.get("wind_kn"),
         "wind_direction_deg": observation.get("wind_direction_deg"),
+        "water_temperature_c": observation.get("water_temperature_c") or observation.get("water_temp_c"),
+        "air_temperature_c": observation.get("air_temperature_c") or observation.get("temperature_c"),
         "source": "copernicus_med",
         "source_system": "place_weather",
         "freshness_status": freshness_status,

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from place_weather import build_place_weather_record
+from place_weather import available_place_ids, build_place_weather_record
 
 
 def test_build_place_weather_record_uses_place_weather_fields():
@@ -22,6 +22,8 @@ def test_build_place_weather_record_uses_place_weather_fields():
                 "current_kn": 0.4,
                 "swell_1_height_m": 0.5,
                 "swell_1_direction_deg": 68.0,
+                "swell_2_height_m": 0.2,
+                "swell_2_direction_deg": 84.0,
                 "wind_wave_height_m": 0.3,
                 "wind_wave_direction_deg": 80.0,
             },
@@ -42,6 +44,8 @@ def test_build_place_weather_record_uses_place_weather_fields():
         "wave_from_direction_deg": 82.0,
         "wind_kn": 12.0,
         "wind_direction_deg": 70.0,
+        "water_temperature_c": 22.4,
+        "temperature_c": 23.1,
     }
 
     record = build_place_weather_record(
@@ -60,8 +64,17 @@ def test_build_place_weather_record_uses_place_weather_fields():
     assert record["wave_height_m"] == 0.8
     assert record["wave_direction_deg"] == 72.0
     assert record["swell_1_height_m"] == 0.5
+    assert record["swell_2_height_m"] == 0.2
     assert record["wind_kn"] == 12.0
+    assert record["water_temperature_c"] == 22.4
+    assert record["air_temperature_c"] == 23.1
     assert record["freshness_status"] == "fresh"
     assert record["observation"]["station_name"] == "Buoy Canal de Ibiza"
     assert record["hourly"][0]["time"] == "08:00"
 
+
+def test_available_place_ids_include_new_locations():
+    place_ids = available_place_ids()
+    assert "ciutadella" in place_ids
+    assert "alcudia" in place_ids
+    assert "soller" in place_ids
