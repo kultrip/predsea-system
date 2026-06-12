@@ -272,9 +272,43 @@ def build_place_weather_outputs(
     time_text=None,
     timezone_name=LOCAL_TIMEZONE,
 ):
+    """Build and write place weather outputs for all configured places.
+    
+    Parameters
+    ----------
+    run_dir : Path or str
+        Root output directory for this run
+    run_date : str
+        Date string (YYYY-MM-DD)
+    run_id : str
+        Run ID string
+    waves_path : str
+        Path to waves NetCDF file
+    currents_path : str
+        Path to currents NetCDF file
+    observations : dict, optional
+        Observations dict from ingest_observations.fetch_all_observations()
+        Should have structure: {station_id: {name, wave_height_m, last_sample_utc, ...}}
+    place_ids : list, optional
+        List of place IDs to generate. Defaults to all available places.
+    time_text : str, optional
+        Time string for hourly sample selection
+    timezone_name : str
+        Timezone name for local time conversion
+    
+    Returns
+    -------
+    dict
+        Mapping of place_id -> Path to generated weather.json file
+    """
     run_dir = Path(run_dir)
     place_ids = list(place_ids or available_place_ids())
     results = {}
+    
+    # Ensure observations is a dict
+    if observations is None:
+        observations = {}
+    
     for place_id in place_ids:
         record = build_place_weather_bundle_from_files(
             place_id,
@@ -318,6 +352,7 @@ def write_place_weather_outputs(
     time_text=None,
     timezone_name=LOCAL_TIMEZONE,
 ):
+    """Wrapper for build_place_weather_outputs with proper observation handling."""
     return build_place_weather_outputs(
         run_dir,
         run_date,
@@ -341,6 +376,33 @@ def build_place_weather_bundle_from_files(
     time_text=None,
     timezone_name=LOCAL_TIMEZONE,
 ):
+    """Build a complete place weather record from data files.
+    
+    Parameters
+    ----------
+    place_id : str
+        Place identifier
+    waves_path : str or Path
+        Path to waves NetCDF file
+    currents_path : str or Path
+        Path to currents NetCDF file
+    observations : dict, optional
+        Observations dict from ingest_observations.fetch_all_observations()
+        Structure: {station_id: {name, wave_height_m, last_sample_utc, ...}}
+    run_date : str, optional
+        Date string for metadata
+    run_id : str, optional
+        Run ID for metadata
+    time_text : str, optional
+        Time for hourly sample selection
+    timezone_name : str
+        Timezone for local time conversion
+    
+    Returns
+    -------
+    dict
+        Complete place weather payload with observations included
+    """
     route = place_route(place_id)
     forecast = route_analysis.forecast_summary_from_files(waves_path, currents_path, route=route)
     observation = select_observation_for_place(place_id, observations or {})
@@ -365,15 +427,36 @@ def select_hourly_sample(hourly, time_text=None):
 
 
 def select_observation_for_place(place_id, observations):
+    """Select the best observation for a given place.
+    
+    Tries to match observations by:
+    1. Pre-configured observation_keys for the place
+    2. Place ID as fallback key
+    3. Fuzzy matching on station name/aliases
+    
+    Parameters
+    ----------
+    place_id : str
+        Place identifier
+    observations : dict
+        Observations dict: {station_id: {name, wave_height_m, last_sample_utc, ...}}
+    
+    Returns
+    -------
+    dict
+        Normalized observation record, or empty dict if no match found
+    """
     place = place_definition(place_id)
     observation_keys = list(place.get("observation_keys") or []) + [place_id]
     lowered_aliases = [alias.lower() for alias in place.get("aliases") or ()]
 
+    # First: try exact key matches from observation_keys
     for key in observation_keys:
         record = observations.get(key)
         if isinstance(record, dict):
             return normalize_observation(record, station_id=key)
 
+    # Second: fuzzy match on station name/aliases
     for station_id, record in observations.items():
         if not isinstance(record, dict):
             continue
@@ -389,10 +472,25 @@ def select_observation_for_place(place_id, observations):
         if place_id.lower() in haystack or place["name"].lower() in haystack or any(alias in haystack for alias in lowered_aliases):
             return normalize_observation(record, station_id=station_id)
 
+    # No match found
     return {}
 
 
 def normalize_observation(record, station_id=None):
+    """Normalize observation record for consistent field names.
+    
+    Parameters
+    ----------
+    record : dict
+        Raw observation record
+    station_id : str, optional
+        Station/buoy identifier
+    
+    Returns
+    -------
+    dict
+        Normalized observation with consistent field names
+    """
     if not isinstance(record, dict):
         return {}
     normalized = dict(record)
@@ -404,6 +502,20 @@ def normalize_observation(record, station_id=None):
 
 
 def observation_age(observation, generated_at_utc):
+    """Calculate observation age in minutes.
+    
+    Parameters
+    ----------
+    observation : dict
+        Observation record with last_sample_utc or observed_at_utc
+    generated_at_utc : str
+        Timestamp when record was generated (ISO format)
+    
+    Returns
+    -------
+    int or None
+        Age in minutes, or None if timestamps unavailable
+    """
     observed_at = parse_utc_timestamp(observation.get("last_sample_utc") or observation.get("observed_at_utc"))
     generated_at = parse_utc_timestamp(generated_at_utc)
     if observed_at is None or generated_at is None:
@@ -413,6 +525,18 @@ def observation_age(observation, generated_at_utc):
 
 
 def freshness_from_age(age_minutes):
+    """Determine freshness status based on observation age.
+    
+    Parameters
+    ----------
+    age_minutes : int or None
+        Age of observation in minutes
+    
+    Returns
+    -------
+    tuple
+        (freshness_status, freshness_warning)
+    """
     if age_minutes is None:
         return "unknown", None
     if age_minutes < 90:
