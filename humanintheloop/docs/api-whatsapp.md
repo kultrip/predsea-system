@@ -8,6 +8,22 @@ PredSea is a local marine briefing assistant, not an autopilot or a replacement 
 
 The API now returns one canonical `operational_stance` per route/run/question context so the visible answer, briefing, and follow-up questions stay consistent.
 
+## Guaranteed minimum surface
+
+PredSea guarantees these core user-facing surfaces:
+
+- daily briefing
+- route questions
+- place weather for named locations and optional coordinates
+
+The contract for those surfaces is:
+
+- **daily briefing**: a stable morning summary that anchors the day
+- **route questions**: operational answers for passage planning and follow-ups
+- **place weather**: wave, swell, wind, current, and freshness for a place or coordinate
+
+Anything beyond that remains additive, not required for the minimum supported product.
+
 ## Response style
 
 Visible answers should:
@@ -58,12 +74,14 @@ The WhatsApp layer should use the same canonical stance as the API and should no
 
 ## Common question types
 
+- Daily briefing summary
 - Departure timing
 - Comfort / risk
 - Route conditions
 - What changed since the last check
 - Position-aware passage questions
 - Anchoring guidance from a GPS point
+- What is the swell / wave / weather in a named place now?
 
 ## Current source coverage
 

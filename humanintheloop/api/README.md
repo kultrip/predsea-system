@@ -3,6 +3,14 @@
 This API reads existing prediction artifacts and answers questions from stored
 route evidence. It does not fetch Copernicus or SOCIB forecast data per request.
 
+The guaranteed minimum surface is:
+
+- daily briefing
+- route questions
+- place weather for named places or coordinates
+
+Those surfaces are the stable contract for the API and WhatsApp layers.
+
 For the full API and WhatsApp integration guide, see:
 
 ```text
@@ -22,6 +30,7 @@ curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/routes
 curl "http://127.0.0.1:8000/routes/palma_ibiza/evidence?date=2026-05-31&run=latest"
 curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-31&run=latest&vessel_class=medium&format=whatsapp"
+curl "http://127.0.0.1:8000/places/ibiza/weather?date=2026-06-12&run=latest"
 ```
 
 Current route IDs:
