@@ -122,6 +122,7 @@ def fetch_portus_predictions(
     model_name=None,
     *,
     model_point_limit=None,
+    fetch_latest_positions=portus_config.DEFAULT_FETCH_LATEST_POSITIONS,
     timeout=portus_config.DEFAULT_TIMEOUT_SECONDS,
     max_retries=portus_config.DEFAULT_MAX_RETRIES,
     backoff_seconds=portus_config.DEFAULT_BACKOFF_SECONDS,
@@ -154,21 +155,25 @@ def fetch_portus_predictions(
 
     latest_positions = {}
     errors = {}
-    for record in selected:
-        model_point_id = record.get("model_point_id")
-        try:
-            latest_positions[str(model_point_id)] = fetch_latest_position(
-                model_point_id,
-                station_code_for_verification=record.get("station_code_for_verification"),
-                timeout=timeout,
-                max_retries=max_retries,
-                backoff_seconds=backoff_seconds,
-                cache_dir=cache_dir,
-                session=session,
-                dry_run=dry_run,
-            ).get("records", [])
-        except Exception as error:
-            errors[str(model_point_id)] = str(error)
+    if fetch_latest_positions:
+        for record in selected:
+            model_point_id = record.get("model_point_id")
+            try:
+                latest_result = fetch_latest_position(
+                    model_point_id,
+                    station_code_for_verification=record.get("station_code_for_verification"),
+                    timeout=timeout,
+                    max_retries=max_retries,
+                    backoff_seconds=backoff_seconds,
+                    cache_dir=cache_dir,
+                    session=session,
+                    dry_run=dry_run,
+                )
+                records_for_point = latest_result.get("records", [])
+                if records_for_point:
+                    latest_positions[str(model_point_id)] = records_for_point
+            except Exception as error:
+                errors[str(model_point_id)] = str(error)
 
     status = "matched_successfully" if records else "unavailable"
     return {
@@ -185,5 +190,6 @@ def fetch_portus_predictions(
             "model_name": discovery["model_name"],
             "model_point_count": len(records),
             "latest_position_count": len(latest_positions),
+            "latest_positions_enabled": bool(fetch_latest_positions),
         },
     }

@@ -104,3 +104,42 @@ def test_fetch_portus_predictions_dry_run():
 
     assert result["source"] == "puertos_portus"
     assert result["dry_run"] is True
+
+
+def test_fetch_portus_predictions_skips_empty_latest_positions(monkeypatch):
+    def fake_discover_model_points(**kwargs):
+        return {
+            "available": True,
+            "source": "puertos_portus",
+            "model_name": "Cirana",
+            "row_count": 1,
+            "dataframe": pd.DataFrame(
+                [
+                    {
+                        "model_point_id": 9000002,
+                        "station_code_for_verification": 1504,
+                    }
+                ]
+            ),
+            "records": [
+                {
+                    "model_point_id": 9000002,
+                    "station_code_for_verification": 1504,
+                }
+            ],
+        }
+
+    called = {"latest": 0}
+
+    def fake_fetch_latest_position(*args, **kwargs):
+        called["latest"] += 1
+        return {"available": True, "records": []}
+
+    monkeypatch.setattr(portus_predictions, "discover_model_points", fake_discover_model_points)
+    monkeypatch.setattr(portus_predictions, "fetch_latest_position", fake_fetch_latest_position)
+
+    result = portus_predictions.fetch_portus_predictions()
+
+    assert result["available"] is True
+    assert called["latest"] == 0
+    assert result["lineage"]["latest_positions_enabled"] is False
