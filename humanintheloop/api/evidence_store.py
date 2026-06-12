@@ -129,6 +129,13 @@ class EvidenceStore:
             raise EvidenceNotFoundError(f"No regional evidence package on {date_text}")
         return json.loads(regional_path.read_text(encoding="utf-8"))
 
+    def load_place_weather(self, place_id, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        weather_path = self._base_dir(date_text, run_id) / "places" / place_id / "weather.json"
+        if not weather_path.exists():
+            raise EvidenceNotFoundError(f"No place weather package for '{place_id}' on {date_text}")
+        return json.loads(weather_path.read_text(encoding="utf-8"))
+
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
         return None
 
@@ -334,6 +341,16 @@ class GcsEvidenceStore:
         except EvidenceNotFoundError:
             if self.fallback_store is not None:
                 return self.fallback_store.load_regional_evidence(date_text, run_id)
+            raise
+
+    def load_place_weather(self, place_id, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        object_name = f"{self._base_prefix(date_text, run_id)}/places/{place_id}/weather.json"
+        try:
+            return json.loads(self._download_text(object_name))
+        except EvidenceNotFoundError:
+            if self.fallback_store is not None:
+                return self.fallback_store.load_place_weather(place_id, date_text, run_id)
             raise
 
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):

@@ -2,8 +2,16 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.evidence_store import EvidenceNotFoundError, create_evidence_store_from_env
-from api.schemas import BriefingResponse, HealthResponse, LocationQuestionRequest, QuestionRequest, QuestionResponse
+from api.schemas import (
+    BriefingResponse,
+    HealthResponse,
+    LocationQuestionRequest,
+    PlaceWeatherResponse,
+    QuestionRequest,
+    QuestionResponse,
+)
 from api.services import answer_question, evidence_used, render_briefing
+import place_weather
 
 
 MEDIA_TYPES = {
@@ -341,6 +349,40 @@ def create_app(evidence_store=None):
                 "briefing": briefing,
             }
         except EvidenceNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/places/{place_id}/weather", response_model=PlaceWeatherResponse)
+    def place_weather_endpoint(
+        place_id: str,
+        date: str | None = None,
+        run: str | None = None,
+        time: str | None = None,
+        lat: float | None = Query(default=None, ge=-90, le=90),
+        lon: float | None = Query(default=None, ge=-180, le=180),
+    ):
+        try:
+            run_date = store.resolve_date(date)
+            run_id = store.resolve_run(run_date, run)
+            resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
+            payload = store.load_place_weather(resolved["place_id"], run_date, run_id)
+            response = dict(payload)
+            response["requested_place_id"] = resolved["requested_place_id"]
+            response["place_id"] = resolved["place_id"]
+            response["place_name"] = resolved["place_name"]
+            response["resolved_latitude"] = resolved["latitude"]
+            response["resolved_longitude"] = resolved["longitude"]
+            response["distance_to_place_nm"] = resolved.get("distance_to_place_nm")
+            response["requested_latitude"] = resolved.get("requested_latitude")
+            response["requested_longitude"] = resolved.get("requested_longitude")
+            if lat is not None and lon is not None:
+                response["inside_domain"] = resolved.get("distance_to_place_nm", 0) <= 0.1
+                response["domain_warning"] = (
+                    None
+                    if response["inside_domain"]
+                    else "Requested coordinates were mapped to the nearest supported place."
+                )
+            return response
+        except (EvidenceNotFoundError, ValueError) as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
     @app.get("/routes/{route_id}/artifacts/{artifact_name}")

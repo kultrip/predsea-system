@@ -81,6 +81,45 @@ class BriefingResponse(BaseModel):
     briefing: str
 
 
+class PlaceWeatherResponse(BaseModel):
+    place_id: str
+    requested_place_id: Optional[str] = None
+    place_name: str
+    requested_latitude: Optional[float] = None
+    requested_longitude: Optional[float] = None
+    resolved_latitude: Optional[float] = None
+    resolved_longitude: Optional[float] = None
+    distance_to_place_nm: Optional[float] = None
+    inside_domain: bool = True
+    domain_warning: Optional[str] = None
+    date: Optional[str] = None
+    run: Optional[str] = None
+    generated_at_utc: Optional[str] = None
+    timezone: Optional[str] = None
+    time_utc: Optional[str] = None
+    time_local: Optional[str] = None
+    wave_height_m: Optional[float] = None
+    wave_direction_deg: Optional[float] = None
+    wave_sea_state: Optional[str] = None
+    swell_1_height_m: Optional[float] = None
+    swell_1_direction_deg: Optional[float] = None
+    swell_2_height_m: Optional[float] = None
+    swell_2_direction_deg: Optional[float] = None
+    wind_wave_height_m: Optional[float] = None
+    wind_wave_direction_deg: Optional[float] = None
+    wind_kn: Optional[float] = None
+    wind_direction_deg: Optional[float] = None
+    current_kn: Optional[float] = None
+    current_direction_deg: Optional[float] = None
+    source: Optional[str] = None
+    source_system: Optional[str] = None
+    freshness_status: str
+    freshness_warning: Optional[str] = None
+    observation: Dict[str, Any] = Field(default_factory=dict)
+    hourly: List[Dict[str, Any]] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
 class RouteSummary(BaseModel):
     route_id: str
     route: str

@@ -73,6 +73,7 @@ def load_mvp_modules():
     import forecast_sources
     import ingest_atmosphere
     import map_generator
+    import place_weather
     import route_analysis
     import validation_archive
 
@@ -84,6 +85,7 @@ def load_mvp_modules():
         forecast_sources=forecast_sources,
         ingest_atmosphere=ingest_atmosphere,
         map_generator=map_generator,
+        place_weather=place_weather,
         route_analysis=route_analysis,
         validation_archive=validation_archive,
     )
@@ -254,7 +256,7 @@ def write_regional_evidence(run_dir, run_date, run_id, routes, forecast_sources=
         "limitations": list(REGIONAL_LIMITATIONS),
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
-    (run_dir / "regional_evidence.json").write_text(json.dumps(regional_evidence, indent=2), encoding="utf-8")
+    (run_dir / "regional_evidence.json").write_text(json.dumps(regional_evidence, indent=2, default=str), encoding="utf-8")
     return regional_evidence
 
 
@@ -603,6 +605,17 @@ def generate_daily_briefings(
                 maybe_generate_leaflet_overlays(run_dir, Path(source["waves_path"]), Path(source["currents_path"]), skip_maps=skip_maps)
                 for route_id, source_route_dir in generated_routes.items():
                     copy_preferred_route_artifacts(source_route_dir, run_dir / route_id)
+
+        modules.place_weather.write_place_weather_outputs(
+            run_dir,
+            run_date,
+            run_id,
+            preferred_source["waves_path"],
+            preferred_source["currents_path"],
+            observations=observations,
+            place_ids=modules.place_weather.available_place_ids(),
+            time_text=current_time,
+        )
 
     forecast_source_entries = source_manifest_entries(modules, sources)
     if atmospheric_context.get("enabled") or atmospheric_context.get("wind_lineage", {}).get("status") != "not_configured":

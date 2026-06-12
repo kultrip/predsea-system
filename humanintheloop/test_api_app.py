@@ -154,6 +154,50 @@ def write_regional_evidence(root, date_text="2026-05-31", run_id="2026-05-31T123
     return regional
 
 
+def write_place_weather(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", place_id="ibiza"):
+    place_dir = Path(root) / date_text / "runs" / run_id / "places" / place_id
+    place_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "place_id": place_id,
+        "place_name": "Ibiza",
+        "date": date_text,
+        "run": run_id,
+        "timezone": "Europe/Madrid",
+        "time_utc": "2026-05-31 08:00 UTC",
+        "time_local": "2026-05-31 10:00 LT",
+        "wave_height_m": 0.8,
+        "wave_direction_deg": 72.0,
+        "swell_1_height_m": 0.5,
+        "swell_1_direction_deg": 68.0,
+        "wind_kn": 12.0,
+        "wind_direction_deg": 70.0,
+        "current_kn": 0.4,
+        "current_direction_deg": 90.0,
+        "source": "copernicus_med",
+        "source_system": "place_weather",
+        "freshness_status": "fresh",
+        "freshness_warning": None,
+        "hourly": [
+            {
+                "time": "10:00",
+                "time_utc": "2026-05-31 08:00 UTC",
+                "wave_m": 0.8,
+                "wave_direction_deg": 72.0,
+                "wave_sea_state": "beam sea",
+                "current_kn": 0.4,
+            }
+        ],
+        "observation": {
+            "station_id": "canal_de_ibiza",
+            "station_name": "Buoy Canal de Ibiza",
+            "observed_at_utc": "2026-05-31 07:30 UTC",
+            "wave_height_m": 0.4,
+        },
+    }
+    (place_dir / "weather.json").write_text(json.dumps(payload), encoding="utf-8")
+    return payload
+
+
 def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5, created_at_utc="2026-05-29 06:30 UTC"):
     return {
         "route": "Palma -> Ibiza",
@@ -876,6 +920,21 @@ def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):
     payload = response.json()
     assert payload["route"] == "Palma -> Ibiza"
     assert "PredSea Captain's Briefing" in payload["briefing"]
+
+
+def test_place_weather_endpoint_returns_saved_weather_payload(tmp_path):
+    write_place_weather(tmp_path)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/places/ibiza/weather?date=2026-05-31&run=latest")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["place_id"] == "ibiza"
+    assert payload["place_name"] == "Ibiza"
+    assert payload["wave_height_m"] == 0.8
+    assert payload["freshness_status"] == "fresh"
+    assert payload["observation"]["station_name"] == "Buoy Canal de Ibiza"
 
 
 def test_artifact_endpoint_serves_latest_route_map(tmp_path):

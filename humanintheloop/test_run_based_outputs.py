@@ -201,3 +201,103 @@ def test_daily_generator_fetches_atmospheric_context_when_enabled(monkeypatch, t
     assert context["enabled"] is True
     assert context["wind_result"]["source"] == "meteo_france_arome"
     assert context["wind_lineage"]["resolution_km"] == 1.3
+
+
+def test_daily_generator_writes_place_weather_outputs(tmp_path, monkeypatch):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    monkeypatch.setattr(generator, "safe_load_observations", lambda briefing: {})
+    monkeypatch.setattr(generator, "fetch_forecast_sources", lambda modules, run_dir: [
+        {
+            "id": "copernicus",
+            "label": "Copernicus Marine Mediterranean forecast",
+            "available": True,
+            "preferred": True,
+            "waves_path": str(tmp_path / "balearic_waves.nc"),
+            "currents_path": str(tmp_path / "balearic_currents.nc"),
+        }
+    ])
+    monkeypatch.setattr(generator, "preferred_forecast_source", lambda sources: sources[0])
+    monkeypatch.setattr(generator, "validate_route_artifacts", lambda *args, **kwargs: None)
+    monkeypatch.setattr(generator, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    monkeypatch.setattr(generator, "maybe_generate_chat_figure", lambda *args, **kwargs: None)
+    monkeypatch.setattr(generator, "maybe_generate_route_map", lambda *args, **kwargs: None)
+    def fake_copy_preferred_route_artifacts(source_route_dir, preferred_route_dir):
+        preferred_route_dir.mkdir(parents=True, exist_ok=True)
+        for name in ("daily_snapshot.json", "briefing_linkedin.txt", "briefing_whatsapp.txt", "briefing_whatsapp_screenshot_script.txt", "evidence.json"):
+            (preferred_route_dir / name).write_text((Path(source_route_dir) / name).read_text(encoding="utf-8"), encoding="utf-8")
+
+    monkeypatch.setattr(generator, "copy_preferred_route_artifacts", fake_copy_preferred_route_artifacts)
+
+    def fake_generate_route_artifacts_for_source(
+        modules,
+        source,
+        source_root_dir,
+        selected_route_ids,
+        routes,
+        observations,
+        vessel_class,
+        question,
+        location_label,
+        current_time,
+        logo_path,
+        skip_figures,
+        skip_maps,
+        atmospheric_context=None,
+    ):
+        generated = {}
+        for route_id in selected_route_ids:
+            route_dir = Path(source_root_dir) / route_id
+            route_dir.mkdir(parents=True, exist_ok=True)
+            (route_dir / "daily_snapshot.json").write_text(json.dumps({"route_id": route_id}), encoding="utf-8")
+            (route_dir / "briefing_linkedin.txt").write_text("linkedin", encoding="utf-8")
+            (route_dir / "briefing_whatsapp.txt").write_text("whatsapp", encoding="utf-8")
+            (route_dir / "briefing_whatsapp_screenshot_script.txt").write_text("screenshot", encoding="utf-8")
+            (route_dir / "evidence.json").write_text(json.dumps({"route_id": route_id}), encoding="utf-8")
+            generated[route_id] = route_dir
+        return generated
+
+    monkeypatch.setattr(generator, "generate_route_artifacts_for_source", fake_generate_route_artifacts_for_source)
+
+    def fake_write_place_weather_outputs(*args, **kwargs):
+        run_dir = Path(args[0])
+        place_dir = run_dir / "places" / "ibiza"
+        place_dir.mkdir(parents=True, exist_ok=True)
+        (place_dir / "weather.json").write_text(json.dumps({"place_id": "ibiza"}), encoding="utf-8")
+        return {"ibiza": place_dir / "weather.json"}
+
+    monkeypatch.setattr(generator, "load_mvp_modules", lambda: type("Modules", (), {
+        "briefing": type("Briefing", (), {"load_observations": staticmethod(lambda: {})}),
+        "chat_figure": object(),
+        "bigquery_export": type("BQ", (), {"export_validation_archive_to_bigquery": staticmethod(lambda run_dir, dry_run=False: {"status": "skipped", "exported_rows": 0})}),
+        "fetch_data": type("FetchData", (), {"OUTPUT_DIR": str(tmp_path), "get_balearic_forecast": staticmethod(lambda dry_run=False: None)}),
+        "forecast_sources": type("ForecastSources", (), {
+            "fetch_available_forecasts": staticmethod(lambda fetch_data, output_dir=None, dry_run=False: [{
+                "id": "copernicus",
+                "label": "Copernicus Marine Mediterranean forecast",
+                "available": True,
+                "preferred": True,
+                "waves_path": str(tmp_path / "balearic_waves.nc"),
+                "currents_path": str(tmp_path / "balearic_currents.nc"),
+            }]),
+            "source_manifest_entry": staticmethod(lambda source: source),
+        }),
+        "ingest_atmosphere": type("Atmosphere", (), {"run_atmospheric_ingestion": staticmethod(lambda output_dir=None, dry_run=False: {"wind_result": {"available": False}, "wind_lineage": {"status": "not_configured"}})}),
+        "map_generator": object(),
+        "route_analysis": __import__("route_analysis"),
+        "validation_archive": type("ValidationArchive", (), {"write_validation_archive": staticmethod(lambda *args, **kwargs: {"observation_rows": 0, "forecast_rows": 0, "matched_rows": 0, "matched_variables": {}})}),
+        "place_weather": type("PlaceWeather", (), {
+            "available_place_ids": staticmethod(lambda: ["ibiza"]),
+            "write_place_weather_outputs": staticmethod(fake_write_place_weather_outputs),
+        }),
+    }))
+
+    result = generator.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-06-12",
+        run_id="2026-06-12T0750Z",
+        route_ids=["palma_ibiza"],
+        skip_figures=True,
+        skip_maps=True,
+    )
+
+    assert (result.output_dir / "places" / "ibiza" / "weather.json").exists()
