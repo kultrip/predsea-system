@@ -253,6 +253,30 @@ def build_place_weather_outputs(
     return results
 
 
+def write_place_weather_outputs(
+    run_dir,
+    run_date,
+    run_id,
+    waves_path,
+    currents_path,
+    observations=None,
+    place_ids=None,
+    time_text=None,
+    timezone_name=LOCAL_TIMEZONE,
+):
+    return build_place_weather_outputs(
+        run_dir,
+        run_date,
+        run_id,
+        waves_path,
+        currents_path,
+        observations=observations,
+        place_ids=place_ids,
+        time_text=time_text,
+        timezone_name=timezone_name,
+    )
+
+
 def build_place_weather_bundle_from_files(
     place_id,
     waves_path,
