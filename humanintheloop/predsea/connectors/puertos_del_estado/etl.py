@@ -1,6 +1,22 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from . import catalog, client, normalizer, parser
+
+
+def _network_parser(network):
+    if network == "redmar":
+        from .redmar_parser import parse_station_dataset
+
+        return parse_station_dataset
+    if network == "redcos":
+        from .redcos_parser import parse_station_dataset
+
+        return parse_station_dataset
+    from .redext_parser import parse_station_dataset
+
+    return parse_station_dataset
 
 
 def fetch_puertos_observations(
@@ -21,6 +37,7 @@ def fetch_puertos_observations(
                 "status": "unavailable",
                 "stations_matched": 0,
                 "station_ids": [],
+                "source_labels": [],
             },
             "errors": {},
             "source": "puertos_del_estado",
@@ -28,6 +45,7 @@ def fetch_puertos_observations(
             "catalog_stations": [],
             "cache_paths": [],
         }
+
     discovered = catalog.discover_observation_stations(
         session=session,
         timeout=timeout,
@@ -39,20 +57,12 @@ def fetch_puertos_observations(
     station_measurements = {}
     errors = {}
     matched_station_ids = []
+    source_labels = set()
     cache_paths = []
 
     for station in discovered:
         station_key = station["station_key"]
-        if dry_run:
-            observations[station_key] = {
-                "source": "puertos_del_estado",
-                "provider": "puertos_del_estado",
-                "station_id": station["station_id"],
-                "station_name": station["station_name"],
-                "catalog_id": station["catalog_id"],
-                "dry_run": True,
-            }
-            continue
+        parser_fn = _network_parser(station["network"])
         try:
             dataset = client.open_dataset(
                 station["latest_dataset_url"],
@@ -61,7 +71,7 @@ def fetch_puertos_observations(
                 backoff_seconds=backoff_seconds,
             )
             try:
-                measurements = parser.parse_station_dataset(
+                measurements = parser_fn(
                     dataset,
                     station,
                     dataset_url=station["latest_dataset_url"],
@@ -77,6 +87,7 @@ def fetch_puertos_observations(
             observations[station_key] = record
             station_measurements[station_key] = measurements
             matched_station_ids.append(station["station_id"])
+            source_labels.add(station["source_label"])
         except Exception as error:  # pragma: no cover - network path
             errors[station_key] = str(error)
 
@@ -85,6 +96,7 @@ def fetch_puertos_observations(
         "status": "matched_successfully" if observations else "unavailable",
         "stations_matched": len(matched_station_ids),
         "station_ids": matched_station_ids,
+        "source_labels": sorted(source_labels),
     }
     return {
         "observations": observations,

@@ -35,6 +35,43 @@ def cache_json(cache_dir, cache_key, payload):
     return path
 
 
+def fetch_json(
+    url,
+    *,
+    timeout=60,
+    max_retries=3,
+    backoff_seconds=2,
+    session=None,
+    cache_dir=None,
+    cache_key=None,
+    method="get",
+    json_data=None,
+):
+    cache_path = _cache_path(cache_dir, cache_key, ".json")
+    if cache_path and cache_path.exists():
+        return {"json": json.loads(cache_path.read_text(encoding="utf-8")), "cache_path": cache_path, "from_cache": True}
+
+    session = session or requests.Session()
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            if method.lower() == "post":
+                response = session.post(url, json=json_data, timeout=timeout)
+            else:
+                response = session.get(url, timeout=timeout)
+            response.raise_for_status()
+            payload = response.json()
+            if cache_path is not None:
+                cache_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+            return {"json": payload, "cache_path": cache_path, "from_cache": False}
+        except Exception as error:  # pragma: no cover - network retry path
+            last_error = error
+            if attempt >= max_retries - 1:
+                raise
+            time.sleep(backoff_seconds * (2 ** attempt))
+    raise last_error  # pragma: no cover
+
+
 def fetch_text(
     url,
     *,
@@ -88,3 +125,26 @@ def open_dataset(
             time.sleep(backoff_seconds * (2 ** attempt))
     raise last_error  # pragma: no cover
 
+
+def post_json(
+    url,
+    payload,
+    *,
+    timeout=60,
+    max_retries=3,
+    backoff_seconds=2,
+    session=None,
+    cache_dir=None,
+    cache_key=None,
+):
+    return fetch_json(
+        url,
+        timeout=timeout,
+        max_retries=max_retries,
+        backoff_seconds=backoff_seconds,
+        session=session,
+        cache_dir=cache_dir,
+        cache_key=cache_key,
+        method="post",
+        json_data=payload,
+    )

@@ -68,6 +68,7 @@ def test_parse_station_dataset_uses_netcdf_time_coordinate():
         "station_name": "Alcudia",
         "catalog_id": "tidegauge_alcu",
         "catalog_url": "https://opendap.puertos.es/thredds/catalog/tidegauge_alcu/catalog.html",
+        "network": "redmar",
     }
 
     records = parse_station_dataset(ds, station, dataset_url="https://example.test/dataset.nc4")
@@ -77,6 +78,75 @@ def test_parse_station_dataset_uses_netcdf_time_coordinate():
     assert latest["sample_time_utc"] == "2026-06-13T02:00:00Z"
     assert latest["observed_at_utc"] == "2026-06-13T02:00:00Z"
     assert latest["source_field"] == "SLEV"
+    assert latest["source_label"] == "REDMAR"
+
+
+def test_redext_parser_uses_station_coordinates_for_grid_sampling():
+    import pandas as pd
+    import xarray as xr
+
+    from predsea.connectors.puertos_del_estado.redext_parser import parse_station_dataset
+
+    ds = xr.Dataset(
+        {
+            "VHM0": (("time", "y", "x"), [[[0.2, 0.3], [0.4, 0.5]], [[0.6, 0.7], [0.8, 0.9]]]),
+        },
+        coords={
+            "time": pd.to_datetime(["2026-06-13T00:00:00Z", "2026-06-13T01:00:00Z"], utc=True),
+            "latitude": (("y", "x"), [[38.9, 38.9], [39.1, 39.1]]),
+            "longitude": (("y", "x"), [[1.4, 1.6], [1.4, 1.6]]),
+        },
+    )
+    station = {
+        "station_id": "puertos_ibiza",
+        "station_name": "Ibiza",
+        "catalog_id": "wave_local_a12a",
+        "catalog_url": "https://opendap.puertos.es/thredds/catalog/wave_local_a12a/catalog.xml",
+        "latitude": 38.9,
+        "longitude": 1.4,
+        "network": "redext",
+    }
+
+    records = parse_station_dataset(ds, station, dataset_url="https://example.test/dataset.nc4")
+    assert len(records) == 1
+    record = records[0]
+    assert record["raw_key"] == "wave_height_m"
+    assert record["value"] == 0.6
+    assert record["sample_time_utc"] == "2026-06-13T01:00:00Z"
+    assert record["observed_at_utc"] == "2026-06-13T01:00:00Z"
+    assert record["source_label"] == "REDEXT"
+
+
+def test_redcos_parser_marks_coastal_network():
+    import pandas as pd
+    import xarray as xr
+
+    from predsea.connectors.puertos_del_estado.redcos_parser import parse_station_dataset
+
+    ds = xr.Dataset(
+        {
+            "VHM0": (("time", "y", "x"), [[[1.0, 1.1], [1.2, 1.3]]]),
+            "VTPK": (("time", "y", "x"), [[[8.0, 8.1], [8.2, 8.3]]]),
+        },
+        coords={
+            "time": pd.to_datetime(["2026-06-13T04:00:00Z"], utc=True),
+            "latitude": (("y", "x"), [[39.3, 39.3], [39.4, 39.4]]),
+            "longitude": (("y", "x"), [[2.6, 2.7], [2.6, 2.7]]),
+        },
+    )
+    station = {
+        "station_id": "puertos_palma",
+        "station_name": "Palma",
+        "catalog_id": "wave_coast_s11",
+        "catalog_url": "https://opendap.puertos.es/thredds/catalog/wave_coast_s11/catalog.xml",
+        "latitude": 39.3,
+        "longitude": 2.6,
+        "network": "redcos",
+    }
+
+    records = parse_station_dataset(ds, station, dataset_url="https://example.test/dataset.nc4")
+    assert {record["raw_key"] for record in records} == {"wave_height_m", "wave_period_peak_s"}
+    assert all(record["source_label"] == "REDCOS" for record in records)
 
 
 def test_discover_latest_wave_forecast_real():
