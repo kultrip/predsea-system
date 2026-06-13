@@ -21,6 +21,8 @@ The contract for those surfaces is:
 - **daily briefing**: a stable morning summary that anchors the day
 - **route questions**: operational answers for passage planning and follow-ups
 - **place weather**: wave, swell, wind, current, and freshness for a place or coordinate
+- **place hierarchy**: `palma` is the default Palma place, while `port_de_palma`, `port_adriano`, and `can_pastilla` are separate places
+- **static place metrics**: distance and typical travel time are precomputed for place pairs and can be queried from the API
   - when available, water temperature and air temperature are included too
 
 Anything beyond that remains additive, not required for the minimum supported product.

@@ -85,6 +85,9 @@ class PlaceWeatherResponse(BaseModel):
     place_id: str
     requested_place_id: Optional[str] = None
     place_name: str
+    place_kind: Optional[str] = None
+    parent_place_id: Optional[str] = None
+    place_children: List[str] = Field(default_factory=list)
     requested_latitude: Optional[float] = None
     requested_longitude: Optional[float] = None
     resolved_latitude: Optional[float] = None
@@ -120,6 +123,18 @@ class PlaceWeatherResponse(BaseModel):
     observation: Dict[str, Any] = Field(default_factory=dict)
     hourly: List[Dict[str, Any]] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PlaceConnectionMetricsResponse(BaseModel):
+    origin_place_id: str
+    origin_place_name: str
+    destination_place_id: str
+    destination_place_name: str
+    distance_nm: float
+    typical_speed_kn: float
+    typical_travel_time_minutes: int
+    computed_at_utc: str
+    source_tag: str
 
 
 class RouteSummary(BaseModel):

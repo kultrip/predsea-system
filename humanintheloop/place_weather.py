@@ -6,6 +6,15 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import route_analysis
+from place_registry import (
+    PLACE_CATALOG,
+    available_place_ids,
+    default_place_id_for_query,
+    place_definition,
+    place_family,
+    place_pair_metrics,
+    station_candidates_for_place,
+)
 
 try:
     import ingest_atmosphere
@@ -15,94 +24,15 @@ except Exception:  # pragma: no cover - import-time fallback
 
 LOCAL_TIMEZONE = "Europe/Madrid"
 
-PLACE_CATALOG = {
-    "ibiza": {
-        "name": "Ibiza",
-        "latitude": 38.92,
-        "longitude": 1.49,
-        "observation_keys": ("canal_de_ibiza", "ibiza"),
-        "aliases": ("ibiza", "ibiza island"),
-    },
-    "palma": {
-        "name": "Palma",
-        "latitude": 39.52,
-        "longitude": 2.58,
-        "observation_keys": ("bahia_de_palma", "palma"),
-        "aliases": ("palma", "palma de mallorca"),
-    },
-    "formentera": {
-        "name": "Formentera",
-        "latitude": 38.68,
-        "longitude": 1.49,
-        "observation_keys": ("formentera", "canal_de_ibiza"),
-        "aliases": ("formentera",),
-    },
-    "menorca": {
-        "name": "Menorca",
-        "latitude": 40.02,
-        "longitude": 4.12,
-        "observation_keys": ("menorca", "mahon"),
-        "aliases": ("menorca",),
-    },
-    "cabrera": {
-        "name": "Cabrera",
-        "latitude": 39.14,
-        "longitude": 2.92,
-        "observation_keys": ("cabrera", "canal_de_ibiza"),
-        "aliases": ("cabrera",),
-    },
-    "ciutadella": {
-        "name": "Ciutadella",
-        "latitude": 40.02,
-        "longitude": 3.82,
-        "observation_keys": ("ciutadella", "menorca"),
-        "aliases": ("ciutadella", "ciutadella de menorca"),
-    },
-    "alcudia": {
-        "name": "Alcudia",
-        "latitude": 39.84,
-        "longitude": 3.14,
-        "observation_keys": ("alcudia", "mallorca"),
-        "aliases": ("alcudia", "alcudia de mallorca"),
-    },
-    "soller": {
-        "name": "Soller",
-        "latitude": 39.81,
-        "longitude": 2.74,
-        "observation_keys": ("soller", "bahia_de_palma"),
-        "aliases": ("soller", "port de soller"),
-    },
-    "barcelona": {
-        "name": "Barcelona",
-        "latitude": 41.32,
-        "longitude": 2.22,
-        "observation_keys": ("barcelona",),
-        "aliases": ("barcelona",),
-    },
-    "valencia": {
-        "name": "Valencia",
-        "latitude": 39.38,
-        "longitude": -0.28,
-        "observation_keys": ("valencia",),
-        "aliases": ("valencia",),
-    },
-    "portocolom": {
-        "name": "Portocolom",
-        "latitude": 39.41,
-        "longitude": 3.27,
-        "observation_keys": ("porto_colom", "portocolom", "alcudia", "mallorca"),
-        "aliases": ("portocolom", "porto colom", "port de portocolom"),
-    },
-}
-
 
 def available_place_ids():
     return sorted(PLACE_CATALOG)
 
 
 def place_definition(place_id):
+    canonical_place_id = default_place_id_for_query(place_id) or place_id
     try:
-        return PLACE_CATALOG[place_id]
+        return PLACE_CATALOG[canonical_place_id]
     except KeyError as error:
         available = ", ".join(available_place_ids())
         raise ValueError(f"Unknown place '{place_id}'. Available places: {available}") from error
@@ -122,6 +52,10 @@ def place_route(place_id):
         "destination": point,
         "sample_points": place_sample_points(place),
     }
+
+
+def place_connection_metrics(origin_place_id, destination_place_id):
+    return place_pair_metrics(origin_place_id, destination_place_id)
 
 
 def place_sample_points(place):
@@ -149,11 +83,12 @@ def place_sample_points(place):
 
 
 def resolve_place(place_id, latitude=None, longitude=None):
+    canonical_place_id = default_place_id_for_query(place_id) or place_id
     if latitude is None or longitude is None:
-        place = place_definition(place_id)
+        place = place_definition(canonical_place_id)
         return {
             "requested_place_id": place_id,
-            "place_id": place_id,
+            "place_id": canonical_place_id,
             "place_name": place["name"],
             "latitude": place["latitude"],
             "longitude": place["longitude"],
@@ -217,6 +152,9 @@ def build_place_weather_record(
         "place_id": resolved["place_id"],
         "requested_place_id": resolved["requested_place_id"],
         "place_name": resolved["place_name"],
+        "place_kind": place.get("kind"),
+        "parent_place_id": place.get("parent_place_id"),
+        "place_children": list(place.get("children") or ()),
         "requested_latitude": resolved.get("requested_latitude"),
         "requested_longitude": resolved.get("requested_longitude"),
         "resolved_latitude": resolved["latitude"],
@@ -254,6 +192,10 @@ def build_place_weather_record(
         "metadata": {
             "observation_age_minutes": observation_age_minutes,
             "catalog_place_name": place["name"],
+            "place_kind": place.get("kind"),
+            "parent_place_id": place.get("parent_place_id"),
+            "place_children": list(place.get("children") or ()),
+            "place_family": place_family(place_id),
         },
     }
     if observation.get("last_sample_utc"):
@@ -447,7 +389,7 @@ def select_observation_for_place(place_id, observations):
         Normalized observation record, or empty dict if no match found
     """
     place = place_definition(place_id)
-    observation_keys = list(place.get("observation_keys") or []) + [place_id]
+    observation_keys = list(station_candidates_for_place(place_id)) + [place_id]
     lowered_aliases = [alias.lower() for alias in place.get("aliases") or ()]
 
     # First: try exact key matches from observation_keys

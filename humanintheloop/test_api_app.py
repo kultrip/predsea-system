@@ -938,6 +938,20 @@ def test_place_weather_endpoint_returns_saved_weather_payload(tmp_path):
     assert payload["observation"]["station_name"] == "Buoy Canal de Ibiza"
 
 
+def test_place_connection_metrics_endpoint_returns_static_pair_metrics(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/places/palma/connection/portocolom")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_place_id"] == "palma"
+    assert payload["destination_place_id"] == "portocolom"
+    assert payload["distance_nm"] > 0
+    assert payload["typical_travel_time_minutes"] > 0
+    assert payload["source_tag"] == "place_registry_v1"
+
+
 def test_artifact_endpoint_serves_latest_route_map(tmp_path):
     write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
     client = TestClient(create_app(EvidenceStore(tmp_path)))

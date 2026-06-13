@@ -218,6 +218,23 @@ when available, water temperature when available, air temperature when
 available, freshness metadata, and the nearest supported place when a
 coordinate override is provided.
 
+Palma is also exposed as a small place family. The default place remains
+`palma`, and specific ports are available as separate places:
+
+- `port_de_palma`
+- `port_adriano`
+- `can_pastilla`
+
+You can inspect the precomputed distance and typical travel time between two
+places with the connection endpoint:
+
+```bash
+curl "http://127.0.0.1:8000/places/palma/connection/portocolom"
+```
+
+This returns the pair distance in nautical miles plus a typical travel time
+based on the registry’s default passage speed.
+
 Current public media artifacts are:
 
 - `route_decision_map.png`

@@ -6,6 +6,7 @@ from api.schemas import (
     BriefingResponse,
     HealthResponse,
     LocationQuestionRequest,
+    PlaceConnectionMetricsResponse,
     PlaceWeatherResponse,
     QuestionRequest,
     QuestionResponse,
@@ -383,6 +384,26 @@ def create_app(evidence_store=None):
                 )
             return response
         except (EvidenceNotFoundError, ValueError) as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/places/{origin_place_id}/connection/{destination_place_id}", response_model=PlaceConnectionMetricsResponse)
+    def place_connection_metrics(origin_place_id: str, destination_place_id: str):
+        try:
+            origin = place_weather.place_definition(origin_place_id)
+            destination = place_weather.place_definition(destination_place_id)
+            metrics = place_weather.place_connection_metrics(origin_place_id, destination_place_id)
+            return {
+                "origin_place_id": metrics["origin_place_id"],
+                "origin_place_name": origin["name"],
+                "destination_place_id": metrics["destination_place_id"],
+                "destination_place_name": destination["name"],
+                "distance_nm": metrics["distance_nm"],
+                "typical_speed_kn": metrics["typical_speed_kn"],
+                "typical_travel_time_minutes": metrics["typical_travel_time_minutes"],
+                "computed_at_utc": metrics["computed_at_utc"],
+                "source_tag": metrics["source_tag"],
+            }
+        except ValueError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
     @app.get("/routes/{route_id}/artifacts/{artifact_name}")

@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
 
+from place_registry import default_place_id_for_query, place_pair_metrics, station_candidates_for_place
 from place_weather import (
     available_place_ids,
     build_place_weather_record,
     place_definition,
+    place_connection_metrics,
     select_observation_for_place,
 )
 
@@ -84,13 +86,47 @@ def test_available_place_ids_include_new_locations():
     assert "alcudia" in place_ids
     assert "soller" in place_ids
     assert "portocolom" in place_ids
+    assert "port_de_palma" in place_ids
+    assert "port_adriano" in place_ids
+    assert "can_pastilla" in place_ids
+
+
+def test_palma_defaults_to_main_place_and_has_children():
+    assert default_place_id_for_query("Palma") == "palma"
+    assert default_place_id_for_query("Port de Palma") == "port_de_palma"
+
+    palma = place_definition("palma")
+    child_ids = list(palma["children"])
+    assert palma["parent_place_id"] is None
+    assert palma["kind"] == "main_port"
+    assert "port_de_palma" in child_ids
+    assert "port_adriano" in child_ids
+    assert "can_pastilla" in child_ids
+
+
+def test_place_pair_metrics_are_precomputed_and_accessible_from_place_weather():
+    metrics = place_pair_metrics("palma", "portocolom")
+    connection = place_connection_metrics("palma", "portocolom")
+
+    assert metrics["origin_place_id"] == "palma"
+    assert metrics["destination_place_id"] == "portocolom"
+    assert metrics["distance_nm"] > 0
+    assert metrics["typical_travel_time_minutes"] > 0
+    assert connection["distance_nm"] == metrics["distance_nm"]
+    assert connection["typical_travel_time_minutes"] == metrics["typical_travel_time_minutes"]
+
+
+def test_station_candidates_are_explicit_and_ordered_for_portocolom():
+    candidates = station_candidates_for_place("portocolom")
+    assert candidates[:2] == ["porto_colom", "puertos_mallorca"]
 
 
 def test_portocolom_is_supported_and_prefers_its_observation_key():
     place = place_definition("portocolom")
     assert place["name"] == "Portocolom"
-    assert place["observation_keys"][0] == "porto_colom"
-    assert "alcudia" in place["observation_keys"]
+    assert place["parent_place_id"] == "palma"
+    assert place["observation_candidates"][0] == "porto_colom"
+    assert "puertos_mallorca" in place["observation_candidates"]
 
     observation = {
         "station_id": "porto_colom",
