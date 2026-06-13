@@ -235,6 +235,10 @@ curl "http://127.0.0.1:8000/places/palma/connection/portocolom"
 This returns the pair distance in nautical miles plus a typical travel time
 based on the registry’s default passage speed.
 
+Route questions also carry passage distance/time in the response JSON, so a
+question like "Is it good to go from Palma to Ibiza today?" can include the
+route’s static distance and typical duration alongside the weather answer.
+
 Current public media artifacts are:
 
 - `route_decision_map.png`

@@ -149,6 +149,7 @@ def answer_question(question, snapshot, location_label="shared location", curren
             observation_alignment=alignment,
             forecast_sanity=sanity,
             observations=snapshot.get("observations"),
+            route_connection=snapshot.get("route_connection"),
         )
 
     operational_stance = recommendation_state.get_or_build_stance(
@@ -186,6 +187,7 @@ def build_operational_stance(
     observation_alignment=None,
     forecast_sanity=None,
     observations=None,
+    route_connection=None,
 ):
     forecast = forecast or {}
     freshness = freshness or {}
@@ -217,6 +219,9 @@ def build_operational_stance(
         why_parts.append(captain_rule_reason.rstrip("."))
     if forecast_sanity and forecast_sanity.get("summary"):
         why_parts.append(forecast_sanity["summary"])
+    route_connection_detail = render_route_connection(route_connection)
+    if route_connection_detail:
+        why_parts.append(route_connection_detail.rstrip("."))
     lineage_guidance = render_lineage_guidance(data_lineage)
     if lineage_guidance:
         why_parts.append(lineage_guidance.rstrip("."))
@@ -271,6 +276,8 @@ def build_operational_stance(
         "freshness_warning": freshness_warning,
         "observation_alignment": observation_alignment or {},
         "forecast_sanity": forecast_sanity or {},
+        "route_connection": route_connection or {},
+        "route_connection_detail": route_connection_detail,
     }
 
 
@@ -284,12 +291,33 @@ def render_captain_answer(operational_stance):
         f"TREND: {operational_stance.get('trend_detail', 'Trend is broadly steady.')}",
         f"WINDOWS: {operational_stance['best_window_text']}",
         f"COMFORT: {comfort}",
+        f"PASSAGE: {operational_stance['route_connection_detail']}" if operational_stance.get("route_connection_detail") else None,
         f"WATCH OUT: {operational_stance['what_could_change']}",
         f"Confidence: {operational_stance['confidence_detail']}" if operational_stance.get("confidence_detail") else None,
         f"What could change: {operational_stance['what_could_change']}",
     ]
     lines = [line for line in lines if line]
     return "\n\n".join(lines)
+
+
+def render_route_connection(route_connection):
+    if not route_connection:
+        return None
+    distance_nm = route_connection.get("distance_nm")
+    travel_minutes = route_connection.get("typical_travel_time_minutes")
+    if distance_nm is None or travel_minutes is None:
+        return None
+    origin = route_connection.get("origin_place_name") or route_connection.get("origin_place_id") or "Origin"
+    destination = route_connection.get("destination_place_name") or route_connection.get("destination_place_id") or "Destination"
+    hours, minutes = divmod(int(travel_minutes), 60)
+    if hours and minutes:
+        travel_text = f"{hours}h {minutes}m"
+    elif hours:
+        travel_text = f"{hours}h"
+    else:
+        travel_text = f"{minutes}m"
+    speed = route_connection.get("typical_speed_kn", 16)
+    return f"{origin} -> {destination} is about {distance_nm:.1f} nm and usually takes around {travel_text} at {speed:.0f} kn"
 
 
 def concise_decision_label(display_recommendation, intent, forecast):

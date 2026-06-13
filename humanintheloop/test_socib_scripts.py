@@ -372,6 +372,13 @@ class SocibPublicStructuredTests(unittest.TestCase):
 
         self.assertNotIn("porto_colom", observations)
 
+    def test_station_key_from_names_recognizes_western_mediterranean_sites(self):
+        import socib_api
+
+        self.assertEqual(socib_api.station_key_from_names(platform={"name": "Barcelona"}), "barcelona")
+        self.assertEqual(socib_api.station_key_from_names(platform={"name": "Valencia buoy"}), "valencia")
+        self.assertEqual(socib_api.station_key_from_names(platform={"name": "Port de Sóller"}), "soller")
+
 
 class RouteAnalysisTests(unittest.TestCase):
     def test_load_routes_includes_initial_platform_routes(self):

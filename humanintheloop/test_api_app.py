@@ -952,6 +952,29 @@ def test_place_connection_metrics_endpoint_returns_static_pair_metrics(tmp_path)
     assert payload["source_tag"] == "place_registry_v1"
 
 
+def test_route_question_includes_route_connection_metrics(tmp_path):
+    write_snapshot(tmp_path, date_text="2026-05-29", route_id="palma_ibiza")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-05-29",
+            "run": "latest",
+            "question": "Is it good to go from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "current_date": "2026-05-29",
+            "current_time": "09:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "PASSAGE:" in payload["answer"]
+    assert payload["evidence_used"]["route_connection"]["distance_nm"] > 0
+    assert payload["evidence_used"]["route_connection"]["typical_travel_time_minutes"] > 0
+
+
 def test_artifact_endpoint_serves_latest_route_map(tmp_path):
     write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
     client = TestClient(create_app(EvidenceStore(tmp_path)))

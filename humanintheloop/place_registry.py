@@ -220,29 +220,54 @@ def place_pair_metrics(origin_place_id, destination_place_id):
     destination = place_definition(destination_place_id)
     key = (origin_place_id, destination_place_id)
     if key not in PAIR_METRICS:
-        distance_nm = round(
-            _haversine_nm(
-                float(origin["latitude"]),
-                float(origin["longitude"]),
-                float(destination["latitude"]),
-                float(destination["longitude"]),
-            ),
-            1,
+        PAIR_METRICS[key] = coordinates_connection_metrics(
+            origin_place_id=origin_place_id,
+            origin_place_name=origin["name"],
+            origin_latitude=float(origin["latitude"]),
+            origin_longitude=float(origin["longitude"]),
+            destination_place_id=destination_place_id,
+            destination_place_name=destination["name"],
+            destination_latitude=float(destination["latitude"]),
+            destination_longitude=float(destination["longitude"]),
+            typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
         )
-        typical_speed_kn = DEFAULT_TRAVEL_SPEED_KN
-        typical_travel_time_minutes = int(round((distance_nm / typical_speed_kn) * 60.0))
-        PAIR_METRICS[key] = {
-            "origin_place_id": origin_place_id,
-            "origin_place_name": origin["name"],
-            "destination_place_id": destination_place_id,
-            "destination_place_name": destination["name"],
-            "distance_nm": distance_nm,
-            "typical_speed_kn": typical_speed_kn,
-            "typical_travel_time_minutes": typical_travel_time_minutes,
-            "computed_at_utc": STATIC_METRICS_COMPUTED_AT_UTC,
-            "source_tag": "place_registry_v1",
-        }
     return dict(PAIR_METRICS[key])
+
+
+def coordinates_connection_metrics(
+    *,
+    origin_place_id,
+    origin_place_name,
+    origin_latitude,
+    origin_longitude,
+    destination_place_id,
+    destination_place_name,
+    destination_latitude,
+    destination_longitude,
+    typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
+):
+    distance_nm = round(
+        _haversine_nm(
+            float(origin_latitude),
+            float(origin_longitude),
+            float(destination_latitude),
+            float(destination_longitude),
+        ),
+        1,
+    )
+    typical_speed_kn = float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
+    typical_travel_time_minutes = int(round((distance_nm / typical_speed_kn) * 60.0))
+    return {
+        "origin_place_id": origin_place_id,
+        "origin_place_name": origin_place_name,
+        "destination_place_id": destination_place_id,
+        "destination_place_name": destination_place_name,
+        "distance_nm": distance_nm,
+        "typical_speed_kn": typical_speed_kn,
+        "typical_travel_time_minutes": typical_travel_time_minutes,
+        "computed_at_utc": STATIC_METRICS_COMPUTED_AT_UTC,
+        "source_tag": "place_registry_v1",
+    }
 
 
 def place_family(place_id):

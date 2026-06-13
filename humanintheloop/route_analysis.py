@@ -3,6 +3,8 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
+from place_registry import coordinates_connection_metrics
+
 
 DEFAULT_ROUTE_ID = "palma_ibiza"
 ROUTES_PATH = Path(__file__).with_name("routes.json")
@@ -102,8 +104,27 @@ def build_route_snapshot(observations, forecast=None, route=None, vessel_class="
         "created_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "observations": observations,
         "forecast": forecast,
+        "route_connection": route_connection_metrics(route),
         "recommendation": recommendation,
     }
+
+
+def route_connection_metrics(route, typical_speed_kn=16.0):
+    origin = route.get("origin") or {}
+    destination = route.get("destination") or {}
+    if not all(key in origin and key in destination for key in ("longitude", "latitude")):
+        return None
+    return coordinates_connection_metrics(
+        origin_place_id=route.get("id", DEFAULT_ROUTE_ID),
+        origin_place_name=origin.get("name", route.get("id", DEFAULT_ROUTE_ID)),
+        origin_latitude=float(origin["latitude"]),
+        origin_longitude=float(origin["longitude"]),
+        destination_place_id=f"{route.get('id', DEFAULT_ROUTE_ID)}_destination",
+        destination_place_name=destination.get("name", route.get("id", DEFAULT_ROUTE_ID)),
+        destination_latitude=float(destination["latitude"]),
+        destination_longitude=float(destination["longitude"]),
+        typical_speed_kn=typical_speed_kn,
+    )
 
 
 def vessel_profile_for(vessel_class):

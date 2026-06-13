@@ -23,6 +23,7 @@ The contract for those surfaces is:
 - **place weather**: wave, swell, wind, current, and freshness for a place or coordinate
 - **place hierarchy**: `palma` is the default Palma place, while `port_de_palma`, `port_adriano`, and `can_pastilla` are separate places
 - **static place metrics**: distance and typical travel time are precomputed for place pairs and can be queried from the API
+- **route answers**: include passage distance and typical travel time in the response JSON for route planning questions
   - when available, water temperature and air temperature are included too
 
 Anything beyond that remains additive, not required for the minimum supported product.
