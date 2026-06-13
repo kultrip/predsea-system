@@ -11,8 +11,10 @@ ROOT_CATALOG_URL = "https://opendap.puertos.es/thredds/catalog.html"
 CATALOG_BASE_URL = "https://opendap.puertos.es/thredds/catalog"
 DODS_BASE_URL = "https://opendap.puertos.es/thredds/dodsC"
 
+# Updated pattern to capture tide gauges, buoys, weather stations, and other observation types
+# Matches: tidegauge_*, boya_*, weather_*, meteo_*, etc.
 STATION_FOLDER_PATTERN = re.compile(
-    r'href="(?P<href>/thredds/catalog/(?P<catalog_id>tidegauge_[^"/]+)/catalog\.html)"[^>]*><code>(?P<label>[^<]+)</code>',
+    r'href="(?P<href>/thredds/catalog/(?P<catalog_id>(?:tidegauge|boya|weather|meteo|buoy|station)[^"/]*)/catalog\.html)"[^>]*><code>(?P<label>[^<]+)</code>',
     re.IGNORECASE,
 )
 YEAR_PATTERN = re.compile(r'href="(?P<href>\d{4}/catalog\.html)"', re.IGNORECASE)
@@ -188,4 +190,3 @@ def discover_observation_stations(
             }
         )
     return discovered
-
