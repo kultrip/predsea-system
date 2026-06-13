@@ -136,7 +136,7 @@ PLACE_CATALOG = {
         "parent_place_id": None,
         "children": (),
         "aliases": ("barcelona",),
-        "observation_candidates": ("barcelona",),
+        "observation_candidates": ("barcelona", "puertos_barcelona"),
     },
     "valencia": {
         "name": "Valencia",
@@ -146,7 +146,7 @@ PLACE_CATALOG = {
         "parent_place_id": None,
         "children": (),
         "aliases": ("valencia",),
-        "observation_candidates": ("valencia",),
+        "observation_candidates": ("valencia", "puertos_valencia"),
     },
     "portocolom": {
         "name": "Portocolom",

@@ -13,7 +13,7 @@ Those rows are combined into one BigQuery fact table:
 The observation rows now include the active observation sources used by the ETL:
 
 - SOCIB observations via `api.socib.es`
-- Puertos del Estado / REDEXT observations
+- Puertos del Estado observations via the official THREDDS/OPeNDAP NetCDF catalogue
 - Portus observations and model-point outputs
 
 Observation records are written whenever the hourly ETL run finds fresh samples from a source. Forecast records are written for every route/hourly forecast sample in the validation archive.
@@ -51,6 +51,8 @@ Observation rows contain:
 - `units`
 - `sample_time_utc`
 - `observed_at_utc`
+
+For Puertos del Estado rows, `sample_time_utc` and `observed_at_utc` are sourced from the NetCDF time coordinate rather than inferred from ingestion time.
 
 For Portus and Puertos del Estado records, the source label is preserved in `source_system`, so you can group rows by source and station and see exactly which stations are contributing to the validation archive.
 

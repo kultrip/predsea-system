@@ -117,7 +117,7 @@ def _build_ground_truth_lineage(observations, sources, errors):
         source = "puertos_portus"
         status = "matched_successfully"
     elif puertos_present:
-        source = "puertos_del_estado_redext"
+        source = "puertos_del_estado"
         status = "matched_successfully"
     elif "socib_observations" in sources:
         source = "socib_observations"

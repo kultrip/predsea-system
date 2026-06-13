@@ -19,7 +19,7 @@ The current scheduled workflow runs hourly at `:49` UTC.
 The ETL now combines observations from:
 
 - SOCIB via `https://api.socib.es/`
-- Puertos del Estado / REDEXT
+- Puertos del Estado via the official THREDDS/OPeNDAP catalogue at `https://opendap.puertos.es/`
 - Portus observation time series
 
 The ETL keeps observations best-effort. If one source is unavailable, the run continues with the remaining sources.
@@ -33,6 +33,18 @@ Portus is integrated as a first-class observation branch with:
 - latest-position model data
 - QC flag preservation
 - raw JSON caching
+
+## Puertos del Estado
+
+Puertos del Estado observations now come from the official THREDDS/OPeNDAP NetCDF catalogue. The connector discovers all tide-gauge station catalogs exposed by Puertos, reads explicit NetCDF time coordinates, and normalizes the latest sample per supported variable.
+
+The source keeps timestamps source-specific:
+
+- `sample_time_utc` comes from the dataset time coordinate
+- `observed_at_utc` mirrors the same source timestamp
+- `ingested_at_utc` is only when PredSea stored the row
+
+The first supported variables are sea level and depth, with more source-specific variables added as the station catalogs expose them.
 
 ## BigQuery export
 

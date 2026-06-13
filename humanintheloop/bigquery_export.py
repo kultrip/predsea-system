@@ -241,7 +241,8 @@ def build_normalized_rows(observation_rows, forecast_rows):
 
 
 def normalize_observation_row(row, ingested_at_utc):
-    observed_at_utc = bigquery_timestamp(row.get("observed_at_utc"))
+    sample_time_utc = bigquery_timestamp(row.get("sample_time_utc") or row.get("observed_at_utc"))
+    observed_at_utc = bigquery_timestamp(row.get("observed_at_utc") or row.get("sample_time_utc"))
     normalized = {
         "schema_version": SCHEMA_VERSION,
         "record_type": "observation",
@@ -259,7 +260,7 @@ def normalize_observation_row(row, ingested_at_utc):
         "variable": row.get("variable"),
         "value": numeric_value(row.get("value")),
         "units": row.get("units"),
-        "sample_time_utc": observed_at_utc,
+        "sample_time_utc": sample_time_utc,
         "observed_at_utc": observed_at_utc,
         "forecast_created_at_utc": None,
         "target_time_utc": None,

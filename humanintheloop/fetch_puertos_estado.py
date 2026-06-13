@@ -1,18 +1,8 @@
-"""Puertos del Estado observation and wave forecast fetcher.
+"""Puertos del Estado wave and observation fetcher.
 
-Accesses real-time wave forecast data and observations from the
-Puertos del Estado THREDDS/OPeNDAP server at opendap.puertos.es.
-
-Available datasets (no authentication needed):
-- Wave regional forecasts for Islas Baleares (SWAN model)
-- Wave hindcasts for Islas Baleares
-- Tide gauge observations (Mahón, Ibiza, Alcudia, Mallorca, Formentera)
-
-Authenticated datasets (require credentials):
-- HARMONIE 2.5km atmospheric data for Balearics (BALE region)
-
-The wave forecast data provides an independent check against
-Copernicus and can be used as calibration or validation.
+This module keeps the historical public API used by the rest of PredSea
+while delegating observation ingestion to the official THREDDS/OPeNDAP
+connector under ``predsea.connectors.puertos_del_estado``.
 """
 
 import datetime
@@ -22,6 +12,8 @@ from pathlib import Path
 
 import requests
 import xarray as xr
+
+from predsea.connectors.puertos_del_estado.etl import fetch_puertos_observations
 
 TIMEOUT_SECONDS = int(os.getenv("PREDSEA_PUERTOS_TIMEOUT", "60"))
 
@@ -177,66 +169,27 @@ def sample_wave_at_point(ds, latitude, longitude, variable="VHM0"):
 
 
 def fetch_balearic_observations(dry_run=False):
-    """Fetch observations from Puertos del Estado Balearic stations.
-
-    Since the THREDDS server primarily hosts model data, this function
-    attempts to access tide gauge data and wave forecast hindcasts as
-    observation-like calibration values.
-    """
-    observations = {}
-    errors = {}
-
-    for station_key, config in TIDE_GAUGE_STATIONS.items():
-        if dry_run:
-            observations[station_key] = {
-                "name": config["name"],
-                "latitude": config["latitude"],
-                "longitude": config["longitude"],
-                "wave_height_m": None,
-                "last_sample_utc": None,
-                "source": "puertos_del_estado",
-                "dry_run": True,
-            }
-            continue
-
-        try:
-            # Try to get the latest hindcast and sample at station location
-            hc_url = _discover_latest_hindcast()
-            if hc_url:
-                ds = xr.open_dataset(hc_url)
-                sample = sample_wave_at_point(
-                    ds, config["latitude"], config["longitude"],
-                )
-                latest_wave = sample["values"][-1] if sample["values"] else None
-                observations[station_key] = {
-                    "name": config["name"],
-                    "latitude": config["latitude"],
-                    "longitude": config["longitude"],
-                    "wave_height_m": latest_wave,
-                    "last_sample_utc": sample["times"][-1] if sample["times"] else None,
-                    "source": "puertos_del_estado",
-                    "type": "hindcast_sample",
-                }
-                ds.close()
-            else:
-                errors[station_key] = "no hindcast available"
-        except Exception as error:
-            errors[station_key] = str(error)
-
+    """Fetch observations from all discoverable Puertos del Estado stations."""
+    cache_dir = Path(os.getenv("PREDSEA_PUERTOS_CACHE_DIR", "mvp_data/puertos_del_estado"))
+    result = fetch_puertos_observations(dry_run=dry_run, cache_dir=cache_dir)
     return {
-        "observations": observations,
-        "errors": errors,
-        "source": "puertos_del_estado",
-        "network_ids": ["REDEXT", "REDCOS"],
+        "observations": result.get("observations", {}),
+        "measurements": result.get("measurements", {}),
+        "errors": result.get("errors", {}),
+        "lineage": result.get("lineage", {}),
+        "source": result.get("source", "puertos_del_estado"),
+        "network_ids": ["THREDDS", "OPeNDAP"],
+        "catalog_count": result.get("catalog_count", 0),
+        "catalog_stations": result.get("catalog_stations", []),
     }
 
 
 def lineage_for_puertos_observations(result):
     """Generate data lineage for Puertos del Estado observations."""
     obs = result.get("observations", {})
-    matched = [key for key, value in obs.items() if value.get("wave_height_m") is not None]
+    matched = [key for key, value in obs.items() if isinstance(value, dict)]
     return {
-        "source": "puertos_del_estado_redext",
+        "source": "puertos_del_estado",
         "status": "matched_successfully" if matched else "unavailable",
         "stations_matched": len(matched),
         "station_ids": matched,

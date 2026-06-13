@@ -32,8 +32,51 @@ def test_fetch_balearic_observations_dry_run():
 def test_lineage_for_dry_run_observations():
     result = fp.fetch_balearic_observations(dry_run=True)
     lineage = fp.lineage_for_puertos_observations(result)
-    assert lineage["source"] == "puertos_del_estado_redext"
+    assert lineage["source"] == "puertos_del_estado"
     assert lineage["status"] == "unavailable"
+
+
+def test_station_key_from_label_strips_accents_and_parentheses():
+    from predsea.connectors.puertos_del_estado.catalog import station_key_from_label
+
+    assert station_key_from_label("Mahón (Menorca)") == "mahon"
+    assert station_key_from_label("Port de Sóller") == "port_de_soller"
+
+
+def test_parse_station_dataset_uses_netcdf_time_coordinate():
+    import pandas as pd
+    import xarray as xr
+
+    from predsea.connectors.puertos_del_estado.parser import parse_station_dataset
+
+    ds = xr.Dataset(
+        {
+            "SLEV": ("TIME", [0.1, 0.2, 0.08]),
+            "DEPH": ("TIME", [3.0, 3.0, 3.0]),
+            "TIME_QC": ("TIME", [0, 0, 0]),
+        },
+        coords={
+            "TIME": pd.to_datetime([
+                "2026-06-13T00:00:00Z",
+                "2026-06-13T01:00:00Z",
+                "2026-06-13T02:00:00Z",
+            ], utc=True),
+        },
+    )
+    station = {
+        "station_id": "puertos_alcudia",
+        "station_name": "Alcudia",
+        "catalog_id": "tidegauge_alcu",
+        "catalog_url": "https://opendap.puertos.es/thredds/catalog/tidegauge_alcu/catalog.html",
+    }
+
+    records = parse_station_dataset(ds, station, dataset_url="https://example.test/dataset.nc4")
+
+    assert {record["raw_key"] for record in records} == {"sea_level_m", "depth_m"}
+    latest = next(record for record in records if record["raw_key"] == "sea_level_m")
+    assert latest["sample_time_utc"] == "2026-06-13T02:00:00Z"
+    assert latest["observed_at_utc"] == "2026-06-13T02:00:00Z"
+    assert latest["source_field"] == "SLEV"
 
 
 def test_discover_latest_wave_forecast_real():

@@ -156,7 +156,7 @@ def test_build_route_evidence_package_preserves_existing_lineage():
             "status": "interpolated_to_1.3km",
         },
         "ground_truth_validation": {
-            "source": "puertos_del_estado_redext",
+            "source": "puertos_del_estado",
             "status": "matched_successfully",
         },
     }

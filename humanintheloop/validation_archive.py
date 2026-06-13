@@ -6,6 +6,8 @@ from pathlib import Path
 SCHEMA_VERSION = "predsea.validation.v1"
 
 OBSERVATION_VARIABLES = {
+    "sea_level_m": ("sea_level", "m"),
+    "depth_m": ("depth", "m"),
     "wave_height_m": ("wave_height", "m"),
     "wave_from_direction_deg": ("wave_direction", "degree"),
     "wave_direction_deg": ("wave_direction", "degree"),
@@ -91,7 +93,12 @@ def build_observation_rows(observations, run_date, run_id):
     for station_id, record in sorted((observations or {}).items()):
         if not isinstance(record, dict):
             continue
-        observed_at = normalize_timestamp(record.get("last_sample_utc"))
+        sample_time = normalize_timestamp(
+            record.get("sample_time_utc") or record.get("last_sample_utc") or record.get("observed_at_utc")
+        )
+        observed_at = normalize_timestamp(
+            record.get("observed_at_utc") or record.get("sample_time_utc") or record.get("last_sample_utc")
+        )
         for raw_key, (variable, units) in OBSERVATION_VARIABLES.items():
             if raw_key not in record or record.get(raw_key) is None:
                 continue
@@ -105,6 +112,7 @@ def build_observation_rows(observations, run_date, run_id):
                     "provider": record.get("provider") or record.get("source") or "socib",
                     "station_id": station_id,
                     "station_name": record.get("station_name") or record.get("name"),
+                    "sample_time_utc": sample_time,
                     "observed_at_utc": observed_at,
                     "collected_at_utc": collected_at_utc,
                     "variable": variable,
