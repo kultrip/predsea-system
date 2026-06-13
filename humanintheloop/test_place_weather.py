@@ -115,3 +115,30 @@ def test_portocolom_falls_back_to_nearest_balearic_observation():
     )
     assert selected["station_id"] == "alcudia"
     assert selected["station_name"] == "Alcudia"
+
+
+def test_build_place_weather_record_accepts_naive_observation_timestamp():
+    forecast = {
+        "wave_min_m": 0.2,
+        "wave_max_m": 0.4,
+        "wave_peak_time": "08:00",
+        "wave_peak_direction_deg": 40.0,
+        "current_max_kn": 0.1,
+        "hourly": [],
+    }
+    observation = {
+        "station_id": "alcudia",
+        "station_name": "Alcudia",
+        "observed_at_utc": "2026-06-12 07:30",
+        "wave_height_m": 0.3,
+    }
+    record = build_place_weather_record(
+        "alcudia",
+        forecast,
+        observation=observation,
+        generated_at_utc="2026-06-12 08:00 UTC",
+        run_date="2026-06-12",
+        run_id="2026-06-12T0750Z",
+    )
+    assert record["freshness_status"] == "fresh"
+    assert record["metadata"]["observation_age_minutes"] == 30

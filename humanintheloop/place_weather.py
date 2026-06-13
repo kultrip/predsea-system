@@ -558,12 +558,21 @@ def parse_utc_timestamp(value):
         return None
     text = str(value).replace(" UTC", "Z")
     try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
     except ValueError:
         try:
             return datetime.strptime(str(value), "%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)
         except ValueError:
-            return None
+            try:
+                parsed = datetime.fromisoformat(str(value))
+                if parsed.tzinfo is None:
+                    return parsed.replace(tzinfo=timezone.utc)
+                return parsed
+            except ValueError:
+                return None
 
 
 def to_local_time(value, timezone_name=LOCAL_TIMEZONE):
