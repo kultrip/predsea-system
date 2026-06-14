@@ -22,7 +22,7 @@ class RouteStore(_BaseRouteStore):
         self,
         gcs_prefix: str = DEFAULT_ROUTE_GCS_PREFIX,
         preferred_date: Optional[str] = None,
-        fallback_days: int = 1,
+        fallback_days: int = 7,
     ) -> Optional[str]:
         preferred_date = preferred_date or current_local_date()
         candidates = [preferred_date]
@@ -46,6 +46,21 @@ class RouteStore(_BaseRouteStore):
         if last_error is not None:
             logger.warning("Unable to load precomputed routes from %s: %s", gcs_prefix, last_error)
         return None
+
+    def ensure_loaded(
+        self,
+        gcs_prefix: str = DEFAULT_ROUTE_GCS_PREFIX,
+        preferred_date: Optional[str] = None,
+        fallback_days: int = 7,
+    ) -> Optional[str]:
+        preferred_date = preferred_date or current_local_date()
+        if self._results and self._loaded_date == preferred_date:
+            return self._loaded_date
+        return self.load_latest_from_gcs(
+            gcs_prefix=gcs_prefix,
+            preferred_date=preferred_date,
+            fallback_days=fallback_days,
+        )
 
 
 def current_local_date(timezone_name: str = DEFAULT_API_TIMEZONE) -> str:

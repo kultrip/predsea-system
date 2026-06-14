@@ -57,6 +57,20 @@ class FakeRouteStore:
         return {"loaded_date": "2026-06-14", "loaded_at": "2026-06-14T11:00Z", "route_count": len(self._results)}
 
 
+class LazyRouteStore(FakeRouteStore):
+    def __init__(self):
+        super().__init__()
+        self._pending_results = self._results
+        self._results = {}
+        self.refresh_count = 0
+
+    def ensure_loaded(self, preferred_date=None, fallback_days=7):
+        self.refresh_count += 1
+        if not self._results:
+            self._results = self._pending_results
+        return "2026-06-14"
+
+
 def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
     route_dir = Path(root) / date_text / route_id
     route_dir.mkdir(parents=True)
@@ -1023,6 +1037,18 @@ def test_places_distance_endpoint_returns_distance_and_time(tmp_path):
     assert payload["distance_nm"] == 46.2
     assert payload["estimated_time_h"] == 3.0
     assert payload["source_tag"] == "precomputed_optimal_route"
+
+
+def test_places_distance_refreshes_lazy_route_store(tmp_path):
+    lazy_store = LazyRouteStore()
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=lazy_store))
+
+    response = client.get("/places/distance?origin=palma&destination=ibiza")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source_tag"] == "precomputed_optimal_route"
+    assert lazy_store.refresh_count >= 1
 
 
 def test_routes_optimal_status_reports_route_store_state(tmp_path):

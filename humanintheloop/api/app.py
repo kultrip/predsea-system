@@ -58,6 +58,16 @@ def current_local_date():
         return datetime.now(timezone.utc).date().isoformat()
 
 
+def refresh_route_store(route_store):
+    if hasattr(route_store, "ensure_loaded"):
+        try:
+            loaded_date = route_store.ensure_loaded(preferred_date=current_local_date())
+            if loaded_date is not None:
+                logger.info("Route cache ready for %s", loaded_date)
+        except Exception as error:
+            logger.warning("Route cache refresh failed: %s", error)
+
+
 def requested_minutes(time_text):
     if not time_text:
         return None
@@ -307,7 +317,7 @@ def create_app(evidence_store=None, route_store=None):
     if route_store is None:
         route_store = RouteStore()
         if not os.environ.get("PYTEST_CURRENT_TEST"):
-            loaded_date = route_store.load_latest_from_gcs(preferred_date=current_local_date())
+            loaded_date = route_store.ensure_loaded(preferred_date=current_local_date())
             if loaded_date is None:
                 logger.warning("No precomputed route cache loaded at API startup.")
             else:
@@ -344,6 +354,7 @@ def create_app(evidence_store=None, route_store=None):
     @app.get("/routes/{route_id}/evidence")
     def route_evidence(route_id: str, date: str | None = None, run: str | None = None):
         try:
+            refresh_route_store(route_store)
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             snapshot = store.load_snapshot(route_id, run_date, run_id)
@@ -363,6 +374,7 @@ def create_app(evidence_store=None, route_store=None):
         format: str = Query("whatsapp", pattern="^(whatsapp|linkedin)$"),
     ):
         try:
+            refresh_route_store(route_store)
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             snapshot = store.load_snapshot(route_id, run_date, run_id)
@@ -388,6 +400,7 @@ def create_app(evidence_store=None, route_store=None):
         lon: float | None = Query(default=None, ge=-180, le=180),
     ):
         try:
+            refresh_route_store(route_store)
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
@@ -420,6 +433,7 @@ def create_app(evidence_store=None, route_store=None):
         vessel_class: str = Query("medium", pattern="^(small|medium|large)$"),
     ):
         try:
+            refresh_route_store(route_store)
             origin_place = place_weather.place_definition(origin)
             destination_place = place_weather.place_definition(destination)
             origin_place_id = default_place_id_for_query(origin) or origin
@@ -446,6 +460,7 @@ def create_app(evidence_store=None, route_store=None):
     @app.get("/places/distance")
     def places_distance(origin: str, destination: str):
         try:
+            refresh_route_store(route_store)
             origin_place = place_weather.place_definition(origin)
             destination_place = place_weather.place_definition(destination)
             origin_place_id = default_place_id_for_query(origin) or origin
@@ -482,11 +497,13 @@ def create_app(evidence_store=None, route_store=None):
 
     @app.get("/routes/optimal/status")
     def routes_optimal_status():
+        refresh_route_store(route_store)
         return route_store.status()
 
     @app.get("/places/{origin_place_id}/connection/{destination_place_id}", response_model=PlaceConnectionMetricsResponse)
     def place_connection_metrics(origin_place_id: str, destination_place_id: str):
         try:
+            refresh_route_store(route_store)
             origin = place_weather.place_definition(origin_place_id)
             destination = place_weather.place_definition(destination_place_id)
             metrics = place_weather.place_connection_metrics(origin_place_id, destination_place_id)
