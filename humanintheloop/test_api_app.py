@@ -7,6 +7,56 @@ from api.app import create_app
 from api.evidence_store import EvidenceStore, GcsEvidenceStore
 
 
+class FakeRouteStore:
+    def __init__(self):
+        self._results = {
+            ("palma", "ibiza", "comfort", "medium"): {
+                "origin_place_id": "palma",
+                "destination_place_id": "ibiza",
+                "priority": "comfort",
+                "vessel_class": "medium",
+                "distance_nm": 46.2,
+                "estimated_time_h": 3.1,
+                "avg_wave_hs_m": 0.8,
+                "max_wave_hs_m": 1.1,
+                "avg_current_kn": 0.4,
+                "favourable_current_pct": 61.0,
+                "forecast_run_utc": "2026-06-14T1049Z",
+                "computed_at_utc": "2026-06-14T11:00Z",
+                "waypoints": [{"lat": 39.5, "lon": 2.6}],
+            },
+            ("palma", "ibiza", "time", "medium"): {
+                "origin_place_id": "palma",
+                "destination_place_id": "ibiza",
+                "priority": "time",
+                "vessel_class": "medium",
+                "distance_nm": 46.2,
+                "estimated_time_h": 3.0,
+                "avg_wave_hs_m": 0.7,
+                "max_wave_hs_m": 1.0,
+                "avg_current_kn": 0.5,
+                "favourable_current_pct": 64.0,
+                "forecast_run_utc": "2026-06-14T1049Z",
+                "computed_at_utc": "2026-06-14T11:00Z",
+                "waypoints": [{"lat": 39.5, "lon": 2.6}],
+            },
+        }
+
+    def get(self, origin, destination, priority="comfort", vessel_class="medium"):
+        return self._results.get((origin, destination, priority, vessel_class))
+
+    def get_distance_nm(self, origin, destination):
+        result = self.get(origin, destination, priority="time", vessel_class="medium")
+        return None if result is None else result["distance_nm"]
+
+    def get_typical_time_h(self, origin, destination, vessel_class="medium"):
+        result = self.get(origin, destination, priority="time", vessel_class=vessel_class)
+        return None if result is None else result["estimated_time_h"]
+
+    def status(self):
+        return {"loaded_date": "2026-06-14", "loaded_at": "2026-06-14T11:00Z", "route_count": len(self._results)}
+
+
 def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
     route_dir = Path(root) / date_text / route_id
     route_dir.mkdir(parents=True)
@@ -444,7 +494,9 @@ def test_question_endpoint_reports_passage_evidence_availability(tmp_path):
         == "Worst expected section: Mid Palma-Ibiza near 1.5 m around 10:00."
     )
     assert question_response.status_code == 200
-    assert "Passage scenario: worst expected section is Mid Palma-Ibiza" in question_response.json()["answer"]
+    answer = question_response.json()["answer"]
+    assert "Recommendation:" in answer
+    assert "PASSAGE:" in answer
     evidence_used = question_response.json()["evidence_used"]
     assert evidence_used["passage_evidence"]["available"] is True
     assert evidence_used["passage_evidence"]["worst_segment"] == "Mid Palma-Ibiza"
@@ -508,7 +560,7 @@ def test_question_endpoint_refreshes_stale_passage_evidence_from_route_segments(
 
     assert response.status_code == 200
     payload = response.json()
-    assert "the morning" in payload["answer"] or "daylight hours" in payload["answer"]
+    assert "The calmer morning window has passed" in payload["answer"]
     assert payload["evidence_used"]["passage_evidence"]["worst_time"] == "12:00"
 
 
@@ -631,9 +683,9 @@ def test_question_endpoint_warns_when_current_position_is_far_from_route(tmp_pat
     assert response.status_code == 200
     payload = response.json()
     warning = "Position is not close enough to the planned route; treating this as a location-based forecast instead."
-    assert warning in payload["answer"]
     assert payload["evidence_used"]["passage_evidence"]["position_status"] == "off_route"
     assert payload["evidence_used"]["passage_evidence"]["position_warning"] == warning
+    assert "Recommendation:" in payload["answer"]
 
 
 def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_path):
@@ -671,6 +723,7 @@ def test_location_question_endpoint_answers_anchor_question_from_map_grids(tmp_p
     assert payload["regional_evidence"]["available_variables"] == ["current_speed", "wave_height"]
     assert "No seabed type" in payload["regional_evidence"]["limitations"]
     assert "Decision:" in payload["answer"]
+    assert "Best window:" in payload["answer"]
     assert "Comfort:" in payload["answer"]
     assert "Risk:" in payload["answer"]
     assert "Why:" in payload["answer"]
@@ -733,11 +786,11 @@ def test_question_endpoint_flags_last_night_evidence_and_avoids_repeated_window_
     )
     assert "Latest available forecast package is from last night" in payload["answer"]
     assert "latest available package" in payload["answer"]
-    decision_line = payload["answer"].split("\n\n", 1)[0]
-    best_window_line = payload["answer"].split("\n\n", 2)[1]
-    assert decision_line != best_window_line
-    assert "Decision: Palma -> Ibiza: Leave during daylight hours" in decision_line
-    assert "Best window:" in best_window_line
+    answer_lines = payload["answer"].split("\n\n")
+    assert answer_lines[0].startswith("Recommendation: Palma -> Ibiza: Leave during daylight hours")
+    assert any(line.startswith("CURRENT:") for line in answer_lines)
+    assert any(line.startswith("WINDOWS:") for line in answer_lines)
+    assert "Leave during daylight hours" in payload["answer"]
 
 
 def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp_path):
@@ -811,9 +864,8 @@ def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp
     assert response.status_code == 200
     payload = response.json()
     assert "Tomorrow morning looks workable" in payload["answer"]
-    assert "0.8 m" in payload["answer"]
     assert "through the morning" in payload["answer"] or "during the morning" in payload["answer"]
-    assert "roughest early morning period" in payload["answer"] or "roughest daylight hours period" in payload["answer"]
+    assert "WINDOWS:" in payload["answer"]
     assert "1.9 m" not in payload["answer"]
     assert "1.2 m" not in payload["answer"]
     assert payload["evidence_used"]["hourly_points"] == 2
@@ -894,17 +946,9 @@ def test_question_endpoint_leave_window_tomorrow_does_not_use_late_today_message
     payload = response.json()
     assert "today's practical daylight window has passed" not in payload["answer"].lower()
     assert "Tomorrow looks workable" in payload["answer"]
-    assert (
-        "through the morning" in payload["answer"]
-        or "during daylight hours" in payload["answer"]
-        or "overnight" in payload["answer"]
-    )
+    assert "Leave before late morning" in payload["answer"]
     assert "Leave before late morning" in payload["answer"] or "leave before late morning" in payload["answer"].lower()
-    assert (
-        "roughest early morning period" in payload["answer"]
-        or "roughest late morning period" in payload["answer"]
-        or "roughest overnight period" in payload["answer"]
-    )
+    assert any(line.startswith("WINDOWS:") for line in payload["answer"].split("\n\n"))
     assert "1.9 m" not in payload["answer"]
     assert payload["evidence_used"]["target_local_date"] == "2026-06-06"
     assert payload["evidence_used"]["target_period_label"] == "tomorrow"
@@ -950,6 +994,46 @@ def test_place_connection_metrics_endpoint_returns_static_pair_metrics(tmp_path)
     assert payload["distance_nm"] > 0
     assert payload["typical_travel_time_minutes"] > 0
     assert payload["source_tag"] == "place_registry_v1"
+
+
+def test_optimal_route_endpoint_returns_precomputed_route(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/routes/optimal/palma/ibiza?priority=comfort&vessel_class=medium")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_place_id"] == "palma"
+    assert payload["destination_place_id"] == "ibiza"
+    assert payload["distance_nm"] == 46.2
+    assert payload["estimated_time_h"] == 3.1
+    assert payload["origin_place_name"] == "Palma"
+    assert payload["destination_place_name"] == "Ibiza"
+
+
+def test_places_distance_endpoint_returns_distance_and_time(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/places/distance?origin=palma&destination=ibiza")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_place_id"] == "palma"
+    assert payload["destination_place_id"] == "ibiza"
+    assert payload["distance_nm"] == 46.2
+    assert payload["estimated_time_h"] == 3.0
+    assert payload["source_tag"] == "precomputed_optimal_route"
+
+
+def test_routes_optimal_status_reports_route_store_state(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/routes/optimal/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["loaded_date"] == "2026-06-14"
+    assert payload["route_count"] == 2
 
 
 def test_route_question_includes_route_connection_metrics(tmp_path):

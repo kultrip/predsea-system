@@ -2,6 +2,7 @@ import argparse
 import importlib.util
 import json
 import os
+import subprocess
 import shutil
 import sys
 from contextlib import contextmanager
@@ -18,7 +19,13 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "outputs"
+COPERNICUS_GCS_PREFIX = "gs://predsea-daily-outputs/copernicus"
+COPERNICUS_LATEST_WAVES_GCS_URI = f"{COPERNICUS_GCS_PREFIX}/waves_latest.nc"
+COPERNICUS_LATEST_CURRENTS_GCS_URI = f"{COPERNICUS_GCS_PREFIX}/currents_latest.nc"
+ROUTES_GCS_PREFIX = "gs://predsea-daily-outputs/routes"
+PRECOMPUTE_ROUTES_SCRIPT = HUMANINTHELOOP_DIR / "files" / "precompute_routes.py"
 DEFAULT_LOCAL_TIMEZONE = "Europe/Madrid"
+ROUTE_PRECOMPUTE_TIMEOUT_SECONDS = int(os.environ.get("PREDSEA_ROUTE_PRECOMPUTE_TIMEOUT_SECONDS", "1200"))
 REQUIRED_TEXT_ARTIFACTS = (
     "daily_snapshot.json",
     "evidence.json",
@@ -125,6 +132,90 @@ def resolve_repo_path(path):
     if candidate.is_absolute():
         return candidate
     return PROJECT_ROOT / candidate
+
+
+def upload_file_to_gcs(local_path, gcs_uri):
+    local_path = Path(local_path)
+    if not local_path.exists():
+        raise FileNotFoundError(f"Local file not found: {local_path}")
+    if not gcs_uri.startswith("gs://"):
+        raise ValueError(f"Expected GCS URI, got {gcs_uri!r}")
+    from google.cloud import storage
+
+    bucket_name, blob_name = gcs_uri[5:].split("/", 1)
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    blob.upload_from_filename(str(local_path))
+    return gcs_uri
+
+
+def publish_latest_copernicus_files(source):
+    published = {}
+    uploads = {
+        "waves_path": COPERNICUS_LATEST_WAVES_GCS_URI,
+        "currents_path": COPERNICUS_LATEST_CURRENTS_GCS_URI,
+    }
+    for key, gcs_uri in uploads.items():
+        local_path = source.get(key)
+        if local_path is None:
+            continue
+        try:
+            upload_file_to_gcs(local_path, gcs_uri)
+            print(f"Uploaded {key} to {gcs_uri}", flush=True)
+            published[key] = gcs_uri
+        except Exception as error:
+            print(
+                f"Warning: could not upload {key} to {gcs_uri}; "
+                f"continuing with local path {local_path}. {error}",
+                flush=True,
+            )
+            published[key] = str(local_path)
+    return published
+
+
+def run_route_precompute(waves_path, currents_path, run_date, run_id):
+    if not PRECOMPUTE_ROUTES_SCRIPT.exists():
+        raise FileNotFoundError(f"Route precompute script not found: {PRECOMPUTE_ROUTES_SCRIPT}")
+
+    command = [
+        sys.executable,
+        str(PRECOMPUTE_ROUTES_SCRIPT),
+        "--waves",
+        str(waves_path),
+        "--currents",
+        str(currents_path),
+        "--output-dir",
+        ROUTES_GCS_PREFIX,
+        "--date",
+        run_date,
+        "--forecast-run-utc",
+        run_id,
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=PROJECT_ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            timeout=ROUTE_PRECOMPUTE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f"Route precompute timed out after {ROUTE_PRECOMPUTE_TIMEOUT_SECONDS}s"
+        ) from error
+    if completed.stdout:
+        print(completed.stdout.rstrip(), flush=True)
+    if completed.stderr:
+        print(completed.stderr.rstrip(), flush=True)
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"Route precompute exited with code {completed.returncode}: "
+            f"{(completed.stderr or completed.stdout or '').strip()}"
+        )
+    return True
 
 
 def validate_forecast_available(forecast, route_id):
@@ -680,6 +771,19 @@ def generate_daily_briefings(
         regional_evidence=regional_manifest_entry,
         validation=validation_entry,
     )
+
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        try:
+            published_sources = publish_latest_copernicus_files(preferred_source)
+            run_route_precompute(
+                waves_path=published_sources.get("waves_path", preferred_source["waves_path"]),
+                currents_path=published_sources.get("currents_path", preferred_source["currents_path"]),
+                run_date=run_date,
+                run_id=run_id,
+            )
+        except Exception as error:
+            print(f"Warning: route precompute skipped or failed; continuing without route cache. {error}", flush=True)
+
     return SimpleNamespace(output_dir=run_dir, day_dir=day_dir, run_id=run_id, routes=selected_route_ids)
 
 

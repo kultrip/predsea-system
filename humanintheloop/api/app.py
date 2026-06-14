@@ -1,3 +1,7 @@
+import os
+import logging
+from datetime import datetime, timezone
+
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,7 +16,12 @@ from api.schemas import (
     QuestionResponse,
 )
 from api.services import answer_question, evidence_used, render_briefing
+from place_registry import default_place_id_for_query
 import place_weather
+from route_store import RouteStore
+
+
+logger = logging.getLogger(__name__)
 
 
 MEDIA_TYPES = {
@@ -38,6 +47,15 @@ def public_base_url(request):
     if base_url.startswith("http://") and "run.app" in base_url:
         return base_url.replace("http://", "https://", 1)
     return base_url
+
+
+def current_local_date():
+    try:
+        from zoneinfo import ZoneInfo
+
+        return datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
+    except Exception:
+        return datetime.now(timezone.utc).date().isoformat()
 
 
 def requested_minutes(time_text):
@@ -264,7 +282,7 @@ def render_location_answer(intent, decision, samples, request):
     )
 
 
-def create_app(evidence_store=None):
+def create_app(evidence_store=None, route_store=None):
     app = FastAPI(
         title="PredSea MVP API",
         version="0.1.0",
@@ -286,6 +304,14 @@ def create_app(evidence_store=None):
         allow_headers=["Content-Type"],
     )
     store = evidence_store or create_evidence_store_from_env()
+    if route_store is None:
+        route_store = RouteStore()
+        if not os.environ.get("PYTEST_CURRENT_TEST"):
+            loaded_date = route_store.load_latest_from_gcs(preferred_date=current_local_date())
+            if loaded_date is None:
+                logger.warning("No precomputed route cache loaded at API startup.")
+            else:
+                logger.info("Loaded precomputed route cache for %s", loaded_date)
 
     @app.get("/health", response_model=HealthResponse)
     def health():
@@ -385,6 +411,78 @@ def create_app(evidence_store=None):
             return response
         except (EvidenceNotFoundError, ValueError) as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/routes/optimal/{origin}/{destination}")
+    def optimal_route(
+        origin: str,
+        destination: str,
+        priority: str = Query("comfort", pattern="^(time|comfort|safety)$"),
+        vessel_class: str = Query("medium", pattern="^(small|medium|large)$"),
+    ):
+        try:
+            origin_place = place_weather.place_definition(origin)
+            destination_place = place_weather.place_definition(destination)
+            origin_place_id = default_place_id_for_query(origin) or origin
+            destination_place_id = default_place_id_for_query(destination) or destination
+            result = route_store.get(
+                origin_place_id,
+                destination_place_id,
+                priority=priority,
+                vessel_class=vessel_class,
+            )
+            if result is None:
+                raise EvidenceNotFoundError(
+                    f"No precomputed route found for {origin_place_id} -> {destination_place_id}"
+                )
+            response = dict(result)
+            response["origin_place_name"] = origin_place["name"]
+            response["destination_place_name"] = destination_place["name"]
+            response["distance_nm"] = result.get("distance_nm")
+            response["estimated_time_h"] = result.get("estimated_time_h")
+            return response
+        except (EvidenceNotFoundError, ValueError) as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/places/distance")
+    def places_distance(origin: str, destination: str):
+        try:
+            origin_place = place_weather.place_definition(origin)
+            destination_place = place_weather.place_definition(destination)
+            origin_place_id = default_place_id_for_query(origin) or origin
+            destination_place_id = default_place_id_for_query(destination) or destination
+            result = route_store.get(
+                origin_place_id,
+                destination_place_id,
+                priority="time",
+                vessel_class="medium",
+            )
+            if result is not None:
+                distance_nm = result.get("distance_nm")
+                estimated_time_h = result.get("estimated_time_h")
+                source_tag = "precomputed_optimal_route"
+                computed_at_utc = result.get("computed_at_utc")
+            else:
+                metrics = place_weather.place_connection_metrics(origin_place_id, destination_place_id)
+                distance_nm = metrics["distance_nm"]
+                estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
+                source_tag = metrics.get("source_tag", "static_place_metrics")
+                computed_at_utc = metrics.get("computed_at_utc")
+            return {
+                "origin_place_id": origin_place_id,
+                "origin_place_name": origin_place["name"],
+                "destination_place_id": destination_place_id,
+                "destination_place_name": destination_place["name"],
+                "distance_nm": distance_nm,
+                "estimated_time_h": estimated_time_h,
+                "source_tag": source_tag,
+                "computed_at_utc": computed_at_utc,
+            }
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/routes/optimal/status")
+    def routes_optimal_status():
+        return route_store.status()
 
     @app.get("/places/{origin_place_id}/connection/{destination_place_id}", response_model=PlaceConnectionMetricsResponse)
     def place_connection_metrics(origin_place_id: str, destination_place_id: str):

@@ -183,8 +183,8 @@ def test_arome_lineage_adds_high_resolution_wind_context():
         current_time="08:00",
     )
 
-    assert "ultra-high-resolution 1.3 km" in result["answer"]
-    assert "coastal breeze" in result["answer"]
+    assert "ultra-high-resolution 1.3 km" in result["operational_stance"]["why"]
+    assert "coastal breeze" in result["operational_stance"]["why"]
 
 
 def test_ecmwf_fallback_lineage_softens_coastal_specificity():
@@ -221,8 +221,8 @@ def test_ecmwf_fallback_lineage_softens_coastal_specificity():
         current_time="08:00",
     )
 
-    assert "global structural models" in result["answer"]
-    assert "localized coastal land breezes may vary" in result["answer"]
+    assert "global structural models" in result["operational_stance"]["why"]
+    assert "localized coastal land breezes may vary" in result["operational_stance"]["why"]
 
 
 def test_missing_confidence_is_omitted_from_answer():

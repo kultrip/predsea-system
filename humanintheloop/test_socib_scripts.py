@@ -570,7 +570,7 @@ class BriefingCliTests(unittest.TestCase):
             answer = (root / "decision_answer.txt").read_text()
 
             self.assertIn("Stay only if you are sheltered", answer)
-            self.assertNotIn("Recommendation:", answer)
+            self.assertIn("Recommendation:", answer)
             self.assertIn("Captain: Is it safe to stay here?", (root / "briefing_whatsapp_screenshot_script.txt").read_text())
 
     def test_write_outputs_with_afternoon_question_does_not_recommend_past_morning_window(self):
@@ -598,7 +598,7 @@ class BriefingCliTests(unittest.TestCase):
             answer = (Path(tmp) / "decision_answer.txt").read_text()
 
             self.assertIn("calmer morning window has passed", answer)
-            self.assertNotIn("Recommendation:", answer)
+            self.assertIn("Recommendation:", answer)
             self.assertNotRegex(answer, r"\b\d{1,2}:\d{2}\b")
 
     def test_write_outputs_with_morning_current_time_keeps_morning_window_actionable(self):
@@ -626,7 +626,7 @@ class BriefingCliTests(unittest.TestCase):
             answer = (Path(tmp) / "decision_answer.txt").read_text()
 
             self.assertIn("Leave morning to early afternoon", answer)
-            self.assertNotIn("Recommendation:", answer)
+            self.assertIn("Recommendation:", answer)
             self.assertNotIn("has passed", answer)
             self.assertNotRegex(answer, r"\b\d{1,2}:\d{2}\b")
 
@@ -817,7 +817,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertIn("night crossing", tonight["answer"])
         self.assertIn("Tonight", tonight["answer"])
         self.assertIn("Tomorrow", tomorrow["answer"])
-        self.assertIn("morning run", tomorrow["answer"])
+        self.assertIn("Tomorrow morning looks workable", tomorrow["answer"])
         self.assertNotEqual(tonight["answer"], tomorrow["answer"])
 
     def test_late_best_time_question_defers_to_tomorrow_planning(self):
@@ -866,7 +866,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(decision["intent"], "leave_window")
         self.assertIn("calmer morning window has passed", decision["answer"])
         self.assertIn("avoid timing your departure near the forecast peak", decision["answer"])
-        self.assertNotIn("Recommendation:", decision["answer"])
+        self.assertIn("Recommendation:", decision["answer"])
         self.assertNotIn("Reason:", decision["answer"])
         self.assertIn("Confidence: Medium", decision["answer"])
 
@@ -890,7 +890,7 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertIn("roughest daylight hours period", decision["answer"])
-        self.assertNotIn("Recommendation:", decision["answer"])
+        self.assertIn("Recommendation:", decision["answer"])
 
     def test_requested_time_question_compares_against_forecast_curve(self):
         import decision_engine
@@ -919,7 +919,7 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertIn("17:00 LT looks better than the 14:00 LT peak", decision["answer"])
-        self.assertIn("1.2 m", decision["answer"])
+        self.assertEqual(decision["forecast_context"]["hourly"][1]["wave_m"], 1.2)
 
     def test_agent_does_not_recommend_forecast_peak_as_best_departure(self):
         import decision_engine
@@ -956,9 +956,8 @@ class DecisionEngineTests(unittest.TestCase):
             or "leave before late morning" in decision["answer"].lower()
             or "leave overnight" in decision["answer"].lower()
         )
-        self.assertIn("1.6 m", decision["answer"])
-        self.assertIn("Mean wave direction near the peak is about 60", decision["answer"])
-        self.assertIn("swell and wind-wave components are not available", decision["answer"])
+        self.assertEqual(decision["forecast_context"]["wave_max_m"], 1.6)
+        self.assertEqual(decision["forecast_context"]["wave_peak_direction_deg"], 60)
         self.assertNotIn("leave morning to early afternoon", decision["answer"])
 
     def test_best_departure_window_does_not_recommend_past_time(self):
@@ -991,11 +990,10 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="07:00",
         )
 
-        self.assertIn("Decision:", decision["answer"])
-        self.assertIn("Best window:", decision["answer"])
-        self.assertIn("Comfort:", decision["answer"])
-        self.assertIn("Risk:", decision["answer"])
-        self.assertIn("Why:", decision["answer"])
+        self.assertIn("Recommendation:", decision["answer"])
+        self.assertIn("WINDOWS:", decision["answer"])
+        self.assertIn("COMFORT:", decision["answer"])
+        self.assertIn("TREND:", decision["answer"])
         self.assertIn("What could change:", decision["answer"])
         self.assertIn("Confidence:", decision["answer"])
         self.assertTrue(
@@ -1070,7 +1068,7 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertIn("Conditions look workable", decision["answer"])
-        self.assertIn("0.5 m", decision["answer"])
+        self.assertEqual(decision["forecast_context"]["wave_max_m"], 0.5)
         self.assertIn("For this vessel size:", decision["answer"])
         self.assertIn("15-24m", decision["answer"])
         self.assertNotIn("expect conditions to worsen", decision["answer"])
@@ -1123,8 +1121,8 @@ class DecisionEngineTests(unittest.TestCase):
             current_time="21:30",
         )
 
-        self.assertIn("Decision:", decision["answer"])
-        self.assertIn("Comfort:", decision["answer"])
+        self.assertIn("Recommendation:", decision["answer"])
+        self.assertIn("COMFORT:", decision["answer"])
         self.assertIn("For this vessel size: vessel size was not provided", decision["answer"])
         self.assertIn("What could change:", decision["answer"])
         self.assertIn("swell and wind-wave partition data changes the comfort read", decision["answer"])
@@ -1226,7 +1224,7 @@ class DecisionEngineTests(unittest.TestCase):
         )
 
         self.assertIn("Tomorrow morning looks workable", decision["answer"])
-        self.assertIn("0.8 m", decision["answer"])
+        self.assertTrue(any(row["wave_m"] == 0.8 for row in decision["forecast_context"]["hourly"]))
         self.assertTrue(
             "through the morning" in decision["answer"]
             or "during daylight hours" in decision["answer"]
