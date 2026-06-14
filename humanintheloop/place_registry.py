@@ -189,6 +189,26 @@ DEFAULT_PLACE_BY_QUERY = {
 
 PAIR_METRICS = {}
 STATIC_METRICS_COMPUTED_AT_UTC = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+FIXED_DISTANCE_TABLE = {
+    ("palma", "ibiza"): 100.0,
+    ("ibiza", "palma"): 100.0,
+    ("ibiza", "formentera"): 15.0,
+    ("formentera", "ibiza"): 15.0,
+    ("palma", "portocolom"): 35.0,
+    ("portocolom", "palma"): 35.0,
+    ("palma", "alcudia"): 26.0,
+    ("alcudia", "palma"): 26.0,
+    ("alcudia", "ciutadella"): 30.0,
+    ("ciutadella", "alcudia"): 30.0,
+    ("palma", "port_de_palma"): 3.0,
+    ("port_de_palma", "palma"): 3.0,
+    ("palma", "port_adriano"): 15.0,
+    ("port_adriano", "palma"): 15.0,
+    ("palma", "can_pastilla"): 6.0,
+    ("can_pastilla", "palma"): 6.0,
+    ("palma", "soller"): 18.0,
+    ("soller", "palma"): 18.0,
+}
 
 
 def available_place_ids():
@@ -220,17 +240,33 @@ def place_pair_metrics(origin_place_id, destination_place_id):
     destination = place_definition(destination_place_id)
     key = (origin_place_id, destination_place_id)
     if key not in PAIR_METRICS:
-        PAIR_METRICS[key] = coordinates_connection_metrics(
-            origin_place_id=origin_place_id,
-            origin_place_name=origin["name"],
-            origin_latitude=float(origin["latitude"]),
-            origin_longitude=float(origin["longitude"]),
-            destination_place_id=destination_place_id,
-            destination_place_name=destination["name"],
-            destination_latitude=float(destination["latitude"]),
-            destination_longitude=float(destination["longitude"]),
-            typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
-        )
+        fixed_distance_nm = FIXED_DISTANCE_TABLE.get(key)
+        if fixed_distance_nm is not None:
+            typical_speed_kn = DEFAULT_TRAVEL_SPEED_KN
+            typical_travel_time_minutes = int(round((fixed_distance_nm / typical_speed_kn) * 60.0))
+            PAIR_METRICS[key] = {
+                "origin_place_id": origin_place_id,
+                "origin_place_name": origin["name"],
+                "destination_place_id": destination_place_id,
+                "destination_place_name": destination["name"],
+                "distance_nm": fixed_distance_nm,
+                "typical_speed_kn": typical_speed_kn,
+                "typical_travel_time_minutes": typical_travel_time_minutes,
+                "computed_at_utc": STATIC_METRICS_COMPUTED_AT_UTC,
+                "source_tag": "place_distance_table_v1",
+            }
+        else:
+            PAIR_METRICS[key] = coordinates_connection_metrics(
+                origin_place_id=origin_place_id,
+                origin_place_name=origin["name"],
+                origin_latitude=float(origin["latitude"]),
+                origin_longitude=float(origin["longitude"]),
+                destination_place_id=destination_place_id,
+                destination_place_name=destination["name"],
+                destination_latitude=float(destination["latitude"]),
+                destination_longitude=float(destination["longitude"]),
+                typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
+            )
     return dict(PAIR_METRICS[key])
 
 

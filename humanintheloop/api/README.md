@@ -225,15 +225,16 @@ Palma is also exposed as a small place family. The default place remains
 - `port_adriano`
 - `can_pastilla`
 
-You can inspect the precomputed distance and typical travel time between two
-places with the connection endpoint:
+You can inspect the fixed distance and typical travel time between two places
+with the connection endpoint:
 
 ```bash
 curl "http://127.0.0.1:8000/places/palma/connection/portocolom"
 ```
 
 This returns the pair distance in nautical miles plus a typical travel time
-based on the registry’s default passage speed.
+based on the registry’s default passage speed. The route solver remains the
+weighted path layer for weather and current-aware routing.
 
 Route questions also carry passage distance/time in the response JSON, so a
 question like "Is it good to go from Palma to Ibiza today?" can include the

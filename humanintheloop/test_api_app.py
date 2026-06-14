@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from api.app import create_app
@@ -55,20 +57,6 @@ class FakeRouteStore:
 
     def status(self):
         return {"loaded_date": "2026-06-14", "loaded_at": "2026-06-14T11:00Z", "route_count": len(self._results)}
-
-
-class LazyRouteStore(FakeRouteStore):
-    def __init__(self):
-        super().__init__()
-        self._pending_results = self._results
-        self._results = {}
-        self.refresh_count = 0
-
-    def ensure_loaded(self, preferred_date=None, fallback_days=7):
-        self.refresh_count += 1
-        if not self._results:
-            self._results = self._pending_results
-        return "2026-06-14"
 
 
 def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
@@ -1007,7 +995,7 @@ def test_place_connection_metrics_endpoint_returns_static_pair_metrics(tmp_path)
     assert payload["destination_place_id"] == "portocolom"
     assert payload["distance_nm"] > 0
     assert payload["typical_travel_time_minutes"] > 0
-    assert payload["source_tag"] == "place_registry_v1"
+    assert payload["source_tag"] == "place_distance_table_v1"
 
 
 def test_optimal_route_endpoint_returns_precomputed_route(tmp_path):
@@ -1034,21 +1022,9 @@ def test_places_distance_endpoint_returns_distance_and_time(tmp_path):
     payload = response.json()
     assert payload["origin_place_id"] == "palma"
     assert payload["destination_place_id"] == "ibiza"
-    assert payload["distance_nm"] == 46.2
-    assert payload["estimated_time_h"] == 3.0
-    assert payload["source_tag"] == "precomputed_optimal_route"
-
-
-def test_places_distance_refreshes_lazy_route_store(tmp_path):
-    lazy_store = LazyRouteStore()
-    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=lazy_store))
-
-    response = client.get("/places/distance?origin=palma&destination=ibiza")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["source_tag"] == "precomputed_optimal_route"
-    assert lazy_store.refresh_count >= 1
+    assert payload["distance_nm"] == 100.0
+    assert payload["estimated_time_h"] == pytest.approx(100.0 / 15.0, rel=1e-6)
+    assert payload["source_tag"] == "place_distance_table_v1"
 
 
 def test_routes_optimal_status_reports_route_store_state(tmp_path):
@@ -1081,7 +1057,7 @@ def test_route_question_includes_route_connection_metrics(tmp_path):
     assert response.status_code == 200
     payload = response.json()
     assert "PASSAGE:" in payload["answer"]
-    assert payload["evidence_used"]["route_connection"]["distance_nm"] > 0
+    assert payload["evidence_used"]["route_connection"]["distance_nm"] == 100.0
     assert payload["evidence_used"]["route_connection"]["typical_travel_time_minutes"] > 0
 
 

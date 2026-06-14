@@ -3,7 +3,7 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
-from place_registry import coordinates_connection_metrics
+from place_registry import coordinates_connection_metrics, default_place_id_for_query, place_pair_metrics
 
 
 DEFAULT_ROUTE_ID = "palma_ibiza"
@@ -112,14 +112,21 @@ def build_route_snapshot(observations, forecast=None, route=None, vessel_class="
 def route_connection_metrics(route, typical_speed_kn=16.0):
     origin = route.get("origin") or {}
     destination = route.get("destination") or {}
+    origin_place_id = route.get("origin_place_id") or default_place_id_for_query(origin.get("name"))
+    destination_place_id = route.get("destination_place_id") or default_place_id_for_query(destination.get("name"))
+    if origin_place_id and destination_place_id:
+        try:
+            return place_pair_metrics(origin_place_id, destination_place_id)
+        except ValueError:
+            pass
     if not all(key in origin and key in destination for key in ("longitude", "latitude")):
         return None
     return coordinates_connection_metrics(
-        origin_place_id=route.get("id", DEFAULT_ROUTE_ID),
+        origin_place_id=origin_place_id or route.get("id", DEFAULT_ROUTE_ID),
         origin_place_name=origin.get("name", route.get("id", DEFAULT_ROUTE_ID)),
         origin_latitude=float(origin["latitude"]),
         origin_longitude=float(origin["longitude"]),
-        destination_place_id=f"{route.get('id', DEFAULT_ROUTE_ID)}_destination",
+        destination_place_id=destination_place_id or f"{route.get('id', DEFAULT_ROUTE_ID)}_destination",
         destination_place_name=destination.get("name", route.get("id", DEFAULT_ROUTE_ID)),
         destination_latitude=float(destination["latitude"]),
         destination_longitude=float(destination["longitude"]),

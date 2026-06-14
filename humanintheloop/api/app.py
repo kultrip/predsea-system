@@ -460,28 +460,15 @@ def create_app(evidence_store=None, route_store=None):
     @app.get("/places/distance")
     def places_distance(origin: str, destination: str):
         try:
-            refresh_route_store(route_store)
             origin_place = place_weather.place_definition(origin)
             destination_place = place_weather.place_definition(destination)
             origin_place_id = default_place_id_for_query(origin) or origin
             destination_place_id = default_place_id_for_query(destination) or destination
-            result = route_store.get(
-                origin_place_id,
-                destination_place_id,
-                priority="time",
-                vessel_class="medium",
-            )
-            if result is not None:
-                distance_nm = result.get("distance_nm")
-                estimated_time_h = result.get("estimated_time_h")
-                source_tag = "precomputed_optimal_route"
-                computed_at_utc = result.get("computed_at_utc")
-            else:
-                metrics = place_weather.place_connection_metrics(origin_place_id, destination_place_id)
-                distance_nm = metrics["distance_nm"]
-                estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
-                source_tag = metrics.get("source_tag", "static_place_metrics")
-                computed_at_utc = metrics.get("computed_at_utc")
+            metrics = place_weather.place_connection_metrics(origin_place_id, destination_place_id)
+            distance_nm = metrics["distance_nm"]
+            estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
+            source_tag = metrics.get("source_tag", "static_place_metrics")
+            computed_at_utc = metrics.get("computed_at_utc")
             return {
                 "origin_place_id": origin_place_id,
                 "origin_place_name": origin_place["name"],
@@ -503,7 +490,6 @@ def create_app(evidence_store=None, route_store=None):
     @app.get("/places/{origin_place_id}/connection/{destination_place_id}", response_model=PlaceConnectionMetricsResponse)
     def place_connection_metrics(origin_place_id: str, destination_place_id: str):
         try:
-            refresh_route_store(route_store)
             origin = place_weather.place_definition(origin_place_id)
             destination = place_weather.place_definition(destination_place_id)
             metrics = place_weather.place_connection_metrics(origin_place_id, destination_place_id)
