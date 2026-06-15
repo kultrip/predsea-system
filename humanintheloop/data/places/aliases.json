@@ -1,0 +1,14 @@
+{
+  "aliases": {
+    "palma": "palma_port",
+    "port palma": "palma_port",
+    "port de palma": "palma_port",
+    "porto portals": "porto_portals",
+    "portals": "porto_portals",
+    "ibiza": "ibiza_port",
+    "eivissa": "ibiza_port",
+    "formentera": "la_savina",
+    "mahon": "mahon",
+    "mao": "mahon"
+  }
+}

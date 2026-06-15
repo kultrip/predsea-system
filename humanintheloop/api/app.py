@@ -8,10 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.evidence_store import EvidenceNotFoundError, create_evidence_store_from_env
 from api.schemas import (
     BriefingResponse,
+    CoordinateDistanceResponse,
+    DistanceEndpointSide,
     HealthResponse,
     LocationQuestionRequest,
-    CoordinateDistanceResponse,
+    MixedDistanceResponse,
     PlaceConnectionMetricsResponse,
+    PlaceResolutionResponse,
     PlaceWeatherResponse,
     QuestionRequest,
     QuestionResponse,
@@ -191,6 +194,35 @@ def regional_evidence_summary(regional_evidence):
     }
 
 
+def resolve_distance_side(label, *, place_query=None, latitude=None, longitude=None):
+    if place_query is not None:
+        resolution = place_registry.resolve_place_query(place_query)
+        if not resolution.get("matched"):
+            raise ValueError(f"Unknown {label} place '{place_query}'.")
+        return {
+            "kind": "place",
+            "query": place_query,
+            "place_id": resolution["place_id"],
+            "place_name": resolution["place_name"],
+            "type": resolution.get("type"),
+            "latitude": resolution["latitude"],
+            "longitude": resolution["longitude"],
+            "confidence": resolution.get("confidence", "high"),
+        }
+    if latitude is not None and longitude is not None:
+        return {
+            "kind": "coordinates",
+            "query": None,
+            "place_id": None,
+            "place_name": None,
+            "type": None,
+            "latitude": float(latitude),
+            "longitude": float(longitude),
+            "confidence": None,
+        }
+    raise ValueError(f"Provide either a {label} place or {label} coordinates.")
+
+
 def classify_location_question(question):
     text = question.lower()
     if any(token in text for token in ("anchor", "anchorage", "stay here", "safe to stay", "where should i anchor")):
@@ -353,6 +385,11 @@ def create_app(evidence_store=None, route_store=None):
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
+    @app.get("/places/resolve", response_model=PlaceResolutionResponse)
+    def resolve_place_endpoint(query: str):
+        resolution = place_registry.resolve_place_query(query)
+        return resolution
+
     @app.get("/routes/{route_id}/evidence")
     def route_evidence(route_id: str, date: str | None = None, run: str | None = None):
         try:
@@ -476,6 +513,76 @@ def create_app(evidence_store=None, route_store=None):
                 "origin_place_name": origin_place["name"],
                 "destination_place_id": destination_place_id,
                 "destination_place_name": destination_place["name"],
+                "distance_nm": distance_nm,
+                "estimated_time_h": estimated_time_h,
+                "source_tag": source_tag,
+                "computed_at_utc": computed_at_utc,
+            }
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/places/distance/mixed", response_model=MixedDistanceResponse)
+    def places_distance_mixed(
+        origin: str | None = None,
+        destination: str | None = None,
+        origin_latitude: float | None = Query(default=None, ge=-90, le=90),
+        origin_longitude: float | None = Query(default=None, ge=-180, le=180),
+        destination_latitude: float | None = Query(default=None, ge=-90, le=90),
+        destination_longitude: float | None = Query(default=None, ge=-180, le=180),
+        typical_speed_kn: float = Query(15.0, gt=0),
+    ):
+        try:
+            origin_side = resolve_distance_side(
+                "origin",
+                place_query=origin,
+                latitude=origin_latitude,
+                longitude=origin_longitude,
+            )
+            destination_side = resolve_distance_side(
+                "destination",
+                place_query=destination,
+                latitude=destination_latitude,
+                longitude=destination_longitude,
+            )
+
+            if origin_side["kind"] == "place" and destination_side["kind"] == "place":
+                metrics = place_weather.place_connection_metrics(origin_side["place_id"], destination_side["place_id"])
+                method = "place_to_place"
+                distance_nm = metrics["distance_nm"]
+                estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
+                source_tag = metrics.get("source_tag", "static_place_metrics")
+                computed_at_utc = metrics.get("computed_at_utc")
+            else:
+                origin_place_id = origin_side.get("place_id") or "custom_origin"
+                origin_place_name = origin_side.get("place_name") or "Custom origin"
+                destination_place_id = destination_side.get("place_id") or "custom_destination"
+                destination_place_name = destination_side.get("place_name") or "Custom destination"
+                metrics = place_registry.coordinates_connection_metrics(
+                    origin_place_id=origin_place_id,
+                    origin_place_name=origin_place_name,
+                    origin_latitude=origin_side["latitude"],
+                    origin_longitude=origin_side["longitude"],
+                    destination_place_id=destination_place_id,
+                    destination_place_name=destination_place_name,
+                    destination_latitude=destination_side["latitude"],
+                    destination_longitude=destination_side["longitude"],
+                    typical_speed_kn=typical_speed_kn,
+                )
+                if origin_side["kind"] == "place" and destination_side["kind"] == "coordinates":
+                    method = "place_to_coordinates"
+                elif origin_side["kind"] == "coordinates" and destination_side["kind"] == "place":
+                    method = "coordinates_to_place"
+                else:
+                    method = "coordinates_to_coordinates"
+                distance_nm = metrics["distance_nm"]
+                estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
+                source_tag = metrics.get("source_tag", "graph_sea_route_v1")
+                computed_at_utc = metrics.get("computed_at_utc")
+
+            return {
+                "method": method,
+                "origin": origin_side,
+                "destination": destination_side,
                 "distance_nm": distance_nm,
                 "estimated_time_h": estimated_time_h,
                 "source_tag": source_tag,

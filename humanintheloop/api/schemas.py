@@ -137,6 +137,44 @@ class PlaceConnectionMetricsResponse(BaseModel):
     source_tag: str
 
 
+class PlaceResolutionResponse(BaseModel):
+    query: str
+    matched: bool
+    place_id: Optional[str] = None
+    place_name: Optional[str] = None
+    type: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    confidence: str
+    resolved_via: Optional[str] = None
+
+
+class DistanceEndpointSide(BaseModel):
+    kind: Literal["place", "coordinates"]
+    query: Optional[str] = None
+    place_id: Optional[str] = None
+    place_name: Optional[str] = None
+    type: Optional[str] = None
+    latitude: float
+    longitude: float
+    confidence: Optional[str] = None
+
+
+class MixedDistanceResponse(BaseModel):
+    method: Literal[
+        "place_to_place",
+        "place_to_coordinates",
+        "coordinates_to_place",
+        "coordinates_to_coordinates",
+    ]
+    origin: DistanceEndpointSide
+    destination: DistanceEndpointSide
+    distance_nm: float
+    estimated_time_h: float
+    source_tag: str
+    computed_at_utc: str
+
+
 class CoordinateDistanceResponse(BaseModel):
     origin_latitude: float
     origin_longitude: float

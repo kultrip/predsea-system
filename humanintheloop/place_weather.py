@@ -11,6 +11,7 @@ from place_registry import (
     available_place_ids,
     default_place_id_for_query,
     place_definition,
+    resolve_place_query,
     place_family,
     place_pair_metrics,
     station_candidates_for_place,
@@ -83,7 +84,8 @@ def place_sample_points(place):
 
 
 def resolve_place(place_id, latitude=None, longitude=None):
-    canonical_place_id = default_place_id_for_query(place_id) or place_id
+    resolution = resolve_place_query(place_id)
+    canonical_place_id = resolution["place_id"] or default_place_id_for_query(place_id) or place_id
     if latitude is None or longitude is None:
         place = place_definition(canonical_place_id)
         return {
@@ -92,6 +94,8 @@ def resolve_place(place_id, latitude=None, longitude=None):
             "place_name": place["name"],
             "latitude": place["latitude"],
             "longitude": place["longitude"],
+            "matched": resolution["matched"],
+            "confidence": resolution["confidence"],
         }
 
     nearest_place_id, distance_nm = nearest_place_id(latitude, longitude)
@@ -105,6 +109,8 @@ def resolve_place(place_id, latitude=None, longitude=None):
         "requested_latitude": latitude,
         "requested_longitude": longitude,
         "distance_to_place_nm": round(distance_nm, 1),
+        "matched": True,
+        "confidence": "high",
     }
 
 

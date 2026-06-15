@@ -1063,6 +1063,78 @@ def test_places_distance_uses_graph_fallback_for_uncatalogued_pair(tmp_path, mon
     assert dummy_resolver.calls == [("barcelona", "valencia")]
 
 
+def test_places_resolve_endpoint_uses_alias_file(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/places/resolve?query=portals")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["matched"] is True
+    assert payload["place_id"] == "porto_portals"
+    assert payload["place_name"] == "Puerto Portals"
+    assert payload["type"] == "port"
+    assert payload["confidence"] == "high"
+
+
+@pytest.mark.parametrize(
+    "query,expected_place_id",
+    [
+        ("eivissa", "ibiza"),
+        ("mao", "mahon"),
+        ("west ibiza", "west_ibiza"),
+    ],
+)
+def test_places_resolve_endpoint_returns_catalog_entries(tmp_path, query, expected_place_id):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get(f"/places/resolve?query={query}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["matched"] is True
+    assert payload["place_id"] == expected_place_id
+    assert payload["place_name"]
+    assert payload["latitude"] is not None
+    assert payload["longitude"] is not None
+
+
+@pytest.mark.parametrize(
+    "params,expected_method",
+    [
+        (
+            "origin=palma&destination=ibiza",
+            "place_to_place",
+        ),
+        (
+            "origin=palma&destination_latitude=38.92&destination_longitude=1.49",
+            "place_to_coordinates",
+        ),
+        (
+            "origin_latitude=39.52&origin_longitude=2.58&destination=ibiza",
+            "coordinates_to_place",
+        ),
+        (
+            "origin_latitude=39.52&origin_longitude=2.58&destination_latitude=38.92&destination_longitude=1.49",
+            "coordinates_to_coordinates",
+        ),
+    ],
+)
+def test_places_distance_mixed_supports_all_combinations(tmp_path, params, expected_method):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get(f"/places/distance/mixed?{params}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["method"] == expected_method
+    assert payload["distance_nm"] > 0
+    assert payload["estimated_time_h"] > 0
+    assert payload["origin"]
+    assert payload["destination"]
+    assert payload["source_tag"] in ("place_distance_table_v1", "graph_sea_route_v1")
+
+
 def test_places_distance_coordinates_endpoint_returns_maritime_distance(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 

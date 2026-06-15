@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from math import atan2, cos, radians, sin, sqrt
+import json
+from pathlib import Path
 import logging
 
 
@@ -9,6 +11,94 @@ DEFAULT_TRAVEL_SPEED_KN = 15.0
 GRAPH_FALLBACK_SPEED_KN = 15.0
 
 logger = logging.getLogger(__name__)
+
+PLACE_SEED_PATH = Path(__file__).with_name("places_seed_balearics.json")
+PLACE_ALIASES_PATH = Path(__file__).with_name("aliases_balearics.json")
+
+
+def _normalize_query_text(text):
+    normalized = str(text or "").strip().lower().replace("_", " ").replace("-", " ")
+    return " ".join(normalized.split())
+
+
+def _load_json_file(path):
+    if not path.exists():
+        return None
+    with path.open(encoding="utf-8") as file:
+        return json.load(file)
+
+
+def _normalize_catalog_record(place_id, record):
+    kind = record.get("kind") or record.get("type") or "place"
+    return {
+        "name": record["name"],
+        "latitude": float(record["latitude"]),
+        "longitude": float(record["longitude"]),
+        "kind": kind,
+        "type": record.get("type", kind),
+        "parent_place_id": record.get("parent_place_id"),
+        "children": tuple(record.get("children") or ()),
+        "aliases": tuple(record.get("aliases") or ()),
+        "observation_candidates": tuple(record.get("observation_candidates") or ()),
+    }
+
+
+def _load_place_catalog_from_file():
+    raw_catalog = _load_json_file(PLACE_SEED_PATH)
+    if not raw_catalog:
+        return None
+    if isinstance(raw_catalog, dict):
+        raw_records = []
+        for place_id, record in raw_catalog.items():
+            normalized_record = dict(record)
+            normalized_record.setdefault("id", place_id)
+            raw_records.append(normalized_record)
+    else:
+        raw_records = list(raw_catalog)
+    catalog = {}
+    for record in raw_records:
+        place_id = record.get("id")
+        if not place_id:
+            raise ValueError(f"Invalid place seed record without id: {record!r}")
+        catalog[place_id] = _normalize_catalog_record(place_id, record)
+    return catalog
+
+
+def _load_place_aliases_from_file(catalog):
+    raw_aliases = _load_json_file(PLACE_ALIASES_PATH)
+    if raw_aliases:
+        aliases = {
+            _normalize_query_text(alias): place_id
+            for alias, place_id in raw_aliases.items()
+            if _normalize_query_text(alias)
+        }
+        return aliases
+
+    aliases = {}
+    for place_id, place in catalog.items():
+        aliases[_normalize_query_text(place_id)] = place_id
+        aliases[_normalize_query_text(place["name"])] = place_id
+        for alias in place.get("aliases") or ():
+            aliases[_normalize_query_text(alias)] = place_id
+    return aliases
+
+
+def _build_name_index(catalog):
+    return {_normalize_query_text(place["name"]): place_id for place_id, place in catalog.items()}
+
+
+def _resolve_catalog():
+    loaded = _load_place_catalog_from_file()
+    if loaded is not None:
+        return loaded
+    return PLACE_CATALOG
+
+
+def _resolve_aliases(catalog):
+    loaded = _load_place_aliases_from_file(catalog)
+    if loaded:
+        return loaded
+    return DEFAULT_PLACE_BY_QUERY
 
 
 def _haversine_nm(lat1, lon1, lat2, lon2):
@@ -191,6 +281,10 @@ DEFAULT_PLACE_BY_QUERY = {
 }
 
 
+PLACE_CATALOG = _resolve_catalog()
+DEFAULT_PLACE_BY_QUERY = _resolve_aliases(PLACE_CATALOG)
+PLACE_NAME_INDEX = _build_name_index(PLACE_CATALOG)
+
 PAIR_METRICS = {}
 STATIC_METRICS_COMPUTED_AT_UTC = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 FIXED_DISTANCE_TABLE = {
@@ -299,11 +393,59 @@ def place_definition(place_id):
         raise ValueError(f"Unknown place '{place_id}'. Available places: {available}") from error
 
 
+def resolve_place_query(query):
+    normalized = _normalize_query_text(query)
+    if not normalized:
+        return {
+            "query": query,
+            "matched": False,
+            "place_id": None,
+            "place_name": None,
+            "type": None,
+            "latitude": None,
+            "longitude": None,
+            "confidence": "low",
+            "resolved_via": None,
+        }
+
+    place_id = DEFAULT_PLACE_BY_QUERY.get(normalized) or PLACE_NAME_INDEX.get(normalized)
+    resolved_via = None
+    if place_id is None and normalized in PLACE_CATALOG:
+        place_id = normalized
+        resolved_via = "canonical_id"
+    elif place_id is not None:
+        resolved_via = "alias" if normalized != _normalize_query_text(place_id) else "name"
+
+    if place_id is None:
+        return {
+            "query": query,
+            "matched": False,
+            "place_id": None,
+            "place_name": None,
+            "type": None,
+            "latitude": None,
+            "longitude": None,
+            "confidence": "low",
+            "resolved_via": None,
+        }
+
+    place = place_definition(place_id)
+    return {
+        "query": query,
+        "matched": True,
+        "place_id": place_id,
+        "place_name": place["name"],
+        "type": place.get("kind") or place.get("type"),
+        "latitude": float(place["latitude"]),
+        "longitude": float(place["longitude"]),
+        "confidence": "high",
+        "resolved_via": resolved_via or "alias",
+    }
+
+
+
 def default_place_id_for_query(query):
-    if query is None:
-        return None
-    normalized = " ".join(str(query).strip().lower().split())
-    return DEFAULT_PLACE_BY_QUERY.get(normalized)
+    return resolve_place_query(query)["place_id"] if query is not None else None
 
 
 def station_candidates_for_place(place_id):

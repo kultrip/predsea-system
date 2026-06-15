@@ -1,0 +1,332 @@
+[
+  {
+    "id": "alcudia",
+    "name": "Alcudia",
+    "type": "main_port",
+    "latitude": 39.84,
+    "longitude": 3.14,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "alcudia",
+      "alcudia de mallorca"
+    ],
+    "observation_candidates": [
+      "alcudia",
+      "puertos_alcudia",
+      "mallorca",
+      "puertos_mallorca"
+    ]
+  },
+  {
+    "id": "barcelona",
+    "name": "Barcelona",
+    "type": "main_place",
+    "latitude": 41.32,
+    "longitude": 2.22,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "barcelona"
+    ],
+    "observation_candidates": [
+      "barcelona",
+      "puertos_barcelona"
+    ]
+  },
+  {
+    "id": "cabrera",
+    "name": "Cabrera",
+    "type": "main_place",
+    "latitude": 39.14,
+    "longitude": 2.92,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "cabrera"
+    ],
+    "observation_candidates": [
+      "canal_de_ibiza",
+      "puertos_mallorca",
+      "mallorca"
+    ]
+  },
+  {
+    "id": "can_pastilla",
+    "name": "Can Pastilla",
+    "type": "sub_port",
+    "latitude": 39.53,
+    "longitude": 2.71,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "can pastilla",
+      "can pastilla palma"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
+    ]
+  },
+  {
+    "id": "ciutadella",
+    "name": "Ciutadella",
+    "type": "main_port",
+    "latitude": 40.02,
+    "longitude": 3.82,
+    "parent_place_id": "menorca",
+    "children": [],
+    "aliases": [
+      "ciutadella",
+      "ciutadella de menorca"
+    ],
+    "observation_candidates": [
+      "mahon",
+      "puertos_mahon",
+      "menorca"
+    ]
+  },
+  {
+    "id": "formentera",
+    "name": "Formentera",
+    "type": "main_place",
+    "latitude": 38.68,
+    "longitude": 1.49,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "formentera"
+    ],
+    "observation_candidates": [
+      "formentera",
+      "puertos_formentera",
+      "canal_de_ibiza"
+    ]
+  },
+  {
+    "id": "ibiza",
+    "name": "Ibiza",
+    "type": "main_place",
+    "latitude": 38.92,
+    "longitude": 1.49,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "ibiza",
+      "ibiza island"
+    ],
+    "observation_candidates": [
+      "canal_de_ibiza",
+      "puertos_ibiza",
+      "ibiza"
+    ]
+  },
+  {
+    "id": "menorca",
+    "name": "Menorca",
+    "type": "main_place",
+    "latitude": 40.02,
+    "longitude": 4.12,
+    "parent_place_id": null,
+    "children": [
+      "ciutadella"
+    ],
+    "aliases": [
+      "menorca"
+    ],
+    "observation_candidates": [
+      "mahon",
+      "puertos_mahon"
+    ]
+  },
+  {
+    "id": "palma",
+    "name": "Palma",
+    "type": "main_port",
+    "latitude": 39.52,
+    "longitude": 2.58,
+    "parent_place_id": null,
+    "children": [
+      "port_de_palma",
+      "port_adriano",
+      "can_pastilla"
+    ],
+    "aliases": [
+      "palma",
+      "palma de mallorca"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
+    ]
+  },
+  {
+    "id": "port_adriano",
+    "name": "Port Adriano",
+    "type": "sub_port",
+    "latitude": 39.5,
+    "longitude": 2.48,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "port adriano"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
+    ]
+  },
+  {
+    "id": "port_de_palma",
+    "name": "Port de Palma",
+    "type": "sub_port",
+    "latitude": 39.55,
+    "longitude": 2.63,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "port de palma",
+      "port of palma"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
+    ]
+  },
+  {
+    "id": "portocolom",
+    "name": "Portocolom",
+    "type": "main_port",
+    "latitude": 39.41,
+    "longitude": 3.27,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "portocolom",
+      "porto colom",
+      "port de portocolom"
+    ],
+    "observation_candidates": [
+      "porto_colom",
+      "puertos_mallorca",
+      "mallorca",
+      "puertos_alcudia",
+      "alcudia"
+    ]
+  },
+  {
+    "id": "soller",
+    "name": "Soller",
+    "type": "main_port",
+    "latitude": 39.81,
+    "longitude": 2.74,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "soller",
+      "port de soller"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
+    ]
+  },
+  {
+    "id": "valencia",
+    "name": "Valencia",
+    "type": "main_place",
+    "latitude": 39.38,
+    "longitude": -0.28,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "valencia"
+    ],
+    "observation_candidates": [
+      "valencia",
+      "puertos_valencia"
+    ]
+  },
+  {
+    "id": "porto_portals",
+    "name": "Puerto Portals",
+    "type": "port",
+    "latitude": 39.532,
+    "longitude": 2.571,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "portals",
+      "puerto portals",
+      "porto portals"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca"
+    ]
+  },
+  {
+    "id": "la_savina",
+    "name": "La Savina",
+    "type": "port",
+    "latitude": 38.72,
+    "longitude": 1.41,
+    "parent_place_id": "formentera",
+    "children": [],
+    "aliases": [
+      "la savina",
+      "savina"
+    ],
+    "observation_candidates": [
+      "formentera",
+      "puertos_formentera"
+    ]
+  },
+  {
+    "id": "mahon",
+    "name": "Mahón",
+    "type": "port",
+    "latitude": 39.89,
+    "longitude": 4.27,
+    "parent_place_id": "menorca",
+    "children": [],
+    "aliases": [
+      "mahon",
+      "mao",
+      "mahon"
+    ],
+    "observation_candidates": [
+      "mahon",
+      "puertos_mahon"
+    ]
+  },
+  {
+    "id": "west_ibiza",
+    "name": "West Ibiza",
+    "type": "region",
+    "latitude": 38.97,
+    "longitude": 1.22,
+    "parent_place_id": "ibiza",
+    "children": [],
+    "aliases": [
+      "west ibiza",
+      "ibiza west"
+    ],
+    "observation_candidates": [
+      "canal_de_ibiza",
+      "puertos_ibiza",
+      "ibiza"
+    ]
+  }
+]

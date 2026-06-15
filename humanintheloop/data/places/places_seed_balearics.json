@@ -1,0 +1,290 @@
+{
+  "mallorca": [
+    {
+      "id": "palma_bay",
+      "name": "Palma Bay",
+      "type": "bay",
+      "latitude": 39.490,
+      "longitude": 2.660,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "palma_port",
+      "name": "Port de Palma",
+      "type": "port",
+      "latitude": 39.562,
+      "longitude": 2.640,
+      "confidence": "high"
+    },
+    {
+      "id": "port_adriano",
+      "name": "Port Adriano",
+      "type": "port",
+      "latitude": 39.493,
+      "longitude": 2.475,
+      "confidence": "high"
+    },
+    {
+      "id": "porto_portals",
+      "name": "Puerto Portals",
+      "type": "port",
+      "latitude": 39.532,
+      "longitude": 2.571,
+      "confidence": "high"
+    },
+    {
+      "id": "andratx_port",
+      "name": "Port d'Andratx",
+      "type": "port",
+      "latitude": 39.543,
+      "longitude": 2.389,
+      "confidence": "high"
+    },
+    {
+      "id": "cala_llamp",
+      "name": "Cala Llamp",
+      "type": "anchorage",
+      "latitude": 39.536,
+      "longitude": 2.370,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "cala_dor",
+      "name": "Cala d'Or",
+      "type": "anchorage",
+      "latitude": 39.374,
+      "longitude": 3.228,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "port_soller",
+      "name": "Port de Sóller",
+      "type": "port",
+      "latitude": 39.797,
+      "longitude": 2.696,
+      "confidence": "high"
+    },
+    {
+      "id": "cala_deia",
+      "name": "Cala Deià",
+      "type": "anchorage",
+      "latitude": 39.760,
+      "longitude": 2.640,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "valldemossa_anchorage",
+      "name": "Valldemossa Anchorage",
+      "type": "anchorage",
+      "latitude": 39.711,
+      "longitude": 2.621,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "formentor",
+      "name": "Formentor",
+      "type": "anchorage",
+      "latitude": 39.927,
+      "longitude": 3.143,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "pollensa_port",
+      "name": "Port de Pollença",
+      "type": "port",
+      "latitude": 39.907,
+      "longitude": 3.083,
+      "confidence": "high"
+    },
+    {
+      "id": "pollensa_bay",
+      "name": "Pollensa Bay",
+      "type": "bay",
+      "latitude": 39.880,
+      "longitude": 3.100,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "alcudia_bay",
+      "name": "Alcudia Bay",
+      "type": "bay",
+      "latitude": 39.820,
+      "longitude": 3.180,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "alcudia_port",
+      "name": "Port d'Alcudia",
+      "type": "port",
+      "latitude": 39.840,
+      "longitude": 3.130,
+      "confidence": "high"
+    },
+    {
+      "id": "cabrera",
+      "name": "Cabrera",
+      "type": "anchorage",
+      "latitude": 39.145,
+      "longitude": 2.938,
+      "confidence": "high"
+    }
+  ],
+
+  "menorca": [
+    {
+      "id": "ciutadella",
+      "name": "Ciutadella",
+      "type": "port",
+      "latitude": 40.000,
+      "longitude": 3.835,
+      "confidence": "high"
+    },
+    {
+      "id": "mahon",
+      "name": "Mahón",
+      "type": "port",
+      "latitude": 39.889,
+      "longitude": 4.266,
+      "confidence": "high"
+    },
+    {
+      "id": "fornells_bay",
+      "name": "Fornells Bay",
+      "type": "bay",
+      "latitude": 40.053,
+      "longitude": 4.133,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "south_menorca",
+      "name": "South Menorca",
+      "type": "region",
+      "latitude": 39.900,
+      "longitude": 4.080,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "cala_galdana",
+      "name": "Cala Galdana",
+      "type": "anchorage",
+      "latitude": 39.938,
+      "longitude": 3.960,
+      "confidence": "approximate_seed"
+    }
+  ],
+
+  "ibiza_formentera": [
+    {
+      "id": "ibiza_port",
+      "name": "Ibiza Port",
+      "type": "port",
+      "latitude": 38.914,
+      "longitude": 1.443,
+      "confidence": "high"
+    },
+    {
+      "id": "cala_sant_vicent",
+      "name": "Cala de Sant Vicent",
+      "type": "anchorage",
+      "latitude": 39.075,
+      "longitude": 1.593,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "tagomago",
+      "name": "Tagomago",
+      "type": "anchorage",
+      "latitude": 39.044,
+      "longitude": 1.649,
+      "confidence": "high"
+    },
+    {
+      "id": "santa_eulalia_bay",
+      "name": "Santa Eulalia Bay",
+      "type": "bay",
+      "latitude": 38.986,
+      "longitude": 1.535,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "talamanca",
+      "name": "Talamanca",
+      "type": "anchorage",
+      "latitude": 38.922,
+      "longitude": 1.463,
+      "confidence": "high"
+    },
+    {
+      "id": "cala_jondal",
+      "name": "Cala Jondal",
+      "type": "anchorage",
+      "latitude": 38.868,
+      "longitude": 1.316,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "es_vedra",
+      "name": "Es Vedrà",
+      "type": "anchorage",
+      "latitude": 38.868,
+      "longitude": 1.202,
+      "confidence": "high"
+    },
+    {
+      "id": "west_ibiza",
+      "name": "West Ibiza",
+      "type": "region",
+      "latitude": 38.970,
+      "longitude": 1.220,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "san_antonio_bay",
+      "name": "Bahía de San Antonio",
+      "type": "bay",
+      "latitude": 38.980,
+      "longitude": 1.300,
+      "confidence": "high"
+    },
+    {
+      "id": "northwest_ibiza",
+      "name": "Northwest Ibiza",
+      "type": "region",
+      "latitude": 39.108,
+      "longitude": 1.514,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "formentera_east",
+      "name": "East Formentera",
+      "type": "region",
+      "latitude": 38.700,
+      "longitude": 1.540,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "formentera_south",
+      "name": "South Formentera",
+      "type": "region",
+      "latitude": 38.640,
+      "longitude": 1.430,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "formentera_west",
+      "name": "West Formentera",
+      "type": "region",
+      "latitude": 38.700,
+      "longitude": 1.370,
+      "confidence": "approximate_seed"
+    },
+    {
+      "id": "la_savina",
+      "name": "La Savina",
+      "type": "port",
+      "latitude": 38.734,
+      "longitude": 1.416,
+      "confidence": "high"
+    }
+  ]
+}
