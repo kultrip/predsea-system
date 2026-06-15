@@ -20,12 +20,11 @@ def snapshot_for_vessel_class(snapshot, vessel_class, departure_time=None, prior
         priority=priority,
         current_position=current_position,
     )
-    if not adjusted.get("route_connection"):
-        try:
-            route = route_analysis.load_route(adjusted.get("route_id") or route_analysis.DEFAULT_ROUTE_ID)
-            adjusted["route_connection"] = route_analysis.route_connection_metrics(route)
-        except (OSError, ValueError):
-            adjusted["route_connection"] = None
+    try:
+        route = route_analysis.load_route(adjusted.get("route_id") or route_analysis.DEFAULT_ROUTE_ID)
+        adjusted["route_connection"] = route_analysis.route_connection_metrics(route)
+    except (OSError, ValueError):
+        adjusted["route_connection"] = None
     observations = adjusted.get("observations", {})
     canal = observations.get("canal_de_ibiza", {})
     wave_now = canal.get("wave_height_m")

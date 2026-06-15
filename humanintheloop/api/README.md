@@ -233,12 +233,15 @@ curl "http://127.0.0.1:8000/places/palma/connection/portocolom"
 ```
 
 This returns the pair distance in nautical miles plus a typical travel time
-based on the registry’s default passage speed. The route solver remains the
-weighted path layer for weather and current-aware routing.
+based on the registry’s default passage speed. Curated pairs come from the
+fixed place-pair table; uncatalogued pairs fall back to a graph-based sea-route
+calculation. The route solver remains the weighted path layer for weather and
+current-aware routing.
 
 Route questions also carry passage distance/time in the response JSON, so a
 question like "Is it good to go from Palma to Ibiza today?" can include the
-route’s static distance and typical duration alongside the weather answer.
+route’s static distance and typical duration alongside the weather answer. If
+the pair is not in the curated table, the same graph-based fallback is used.
 
 Current public media artifacts are:
 

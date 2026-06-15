@@ -13,6 +13,7 @@ Pillow>=10.0
 pytest>=8.0
 python-dotenv>=1.0
 requests>=2.31
+searoute>=1.6.0
 tenacity>=8.2
 uvicorn>=0.30
 xarray>=2025.1
