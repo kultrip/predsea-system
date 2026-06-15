@@ -1,10 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from math import atan2, cos, radians, sin, sqrt
+from tempfile import gettempdir
+import logging
 
 
 DEFAULT_TRAVEL_SPEED_KN = 15.0
+DEFAULT_COPERNICUS_GCS_PREFIX = "gs://predsea-daily-outputs/copernicus"
+DEFAULT_WAVES_BLOB = "waves_latest.nc"
+DEFAULT_CURRENTS_BLOB = "currents_latest.nc"
+GRAPH_FALLBACK_SPEED_KN = 15.0
+
+logger = logging.getLogger(__name__)
 
 
 def _haversine_nm(lat1, lon1, lat2, lon2):
@@ -211,6 +220,119 @@ FIXED_DISTANCE_TABLE = {
 }
 
 
+class PlaceDistanceResolver:
+    def __init__(
+        self,
+        gcs_prefix: str = DEFAULT_COPERNICUS_GCS_PREFIX,
+        waves_blob: str = DEFAULT_WAVES_BLOB,
+        currents_blob: str = DEFAULT_CURRENTS_BLOB,
+    ):
+        self.gcs_prefix = gcs_prefix
+        self.waves_blob = waves_blob
+        self.currents_blob = currents_blob
+        self._solver = None
+        self._solver_loaded_at = None
+        self._graph_metrics_cache = {}
+
+    def resolve(self, origin_place_id: str, destination_place_id: str) -> dict:
+        key = (origin_place_id, destination_place_id)
+        fixed = FIXED_DISTANCE_TABLE.get(key)
+        if fixed is not None:
+            return self._fixed_metrics(origin_place_id, destination_place_id, fixed)
+        if key not in self._graph_metrics_cache:
+            self._graph_metrics_cache[key] = self._graph_metrics(origin_place_id, destination_place_id)
+        return dict(self._graph_metrics_cache[key])
+
+    def _fixed_metrics(self, origin_place_id: str, destination_place_id: str, distance_nm: float) -> dict:
+        origin = place_definition(origin_place_id)
+        destination = place_definition(destination_place_id)
+        typical_travel_time_minutes = int(round((float(distance_nm) / DEFAULT_TRAVEL_SPEED_KN) * 60.0))
+        return {
+            "origin_place_id": origin_place_id,
+            "origin_place_name": origin["name"],
+            "destination_place_id": destination_place_id,
+            "destination_place_name": destination["name"],
+            "distance_nm": float(distance_nm),
+            "typical_speed_kn": DEFAULT_TRAVEL_SPEED_KN,
+            "typical_travel_time_minutes": typical_travel_time_minutes,
+            "computed_at_utc": STATIC_METRICS_COMPUTED_AT_UTC,
+            "source_tag": "place_distance_table_v1",
+        }
+
+    def _graph_metrics(self, origin_place_id: str, destination_place_id: str) -> dict:
+        origin = place_definition(origin_place_id)
+        destination = place_definition(destination_place_id)
+        solver = self._route_solver()
+        result = solver.solve(
+            origin_lat=float(origin["latitude"]),
+            origin_lon=float(origin["longitude"]),
+            destination_lat=float(destination["latitude"]),
+            destination_lon=float(destination["longitude"]),
+            origin_place_id=origin_place_id,
+            destination_place_id=destination_place_id,
+            vessel_speed_kn=GRAPH_FALLBACK_SPEED_KN,
+            forecast_run_utc="",
+            computed_at_utc=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        )
+        if result is None:
+            raise ValueError(
+                f"No navigable graph route found for '{origin_place_id}' -> '{destination_place_id}'"
+            )
+        return {
+            "origin_place_id": result.origin_place_id,
+            "origin_place_name": origin["name"],
+            "destination_place_id": result.destination_place_id,
+            "destination_place_name": destination["name"],
+            "distance_nm": float(result.distance_nm),
+            "typical_speed_kn": GRAPH_FALLBACK_SPEED_KN,
+            "typical_travel_time_minutes": int(round(result.estimated_time_h * 60.0)),
+            "computed_at_utc": result.computed_at_utc or STATIC_METRICS_COMPUTED_AT_UTC,
+            "source_tag": "graph_sea_route_v1",
+        }
+
+    def _route_solver(self):
+        if self._solver is not None:
+            return self._solver
+        waves_path = self._download_gcs_blob(self.waves_blob)
+        currents_path = self._download_gcs_blob(self.currents_blob)
+        from route_graph import MaritimeGrid
+        from route_solver import RouteSolver
+
+        grid = MaritimeGrid.from_netcdf(waves_path, currents_path)
+        grid.build_vertex_index()
+        grid.build_graph(
+            priority="time",
+            vessel_class="medium",
+            vessel_speed_kn=GRAPH_FALLBACK_SPEED_KN,
+        )
+        self._solver = RouteSolver(grid)
+        self._solver_loaded_at = datetime.now(timezone.utc).isoformat()
+        logger.info("Loaded graph fallback solver at %s", self._solver_loaded_at)
+        return self._solver
+
+    def _download_gcs_blob(self, blob_name: str) -> str:
+        bucket_name, prefix = self.gcs_prefix[5:].split("/", 1)
+        full_blob_name = f"{prefix}/{blob_name}".lstrip("/")
+        local_path = Path(gettempdir()) / full_blob_name.replace("/", "_")
+        if local_path.exists():
+            return str(local_path)
+        try:
+            from google.cloud import storage
+
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+            blob = bucket.blob(full_blob_name)
+            blob.download_to_filename(str(local_path))
+            logger.info("Downloaded %s -> %s", f"{self.gcs_prefix}/{blob_name}", local_path)
+            return str(local_path)
+        except Exception as error:
+            logger.error("Unable to download %s: %s", f"{self.gcs_prefix}/{blob_name}", error)
+            raise
+
+
+PLACE_DISTANCE_RESOLVER = PlaceDistanceResolver()
+
+
 def available_place_ids():
     return sorted(PLACE_CATALOG)
 
@@ -236,37 +358,9 @@ def station_candidates_for_place(place_id):
 
 
 def place_pair_metrics(origin_place_id, destination_place_id):
-    origin = place_definition(origin_place_id)
-    destination = place_definition(destination_place_id)
     key = (origin_place_id, destination_place_id)
     if key not in PAIR_METRICS:
-        fixed_distance_nm = FIXED_DISTANCE_TABLE.get(key)
-        if fixed_distance_nm is not None:
-            typical_speed_kn = DEFAULT_TRAVEL_SPEED_KN
-            typical_travel_time_minutes = int(round((fixed_distance_nm / typical_speed_kn) * 60.0))
-            PAIR_METRICS[key] = {
-                "origin_place_id": origin_place_id,
-                "origin_place_name": origin["name"],
-                "destination_place_id": destination_place_id,
-                "destination_place_name": destination["name"],
-                "distance_nm": fixed_distance_nm,
-                "typical_speed_kn": typical_speed_kn,
-                "typical_travel_time_minutes": typical_travel_time_minutes,
-                "computed_at_utc": STATIC_METRICS_COMPUTED_AT_UTC,
-                "source_tag": "place_distance_table_v1",
-            }
-        else:
-            PAIR_METRICS[key] = coordinates_connection_metrics(
-                origin_place_id=origin_place_id,
-                origin_place_name=origin["name"],
-                origin_latitude=float(origin["latitude"]),
-                origin_longitude=float(origin["longitude"]),
-                destination_place_id=destination_place_id,
-                destination_place_name=destination["name"],
-                destination_latitude=float(destination["latitude"]),
-                destination_longitude=float(destination["longitude"]),
-                typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
-            )
+        PAIR_METRICS[key] = PLACE_DISTANCE_RESOLVER.resolve(origin_place_id, destination_place_id)
     return dict(PAIR_METRICS[key])
 
 

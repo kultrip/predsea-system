@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from api.app import create_app
 from api.evidence_store import EvidenceStore, GcsEvidenceStore
+import place_registry
 
 
 class FakeRouteStore:
@@ -57,6 +58,25 @@ class FakeRouteStore:
 
     def status(self):
         return {"loaded_date": "2026-06-14", "loaded_at": "2026-06-14T11:00Z", "route_count": len(self._results)}
+
+
+class DummyDistanceResolver:
+    def __init__(self):
+        self.calls = []
+
+    def resolve(self, origin_place_id, destination_place_id):
+        self.calls.append((origin_place_id, destination_place_id))
+        return {
+            "origin_place_id": origin_place_id,
+            "origin_place_name": origin_place_id.title(),
+            "destination_place_id": destination_place_id,
+            "destination_place_name": destination_place_id.title(),
+            "distance_nm": 77.7,
+            "typical_speed_kn": 15.0,
+            "typical_travel_time_minutes": 311,
+            "computed_at_utc": "2026-06-15 10:00 UTC",
+            "source_tag": "graph_sea_route_v1",
+        }
 
 
 def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
@@ -1027,6 +1047,22 @@ def test_places_distance_endpoint_returns_distance_and_time(tmp_path):
     assert payload["source_tag"] == "place_distance_table_v1"
 
 
+def test_places_distance_uses_graph_fallback_for_uncatalogued_pair(tmp_path, monkeypatch):
+    dummy_resolver = DummyDistanceResolver()
+    monkeypatch.setattr(place_registry, "PLACE_DISTANCE_RESOLVER", dummy_resolver)
+    place_registry.PAIR_METRICS.clear()
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/places/distance?origin=barcelona&destination=valencia")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["distance_nm"] == 77.7
+    assert payload["estimated_time_h"] == pytest.approx(311 / 60.0, rel=1e-6)
+    assert payload["source_tag"] == "graph_sea_route_v1"
+    assert dummy_resolver.calls == [("barcelona", "valencia")]
+
+
 def test_routes_optimal_status_reports_route_store_state(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 
@@ -1059,6 +1095,31 @@ def test_route_question_includes_route_connection_metrics(tmp_path):
     assert "PASSAGE:" in payload["answer"]
     assert payload["evidence_used"]["route_connection"]["distance_nm"] == 100.0
     assert payload["evidence_used"]["route_connection"]["typical_travel_time_minutes"] > 0
+
+
+def test_route_question_uses_graph_fallback_for_uncatalogued_pair(tmp_path, monkeypatch):
+    dummy_resolver = DummyDistanceResolver()
+    monkeypatch.setattr(place_registry, "PLACE_DISTANCE_RESOLVER", dummy_resolver)
+    place_registry.PAIR_METRICS.clear()
+    write_snapshot(tmp_path, date_text="2026-05-29", route_id="palma_valencia")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_valencia/question",
+        json={
+            "date": "2026-05-29",
+            "run": "latest",
+            "question": "Is it good to go from Palma to Valencia today?",
+            "vessel_class": "medium",
+            "current_date": "2026-05-29",
+            "current_time": "09:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["evidence_used"]["route_connection"]["distance_nm"] == 77.7
+    assert dummy_resolver.calls == [("palma", "valencia")]
 
 
 def test_artifact_endpoint_serves_latest_route_map(tmp_path):
