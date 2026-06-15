@@ -311,9 +311,10 @@ curl -X POST \
   }'
 ```
 
-This is Phase 1 location intelligence. It samples the nearest generated map
-grids, currently wave height, current speed, and primary swell height. It is a
-screening layer, not final anchoring clearance.
+This is Phase 1 location intelligence. The request must include latitude and
+longitude. It samples the nearest generated map grids, currently wave height,
+current speed, and primary swell height. It is a screening layer, not final
+anchoring clearance.
 
 Known limitations returned by the API:
 

@@ -182,10 +182,11 @@ curl -X POST http://127.0.0.1:8000/question \
   }'
 ```
 
-`POST /question` is Phase 1 location intelligence. It samples the nearest
-forecast map grids around the shared position and returns a conservative
-operational read. It does not yet include seabed type, depth, anchoring
-restrictions, or nearby shelter search.
+`POST /question` is Phase 1 location intelligence for a shared GPS position.
+The request must include `latitude` and `longitude`. It samples the nearest
+forecast map grids around that position and returns a conservative operational
+read. It does not yet include seabed type, depth, anchoring restrictions, or
+nearby shelter search.
 
 Get a Leaflet-compatible map overlay:
 

@@ -31,6 +31,9 @@ Can I stay here?
 Where should I anchor near this position?
 ```
 
+The request must include `latitude` and `longitude`. PredSea does not infer a
+hidden position when those are missing.
+
 ## What Is Already Done
 
 - The ETL fetches Copernicus and SOCIB as independent forecast sources.
