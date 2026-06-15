@@ -1063,7 +1063,7 @@ def test_places_distance_uses_graph_fallback_for_uncatalogued_pair(tmp_path, mon
     assert dummy_resolver.calls == [("barcelona", "valencia")]
 
 
-def test_places_distance_coordinates_endpoint_returns_haversine_distance(tmp_path):
+def test_places_distance_coordinates_endpoint_returns_maritime_distance(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 
     response = client.get(
@@ -1076,7 +1076,7 @@ def test_places_distance_coordinates_endpoint_returns_haversine_distance(tmp_pat
     assert payload["destination_longitude"] == 2.5
     assert payload["distance_nm"] > 0
     assert payload["typical_speed_kn"] == 15.0
-    assert payload["source_tag"] == "place_registry_v1"
+    assert payload["source_tag"] == "graph_sea_route_v1"
 
 
 def test_routes_optimal_status_reports_route_store_state(tmp_path):

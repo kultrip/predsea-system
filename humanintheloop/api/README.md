@@ -223,7 +223,7 @@ place. It includes wave height and direction, swell components, wind, current
 when available, water temperature when available, air temperature when
 available, freshness metadata, and the nearest supported place when a
 coordinate override is provided. The coordinate distance endpoint returns the
-straight geodesic distance and a travel-time estimate for raw latitude/longitude
+maritime sea-route distance and a travel-time estimate for raw latitude/longitude
 pairs.
 
 Palma is also exposed as a small place family. The default place remains

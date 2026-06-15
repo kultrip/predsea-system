@@ -330,27 +330,39 @@ def coordinates_connection_metrics(
     destination_longitude,
     typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
 ):
-    distance_nm = round(
-        _haversine_nm(
-            float(origin_latitude),
-            float(origin_longitude),
-            float(destination_latitude),
-            float(destination_longitude),
-        ),
-        1,
+    try:
+        import searoute as sr
+    except Exception as error:  # pragma: no cover - dependency/runtime failure
+        raise ValueError("Coordinate maritime fallback requires the searoute package") from error
+
+    route = sr.searoute(
+        [float(origin_longitude), float(origin_latitude)],
+        [float(destination_longitude), float(destination_latitude)],
+        units="naut",
+        speed_knot=float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN),
     )
+    properties = route.get("properties") or {}
+    length_nm = properties.get("length")
+    duration_hours = properties.get("duration_hours")
+    if length_nm is None and duration_hours is None:
+        raise ValueError(
+            f"Coordinate maritime fallback returned no usable route for '{origin_place_id}' -> '{destination_place_id}'"
+        )
+    if length_nm is None and duration_hours is not None:
+        length_nm = float(duration_hours) * float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
+    if duration_hours is None and length_nm is not None:
+        duration_hours = float(length_nm) / float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
     typical_speed_kn = float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
-    typical_travel_time_minutes = int(round((distance_nm / typical_speed_kn) * 60.0))
     return {
         "origin_place_id": origin_place_id,
         "origin_place_name": origin_place_name,
         "destination_place_id": destination_place_id,
         "destination_place_name": destination_place_name,
-        "distance_nm": distance_nm,
+        "distance_nm": float(length_nm),
         "typical_speed_kn": typical_speed_kn,
-        "typical_travel_time_minutes": typical_travel_time_minutes,
-        "computed_at_utc": STATIC_METRICS_COMPUTED_AT_UTC,
-        "source_tag": "place_registry_v1",
+        "typical_travel_time_minutes": int(round(float(duration_hours) * 60.0)),
+        "computed_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "source_tag": "graph_sea_route_v1",
     }
 
 
