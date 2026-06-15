@@ -212,11 +212,19 @@ curl "http://127.0.0.1:8000/places/ibiza/weather?date=2026-06-12&run=latest"
 curl "http://127.0.0.1:8000/places/ibiza/weather?date=2026-06-12&run=latest&lat=38.97&lon=1.44"
 ```
 
+Get coordinate-based distance between two sea points:
+
+```bash
+curl "http://127.0.0.1:8000/places/distance/coordinates?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=39.5&destination_longitude=2.5"
+```
+
 The place weather endpoint returns the weather-only layer for the selected
 place. It includes wave height and direction, swell components, wind, current
 when available, water temperature when available, air temperature when
 available, freshness metadata, and the nearest supported place when a
-coordinate override is provided.
+coordinate override is provided. The coordinate distance endpoint returns the
+straight geodesic distance and a travel-time estimate for raw latitude/longitude
+pairs.
 
 Palma is also exposed as a small place family. The default place remains
 `palma`, and specific ports are available as separate places:

@@ -10,12 +10,14 @@ from api.schemas import (
     BriefingResponse,
     HealthResponse,
     LocationQuestionRequest,
+    CoordinateDistanceResponse,
     PlaceConnectionMetricsResponse,
     PlaceWeatherResponse,
     QuestionRequest,
     QuestionResponse,
 )
 from api.services import answer_question, evidence_used, render_briefing
+import place_registry
 from place_registry import default_place_id_for_query
 import place_weather
 from route_store import RouteStore
@@ -481,6 +483,37 @@ def create_app(evidence_store=None, route_store=None):
             }
         except ValueError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/places/distance/coordinates", response_model=CoordinateDistanceResponse)
+    def places_distance_coordinates(
+        origin_latitude: float = Query(..., ge=-90, le=90),
+        origin_longitude: float = Query(..., ge=-180, le=180),
+        destination_latitude: float = Query(..., ge=-90, le=90),
+        destination_longitude: float = Query(..., ge=-180, le=180),
+        typical_speed_kn: float = Query(15.0, gt=0),
+    ):
+        metrics = place_registry.coordinates_connection_metrics(
+            origin_place_id="custom_origin",
+            origin_place_name="Custom origin",
+            origin_latitude=origin_latitude,
+            origin_longitude=origin_longitude,
+            destination_place_id="custom_destination",
+            destination_place_name="Custom destination",
+            destination_latitude=destination_latitude,
+            destination_longitude=destination_longitude,
+            typical_speed_kn=typical_speed_kn,
+        )
+        return {
+            "origin_latitude": origin_latitude,
+            "origin_longitude": origin_longitude,
+            "destination_latitude": destination_latitude,
+            "destination_longitude": destination_longitude,
+            "distance_nm": metrics["distance_nm"],
+            "typical_speed_kn": metrics["typical_speed_kn"],
+            "typical_travel_time_minutes": metrics["typical_travel_time_minutes"],
+            "computed_at_utc": metrics["computed_at_utc"],
+            "source_tag": metrics["source_tag"],
+        }
 
     @app.get("/routes/optimal/status")
     def routes_optimal_status():

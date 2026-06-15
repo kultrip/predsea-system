@@ -137,6 +137,18 @@ class PlaceConnectionMetricsResponse(BaseModel):
     source_tag: str
 
 
+class CoordinateDistanceResponse(BaseModel):
+    origin_latitude: float
+    origin_longitude: float
+    destination_latitude: float
+    destination_longitude: float
+    distance_nm: float
+    typical_speed_kn: float
+    typical_travel_time_minutes: int
+    computed_at_utc: str
+    source_tag: str
+
+
 class RouteSummary(BaseModel):
     route_id: str
     route: str

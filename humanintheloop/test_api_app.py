@@ -1063,6 +1063,22 @@ def test_places_distance_uses_graph_fallback_for_uncatalogued_pair(tmp_path, mon
     assert dummy_resolver.calls == [("barcelona", "valencia")]
 
 
+def test_places_distance_coordinates_endpoint_returns_haversine_distance(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get(
+        "/places/distance/coordinates?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=39.5&destination_longitude=2.5"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_latitude"] == 39.0
+    assert payload["destination_longitude"] == 2.5
+    assert payload["distance_nm"] > 0
+    assert payload["typical_speed_kn"] == 15.0
+    assert payload["source_tag"] == "place_registry_v1"
+
+
 def test_routes_optimal_status_reports_route_store_state(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 
