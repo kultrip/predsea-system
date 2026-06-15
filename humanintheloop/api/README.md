@@ -222,7 +222,7 @@ The place weather endpoint returns the weather-only layer for the selected
 place. It includes wave height and direction, swell components, wind, current
 when available, water temperature when available, air temperature when
 available, freshness metadata, and the nearest supported place when a
-coordinate override is provided. The coordinate distance endpoint returns the
+coordinate override is provided. The coordinate distance endpoint returns a
 maritime sea-route distance and a travel-time estimate for raw latitude/longitude
 pairs.
 

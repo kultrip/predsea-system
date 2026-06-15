@@ -23,7 +23,7 @@ The contract for those surfaces is:
 - **place weather**: wave, swell, wind, current, and freshness for a place or coordinate
 - **place hierarchy**: `palma` is the default Palma place, while `port_de_palma`, `port_adriano`, and `can_pastilla` are separate places
 - **static place metrics**: distance and typical travel time come from a fixed place-pair table first, then fall back to a graph-based sea route for uncatalogued pairs
-- **coordinate distance**: `/places/distance/coordinates` returns straight geodesic distance and a travel-time estimate for raw latitude/longitude pairs
+- **coordinate distance**: `/places/distance/coordinates` returns maritime sea-route distance and a travel-time estimate for raw latitude/longitude pairs
 - **route answers**: include the same distance basis in the response JSON for route planning questions
   - when available, water temperature and air temperature are included too
 
