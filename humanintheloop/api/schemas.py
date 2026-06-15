@@ -7,14 +7,24 @@ VesselClass = Literal["small", "medium", "large"]
 
 
 class QuestionRequest(BaseModel):
-    question: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1, description="Captain question about a stored route snapshot.")
     date: Optional[str] = None
     run: Optional[str] = None
     vessel_class: VesselClass = "medium"
     departure_time: Optional[str] = None
     priority: Literal["comfort", "safety", "schedule"] = "comfort"
-    current_latitude: Optional[float] = Field(default=None, ge=-90, le=90)
-    current_longitude: Optional[float] = Field(default=None, ge=-180, le=180)
+    current_latitude: Optional[float] = Field(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Optional shared GPS latitude used by route questions when the current position matters.",
+    )
+    current_longitude: Optional[float] = Field(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Optional shared GPS longitude used by route questions when the current position matters.",
+    )
     position_age_minutes: Optional[int] = Field(default=None, ge=0)
     location_label: str = "shared location"
     current_time: Optional[str] = None
@@ -22,9 +32,9 @@ class QuestionRequest(BaseModel):
 
 
 class LocationQuestionRequest(BaseModel):
-    question: str = Field(..., min_length=1)
-    latitude: float = Field(..., ge=-90, le=90)
-    longitude: float = Field(..., ge=-180, le=180)
+    question: str = Field(..., min_length=1, description="Captain question about a shared GPS position.")
+    latitude: float = Field(..., ge=-90, le=90, description="Required shared GPS latitude for the location question.")
+    longitude: float = Field(..., ge=-180, le=180, description="Required shared GPS longitude for the location question.")
     date: Optional[str] = None
     run: Optional[str] = None
     vessel_class: VesselClass = "medium"
@@ -110,12 +120,30 @@ class PlaceWeatherResponse(BaseModel):
     swell_2_direction_deg: Optional[float] = None
     wind_wave_height_m: Optional[float] = None
     wind_wave_direction_deg: Optional[float] = None
-    wind_kn: Optional[float] = None
-    wind_direction_deg: Optional[float] = None
-    water_temperature_c: Optional[float] = None
-    air_temperature_c: Optional[float] = None
-    current_kn: Optional[float] = None
-    current_direction_deg: Optional[float] = None
+    wind_kn: Optional[float] = Field(
+        default=None,
+        description="Optional observed wind speed. Present only when the selected observation source provides it.",
+    )
+    wind_direction_deg: Optional[float] = Field(
+        default=None,
+        description="Optional observed wind direction in degrees. Present only when the selected observation source provides it.",
+    )
+    water_temperature_c: Optional[float] = Field(
+        default=None,
+        description="Optional observed water temperature in Celsius. Present only when the selected observation source provides it.",
+    )
+    air_temperature_c: Optional[float] = Field(
+        default=None,
+        description="Optional observed air temperature in Celsius. Present only when the selected observation source provides it.",
+    )
+    current_kn: Optional[float] = Field(
+        default=None,
+        description="Current speed in knots from the forecast layer when available.",
+    )
+    current_direction_deg: Optional[float] = Field(
+        default=None,
+        description="Current flow direction in degrees from the forecast layer when available.",
+    )
     source: Optional[str] = None
     source_system: Optional[str] = None
     freshness_status: str

@@ -801,7 +801,15 @@ def create_app(evidence_store=None, route_store=None):
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
-    @app.post("/question")
+    @app.post(
+        "/question",
+        summary="Location question from a shared GPS position",
+        description=(
+            "Phase 1 location intelligence. The request must include latitude and "
+            "longitude. PredSea samples the nearest forecast map grids around that "
+            "position and returns a conservative operational read."
+        ),
+    )
     def location_question(request: LocationQuestionRequest):
         try:
             run_date = store.resolve_date(request.date)
@@ -866,7 +874,15 @@ def create_app(evidence_store=None, route_store=None):
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
-    @app.post("/routes/{route_id}/question", response_model=QuestionResponse)
+    @app.post(
+        "/routes/{route_id}/question",
+        response_model=QuestionResponse,
+        summary="Route question from stored passage evidence",
+        description=(
+            "Answer a captain question from the latest stored route evidence package. "
+            "Use this for named passages such as Palma to Ibiza."
+        ),
+    )
     def route_question(route_id: str, request: QuestionRequest):
         try:
             run_date = store.resolve_date(request.date)

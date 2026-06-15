@@ -383,6 +383,19 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
 
 
+def test_openapi_marks_location_question_coordinates_as_required(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    openapi = client.get("/openapi.json").json()
+    schema = openapi["components"]["schemas"]["LocationQuestionRequest"]
+    operation = openapi["paths"]["/question"]["post"]
+
+    assert "latitude" in schema["required"]
+    assert "longitude" in schema["required"]
+    assert operation["summary"] == "Location question from a shared GPS position"
+    assert "must include latitude and longitude" in operation["description"].lower()
+
+
 def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
     run_id = "2026-06-09T0630Z"
     route_dir = Path(tmp_path) / "2026-06-09" / "runs" / run_id / "palma_ibiza"
