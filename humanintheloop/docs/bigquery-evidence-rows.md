@@ -51,8 +51,20 @@ Observation rows contain:
 - `units`
 - `sample_time_utc`
 - `observed_at_utc`
+- `source_time_coordinate_utc`
+- `freshness_state`
 
-For Puertos del Estado rows, `sample_time_utc` and `observed_at_utc` are sourced from the NetCDF time coordinate rather than inferred from ingestion time.
+Station metadata rows are written separately to:
+
+- `validation/station_metadata.jsonl`
+- BigQuery table `predsea_validation.station_metadata`
+
+Those rows keep provider, network, coordinates, and station priority metadata
+available without mixing them into the per-variable evidence facts.
+
+For Puertos del Estado rows, `sample_time_utc`, `observed_at_utc`, and
+`source_time_coordinate_utc` are sourced from the NetCDF time coordinate rather
+than inferred from ingestion time.
 
 For Portus and Puertos del Estado records, the source label is preserved in `source_system`, so you can group rows by source and station and see exactly which stations are contributing to the validation archive.
 
@@ -114,4 +126,4 @@ If the dataset/table variables are missing, the export is skipped and the ETL co
 - The export is best-effort. BigQuery problems should not break the maritime ETL.
 - The table is partitioned by `run_date` and clustered by `record_type`, `route_id`, `variable`, and `source_system`.
 - The table is intentionally normalized. No raw JSON payloads are stored.
-- The freshest timestamp to query is `ingested_at_utc`; `observed_at_utc` and `forecast_created_at_utc` reflect the source timestamps.
+- The freshest timestamp to query is `ingested_at_utc`; `observed_at_utc`, `source_time_coordinate_utc`, and `forecast_created_at_utc` reflect source timestamps.

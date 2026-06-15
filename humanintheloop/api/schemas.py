@@ -146,7 +146,9 @@ class PlaceWeatherResponse(BaseModel):
     )
     source: Optional[str] = None
     source_system: Optional[str] = None
+    source_time_coordinate_utc: Optional[str] = None
     freshness_status: str
+    freshness_state: Optional[str] = None
     freshness_warning: Optional[str] = None
     observation: Dict[str, Any] = Field(default_factory=dict)
     hourly: List[Dict[str, Any]] = Field(default_factory=list)

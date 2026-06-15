@@ -81,6 +81,29 @@ def test_parse_station_dataset_uses_netcdf_time_coordinate():
     assert latest["source_label"] == "REDMAR"
 
 
+def test_latest_value_from_dataarray_skips_future_coordinate():
+    import pandas as pd
+    import xarray as xr
+
+    from predsea.connectors.puertos_del_estado.common import latest_value_from_dataarray
+
+    ds = xr.Dataset(
+        {
+            "VHM0": ("time", [0.2, 0.4]),
+        },
+        coords={
+            "time": pd.to_datetime(
+                ["2026-06-15T23:59:59Z", "2026-06-16T23:59:59Z"],
+                utc=True,
+            ),
+        },
+    )
+
+    value, sample_time = latest_value_from_dataarray(ds["VHM0"])
+    assert value is None
+    assert sample_time is None
+
+
 def test_redext_parser_uses_station_coordinates_for_grid_sampling():
     import pandas as pd
     import xarray as xr

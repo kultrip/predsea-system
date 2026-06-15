@@ -286,9 +286,15 @@ but return `"available": false` for that metadata block.
 The most useful source freshness fields for operators are:
 
 - `freshness_status`
+- `freshness_state`
 - `freshness_warning`
 - `evidence_timestamp`
 - `operational_stance.confidence`
+
+The observation foundation also writes a `validation/station_metadata.jsonl`
+artifact and exports it to the `predsea_validation.station_metadata` table when
+BigQuery is configured. That table keeps source, network, coordinates, and
+priority metadata separate from the live observation rows.
 
 By default, the API loads local files from
 `predictions/YYYY-MM-DD/runs/RUN_ID/<route_id>/evidence.json`. If that richer

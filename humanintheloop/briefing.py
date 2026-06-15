@@ -18,8 +18,11 @@ OUTPUT_DIR = Path("mvp_data")
 
 
 def load_observations():
-    result = ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
-    return result.get("observations", {})
+    return load_observation_bundle().get("observations", {})
+
+
+def load_observation_bundle():
+    return ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
 
 
 def build_forecast_summary(route):

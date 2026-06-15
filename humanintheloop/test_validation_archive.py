@@ -63,6 +63,7 @@ def test_validation_archive_matches_observation_to_forecast(tmp_path):
     assert summary["observation_rows"] == 1
     assert summary["forecast_rows"] == 2
     assert summary["matched_rows"] == 1
+    assert summary["station_metadata_rows"] == 1
     assert matched[0]["route_id"] == "palma_ibiza"
     assert matched[0]["truth_station_id"] == "canal_de_ibiza"
     assert matched[0]["variable"] == "wave_height"
@@ -123,6 +124,7 @@ def test_validation_archive_links_new_observation_to_earlier_forecast(tmp_path):
 
     assert summary["forecast_rows"] == 0
     assert summary["matched_rows"] == 1
+    assert summary["station_metadata_rows"] == 1
     assert matched[0]["forecast_run_id"] == "2026-06-09T0800Z"
     assert matched[0]["observed_value"] == 0.5
     assert matched[0]["error"] == 0.3
@@ -156,5 +158,8 @@ def test_validation_archive_skips_future_observations(tmp_path, monkeypatch):
     )
 
     observation_path = run_dir / "validation" / "observation_samples.jsonl"
+    station_metadata_path = run_dir / "validation" / "station_metadata.jsonl"
     assert summary["observation_rows"] == 0
+    assert summary["station_metadata_rows"] == 1
     assert observation_path.read_text(encoding="utf-8").strip() == ""
+    assert "station_metadata" in station_metadata_path.read_text(encoding="utf-8")

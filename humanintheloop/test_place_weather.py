@@ -76,6 +76,7 @@ def test_build_place_weather_record_uses_place_weather_fields():
     assert record["water_temperature_c"] == 22.4
     assert record["air_temperature_c"] == 23.1
     assert record["freshness_status"] == "fresh"
+    assert record["freshness_state"] == "LIVE"
     assert record["observation"]["station_name"] == "Buoy Canal de Ibiza"
     assert record["hourly"][0]["time"] == "08:00"
 
@@ -177,6 +178,7 @@ def test_build_place_weather_record_accepts_naive_observation_timestamp():
         run_id="2026-06-12T0750Z",
     )
     assert record["freshness_status"] == "fresh"
+    assert record["freshness_state"] == "LIVE"
     assert record["metadata"]["observation_age_minutes"] == 30
 
 
@@ -204,5 +206,6 @@ def test_build_place_weather_record_discards_future_observation_timestamp():
         run_id="2026-06-15T0750Z",
     )
     assert record["freshness_status"] == "unknown"
+    assert record["freshness_state"] == "FUTURE"
     assert record["metadata"]["observation_age_minutes"] is None
     assert record.get("observed_at_utc") is None

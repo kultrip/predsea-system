@@ -210,11 +210,15 @@ def normalize_socib_payload(payload, platform=None, data_source=None):
                 parsed_last_sample = None
             if parsed_last_sample is not None and parsed_last_sample.tzinfo is None:
                 parsed_last_sample = parsed_last_sample.replace(tzinfo=timezone.utc)
-            if parsed_last_sample is not None and parsed_last_sample.astimezone(timezone.utc) > now:
-                continue
+        if parsed_last_sample is not None and parsed_last_sample.astimezone(timezone.utc) > now:
+            continue
         record = {
             "name": display_name(platform, data_source, item),
             "last_sample_utc": last_sample_utc,
+            "sample_time_utc": last_sample_utc,
+            "observed_at_utc": last_sample_utc,
+            "source_time_coordinate_utc": last_sample_utc,
+            "is_future": False,
         }
         for key, value in item.items():
             normalized = VARIABLE_ALIASES.get(str(key).strip()) or VARIABLE_ALIASES.get(str(key).strip().lower())
@@ -235,6 +239,7 @@ def normalize_socib_payload(payload, platform=None, data_source=None):
                 if key in item:
                     record["current_kn"] = item.get(key)
                     break
+        record["freshness_state"] = "LIVE" if parsed_last_sample is not None else "UNKNOWN"
         records[station_key] = record
     return records
 

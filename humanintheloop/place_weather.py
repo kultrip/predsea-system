@@ -151,7 +151,7 @@ def build_place_weather_record(
     generated_at = generated_at_utc or current_timestamp_utc()
     observation = normalize_observation(observation, generated_at_utc=generated_at)
     observation_age_minutes = observation_age(observation, generated_at)
-    freshness_status, freshness_warning = freshness_from_age(observation_age_minutes)
+    freshness_status, freshness_state, freshness_warning = freshness_from_age(observation_age_minutes, observation=observation)
     resolved = resolve_place(place_id, requested_latitude, requested_longitude)
     inside_domain = in_supported_domain(resolved["latitude"], resolved["longitude"])
     payload = {
@@ -192,6 +192,7 @@ def build_place_weather_record(
         "source": "copernicus_med",
         "source_system": "place_weather",
         "freshness_status": freshness_status,
+        "freshness_state": freshness_state,
         "freshness_warning": freshness_warning,
         "observation": observation,
         "hourly": hourly,
@@ -209,6 +210,7 @@ def build_place_weather_record(
         generated_at_dt = parse_utc_timestamp(generated_at)
         if observed_at is not None and generated_at_dt is not None and observed_at <= generated_at_dt + timedelta(minutes=5):
             payload["observed_at_utc"] = observation["last_sample_utc"]
+            payload["source_time_coordinate_utc"] = observation.get("source_time_coordinate_utc") or observation["last_sample_utc"]
     return payload
 
 
@@ -219,6 +221,7 @@ def build_place_weather_outputs(
     waves_path,
     currents_path,
     observations=None,
+    station_metadata=None,
     place_ids=None,
     time_text=None,
     timezone_name=LOCAL_TIMEZONE,
@@ -299,6 +302,7 @@ def write_place_weather_outputs(
     waves_path,
     currents_path,
     observations=None,
+    station_metadata=None,
     place_ids=None,
     time_text=None,
     timezone_name=LOCAL_TIMEZONE,
@@ -311,6 +315,7 @@ def write_place_weather_outputs(
         waves_path,
         currents_path,
         observations=observations,
+        station_metadata=station_metadata,
         place_ids=place_ids,
         time_text=time_text,
         timezone_name=timezone_name,
@@ -322,6 +327,7 @@ def build_place_weather_bundle_from_files(
     waves_path,
     currents_path,
     observations=None,
+    station_metadata=None,
     run_date=None,
     run_id=None,
     time_text=None,
@@ -455,6 +461,11 @@ def normalize_observation(record, station_id=None, generated_at_utc=None):
         if generated_at is not None and observed_at is not None and observed_at > generated_at + timedelta(minutes=5):
             normalized["last_sample_utc"] = None
             normalized["observed_at_utc"] = None
+            normalized["source_time_coordinate_utc"] = None
+            normalized["is_future"] = True
+            normalized["freshness_state"] = "FUTURE"
+        elif "is_future" not in normalized:
+            normalized["is_future"] = False
     return normalized
 
 
@@ -483,8 +494,8 @@ def observation_age(observation, generated_at_utc):
     return int(round(delta.total_seconds() / 60.0))
 
 
-def freshness_from_age(age_minutes):
-    """Determine freshness status based on observation age.
+def freshness_from_age(age_minutes, observation=None):
+    """Determine freshness status/state based on observation age.
     
     Parameters
     ----------
@@ -494,15 +505,19 @@ def freshness_from_age(age_minutes):
     Returns
     -------
     tuple
-        (freshness_status, freshness_warning)
+        (freshness_status, freshness_state, freshness_warning)
     """
+    if observation and observation.get("is_future"):
+        return "unknown", "FUTURE", "Observation timestamp is in the future; do not treat this as live."
     if age_minutes is None:
-        return "unknown", None
-    if age_minutes < 90:
-        return "fresh", None
-    if age_minutes <= 180:
-        return "usable", "Observation is getting older; recheck before committing."
-    return "stale", "Observation is stale; recheck before departure."
+        return "unknown", "UNKNOWN", None
+    if age_minutes < 120:
+        return "fresh", "LIVE", None
+    if age_minutes < 360:
+        return "usable", "RECENT", "Observation is getting older; recheck before committing."
+    if age_minutes < 720:
+        return "stale", "AGING", "Observation is aging; recheck before committing."
+    return "stale", "STALE", "Observation is stale; recheck before departure."
 
 
 def in_supported_domain(latitude, longitude):

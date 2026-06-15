@@ -2,6 +2,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import route_analysis
+from place_registry import place_definition as resolve_place_definition
+
 
 SCHEMA_VERSION = "predsea.validation.v1"
 
@@ -75,22 +78,37 @@ def write_validation_archive(
     snapshots_by_route,
     observations,
     output_root,
+    station_metadata=None,
 ):
     validation_dir = Path(run_dir) / "validation"
     validation_dir.mkdir(parents=True, exist_ok=True)
 
     observation_rows = build_observation_rows(observations, run_date, run_id)
     forecast_rows = build_forecast_rows(snapshots_by_route, routes, run_date, run_id)
+    station_metadata_rows = build_station_metadata_rows(
+        observations,
+        run_date=run_date,
+        run_id=run_id,
+        station_metadata=station_metadata,
+    )
     historical_forecast_rows = load_historical_forecast_rows(output_root)
     matched_rows = match_observations_to_forecasts(
         observation_rows,
         historical_forecast_rows + forecast_rows,
     )
-    summary = build_validation_summary(run_date, run_id, observation_rows, forecast_rows, matched_rows)
+    summary = build_validation_summary(
+        run_date,
+        run_id,
+        observation_rows,
+        forecast_rows,
+        matched_rows,
+        station_metadata_rows=station_metadata_rows,
+    )
 
     write_jsonl(validation_dir / "observation_samples.jsonl", observation_rows)
     write_jsonl(validation_dir / "forecast_index.jsonl", forecast_rows)
     write_jsonl(validation_dir / "matched_validation.jsonl", matched_rows)
+    write_jsonl(validation_dir / "station_metadata.jsonl", station_metadata_rows)
     (validation_dir / "validation_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
 
@@ -107,7 +125,15 @@ def build_observation_rows(observations, run_date, run_id):
         observed_at = normalize_timestamp(
             record.get("observed_at_utc") or record.get("sample_time_utc") or record.get("last_sample_utc")
         )
-        if is_future_timestamp(sample_time, collected_at_utc) or is_future_timestamp(observed_at, collected_at_utc):
+        source_time_coordinate_utc = normalize_timestamp(
+            record.get("source_time_coordinate_utc") or sample_time or observed_at
+        )
+        if (
+            is_future_timestamp(sample_time, collected_at_utc)
+            or is_future_timestamp(observed_at, collected_at_utc)
+            or is_future_timestamp(source_time_coordinate_utc, collected_at_utc)
+            or record.get("is_future")
+        ):
             continue
         for raw_key, (variable, units) in OBSERVATION_VARIABLES.items():
             if raw_key not in record or record.get(raw_key) is None:
@@ -126,15 +152,189 @@ def build_observation_rows(observations, run_date, run_id):
                     "station_name": record.get("station_name") or record.get("name"),
                     "sample_time_utc": sample_time,
                     "observed_at_utc": observed_at,
+                    "source_time_coordinate_utc": source_time_coordinate_utc,
                     "collected_at_utc": collected_at_utc,
                     "variable": variable,
                     "source_field": raw_key,
                     "value": value,
                     "raw_value": record.get(raw_key),
                     "units": units,
+                    "qc_flag": record.get("qc_flag") or record.get(f"{raw_key}_qc_flag"),
+                    "freshness_state": record.get("freshness_state") or freshness_state_from_observation(observed_at, collected_at_utc),
+                    "latitude": record.get("latitude"),
+                    "longitude": record.get("longitude"),
+                    "depth_m": record.get("depth_m"),
+                    "is_future": bool(record.get("is_future")),
+                    "is_qc_good": record.get("is_qc_good"),
                 }
             )
     return rows
+
+
+def build_station_metadata_rows(observations, run_date=None, run_id=None, station_metadata=None):
+    rows_by_station = {}
+    for station_id, record in sorted((observations or {}).items()):
+        if not isinstance(record, dict):
+            continue
+        row = station_metadata_row_from_record(station_id, record, run_date=run_date, run_id=run_id)
+        if row:
+            rows_by_station[station_id] = row
+
+    for candidate in normalize_station_metadata_candidates(station_metadata):
+        station_id = candidate.get("station_id")
+        if not station_id:
+            continue
+        existing = rows_by_station.get(station_id, {})
+        merged = {**existing, **candidate}
+        merged.setdefault("provider", candidate.get("provider") or existing.get("provider"))
+        merged.setdefault("network", candidate.get("network") or existing.get("network"))
+        merged.setdefault("station_name", candidate.get("station_name") or existing.get("station_name"))
+        merged.setdefault("latitude", candidate.get("latitude") or existing.get("latitude"))
+        merged.setdefault("longitude", candidate.get("longitude") or existing.get("longitude"))
+        merged.setdefault("station_kind", candidate.get("station_kind") or existing.get("station_kind"))
+        merged.setdefault("priority", candidate.get("priority") or existing.get("priority") or "normal")
+        merged.setdefault("variables_supported", candidate.get("variables_supported") or existing.get("variables_supported") or [])
+        if run_date is not None:
+            merged["run_date"] = run_date
+        if run_id is not None:
+            merged["run_id"] = run_id
+        rows_by_station[station_id] = merged
+
+    return sorted(
+        rows_by_station.values(),
+        key=lambda row: (
+            row.get("provider") or "",
+            row.get("network") or "",
+            row.get("station_name") or "",
+            row.get("station_id") or "",
+        ),
+    )
+
+
+def normalize_station_metadata_candidates(station_metadata):
+    if not station_metadata:
+        return []
+    if isinstance(station_metadata, dict):
+        candidates = []
+        for key, value in station_metadata.items():
+            if isinstance(value, dict):
+                candidate = dict(value)
+                candidate.setdefault("station_id", key)
+                candidates.append(candidate)
+        return candidates
+    return [dict(item) for item in station_metadata if isinstance(item, dict)]
+
+
+def station_metadata_row_from_record(station_id, record, run_date=None, run_id=None):
+    latitude = numeric_value(record.get("latitude"))
+    longitude = numeric_value(record.get("longitude"))
+    variables_supported = supported_variables_from_record(record)
+    if latitude is None and longitude is None and not variables_supported:
+        return None
+    distance_to_palma = distance_to_place_nm(latitude, longitude, "palma")
+    distance_to_ibiza = distance_to_place_nm(latitude, longitude, "ibiza")
+    distance_to_menorca = distance_to_place_nm(latitude, longitude, "menorca")
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "record_type": "station_metadata",
+        "run_date": run_date,
+        "run_id": run_id,
+        "provider": record.get("provider") or record.get("source") or "socib",
+        "network": record.get("network") or infer_network_from_record(record),
+        "station_id": station_id,
+        "station_name": record.get("station_name") or record.get("name"),
+        "station_kind": record.get("station_kind") or infer_station_kind(record),
+        "priority": station_priority(record, distance_to_palma, distance_to_ibiza, distance_to_menorca),
+        "latitude": latitude,
+        "longitude": longitude,
+        "depth_m": numeric_value(record.get("depth_m")),
+        "variables_supported": variables_supported,
+        "distance_to_palma": distance_to_palma,
+        "distance_to_ibiza": distance_to_ibiza,
+        "distance_to_menorca": distance_to_menorca,
+        "source_label": record.get("source_label"),
+        "catalog_id": record.get("catalog_id"),
+        "catalog_url": record.get("catalog_url"),
+        "last_sample_utc": normalize_timestamp(
+            record.get("sample_time_utc") or record.get("observed_at_utc") or record.get("last_sample_utc")
+        ),
+    }
+
+
+def supported_variables_from_record(record):
+    variables = []
+    for raw_key, (variable, _units) in OBSERVATION_VARIABLES.items():
+        if record.get(raw_key) is not None:
+            variables.append(variable)
+    if not variables:
+        for key, value in record.items():
+            if key.endswith(("_m", "_deg", "_kn", "_mps", "_c", "_psu")) and value is not None:
+                variables.append(key.rsplit("_", 1)[0])
+    return sorted(set(variables))
+
+
+def infer_network_from_record(record):
+    source_label = str(record.get("source_label") or "").upper()
+    network = str(record.get("network") or "").lower()
+    if network:
+        return network
+    if source_label in {"REDEXT", "REDCOS", "REDMAR"}:
+        return source_label.lower()
+    source_system = str(record.get("source_system") or record.get("provider") or "").lower()
+    if "socib" in source_system:
+        return "socib"
+    return None
+
+
+def infer_station_kind(record):
+    network = infer_network_from_record(record)
+    if network == "redmar":
+        return "tide_gauge"
+    if network in {"redext", "redcos"}:
+        return "buoy"
+    if network == "socib":
+        return "platform"
+    return record.get("station_kind")
+
+
+def station_priority(record, distance_to_palma, distance_to_ibiza, distance_to_menorca):
+    station_id = str(record.get("station_id") or "").lower()
+    high_priority_ids = {
+        "bahia_de_palma",
+        "canal_de_ibiza",
+        "ibiza",
+        "mallorca",
+        "puertos_mallorca",
+        "puertos_ibiza",
+        "puertos_alcudia",
+        "puertos_mahon",
+        "puertos_formentera",
+        "porto_colom",
+    }
+    if station_id in high_priority_ids:
+        return "high"
+    distances = [value for value in (distance_to_palma, distance_to_ibiza, distance_to_menorca) if value is not None]
+    if not distances:
+        return "normal"
+    shortest = min(distances)
+    if shortest <= 40:
+        return "high"
+    if shortest <= 90:
+        return "medium"
+    return "normal"
+
+
+def distance_to_place_nm(latitude, longitude, place_id):
+    if latitude is None or longitude is None:
+        return None
+    try:
+        place = resolve_place_definition(place_id)
+    except Exception:
+        return None
+    return round(
+        route_analysis.haversine_nm(latitude, longitude, place["latitude"], place["longitude"]),
+        1,
+    )
 
 
 def build_forecast_rows(snapshots_by_route, routes, run_date, run_id):
@@ -247,7 +447,7 @@ def match_observations_to_forecasts(observation_rows, forecast_rows):
     return sorted(matches, key=lambda row: (row.get("target_time_utc") or "", row.get("route_id") or "", row.get("variable") or ""))
 
 
-def build_validation_summary(run_date, run_id, observation_rows, forecast_rows, matched_rows):
+def build_validation_summary(run_date, run_id, observation_rows, forecast_rows, matched_rows, station_metadata_rows=None):
     variable_counts = {}
     for row in matched_rows:
         variable_counts[row["variable"]] = variable_counts.get(row["variable"], 0) + 1
@@ -259,6 +459,7 @@ def build_validation_summary(run_date, run_id, observation_rows, forecast_rows, 
         "observation_rows": len(observation_rows),
         "forecast_rows": len(forecast_rows),
         "matched_rows": len(matched_rows),
+        "station_metadata_rows": len(station_metadata_rows or []),
         "matched_variables": variable_counts,
         "metrics": metrics_by_variable(matched_rows),
         "notes": [
@@ -393,3 +594,20 @@ def absolute_error(forecast_value, observed_value):
     if error is None:
         return None
     return abs(error)
+
+
+def freshness_state_from_observation(observed_at, collected_at):
+    observed = parse_timestamp(observed_at)
+    collected = parse_timestamp(collected_at)
+    if observed is None or collected is None:
+        return "UNKNOWN"
+    delta_minutes = (collected - observed).total_seconds() / 60.0
+    if delta_minutes < -5:
+        return "FUTURE"
+    if delta_minutes < 120:
+        return "LIVE"
+    if delta_minutes < 360:
+        return "RECENT"
+    if delta_minutes < 720:
+        return "AGING"
+    return "STALE"

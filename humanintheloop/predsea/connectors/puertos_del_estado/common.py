@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -78,6 +78,14 @@ def timestamp_text(value):
     return parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def is_future_timestamp(candidate, reference=None, *, tolerance_minutes=5):
+    candidate_dt = parse_utc_timestamp(candidate)
+    reference_dt = parse_utc_timestamp(reference) if reference is not None else datetime.now(timezone.utc)
+    if candidate_dt is None or reference_dt is None:
+        return False
+    return candidate_dt > reference_dt + timedelta(minutes=tolerance_minutes)
+
+
 def to_float(value):
     try:
         if value is None:
@@ -142,6 +150,13 @@ def select_spatial_point(da, latitude, longitude):
 
 
 def latest_value_from_dataarray(da, *, latitude=None, longitude=None):
+    sample = latest_sample_from_dataarray(da, latitude=latitude, longitude=longitude)
+    if sample is None:
+        return None, None
+    return sample["value"], sample["source_time_coordinate_utc"]
+
+
+def latest_sample_from_dataarray(da, *, latitude=None, longitude=None, now_utc=None, tolerance_minutes=5):
     candidate = da
     if latitude is not None and longitude is not None:
         candidate = select_spatial_point(candidate, latitude, longitude)
@@ -157,12 +172,19 @@ def latest_value_from_dataarray(da, *, latitude=None, longitude=None):
     latest = candidate.isel({time_dim: -1}).squeeze(drop=True)
     value = to_float(getattr(latest, "values", latest))
     if value is None:
-        return None, None
+        return None
     time_value = timestamp_text(candidate[time_dim].values[-1])
     parsed_time = parse_utc_timestamp(time_value)
-    if parsed_time is not None and parsed_time > datetime.now(timezone.utc):
-        return None, None
-    return value, time_value
+    reference = parse_utc_timestamp(now_utc) if now_utc is not None else datetime.now(timezone.utc)
+    if parsed_time is not None and reference is not None and parsed_time > reference + timedelta(minutes=tolerance_minutes):
+        return None
+    return {
+        "value": value,
+        "source_time_coordinate_utc": time_value,
+        "sample_time_utc": time_value,
+        "observed_at_utc": time_value,
+        "is_future": parsed_time is not None and reference is not None and parsed_time > reference + timedelta(minutes=tolerance_minutes),
+    }
 
 
 def variable_keyword(text):

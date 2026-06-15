@@ -69,6 +69,8 @@ Useful freshness fields:
 
 - `ingested_at_utc`: when the ETL wrote the row
 - `observed_at_utc`: when the station sample was observed
+- `source_time_coordinate_utc`: the raw time coordinate reported by the source
+- `freshness_state`: `LIVE`, `RECENT`, `AGING`, `STALE`, or `FUTURE`
 - `forecast_created_at_utc`: when the forecast row was issued
 
 ## Local time

@@ -142,6 +142,81 @@ def export_validation_archive_to_bigquery(
         }
 
 
+def export_station_metadata_to_bigquery(
+    run_dir,
+    project_id: str | None = None,
+    dataset_id: str | None = None,
+    table_id: str | None = None,
+    location: str | None = None,
+    client=None,
+    dry_run: bool = False,
+):
+    validation_dir = Path(run_dir) / "validation"
+    if not validation_dir.exists():
+        validation_dir = Path(run_dir)
+
+    metadata_rows = validation_archive.read_jsonl(validation_dir / "station_metadata.jsonl")
+    rows = build_station_metadata_rows(metadata_rows)
+    config = resolve_config(
+        project_id=project_id,
+        dataset_id=dataset_id,
+        table_id=table_id or os.environ.get("PREDSEA_BIGQUERY_STATION_METADATA_TABLE") or "station_metadata",
+        location=location,
+    )
+
+    if not rows:
+        return {
+            "status": "skipped",
+            "reason": "no station metadata rows were found",
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": 0,
+        }
+
+    if config is None:
+        return {
+            "status": "skipped",
+            "reason": "bigquery configuration is incomplete",
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": 0,
+        }
+
+    try:
+        if dry_run:
+            return {
+                "status": "dry_run",
+                "project_id": config.project_id,
+                "dataset_id": config.dataset_id,
+                "table_id": config.table_id,
+                "station_metadata_rows": len(metadata_rows),
+                "exported_rows": len(rows),
+            }
+
+        session = client or authorized_bigquery_session()
+        ensure_dataset(session, config)
+        ensure_station_metadata_table(session, config)
+        insert_result = insert_rows(session, config, rows)
+        return {
+            "status": insert_result["status"],
+            "project_id": config.project_id,
+            "dataset_id": config.dataset_id,
+            "table_id": config.table_id,
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": len(rows),
+            "failed_rows": insert_result.get("failed_rows", 0),
+            "insert_errors": insert_result.get("insert_errors", []),
+        }
+    except Exception as error:
+        return {
+            "status": "error",
+            "reason": str(error),
+            "project_id": config.project_id,
+            "dataset_id": config.dataset_id,
+            "table_id": config.table_id,
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": len(rows),
+        }
+
+
 def export_validation_rows_to_bigquery(
     observation_rows,
     forecast_rows,
@@ -240,6 +315,24 @@ def build_normalized_rows(observation_rows, forecast_rows):
     )
 
 
+def build_station_metadata_rows(metadata_rows):
+    rows = []
+    ingested_at_utc = current_timestamp_utc()
+    for row in metadata_rows or []:
+        normalized = normalize_station_metadata_row(row, ingested_at_utc=ingested_at_utc)
+        if normalized is not None:
+            rows.append(normalized)
+    return sorted(
+        rows,
+        key=lambda row: (
+            row.get("provider") or "",
+            row.get("network") or "",
+            row.get("station_name") or "",
+            row.get("station_id") or "",
+        ),
+    )
+
+
 def normalize_observation_row(row, ingested_at_utc):
     sample_time_utc = bigquery_timestamp(row.get("sample_time_utc") or row.get("observed_at_utc"))
     observed_at_utc = bigquery_timestamp(row.get("observed_at_utc") or row.get("sample_time_utc"))
@@ -262,6 +355,7 @@ def normalize_observation_row(row, ingested_at_utc):
         "units": row.get("units"),
         "sample_time_utc": sample_time_utc,
         "observed_at_utc": observed_at_utc,
+        "source_time_coordinate_utc": bigquery_timestamp(row.get("source_time_coordinate_utc") or row.get("sample_time_utc") or row.get("observed_at_utc")),
         "forecast_created_at_utc": None,
         "target_time_utc": None,
         "target_local_time": None,
@@ -273,6 +367,21 @@ def normalize_observation_row(row, ingested_at_utc):
         "truth_station_id": None,
         "truth_station_name": None,
         "source_field": row.get("source_field"),
+        "provider": row.get("provider"),
+        "network": row.get("network"),
+        "station_kind": row.get("station_kind"),
+        "priority": row.get("priority"),
+        "latitude": numeric_value(row.get("latitude")),
+        "longitude": numeric_value(row.get("longitude")),
+        "depth_m": numeric_value(row.get("depth_m")),
+        "qc_flag": row.get("qc_flag"),
+        "freshness_state": row.get("freshness_state"),
+        "is_future": row.get("is_future"),
+        "is_qc_good": row.get("is_qc_good"),
+        "variables_supported": row.get("variables_supported") or [],
+        "distance_to_palma": numeric_value(row.get("distance_to_palma")),
+        "distance_to_ibiza": numeric_value(row.get("distance_to_ibiza")),
+        "distance_to_menorca": numeric_value(row.get("distance_to_menorca")),
     }
     normalized["row_hash"] = stable_row_hash(normalized)
     return normalized
@@ -316,6 +425,62 @@ def normalize_forecast_row(row, ingested_at_utc):
     return normalized
 
 
+def normalize_station_metadata_row(row, ingested_at_utc):
+    variables_supported = row.get("variables_supported") or []
+    if not isinstance(variables_supported, list):
+        variables_supported = [variables_supported]
+    normalized = {
+        "schema_version": row.get("schema_version") or SCHEMA_VERSION,
+        "row_hash": None,
+        "record_type": "station_metadata",
+        "run_date": row.get("run_date"),
+        "run_id": row.get("run_id"),
+        "ingested_at_utc": ingested_at_utc,
+        "source_system": row.get("provider") or row.get("network"),
+        "source_label": row.get("source_label"),
+        "route_id": None,
+        "route_name": None,
+        "station_id": row.get("station_id"),
+        "station_name": row.get("station_name"),
+        "reference_station_id": None,
+        "reference_station_name": None,
+        "variable": "station_metadata",
+        "value": None,
+        "units": None,
+        "sample_time_utc": bigquery_timestamp(row.get("last_sample_utc")),
+        "observed_at_utc": bigquery_timestamp(row.get("last_sample_utc")),
+        "forecast_created_at_utc": None,
+        "target_time_utc": None,
+        "target_local_time": None,
+        "lead_time_hours": None,
+        "resolution_km": None,
+        "forecast_source_id": None,
+        "forecast_source_label": None,
+        "ocean_source": None,
+        "truth_station_id": None,
+        "truth_station_name": None,
+        "source_field": "station_metadata",
+        "provider": row.get("provider"),
+        "network": row.get("network"),
+        "station_kind": row.get("station_kind"),
+        "priority": row.get("priority"),
+        "latitude": numeric_value(row.get("latitude")),
+        "longitude": numeric_value(row.get("longitude")),
+        "depth_m": numeric_value(row.get("depth_m")),
+        "source_time_coordinate_utc": bigquery_timestamp(row.get("last_sample_utc")),
+        "qc_flag": row.get("qc_flag"),
+        "freshness_state": row.get("freshness_state"),
+        "is_future": row.get("is_future"),
+        "is_qc_good": row.get("is_qc_good"),
+        "variables_supported": variables_supported,
+        "distance_to_palma": numeric_value(row.get("distance_to_palma")),
+        "distance_to_ibiza": numeric_value(row.get("distance_to_ibiza")),
+        "distance_to_menorca": numeric_value(row.get("distance_to_menorca")),
+    }
+    normalized["row_hash"] = stable_row_hash(normalized)
+    return normalized
+
+
 def stable_row_hash(row):
     payload = {key: row.get(key) for key in sorted(row) if key != "ingested_at_utc"}
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
@@ -354,6 +519,58 @@ def bigquery_schema():
         {"name": "truth_station_id", "type": "STRING", "mode": "NULLABLE"},
         {"name": "truth_station_name", "type": "STRING", "mode": "NULLABLE"},
         {"name": "source_field", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "provider", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "network", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "station_kind", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "priority", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "latitude", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "longitude", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "depth_m", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "source_time_coordinate_utc", "type": "TIMESTAMP", "mode": "NULLABLE"},
+        {"name": "qc_flag", "type": "INTEGER", "mode": "NULLABLE"},
+        {"name": "freshness_state", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "is_future", "type": "BOOL", "mode": "NULLABLE"},
+        {"name": "is_qc_good", "type": "BOOL", "mode": "NULLABLE"},
+        {"name": "variables_supported", "type": "STRING", "mode": "REPEATED"},
+        {"name": "distance_to_palma", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "distance_to_ibiza", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "distance_to_menorca", "type": "FLOAT", "mode": "NULLABLE"},
+    ]
+
+
+def station_metadata_schema():
+    return [
+        {"name": "schema_version", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "row_hash", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "record_type", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "run_date", "type": "DATE", "mode": "REQUIRED"},
+        {"name": "run_id", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "ingested_at_utc", "type": "TIMESTAMP", "mode": "REQUIRED"},
+        {"name": "source_system", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "source_label", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "station_id", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "station_name", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "variable", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "value", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "units", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "sample_time_utc", "type": "TIMESTAMP", "mode": "NULLABLE"},
+        {"name": "observed_at_utc", "type": "TIMESTAMP", "mode": "NULLABLE"},
+        {"name": "provider", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "network", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "station_kind", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "priority", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "latitude", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "longitude", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "depth_m", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "source_time_coordinate_utc", "type": "TIMESTAMP", "mode": "NULLABLE"},
+        {"name": "qc_flag", "type": "INTEGER", "mode": "NULLABLE"},
+        {"name": "freshness_state", "type": "STRING", "mode": "NULLABLE"},
+        {"name": "is_future", "type": "BOOL", "mode": "NULLABLE"},
+        {"name": "is_qc_good", "type": "BOOL", "mode": "NULLABLE"},
+        {"name": "variables_supported", "type": "STRING", "mode": "REPEATED"},
+        {"name": "distance_to_palma", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "distance_to_ibiza", "type": "FLOAT", "mode": "NULLABLE"},
+        {"name": "distance_to_menorca", "type": "FLOAT", "mode": "NULLABLE"},
     ]
 
 
@@ -396,6 +613,32 @@ def ensure_table(session, config: BigQueryConfig):
         "schema": {"fields": bigquery_schema()},
         "timePartitioning": {"type": "DAY", "field": "run_date"},
         "clustering": {"fields": ["record_type", "route_id", "variable", "source_system"]},
+    }
+    response = session.post(
+        f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables",
+        json=payload,
+    )
+    if response.status_code not in (200, 201, 409):
+        response.raise_for_status()
+    return response.json() if response.text else payload
+
+
+def ensure_station_metadata_table(session, config: BigQueryConfig):
+    table_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables/{config.table_id}"
+    response = session.get(table_url)
+    if response.status_code == 200:
+        return response.json()
+    if response.status_code != 404:
+        response.raise_for_status()
+    payload = {
+        "tableReference": {
+            "projectId": config.project_id,
+            "datasetId": config.dataset_id,
+            "tableId": config.table_id,
+        },
+        "schema": {"fields": station_metadata_schema()},
+        "timePartitioning": {"type": "DAY", "field": "run_date"},
+        "clustering": {"fields": ["record_type", "provider", "network", "station_id"]},
     }
     response = session.post(
         f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables",

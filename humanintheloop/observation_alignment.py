@@ -89,8 +89,10 @@ def latest_wave_observation(observations):
                 "name": record.get("name"),
                 "wave_height_m": wave_height,
                 "observed_at_utc": sample_time,
+                "source_time_coordinate_utc": record.get("source_time_coordinate_utc") or sample_time,
                 "observation_age_minutes": age_minutes,
                 "freshness": freshness,
+                "freshness_state": record.get("freshness_state") or freshness.upper(),
             }
         )
 
@@ -100,8 +102,10 @@ def latest_wave_observation(observations):
             "name": None,
             "wave_height_m": None,
             "observed_at_utc": None,
+            "source_time_coordinate_utc": None,
             "observation_age_minutes": None,
             "freshness": "unavailable",
+            "freshness_state": "UNKNOWN",
         }
 
     return min(

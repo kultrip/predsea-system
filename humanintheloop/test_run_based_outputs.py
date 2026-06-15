@@ -66,6 +66,7 @@ def test_daily_generator_writes_validation_manifest_pointer(tmp_path):
     assert manifest["validation"]["path"] == "validation/validation_summary.json"
     assert manifest["validation"]["matched_rows"] == 2
     assert latest["validation"]["forecast_index_path"] == "validation/forecast_index.jsonl"
+    assert manifest["validation"]["station_metadata_path"] == "validation/station_metadata.jsonl"
 
 
 def test_web_demo_exporter_uses_latest_run_folder(tmp_path):

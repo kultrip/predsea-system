@@ -9,6 +9,7 @@ import os
 
 import fetch_portus
 import socib_api
+import validation_archive
 
 
 def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=False):
@@ -20,6 +21,7 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
     all_observations = {}
     lineage_sources = []
     errors = {}
+    station_metadata_candidates = []
 
     # SOCIB observations via api.socib.es (hard cutover)
     try:
@@ -28,6 +30,7 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
         all_observations.update(socib_obs)
         if socib_obs:
             lineage_sources.append("socib_observations")
+        station_metadata_candidates.extend(socib_bundle.get("platforms") or [])
         if socib_bundle.get("errors"):
             errors["socib"] = socib_bundle["errors"]
     except Exception as error:
@@ -45,6 +48,7 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
                 all_observations[prefixed_key] = value
             if puertos_obs:
                 lineage_sources.append("puertos_del_estado")
+            station_metadata_candidates.extend(puertos_result.get("catalog_stations") or [])
             if puertos_result.get("errors"):
                 errors["puertos_del_estado"] = puertos_result["errors"]
         except Exception as error:
@@ -60,10 +64,16 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
                 all_observations[prefixed_key] = value
             if portus_obs:
                 lineage_sources.append("puertos_portus")
+            station_metadata_candidates.extend(portus_result.get("stations") or [])
             if portus_result.get("errors"):
                 errors["puertos_portus"] = portus_result["errors"]
         except Exception as error:
             errors["puertos_portus"] = str(error)
+
+    station_metadata = validation_archive.build_station_metadata_rows(
+        all_observations,
+        station_metadata=station_metadata_candidates,
+    )
 
     ground_truth_lineage = _build_ground_truth_lineage(
         all_observations, lineage_sources, errors,
@@ -71,6 +81,7 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
 
     result = {
         "observations": all_observations,
+        "station_metadata": station_metadata,
         "ground_truth_lineage": ground_truth_lineage,
         "errors": errors,
     }

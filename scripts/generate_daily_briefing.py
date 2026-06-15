@@ -79,6 +79,7 @@ def load_mvp_modules():
     import fetch_data
     import forecast_sources
     import ingest_atmosphere
+    import ingest_observations
     import map_generator
     import place_weather
     import route_analysis
@@ -91,6 +92,7 @@ def load_mvp_modules():
         fetch_data=fetch_data,
         forecast_sources=forecast_sources,
         ingest_atmosphere=ingest_atmosphere,
+        ingest_observations=ingest_observations,
         map_generator=map_generator,
         place_weather=place_weather,
         route_analysis=route_analysis,
@@ -236,6 +238,15 @@ def safe_load_observations(briefing):
         return {}
 
 
+def safe_load_observation_bundle(briefing):
+    try:
+        if hasattr(briefing, "load_observation_bundle"):
+            return briefing.load_observation_bundle()
+    except Exception as error:
+        print(f"Warning: observation bundle unavailable; continuing with empty observations. {error}")
+    return {"observations": safe_load_observations(briefing), "station_metadata": []}
+
+
 def maybe_generate_chat_figure(chat_figure, route_dir, logo_path, skip_figures=False):
     if skip_figures:
         return None
@@ -368,9 +379,11 @@ def validation_manifest_entry(validation_summary):
         "observation_samples_path": "validation/observation_samples.jsonl",
         "forecast_index_path": "validation/forecast_index.jsonl",
         "matched_validation_path": "validation/matched_validation.jsonl",
+        "station_metadata_path": "validation/station_metadata.jsonl",
         "observation_rows": validation_summary.get("observation_rows", 0),
         "forecast_rows": validation_summary.get("forecast_rows", 0),
         "matched_rows": validation_summary.get("matched_rows", 0),
+        "station_metadata_rows": validation_summary.get("station_metadata_rows", 0),
         "matched_variables": validation_summary.get("matched_variables", {}),
     }
 
@@ -669,7 +682,9 @@ def generate_daily_briefings(
     routes = modules.route_analysis.load_routes()
 
     with pushd(HUMANINTHELOOP_DIR):
-        observations = safe_load_observations(modules.briefing)
+        observation_bundle = safe_load_observation_bundle(modules.briefing)
+        observations = observation_bundle.get("observations", {})
+        station_metadata = observation_bundle.get("station_metadata", [])
         sources = fetch_forecast_sources(modules, run_dir)
         preferred_source = preferred_forecast_source(sources)
         atmospheric_context = fetch_atmospheric_context(modules, run_dir)
@@ -704,6 +719,7 @@ def generate_daily_briefings(
             preferred_source["waves_path"],
             preferred_source["currents_path"],
             observations=observations,
+            station_metadata=station_metadata,
             place_ids=modules.place_weather.available_place_ids(),
             time_text=current_time,
         )
@@ -740,6 +756,7 @@ def generate_daily_briefings(
         preferred_snapshots,
         observations,
         output_root,
+        station_metadata=station_metadata,
     )
     bigquery_export_result = modules.bigquery_export.export_validation_archive_to_bigquery(
         run_dir,
@@ -750,6 +767,16 @@ def generate_daily_briefings(
         f"({bigquery_export_result.get('exported_rows', 0)} rows)",
         flush=True,
     )
+    if hasattr(modules.bigquery_export, "export_station_metadata_to_bigquery"):
+        station_metadata_export_result = modules.bigquery_export.export_station_metadata_to_bigquery(
+            run_dir,
+            dry_run=False,
+        )
+        print(
+            f"Station metadata export: {station_metadata_export_result.get('status')} "
+            f"({station_metadata_export_result.get('exported_rows', 0)} rows)",
+            flush=True,
+        )
     validation_entry = validation_manifest_entry(validation_summary)
 
     write_manifest(
