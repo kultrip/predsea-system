@@ -1017,6 +1017,21 @@ def test_place_weather_endpoint_returns_saved_weather_payload(tmp_path):
     assert payload["observation"]["station_name"] == "Buoy Canal de Ibiza"
 
 
+def test_locations_weather_endpoint_uses_coordinates_without_place_id(tmp_path):
+    write_place_weather(tmp_path)
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/locations/weather?date=2026-05-31&run=latest&latitude=38.97&longitude=1.44")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["place_id"] == "ibiza"
+    assert payload["place_name"] == "Ibiza"
+    assert payload["requested_latitude"] == 38.97
+    assert payload["requested_longitude"] == 1.44
+    assert payload["source_system"] == "place_weather"
+
+
 def test_place_connection_metrics_endpoint_returns_static_pair_metrics(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 

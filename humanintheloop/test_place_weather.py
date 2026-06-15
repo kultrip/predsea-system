@@ -178,3 +178,31 @@ def test_build_place_weather_record_accepts_naive_observation_timestamp():
     )
     assert record["freshness_status"] == "fresh"
     assert record["metadata"]["observation_age_minutes"] == 30
+
+
+def test_build_place_weather_record_discards_future_observation_timestamp():
+    forecast = {
+        "wave_min_m": 0.2,
+        "wave_max_m": 0.4,
+        "wave_peak_time": "08:00",
+        "wave_peak_direction_deg": 40.0,
+        "current_max_kn": 0.1,
+        "hourly": [],
+    }
+    observation = {
+        "station_id": "alcudia",
+        "station_name": "Alcudia",
+        "last_sample_utc": "2026-06-18 07:30 UTC",
+        "wave_height_m": 0.3,
+    }
+    record = build_place_weather_record(
+        "alcudia",
+        forecast,
+        observation=observation,
+        generated_at_utc="2026-06-15 08:00 UTC",
+        run_date="2026-06-15",
+        run_id="2026-06-15T0750Z",
+    )
+    assert record["freshness_status"] == "unknown"
+    assert record["metadata"]["observation_age_minutes"] is None
+    assert record.get("observed_at_utc") is None

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from datetime import datetime, timezone
 
 import validation_archive
 
@@ -125,3 +126,35 @@ def test_validation_archive_links_new_observation_to_earlier_forecast(tmp_path):
     assert matched[0]["forecast_run_id"] == "2026-06-09T0800Z"
     assert matched[0]["observed_value"] == 0.5
     assert matched[0]["error"] == 0.3
+
+
+def test_validation_archive_skips_future_observations(tmp_path, monkeypatch):
+    run_dir = tmp_path / "outputs" / "2026-06-15" / "runs" / "2026-06-15T1200Z"
+    routes = {}
+    snapshots = {}
+    observations = {
+        "canal_de_ibiza": {
+            "name": "Buoy Canal de Ibiza",
+            "last_sample_utc": "2026-06-18 06:00 UTC",
+            "wave_height_m": 0.43,
+        }
+    }
+    monkeypatch.setattr(
+        validation_archive,
+        "current_timestamp_utc",
+        lambda: datetime(2026, 6, 15, 8, 0, tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+
+    summary = validation_archive.write_validation_archive(
+        run_dir,
+        "2026-06-15",
+        "2026-06-15T1200Z",
+        routes,
+        snapshots,
+        observations,
+        tmp_path / "outputs",
+    )
+
+    observation_path = run_dir / "validation" / "observation_samples.jsonl"
+    assert summary["observation_rows"] == 0
+    assert observation_path.read_text(encoding="utf-8").strip() == ""

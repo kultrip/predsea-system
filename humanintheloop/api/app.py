@@ -73,6 +73,37 @@ def refresh_route_store(route_store):
             logger.warning("Route cache refresh failed: %s", error)
 
 
+_REQUESTED_PLACE_ID_UNSET = object()
+
+
+def load_place_weather_response(
+    store,
+    *,
+    place_id,
+    run_date,
+    run_id,
+    lat=None,
+    lon=None,
+    requested_place_id_override=_REQUESTED_PLACE_ID_UNSET,
+):
+    resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
+    payload = store.load_place_weather(resolved["place_id"], run_date, run_id)
+    response = dict(payload)
+    response["requested_place_id"] = (
+        resolved["requested_place_id"]
+        if requested_place_id_override is _REQUESTED_PLACE_ID_UNSET
+        else requested_place_id_override
+    )
+    response["place_id"] = resolved["place_id"]
+    response["place_name"] = resolved["place_name"]
+    response["resolved_latitude"] = resolved["latitude"]
+    response["resolved_longitude"] = resolved["longitude"]
+    response["distance_to_place_nm"] = resolved.get("distance_to_place_nm")
+    response["requested_latitude"] = resolved.get("requested_latitude")
+    response["requested_longitude"] = resolved.get("requested_longitude")
+    return response
+
+
 def requested_minutes(time_text):
     if not time_text:
         return None
@@ -429,6 +460,46 @@ def create_app(evidence_store=None, route_store=None):
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
+    @app.get(
+        "/locations/weather",
+        response_model=PlaceWeatherResponse,
+        summary="Weather for a raw GPS position",
+        description=(
+            "Return the nearest supported place-weather package for a raw latitude "
+            "and longitude pair. The request must include both coordinates."
+        ),
+    )
+    def location_weather_endpoint(
+        latitude: float = Query(..., ge=-90, le=90),
+        longitude: float = Query(..., ge=-180, le=180),
+        date: str | None = None,
+        run: str | None = None,
+        time: str | None = None,
+    ):
+        try:
+            refresh_route_store(route_store)
+            run_date = store.resolve_date(date)
+            run_id = store.resolve_run(run_date, run)
+            response = load_place_weather_response(
+                store,
+                place_id="current_position",
+                run_date=run_date,
+                run_id=run_id,
+                lat=latitude,
+                lon=longitude,
+                requested_place_id_override=None,
+            )
+            response["requested_latitude"] = latitude
+            response["requested_longitude"] = longitude
+            response["inside_domain"] = place_weather.in_supported_domain(latitude, longitude)
+            if not response["inside_domain"]:
+                response["domain_warning"] = (
+                    "Requested coordinates were mapped to the nearest supported place."
+                )
+            return response
+        except (EvidenceNotFoundError, ValueError) as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+
     @app.get("/places/{place_id}/weather", response_model=PlaceWeatherResponse)
     def place_weather_endpoint(
         place_id: str,
@@ -442,19 +513,16 @@ def create_app(evidence_store=None, route_store=None):
             refresh_route_store(route_store)
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
-            resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
-            payload = store.load_place_weather(resolved["place_id"], run_date, run_id)
-            response = dict(payload)
-            response["requested_place_id"] = resolved["requested_place_id"]
-            response["place_id"] = resolved["place_id"]
-            response["place_name"] = resolved["place_name"]
-            response["resolved_latitude"] = resolved["latitude"]
-            response["resolved_longitude"] = resolved["longitude"]
-            response["distance_to_place_nm"] = resolved.get("distance_to_place_nm")
-            response["requested_latitude"] = resolved.get("requested_latitude")
-            response["requested_longitude"] = resolved.get("requested_longitude")
+            response = load_place_weather_response(
+                store,
+                place_id=place_id,
+                run_date=run_date,
+                run_id=run_id,
+                lat=lat,
+                lon=lon,
+            )
             if lat is not None and lon is not None:
-                response["inside_domain"] = resolved.get("distance_to_place_nm", 0) <= 0.1
+                response["inside_domain"] = response.get("distance_to_place_nm", 0) <= 0.1
                 response["domain_warning"] = (
                     None
                     if response["inside_domain"]

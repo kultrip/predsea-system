@@ -62,6 +62,7 @@ def compute_observation_alignment(snapshot):
 
 def latest_wave_observation(observations):
     candidates = []
+    now = datetime.now(timezone.utc)
     for station_id, record in (observations or {}).items():
         if not isinstance(record, dict):
             continue
@@ -73,6 +74,8 @@ def latest_wave_observation(observations):
         age_minutes = None
         freshness = "unavailable"
         if parsed:
+            if parsed > now:
+                continue
             age_minutes = int((datetime.now(timezone.utc) - parsed).total_seconds() / 60.0)
             if age_minutes < FRESHNESS_THRESHOLDS_MINUTES["fresh"]:
                 freshness = "fresh"

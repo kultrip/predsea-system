@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -98,11 +98,11 @@ def resolve_place(place_id, latitude=None, longitude=None):
             "confidence": resolution["confidence"],
         }
 
-    nearest_place_id, distance_nm = nearest_place_id(latitude, longitude)
-    place = place_definition(nearest_place_id)
+    nearest_id, distance_nm = nearest_place_id(latitude, longitude)
+    place = place_definition(nearest_id)
     return {
         "requested_place_id": place_id,
-        "place_id": nearest_place_id,
+        "place_id": nearest_id,
         "place_name": place["name"],
         "latitude": place["latitude"],
         "longitude": place["longitude"],
@@ -149,7 +149,7 @@ def build_place_weather_record(
     hourly = list(forecast.get("hourly") or [])
     sample = select_hourly_sample(hourly, time_text) or {}
     generated_at = generated_at_utc or current_timestamp_utc()
-    observation = normalize_observation(observation)
+    observation = normalize_observation(observation, generated_at_utc=generated_at)
     observation_age_minutes = observation_age(observation, generated_at)
     freshness_status, freshness_warning = freshness_from_age(observation_age_minutes)
     resolved = resolve_place(place_id, requested_latitude, requested_longitude)
@@ -204,8 +204,11 @@ def build_place_weather_record(
             "place_family": place_family(place_id),
         },
     }
-    if observation.get("last_sample_utc"):
-        payload["observed_at_utc"] = observation["last_sample_utc"]
+    if observation.get("last_sample_utc") and parse_utc_timestamp(observation.get("last_sample_utc")) is not None:
+        observed_at = parse_utc_timestamp(observation["last_sample_utc"])
+        generated_at_dt = parse_utc_timestamp(generated_at)
+        if observed_at is not None and generated_at_dt is not None and observed_at <= generated_at_dt + timedelta(minutes=5):
+            payload["observed_at_utc"] = observation["last_sample_utc"]
     return payload
 
 
@@ -424,7 +427,7 @@ def select_observation_for_place(place_id, observations):
     return {}
 
 
-def normalize_observation(record, station_id=None):
+def normalize_observation(record, station_id=None, generated_at_utc=None):
     """Normalize observation record for consistent field names.
     
     Parameters
@@ -446,6 +449,12 @@ def normalize_observation(record, station_id=None):
         normalized["station_id"] = station_id
     if "station_name" not in normalized and normalized.get("name"):
         normalized["station_name"] = normalized.get("name")
+    if generated_at_utc is not None:
+        generated_at = parse_utc_timestamp(generated_at_utc)
+        observed_at = parse_utc_timestamp(normalized.get("last_sample_utc") or normalized.get("observed_at_utc"))
+        if generated_at is not None and observed_at is not None and observed_at > generated_at + timedelta(minutes=5):
+            normalized["last_sample_utc"] = None
+            normalized["observed_at_utc"] = None
     return normalized
 
 
@@ -467,6 +476,8 @@ def observation_age(observation, generated_at_utc):
     observed_at = parse_utc_timestamp(observation.get("last_sample_utc") or observation.get("observed_at_utc"))
     generated_at = parse_utc_timestamp(generated_at_utc)
     if observed_at is None or generated_at is None:
+        return None
+    if observed_at > generated_at + timedelta(minutes=5):
         return None
     delta = generated_at - observed_at
     return int(round(delta.total_seconds() / 60.0))

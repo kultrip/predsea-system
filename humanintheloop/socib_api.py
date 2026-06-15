@@ -190,6 +190,7 @@ def unwrap_results(payload):
 
 def normalize_socib_payload(payload, platform=None, data_source=None):
     records = {}
+    now = datetime.now(timezone.utc)
     for item in unwrap_results(payload):
         if not isinstance(item, dict):
             continue
@@ -200,9 +201,20 @@ def normalize_socib_payload(payload, platform=None, data_source=None):
         )
         if not station_key:
             continue
+        last_sample_utc = item.get("time") or item.get("timestamp") or item.get("datetime") or item.get("observed_at") or item.get("end_datetime")
+        parsed_last_sample = None
+        if last_sample_utc is not None:
+            try:
+                parsed_last_sample = datetime.fromisoformat(str(last_sample_utc).replace("Z", "+00:00"))
+            except Exception:
+                parsed_last_sample = None
+            if parsed_last_sample is not None and parsed_last_sample.tzinfo is None:
+                parsed_last_sample = parsed_last_sample.replace(tzinfo=timezone.utc)
+            if parsed_last_sample is not None and parsed_last_sample.astimezone(timezone.utc) > now:
+                continue
         record = {
             "name": display_name(platform, data_source, item),
-            "last_sample_utc": item.get("time") or item.get("timestamp") or item.get("datetime") or item.get("observed_at") or item.get("end_datetime"),
+            "last_sample_utc": last_sample_utc,
         }
         for key, value in item.items():
             normalized = VARIABLE_ALIASES.get(str(key).strip()) or VARIABLE_ALIASES.get(str(key).strip().lower())

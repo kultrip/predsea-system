@@ -107,6 +107,8 @@ def build_observation_rows(observations, run_date, run_id):
         observed_at = normalize_timestamp(
             record.get("observed_at_utc") or record.get("sample_time_utc") or record.get("last_sample_utc")
         )
+        if is_future_timestamp(sample_time, collected_at_utc) or is_future_timestamp(observed_at, collected_at_utc):
+            continue
         for raw_key, (variable, units) in OBSERVATION_VARIABLES.items():
             if raw_key not in record or record.get(raw_key) is None:
                 continue
@@ -348,6 +350,14 @@ def parse_timestamp(value):
         return datetime.strptime(normalized, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except ValueError:
         return None
+
+
+def is_future_timestamp(candidate, reference):
+    candidate_dt = parse_timestamp(candidate)
+    reference_dt = parse_timestamp(reference)
+    if candidate_dt is None or reference_dt is None:
+        return False
+    return candidate_dt > reference_dt
 
 
 def current_timestamp_utc():

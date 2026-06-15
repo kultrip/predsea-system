@@ -159,9 +159,11 @@ def latest_value_from_dataarray(da, *, latitude=None, longitude=None):
     if value is None:
         return None, None
     time_value = timestamp_text(candidate[time_dim].values[-1])
+    parsed_time = parse_utc_timestamp(time_value)
+    if parsed_time is not None and parsed_time > datetime.now(timezone.utc):
+        return None, None
     return value, time_value
 
 
 def variable_keyword(text):
     return normalize_text(" ".join(part for part in [text] if part))
-

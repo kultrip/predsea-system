@@ -476,6 +476,7 @@ GET /routes/{route_id}/evidence?run=latest
 GET /routes/{route_id}/briefing?run=latest&format=whatsapp
 GET /maps?variable=wave_height&time=14:00&run=latest
 GET /maps/inspect?variable=wave_height&time=14:00&run=latest&lat=...&lon=...
+GET /locations/weather?latitude=...&longitude=...&run=latest
 GET /routes/{route_id}/media?run=latest
 POST /question
 POST /routes/{route_id}/question
