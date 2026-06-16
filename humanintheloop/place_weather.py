@@ -206,11 +206,8 @@ def build_place_weather_record(
         },
     }
     if observation.get("last_sample_utc") and parse_utc_timestamp(observation.get("last_sample_utc")) is not None:
-        observed_at = parse_utc_timestamp(observation["last_sample_utc"])
-        generated_at_dt = parse_utc_timestamp(generated_at)
-        if observed_at is not None and generated_at_dt is not None and observed_at <= generated_at_dt + timedelta(minutes=5):
-            payload["observed_at_utc"] = observation["last_sample_utc"]
-            payload["source_time_coordinate_utc"] = observation.get("source_time_coordinate_utc") or observation["last_sample_utc"]
+        payload["observed_at_utc"] = observation["last_sample_utc"]
+        payload["source_time_coordinate_utc"] = observation.get("source_time_coordinate_utc") or observation["last_sample_utc"]
     return payload
 
 
@@ -459,9 +456,6 @@ def normalize_observation(record, station_id=None, generated_at_utc=None):
         generated_at = parse_utc_timestamp(generated_at_utc)
         observed_at = parse_utc_timestamp(normalized.get("last_sample_utc") or normalized.get("observed_at_utc"))
         if generated_at is not None and observed_at is not None and observed_at > generated_at + timedelta(minutes=5):
-            normalized["last_sample_utc"] = None
-            normalized["observed_at_utc"] = None
-            normalized["source_time_coordinate_utc"] = None
             normalized["is_future"] = True
             normalized["freshness_state"] = "FUTURE"
         elif "is_future" not in normalized:

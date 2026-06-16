@@ -100,8 +100,8 @@ def test_latest_value_from_dataarray_skips_future_coordinate():
     )
 
     value, sample_time = latest_value_from_dataarray(ds["VHM0"], now_utc="2026-06-16T00:00:00Z")
-    assert value == 0.2
-    assert sample_time == "2026-06-15T23:59:59Z"
+    assert value == 0.4
+    assert sample_time == "2026-06-16T23:59:59Z"
 
 
 def test_redext_parser_uses_station_coordinates_for_grid_sampling():

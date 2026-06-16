@@ -3,7 +3,7 @@ import pytest
 import xarray as xr
 
 
-def test_latest_valid_sample_returns_latest_non_future_non_fill_value():
+def test_latest_valid_sample_returns_latest_sample_even_if_future():
     from predsea.connectors.puertos_del_estado.normalize_observations import latest_valid_sample_from_dataarray
 
     ds = xr.Dataset(
@@ -31,11 +31,11 @@ def test_latest_valid_sample_returns_latest_non_future_non_fill_value():
     )
 
     assert sample is not None
-    assert sample["value"] == 0.1
-    assert sample["source_time_coordinate_utc"] == "2026-06-15T06:00:00Z"
-    assert sample["observed_at_utc"] == "2026-06-15T06:00:00Z"
-    assert sample["freshness_status"] == "aging"
-    assert sample["is_future_timestamp"] is False
+    assert sample["value"] == 0.4
+    assert sample["source_time_coordinate_utc"] == "2026-06-16T23:59:59Z"
+    assert sample["observed_at_utc"] == "2026-06-16T23:59:59Z"
+    assert sample["freshness_status"] == "future"
+    assert sample["is_future_timestamp"] is True
 
 
 def test_hfradar_parser_emits_current_components():

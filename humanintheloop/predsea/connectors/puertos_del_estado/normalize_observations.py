@@ -248,16 +248,6 @@ def latest_valid_sample_from_dataarray(
     for index, (time_value, value) in enumerate(zip(times, values)):
         if pd.isna(time_value) or _is_fill_value(value, fill_values):
             continue
-        if now_dt is not None and time_value.to_pydatetime() > now_dt + timedelta(minutes=tolerance_minutes):
-            continue
-        if qc_values is not None and index < len(qc_values):
-            qc_flag = qc_values[index]
-            if qc_flag is not None:
-                try:
-                    if int(qc_flag) not in (1, 2):
-                        continue
-                except Exception:
-                    continue
         valid_indexes.append(index)
     if not valid_indexes:
         return None

@@ -133,14 +133,13 @@ def build_observation_rows(observations, run_date, run_id):
         freshness_status = (record.get("freshness_status") or record.get("freshness_state") or "UNKNOWN").lower()
         freshness_state = (record.get("freshness_state") or freshness_status or "UNKNOWN").upper()
         quality_score = numeric_value(record.get("quality_score"))
-        if (
+        future_flag = (
             is_future_timestamp(sample_time, collected_at_utc)
             or is_future_timestamp(observed_at, collected_at_utc)
             or is_future_timestamp(source_time_coordinate_utc, collected_at_utc)
             or record.get("is_future")
             or record.get("is_future_timestamp")
-        ):
-            continue
+        )
         for raw_key, (variable, units) in OBSERVATION_VARIABLES.items():
             if raw_key not in record or record.get(raw_key) is None:
                 continue
@@ -172,8 +171,8 @@ def build_observation_rows(observations, run_date, run_id):
                     "latitude": record.get("latitude"),
                     "longitude": record.get("longitude"),
                     "depth_m": record.get("depth_m"),
-                    "is_future": bool(record.get("is_future")),
-                    "is_future_timestamp": bool(record.get("is_future_timestamp") or record.get("is_future")),
+                    "is_future": bool(future_flag),
+                    "is_future_timestamp": bool(future_flag),
                     "is_qc_good": record.get("is_qc_good"),
                     "nearest_routes": record.get("nearest_routes") or [],
                     "distance_to_route_nm": numeric_value(record.get("distance_to_route_nm")),

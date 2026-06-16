@@ -182,7 +182,7 @@ def test_build_place_weather_record_accepts_naive_observation_timestamp():
     assert record["metadata"]["observation_age_minutes"] == 30
 
 
-def test_build_place_weather_record_discards_future_observation_timestamp():
+def test_build_place_weather_record_keeps_future_observation_timestamp():
     forecast = {
         "wave_min_m": 0.2,
         "wave_max_m": 0.4,
@@ -208,4 +208,6 @@ def test_build_place_weather_record_discards_future_observation_timestamp():
     assert record["freshness_status"] == "unknown"
     assert record["freshness_state"] == "FUTURE"
     assert record["metadata"]["observation_age_minutes"] is None
-    assert record.get("observed_at_utc") is None
+    assert record.get("observed_at_utc") == "2026-06-18 07:30 UTC"
+    assert record.get("source_time_coordinate_utc") == "2026-06-18 07:30 UTC"
+    assert record["observation"]["is_future"] is True

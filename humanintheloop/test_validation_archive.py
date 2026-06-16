@@ -130,7 +130,7 @@ def test_validation_archive_links_new_observation_to_earlier_forecast(tmp_path):
     assert matched[0]["error"] == 0.3
 
 
-def test_validation_archive_skips_future_observations(tmp_path, monkeypatch):
+def test_validation_archive_keeps_future_observations(tmp_path, monkeypatch):
     run_dir = tmp_path / "outputs" / "2026-06-15" / "runs" / "2026-06-15T1200Z"
     routes = {}
     snapshots = {}
@@ -159,7 +159,14 @@ def test_validation_archive_skips_future_observations(tmp_path, monkeypatch):
 
     observation_path = run_dir / "validation" / "observation_samples.jsonl"
     station_metadata_path = run_dir / "validation" / "station_metadata.jsonl"
-    assert summary["observation_rows"] == 0
+    assert summary["observation_rows"] == 1
     assert summary["station_metadata_rows"] == 1
-    assert observation_path.read_text(encoding="utf-8").strip() == ""
+    observation_rows = [
+        json.loads(line)
+        for line in observation_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(observation_rows) == 1
+    assert observation_rows[0]["is_future"] is True
+    assert observation_rows[0]["freshness_status"] == "future"
     assert "station_metadata" in station_metadata_path.read_text(encoding="utf-8")
