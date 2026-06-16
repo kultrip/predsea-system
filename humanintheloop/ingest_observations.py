@@ -98,7 +98,7 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
 
 def _puertos_enabled():
     """Check if Puertos del Estado ingestion is enabled."""
-    return os.environ.get("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0") == "1"
+    return os.environ.get("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "1") == "1"
 
 
 def _portus_enabled():

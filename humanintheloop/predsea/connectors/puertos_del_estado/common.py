@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -8,11 +9,19 @@ import numpy as np
 import pandas as pd
 
 
+warnings.filterwarnings(
+    "ignore",
+    message="Discarding nonzero nanoseconds in conversion",
+    category=UserWarning,
+)
+
+
 SOURCE_SYSTEM = "puertos_del_estado"
 NETWORK_LABELS = {
     "redext": "REDEXT",
     "redcos": "REDCOS",
     "redmar": "REDMAR",
+    "hfradar": "HF_RADAR",
 }
 
 
@@ -120,8 +129,15 @@ def _coordinate_values(coord):
 
 
 def select_spatial_point(da, latitude, longitude):
-    lat_coord = da.coords.get("latitude")
-    lon_coord = da.coords.get("longitude")
+    def _coord(*names):
+        for name in names:
+            coord = da.coords.get(name)
+            if coord is not None:
+                return coord
+        return None
+
+    lat_coord = _coord("latitude", "LATITUDE", "lat", "LAT")
+    lon_coord = _coord("longitude", "LONGITUDE", "lon", "LON")
     if lat_coord is None or lon_coord is None:
         return da
 
@@ -149,42 +165,49 @@ def select_spatial_point(da, latitude, longitude):
     return da
 
 
-def latest_value_from_dataarray(da, *, latitude=None, longitude=None):
-    sample = latest_sample_from_dataarray(da, latitude=latitude, longitude=longitude)
+def latest_value_from_dataarray(
+    da,
+    *,
+    latitude=None,
+    longitude=None,
+    qc_da=None,
+    fill_values=None,
+    now_utc=None,
+):
+    sample = latest_sample_from_dataarray(
+        da,
+        latitude=latitude,
+        longitude=longitude,
+        qc_da=qc_da,
+        fill_values=fill_values,
+        now_utc=now_utc,
+    )
     if sample is None:
         return None, None
     return sample["value"], sample["source_time_coordinate_utc"]
 
 
-def latest_sample_from_dataarray(da, *, latitude=None, longitude=None, now_utc=None, tolerance_minutes=5):
-    candidate = da
-    if latitude is not None and longitude is not None:
-        candidate = select_spatial_point(candidate, latitude, longitude)
-    time_dim = _time_dim_name(candidate)
-    if time_dim is None:
-        return None, None
-    for dim in list(candidate.dims):
-        if dim != time_dim and candidate.sizes.get(dim, 0) == 1:
-            candidate = candidate.isel({dim: 0}, drop=True)
-    candidate = candidate.where(candidate.notnull(), drop=True)
-    if candidate.size == 0:
-        return None, None
-    latest = candidate.isel({time_dim: -1}).squeeze(drop=True)
-    value = to_float(getattr(latest, "values", latest))
-    if value is None:
-        return None
-    time_value = timestamp_text(candidate[time_dim].values[-1])
-    parsed_time = parse_utc_timestamp(time_value)
-    reference = parse_utc_timestamp(now_utc) if now_utc is not None else datetime.now(timezone.utc)
-    if parsed_time is not None and reference is not None and parsed_time > reference + timedelta(minutes=tolerance_minutes):
-        return None
-    return {
-        "value": value,
-        "source_time_coordinate_utc": time_value,
-        "sample_time_utc": time_value,
-        "observed_at_utc": time_value,
-        "is_future": parsed_time is not None and reference is not None and parsed_time > reference + timedelta(minutes=tolerance_minutes),
-    }
+def latest_sample_from_dataarray(
+    da,
+    *,
+    latitude=None,
+    longitude=None,
+    qc_da=None,
+    fill_values=None,
+    now_utc=None,
+    tolerance_minutes=5,
+):
+    from .normalize_observations import latest_valid_sample_from_dataarray
+
+    return latest_valid_sample_from_dataarray(
+        da,
+        qc_da=qc_da,
+        fill_values=fill_values,
+        latitude=latitude,
+        longitude=longitude,
+        now_utc=now_utc,
+        tolerance_minutes=tolerance_minutes,
+    )
 
 
 def variable_keyword(text):

@@ -13,14 +13,19 @@ def test_fetch_all_observations_includes_socib(monkeypatch):
     assert "ground_truth_lineage" in result
 
 
-def test_puertos_disabled_by_default(monkeypatch):
+def test_puertos_enabled_by_default(monkeypatch):
     monkeypatch.delenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", raising=False)
-    assert not ingest_observations._puertos_enabled()
+    assert ingest_observations._puertos_enabled()
 
 
 def test_puertos_enabled_by_env_var(monkeypatch):
     monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "1")
     assert ingest_observations._puertos_enabled()
+
+
+def test_puertos_can_be_disabled_explicitly(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0")
+    assert not ingest_observations._puertos_enabled()
 
 
 def test_portus_enabled_by_default(monkeypatch):
