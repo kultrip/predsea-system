@@ -139,6 +139,13 @@ def evidence_used(snapshot, forecast_override=None):
         key for key, value in observations.items()
         if isinstance(value, dict) and value.get("last_sample_utc")
     ]
+    observation_networks = sorted(
+        {
+            str(value.get("network")).lower()
+            for value in observations.values()
+            if isinstance(value, dict) and value.get("network")
+        }
+    )
     evidence = {
         "forecast_variables": sorted(
             key for key in ("wave_min_m", "wave_max_m", "current_max_kn")
@@ -147,6 +154,7 @@ def evidence_used(snapshot, forecast_override=None):
         "hourly_points": len(forecast.get("hourly") or []),
         "route_segments": sorted((forecast.get("route_segments") or {}).keys()),
         "observations": available_observations,
+        "observation_networks": observation_networks,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
         "sea_state": sea_state_evidence(forecast, observations),
         "observation_alignment": snapshot.get("observation_alignment") or {},
@@ -236,9 +244,15 @@ def observed_wave_height_evidence(observations):
         if not isinstance(record, dict) or record.get("wave_height_m") is None:
             continue
         records[station_id] = {
-            "station_name": record.get("name"),
+            "station_name": record.get("station_name") or record.get("name"),
+            "source_label": record.get("source_label"),
+            "network": record.get("network"),
             "wave_height_m": record.get("wave_height_m"),
             "observed_at_utc": record.get("last_sample_utc"),
+            "source_time_coordinate_utc": record.get("source_time_coordinate_utc"),
+            "freshness_status": record.get("freshness_status"),
+            "freshness_state": record.get("freshness_state"),
+            "quality_score": record.get("quality_score"),
             "observed_wave_direction_deg": (
                 record.get("wave_from_direction_deg") or record.get("wave_direction_deg")
             ),

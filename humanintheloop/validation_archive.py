@@ -35,6 +35,8 @@ OBSERVATION_VARIABLES = {
     "air_pressure_hpa": ("air_pressure", "hPa"),
     "current_speed_mps": ("current_speed", "m/s"),
     "current_direction_deg": ("current_direction", "degree"),
+    "current_u_mps": ("current_u", "m/s"),
+    "current_v_mps": ("current_v", "m/s"),
 }
 
 COMPASS_DEGREES = {
@@ -128,11 +130,15 @@ def build_observation_rows(observations, run_date, run_id):
         source_time_coordinate_utc = normalize_timestamp(
             record.get("source_time_coordinate_utc") or sample_time or observed_at
         )
+        freshness_status = (record.get("freshness_status") or record.get("freshness_state") or "UNKNOWN").lower()
+        freshness_state = (record.get("freshness_state") or freshness_status or "UNKNOWN").upper()
+        quality_score = numeric_value(record.get("quality_score"))
         if (
             is_future_timestamp(sample_time, collected_at_utc)
             or is_future_timestamp(observed_at, collected_at_utc)
             or is_future_timestamp(source_time_coordinate_utc, collected_at_utc)
             or record.get("is_future")
+            or record.get("is_future_timestamp")
         ):
             continue
         for raw_key, (variable, units) in OBSERVATION_VARIABLES.items():
@@ -160,12 +166,17 @@ def build_observation_rows(observations, run_date, run_id):
                     "raw_value": record.get(raw_key),
                     "units": units,
                     "qc_flag": record.get("qc_flag") or record.get(f"{raw_key}_qc_flag"),
-                    "freshness_state": record.get("freshness_state") or freshness_state_from_observation(observed_at, collected_at_utc),
+                    "freshness_status": freshness_status if freshness_status != "unknown" else freshness_state_from_observation(observed_at, collected_at_utc).lower(),
+                    "freshness_state": freshness_state or freshness_state_from_observation(observed_at, collected_at_utc),
+                    "quality_score": quality_score,
                     "latitude": record.get("latitude"),
                     "longitude": record.get("longitude"),
                     "depth_m": record.get("depth_m"),
                     "is_future": bool(record.get("is_future")),
+                    "is_future_timestamp": bool(record.get("is_future_timestamp") or record.get("is_future")),
                     "is_qc_good": record.get("is_qc_good"),
+                    "nearest_routes": record.get("nearest_routes") or [],
+                    "distance_to_route_nm": numeric_value(record.get("distance_to_route_nm")),
                 }
             )
     return rows
@@ -194,6 +205,8 @@ def build_station_metadata_rows(observations, run_date=None, run_id=None, statio
         merged.setdefault("station_kind", candidate.get("station_kind") or existing.get("station_kind"))
         merged.setdefault("priority", candidate.get("priority") or existing.get("priority") or "normal")
         merged.setdefault("variables_supported", candidate.get("variables_supported") or existing.get("variables_supported") or [])
+        merged.setdefault("nearest_routes", candidate.get("nearest_routes") or existing.get("nearest_routes") or [])
+        merged.setdefault("distance_to_route_nm", candidate.get("distance_to_route_nm") or existing.get("distance_to_route_nm"))
         if run_date is not None:
             merged["run_date"] = run_date
         if run_id is not None:
@@ -249,6 +262,8 @@ def station_metadata_row_from_record(station_id, record, run_date=None, run_id=N
         "longitude": longitude,
         "depth_m": numeric_value(record.get("depth_m")),
         "variables_supported": variables_supported,
+        "nearest_routes": list(record.get("nearest_routes") or []),
+        "distance_to_route_nm": numeric_value(record.get("distance_to_route_nm")),
         "distance_to_palma": distance_to_palma,
         "distance_to_ibiza": distance_to_ibiza,
         "distance_to_menorca": distance_to_menorca,
@@ -278,7 +293,7 @@ def infer_network_from_record(record):
     network = str(record.get("network") or "").lower()
     if network:
         return network
-    if source_label in {"REDEXT", "REDCOS", "REDMAR"}:
+    if source_label in {"REDEXT", "REDCOS", "REDMAR", "HF_RADAR"}:
         return source_label.lower()
     source_system = str(record.get("source_system") or record.get("provider") or "").lower()
     if "socib" in source_system:
@@ -292,12 +307,17 @@ def infer_station_kind(record):
         return "tide_gauge"
     if network in {"redext", "redcos"}:
         return "buoy"
+    if network == "hfradar":
+        return "radar"
     if network == "socib":
         return "platform"
     return record.get("station_kind")
 
 
 def station_priority(record, distance_to_palma, distance_to_ibiza, distance_to_menorca):
+    explicit_priority = str(record.get("priority") or "").lower()
+    if explicit_priority in {"high", "medium", "normal", "low"}:
+        return explicit_priority
     station_id = str(record.get("station_id") or "").lower()
     high_priority_ids = {
         "bahia_de_palma",
@@ -310,7 +330,12 @@ def station_priority(record, distance_to_palma, distance_to_ibiza, distance_to_m
         "puertos_mahon",
         "puertos_formentera",
         "porto_colom",
+        "puertos_delta_del_ebro",
     }
+    if infer_network_from_record(record) == "hfradar":
+        return "high"
+    if infer_network_from_record(record) == "redmar":
+        return "low"
     if station_id in high_priority_ids:
         return "high"
     distances = [value for value in (distance_to_palma, distance_to_ibiza, distance_to_menorca) if value is not None]

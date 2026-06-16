@@ -1,0 +1,64 @@
+{
+  "departure_time": "08:30",
+  "vessel_speed_kn": 16,
+  "vessel_class": "medium",
+  "priority": "comfort",
+  "segments": [
+    {
+      "id": "departure_conditions",
+      "label": "Palma Bay offshore",
+      "role": "departure",
+      "eta": "09:02",
+      "sample": {
+        "time": "15:00",
+        "wave_m": 0.4,
+        "wave_direction_deg": 138.4,
+        "wave_sea_state": "beam sea",
+        "current_kn": 0.1
+      },
+      "comfort": "good",
+      "risk": "low_to_moderate"
+    },
+    {
+      "id": "open_water_conditions",
+      "label": "Mid Palma-Ibiza",
+      "role": "exposed_leg",
+      "eta": "10:46",
+      "sample": {
+        "time": "15:00",
+        "wave_m": 0.8,
+        "wave_direction_deg": 110.5,
+        "wave_sea_state": "stern quartering sea",
+        "current_kn": 0.1
+      },
+      "comfort": "good",
+      "risk": "low_to_moderate"
+    },
+    {
+      "id": "arrival_conditions",
+      "label": "Ibiza Channel",
+      "role": "arrival",
+      "eta": "12:06",
+      "sample": {
+        "time": "15:00",
+        "wave_m": 1.0,
+        "wave_direction_deg": 110.0,
+        "wave_sea_state": "stern quartering sea",
+        "current_kn": 0.1
+      },
+      "comfort": "moderate",
+      "risk": "low_to_moderate"
+    }
+  ],
+  "worst_segment": {
+    "id": "arrival_conditions",
+    "label": "Ibiza Channel",
+    "eta": "12:06",
+    "time": "15:00",
+    "wave_m": 1.0,
+    "sea_state": "stern quartering sea",
+    "comfort": "moderate",
+    "risk": "low_to_moderate"
+  },
+  "summary": "Worst expected section: Ibiza Channel near 1.0 m around 15:00."
+}

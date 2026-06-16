@@ -1,30 +1,18 @@
 from __future__ import annotations
 
-from .common import SOURCE_SYSTEM, latest_sample_from_dataarray, normalize_text, parse_utc_timestamp
+from .common import SOURCE_SYSTEM, latest_sample_from_dataarray, normalize_text
 
 
-def _qc_flag_for_measurement(ds, source_field, sample_time):
+def _qc_dataarray_for_measurement(ds, source_field):
     qc_candidates = (
         f"{source_field}_QC",
         f"{source_field}_qc",
         f"{source_field}_DM",
         f"{source_field}_dm",
     )
-    time_dim = None
     for candidate in qc_candidates:
         if candidate in ds.data_vars:
-            da = ds[candidate]
-            time_dim = next((dim for dim in da.dims if dim.lower() in {"time", "time_counter", "datetime"}), None)
-            if time_dim is None:
-                continue
-            try:
-                latest = da.isel({time_dim: -1}).squeeze(drop=True)
-                value = latest.values
-                if hasattr(value, "item"):
-                    value = value.item()
-                return int(value) if value is not None else None
-            except Exception:
-                continue
+            return ds[candidate]
     return None
 
 
@@ -85,12 +73,13 @@ def parse_station_dataset(ds, station_meta, dataset_url=None):
         variable, raw_key = _variable_from_attrs(source_field, da)
         if not variable or not raw_key:
             continue
-        sample = latest_sample_from_dataarray(da, latitude=latitude, longitude=longitude)
+        qc_da = _qc_dataarray_for_measurement(ds, source_field)
+        sample = latest_sample_from_dataarray(da, latitude=latitude, longitude=longitude, qc_da=qc_da)
         if not sample:
             continue
         value = sample["value"]
         sample_time = sample["sample_time_utc"]
-        qc_flag = _qc_flag_for_measurement(ds, source_field, sample_time)
+        qc_flag = sample.get("qc_flag")
         records.append(
             {
                 "source": SOURCE_SYSTEM,
@@ -113,6 +102,10 @@ def parse_station_dataset(ds, station_meta, dataset_url=None):
                 "qc_flag": qc_flag,
                 "is_qc_good": qc_flag in (1, 2) if qc_flag is not None else None,
                 "is_future": sample.get("is_future", False),
+                "is_future_timestamp": sample.get("is_future_timestamp", sample.get("is_future", False)),
+                "freshness_status": sample.get("freshness_status"),
+                "freshness_state": sample.get("freshness_state"),
+                "quality_score": sample.get("quality_score"),
                 "source_time_coordinate_utc": sample.get("source_time_coordinate_utc"),
                 "sample_time_utc": sample_time,
                 "observed_at_utc": sample_time,
