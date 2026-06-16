@@ -457,13 +457,62 @@ def available_forecast_sources(sources):
 def preferred_forecast_source(sources):
     available = available_forecast_sources(sources)
     if not available:
-        raise RuntimeError("No forecast source available; cannot generate PredSea evidence package.")
+        return None
     return next((source for source in available if source.get("preferred")), available[0])
+
+
+def cached_forecast_source(fetch_data):
+    output_dir = Path(getattr(fetch_data, "OUTPUT_DIR", PROJECT_ROOT / "mvp_data"))
+    candidate_dirs = [
+        output_dir,
+        output_dir / "copernicus",
+        PROJECT_ROOT / "mvp_data",
+        PROJECT_ROOT / "mvp_data" / "copernicus",
+    ]
+    seen = set()
+    for candidate_dir in candidate_dirs:
+        candidate_dir = Path(candidate_dir).resolve()
+        if candidate_dir in seen:
+            continue
+        seen.add(candidate_dir)
+        waves_path = candidate_dir / "balearic_waves.nc"
+        currents_path = candidate_dir / "balearic_currents.nc"
+        if waves_path.exists() and currents_path.exists():
+            print(
+                "Warning: no live forecast source available; reusing cached Copernicus bundle "
+                f"from {candidate_dir}.",
+                flush=True,
+            )
+            return {
+                "id": "copernicus",
+                "label": "Cached Copernicus Marine Mediterranean forecast",
+                "available": True,
+                "preferred": True,
+                "cached": True,
+                "waves_path": waves_path,
+                "currents_path": currents_path,
+                "metadata": {
+                    "source_type": "cached_bundle",
+                    "cache_dir": str(candidate_dir),
+                },
+            }
+    return None
 
 
 def source_manifest_entries(modules, sources):
     if hasattr(modules, "forecast_sources"):
-        return [modules.forecast_sources.source_manifest_entry(source) for source in sources]
+        entries = []
+        for source in sources:
+            entry = modules.forecast_sources.source_manifest_entry(source)
+            if source.get("metadata") and "metadata" not in entry:
+                entry["metadata"] = source["metadata"]
+            if source.get("cached") and "metadata" not in entry:
+                entry["metadata"] = {
+                    "source_type": "cached_bundle",
+                    "cache_dir": str(Path(source.get("waves_path", "")).parent) if source.get("waves_path") else None,
+                }
+            entries.append(entry)
+        return entries
     return [
         {
             "id": source.get("id"),
@@ -564,6 +613,8 @@ def annotate_snapshot_with_source(snapshot, source):
         "label": source.get("label"),
         "preferred": bool(source.get("preferred")),
     }
+    if source.get("cached"):
+        snapshot["forecast_source"]["cached"] = True
     if source.get("metadata"):
         snapshot["forecast_source"]["metadata"] = source["metadata"]
     return snapshot
@@ -687,6 +738,14 @@ def generate_daily_briefings(
         station_metadata = observation_bundle.get("station_metadata", [])
         sources = fetch_forecast_sources(modules, run_dir)
         preferred_source = preferred_forecast_source(sources)
+        if preferred_source is None:
+            preferred_source = cached_forecast_source(modules.fetch_data)
+            if preferred_source is None:
+                raise RuntimeError(
+                    "No forecast source available and no cached Copernicus bundle found; "
+                    "cannot generate PredSea evidence package."
+                )
+            sources.append(preferred_source)
         atmospheric_context = fetch_atmospheric_context(modules, run_dir)
 
         for source in available_forecast_sources(sources):
@@ -712,17 +771,19 @@ def generate_daily_briefings(
                 for route_id, source_route_dir in generated_routes.items():
                     copy_preferred_route_artifacts(source_route_dir, run_dir / route_id)
 
-        modules.place_weather.write_place_weather_outputs(
-            run_dir,
-            run_date,
-            run_id,
-            preferred_source["waves_path"],
-            preferred_source["currents_path"],
-            observations=observations,
-            station_metadata=station_metadata,
-            place_ids=modules.place_weather.available_place_ids(),
-            time_text=current_time,
-        )
+        place_weather_module = getattr(modules, "place_weather", None)
+        if place_weather_module is not None:
+            place_weather_module.write_place_weather_outputs(
+                run_dir,
+                run_date,
+                run_id,
+                preferred_source["waves_path"],
+                preferred_source["currents_path"],
+                observations=observations,
+                station_metadata=station_metadata,
+                place_ids=place_weather_module.available_place_ids(),
+                time_text=current_time,
+            )
 
     forecast_source_entries = source_manifest_entries(modules, sources)
     if atmospheric_context.get("enabled") or atmospheric_context.get("wind_lineage", {}).get("status") != "not_configured":
@@ -738,7 +799,7 @@ def generate_daily_briefings(
                     "error": atmospheric_context.get("wind_result", {}).get("error"),
                 },
             }
-        )
+    )
     regional_evidence = write_regional_evidence(
         run_dir,
         run_date,
@@ -748,35 +809,38 @@ def generate_daily_briefings(
     )
     regional_manifest_entry = regional_evidence_manifest_entry(regional_evidence)
     preferred_snapshots = load_preferred_snapshots(run_dir, selected_route_ids)
-    validation_summary = modules.validation_archive.write_validation_archive(
-        run_dir,
-        run_date,
-        run_id,
-        routes,
-        preferred_snapshots,
-        observations,
-        output_root,
-        station_metadata=station_metadata,
-    )
-    bigquery_export_result = modules.bigquery_export.export_validation_archive_to_bigquery(
-        run_dir,
-        dry_run=False,
-    )
-    print(
-        f"BigQuery export: {bigquery_export_result.get('status')} "
-        f"({bigquery_export_result.get('exported_rows', 0)} rows)",
-        flush=True,
-    )
-    if hasattr(modules.bigquery_export, "export_station_metadata_to_bigquery"):
-        station_metadata_export_result = modules.bigquery_export.export_station_metadata_to_bigquery(
+    validation_summary = None
+    if hasattr(modules, "validation_archive"):
+        validation_summary = modules.validation_archive.write_validation_archive(
+            run_dir,
+            run_date,
+            run_id,
+            routes,
+            preferred_snapshots,
+            observations,
+            output_root,
+            station_metadata=station_metadata,
+        )
+    if hasattr(modules, "bigquery_export"):
+        bigquery_export_result = modules.bigquery_export.export_validation_archive_to_bigquery(
             run_dir,
             dry_run=False,
         )
         print(
-            f"Station metadata export: {station_metadata_export_result.get('status')} "
-            f"({station_metadata_export_result.get('exported_rows', 0)} rows)",
+            f"BigQuery export: {bigquery_export_result.get('status')} "
+            f"({bigquery_export_result.get('exported_rows', 0)} rows)",
             flush=True,
         )
+        if hasattr(modules.bigquery_export, "export_station_metadata_to_bigquery"):
+            station_metadata_export_result = modules.bigquery_export.export_station_metadata_to_bigquery(
+                run_dir,
+                dry_run=False,
+            )
+            print(
+                f"Station metadata export: {station_metadata_export_result.get('status')} "
+                f"({station_metadata_export_result.get('exported_rows', 0)} rows)",
+                flush=True,
+            )
     validation_entry = validation_manifest_entry(validation_summary)
 
     write_manifest(

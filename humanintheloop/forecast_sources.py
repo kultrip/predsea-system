@@ -47,7 +47,7 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
 
 def configured_source_ids():
     source_ids = ["copernicus"]
-    if os.getenv("PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS") == "1":
+    if os.getenv("PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS", "1") == "1":
         source_ids.append("socib")
     return source_ids
 

@@ -389,6 +389,50 @@ def test_generate_daily_briefings_records_unavailable_parallel_source_without_fa
     assert manifest["forecast_sources"][0]["error"] == "Copernicus authentication service timed out"
 
 
+def test_generate_daily_briefings_reuses_cached_forecast_bundle_when_all_live_sources_fail(tmp_path, monkeypatch):
+    runner = load_runner()
+    cached_dir = tmp_path / "mvp_data"
+    cached_dir.mkdir(parents=True)
+    waves_path = cached_dir / "balearic_waves.nc"
+    currents_path = cached_dir / "balearic_currents.nc"
+    waves_path.write_text("cached waves", encoding="utf-8")
+    currents_path.write_text("cached currents", encoding="utf-8")
+
+    monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runner, "maybe_generate_route_map", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        runner,
+        "load_mvp_modules",
+        lambda: SimpleNamespace(
+            route_analysis=FakeRouteAnalysis(),
+            briefing=FakeBriefing(),
+            fetch_data=type("FetchData", (), {"OUTPUT_DIR": str(cached_dir)}),
+            forecast_sources=FakeForecastSources([]),
+            chat_figure=FakeChatFigure(),
+            map_generator=FakeMapGenerator(),
+        ),
+    )
+    monkeypatch.setattr(runner, "HUMANINTHELOOP_DIR", tmp_path)
+
+    result = runner.generate_daily_briefings(
+        output_root=tmp_path / "outputs",
+        run_date="2026-06-04",
+        route_ids=["palma_ibiza"],
+        vessel_class="medium",
+        current_time="09:30",
+        skip_figures=True,
+        skip_maps=True,
+    )
+
+    manifest = json.loads((result.output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    snapshot = json.loads((result.output_dir / "palma_ibiza" / "daily_snapshot.json").read_text(encoding="utf-8"))
+
+    assert snapshot["forecast_source"]["id"] == "copernicus"
+    assert snapshot["forecast_source"]["cached"] is True
+    assert manifest["forecast_sources"][-1]["metadata"]["source_type"] == "cached_bundle"
+    assert manifest["forecast_sources"][-1]["available"] is True
+
+
 def test_generate_daily_briefings_fails_when_required_artifact_is_missing(tmp_path, monkeypatch):
     runner = load_runner()
     monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
