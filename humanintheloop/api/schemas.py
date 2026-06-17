@@ -226,9 +226,9 @@ class RouteWaypointCheckpoint(BaseModel):
     waypoint_index: int
     lat: float
     lng: float
-    eta_utc: str
+    eta_local: str
     distance_from_origin_nm: float
-    forecast_time_utc: str
+    forecast_time_local: str
     weather: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -246,7 +246,7 @@ class RouteWaypointsResponse(BaseModel):
     waypoints: List[RouteWaypoint] = Field(default_factory=list)
     checkpoints: List[RouteWaypointCheckpoint] = Field(default_factory=list)
     source_tag: str
-    computed_at_utc: str
+    computed_at_local: str
 
 
 class RouteSummary(BaseModel):

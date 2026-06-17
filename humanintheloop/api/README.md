@@ -276,10 +276,10 @@ latitude/longitude pair. The coordinate distance endpoint returns a maritime
 sea-route distance and a travel-time estimate for raw latitude/longitude
 pairs. The route geometry endpoint returns the navigable sea path as a list of
 waypoints, and it accepts place IDs plus optional raw coordinates on the same
-contract. It also returns a parallel `checkpoints` array with ETA and sampled
-weather at each in-route point so the passage timing stays separate from the
-geometry. In other words, you can call it with names, with coordinates, or
-with both together when you want a location override.
+contract. It also returns a parallel `checkpoints` array with local ETA and
+sampled weather at each in-route point so the passage timing stays separate
+from the geometry. In other words, you can call it with names, with
+coordinates, or with both together when you want a location override.
 
 Route geometry query parameters:
 
@@ -292,6 +292,12 @@ Route geometry query parameters:
 If coordinates are provided, PredSea resolves the route from those exact
 points. If not, it resolves the origin and destination place IDs from the
 canonical place registry first.
+
+Checkpoint fields use Europe/Madrid local time:
+
+- `eta_local`
+- `forecast_time_local`
+- `computed_at_local`
 
 Palma is also exposed as a small place family. The default place remains
 `palma`, and specific ports are available as separate places:

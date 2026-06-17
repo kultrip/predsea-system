@@ -131,8 +131,8 @@ def parse_departure_datetime(run_date, departure_time):
         return None
 
 
-def format_utc_timestamp(moment):
-    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def format_local_timestamp(moment):
+    return moment.astimezone(ZoneInfo("Europe/Madrid")).strftime("%Y-%m-%d %H:%M %Z")
 
 
 def route_waypoint_weather(store, *, run_date, run_id, latitude, longitude, eta_local_time_text):
@@ -228,7 +228,7 @@ def build_route_checkpoints(
             point["lng"],
         )
         eta_local = departure_dt_local + timedelta(hours=cumulative_nm / float(typical_speed_kn or 15.0))
-        eta_utc = format_utc_timestamp(eta_local)
+        eta_local_text = format_local_timestamp(eta_local)
         eta_local_time = eta_local.astimezone(ZoneInfo("Europe/Madrid")).strftime("%H:%M")
         weather = route_waypoint_weather(
             store,
@@ -243,9 +243,9 @@ def build_route_checkpoints(
                 "waypoint_index": index,
                 "lat": float(point["lat"]),
                 "lng": float(point["lng"]),
-                "eta_utc": eta_utc,
+                "eta_local": eta_local_text,
                 "distance_from_origin_nm": round(cumulative_nm, 2),
-                "forecast_time_utc": eta_utc,
+                "forecast_time_local": eta_local_text,
                 "weather": weather,
             }
         )
@@ -757,7 +757,7 @@ def create_app(evidence_store=None, route_store=None):
             distance_nm = metrics["distance_nm"]
             estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
             source_tag = metrics.get("source_tag", "static_place_metrics")
-            computed_at_utc = metrics.get("computed_at_utc")
+            computed_at_local = format_local_timestamp(datetime.now(ZoneInfo("Europe/Madrid")))
             return {
                 "origin_place_id": origin_place_id,
                 "origin_place_name": origin_place["name"],
@@ -981,7 +981,7 @@ def create_app(evidence_store=None, route_store=None):
                 "waypoints": metrics["waypoints"],
                 "checkpoints": checkpoints,
                 "source_tag": metrics["source_tag"],
-                "computed_at_utc": metrics["computed_at_utc"],
+                "computed_at_local": format_local_timestamp(datetime.now(ZoneInfo("Europe/Madrid"))),
             }
         except ValueError as error:
             message = str(error)

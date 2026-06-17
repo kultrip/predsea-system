@@ -24,7 +24,7 @@ The contract for those surfaces is:
 - **place hierarchy**: `palma` is the default Palma place, while `port_de_palma`, `port_adriano`, and `can_pastilla` are separate places
 - **static place metrics**: distance and typical travel time come from a fixed place-pair table first, then fall back to a graph-based sea route for uncatalogued pairs
 - **coordinate distance**: `/places/distance/coordinates` returns maritime sea-route distance and a travel-time estimate for raw latitude/longitude pairs
-- **route geometry**: `/places/route/{origin}/{destination}` returns navigable waypoints and accepts raw coordinate overrides on day one. Pass `origin_latitude`, `origin_longitude`, `destination_latitude`, and `destination_longitude` when you want to route from exact locations instead of place names. The response also includes a `checkpoints` array with ETA and sampled weather at each in-route point, so the WhatsApp layer can talk about timing along the passage without re-deriving the route.
+- **route geometry**: `/places/route/{origin}/{destination}` returns navigable waypoints and accepts raw coordinate overrides on day one. Pass `origin_latitude`, `origin_longitude`, `destination_latitude`, and `destination_longitude` when you want to route from exact locations instead of place names. The response also includes a `checkpoints` array with local ETA and sampled weather at each in-route point, so the WhatsApp layer can talk about timing along the passage without re-deriving the route.
 - **route answers**: include the same distance basis in the response JSON for route planning questions
   - when available, water temperature and air temperature are included too
 

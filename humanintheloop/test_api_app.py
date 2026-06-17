@@ -1193,7 +1193,7 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
                 {"lat": 39.2, "lng": 2.1},
                 {"lat": kwargs["destination_latitude"], "lng": kwargs["destination_longitude"]},
             ],
-            "computed_at_utc": "2026-06-17 12:00 UTC",
+            "computed_at_local": "2026-06-17 14:00 CEST",
             "source_tag": "graph_sea_route_v1",
         }
 
@@ -1203,9 +1203,9 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
                 "waypoint_index": 0,
                 "lat": 39.2,
                 "lng": 2.1,
-                "eta_utc": "2026-06-17T13:30:00Z",
+                "eta_local": "2026-06-17 15:30 CEST",
                 "distance_from_origin_nm": 28.0,
-                "forecast_time_utc": "2026-06-17T13:30:00Z",
+                "forecast_time_local": "2026-06-17 15:30 CEST",
                 "weather": {"wave_height_m": 1.1, "current_kn": 0.5},
             }
         ]
@@ -1222,7 +1222,7 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
     assert payload["destination_place_id"] == "ibiza"
     assert payload["distance_nm"] == 100.0
     assert payload["waypoints"][0] == {"lat": 39.52, "lng": 2.58}
-    assert payload["checkpoints"][0]["eta_utc"] == "2026-06-17T13:30:00Z"
+    assert payload["checkpoints"][0]["eta_local"] == "2026-06-17 15:30 CEST"
     assert payload["checkpoints"][0]["weather"]["wave_height_m"] == 1.1
     assert payload["source_tag"] == "graph_sea_route_v1"
 
@@ -1247,7 +1247,7 @@ def test_places_route_endpoint_uses_coordinate_overrides(tmp_path, monkeypatch):
                 {"lat": kwargs["origin_latitude"], "lng": kwargs["origin_longitude"]},
                 {"lat": kwargs["destination_latitude"], "lng": kwargs["destination_longitude"]},
             ],
-            "computed_at_utc": "2026-06-17 12:00 UTC",
+            "computed_at_local": "2026-06-17 14:00 CEST",
             "source_tag": "graph_sea_route_v1",
         }
 
