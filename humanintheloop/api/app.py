@@ -79,6 +79,29 @@ def refresh_route_store(route_store):
 _REQUESTED_PLACE_ID_UNSET = object()
 
 
+def load_place_weather_with_fallback(store, place_id, run_date, run_id):
+    try:
+        return store.load_place_weather(place_id, run_date, run_id)
+    except EvidenceNotFoundError as error:
+        try:
+            fallback_date = store.latest_date()
+            fallback_run = store.latest_run(fallback_date)
+        except EvidenceNotFoundError:
+            raise error
+
+        if fallback_date == run_date and fallback_run == run_id:
+            raise error
+
+        logger.warning(
+            "Place weather unavailable for %s on %s; falling back to latest bundle %s/%s",
+            place_id,
+            run_date,
+            fallback_date,
+            fallback_run or "latest",
+        )
+        return store.load_place_weather(place_id, fallback_date, fallback_run)
+
+
 def load_place_weather_response(
     store,
     *,
@@ -90,7 +113,7 @@ def load_place_weather_response(
     requested_place_id_override=_REQUESTED_PLACE_ID_UNSET,
 ):
     resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
-    payload = store.load_place_weather(resolved["place_id"], run_date, run_id)
+    payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
     response = dict(payload)
     response["requested_place_id"] = (
         resolved["requested_place_id"]
@@ -138,7 +161,7 @@ def format_local_timestamp(moment):
 def route_waypoint_weather(store, *, run_date, run_id, latitude, longitude, eta_local_time_text):
     try:
         resolved = place_weather.resolve_place("current_position", latitude=latitude, longitude=longitude)
-        payload = store.load_place_weather(resolved["place_id"], run_date, run_id)
+        payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
     except Exception:
         return {}
     hourly = list(payload.get("hourly") or [])
@@ -757,7 +780,7 @@ def create_app(evidence_store=None, route_store=None):
             distance_nm = metrics["distance_nm"]
             estimated_time_h = metrics["typical_travel_time_minutes"] / 60.0
             source_tag = metrics.get("source_tag", "static_place_metrics")
-            computed_at_local = format_local_timestamp(datetime.now(ZoneInfo("Europe/Madrid")))
+            computed_at_utc = metrics.get("computed_at_utc")
             return {
                 "origin_place_id": origin_place_id,
                 "origin_place_name": origin_place["name"],

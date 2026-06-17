@@ -1273,6 +1273,59 @@ def test_places_route_endpoint_uses_coordinate_overrides(tmp_path, monkeypatch):
     assert seen["destination_longitude"] == 1.49
 
 
+def test_places_route_endpoint_falls_back_to_latest_weather_bundle_for_future_date(tmp_path, monkeypatch):
+    write_place_weather(
+        tmp_path,
+        date_text="2026-06-17",
+        run_id="2026-06-17T0630Z",
+        place_id="palma",
+    )
+    (Path(tmp_path) / "2026-06-17" / "latest_run.json").write_text(
+        json.dumps({"run_id": "2026-06-17T0630Z", "path": "runs/2026-06-17T0630Z"}),
+        encoding="utf-8",
+    )
+
+    def fake_route_geometry(**kwargs):
+        return {
+            "origin_place_id": kwargs["origin_place_id"],
+            "origin_place_name": kwargs["origin_place_name"],
+            "destination_place_id": kwargs["destination_place_id"],
+            "destination_place_name": kwargs["destination_place_name"],
+            "distance_nm": 22.0,
+            "estimated_time_h": 1.5,
+            "waypoints": [
+                {"lat": kwargs["origin_latitude"], "lng": kwargs["origin_longitude"]},
+                {"lat": 39.3, "lng": 2.3},
+                {"lat": kwargs["destination_latitude"], "lng": kwargs["destination_longitude"]},
+            ],
+            "computed_at_local": "2026-06-17 14:00 CEST",
+            "source_tag": "graph_sea_route_v1",
+        }
+
+    monkeypatch.setattr(place_registry, "coordinates_route_geometry_metrics", fake_route_geometry)
+    monkeypatch.setattr(
+        "api.app.place_weather.resolve_place",
+        lambda *args, **kwargs: {
+            "requested_place_id": "current_position",
+            "place_id": "palma",
+            "place_name": "Palma",
+            "latitude": 39.52,
+            "longitude": 2.58,
+            "matched": True,
+            "confidence": "high",
+        },
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/places/route/palma/ibiza?date=2026-06-18&run=latest&departure_time=08:30")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["checkpoints"][0]["weather"]["place_id"] == "palma"
+    assert payload["checkpoints"][0]["weather"]["sample_time_local"] == "10:00"
+    assert payload["checkpoints"][0]["weather"]
+
+
 def test_routes_optimal_status_reports_route_store_state(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 
