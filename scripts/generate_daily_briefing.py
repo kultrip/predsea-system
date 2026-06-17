@@ -181,6 +181,8 @@ def run_route_precompute(waves_path, currents_path, run_date, run_id):
     if not PRECOMPUTE_ROUTES_SCRIPT.exists():
         raise FileNotFoundError(f"Route precompute script not found: {PRECOMPUTE_ROUTES_SCRIPT}")
 
+    waves_path = Path(waves_path).expanduser().resolve()
+    currents_path = Path(currents_path).expanduser().resolve()
     print(
         "Route precompute inputs: "
         f"waves={waves_path} currents={currents_path} output={ROUTES_GCS_PREFIX} "

@@ -130,6 +130,35 @@ def test_daily_generator_requests_all_registered_leaflet_overlay_variables(tmp_p
     assert requested["variables"] == sorted(OverlayGenerator.VARIABLES)
 
 
+def test_daily_generator_route_precompute_uses_absolute_paths(tmp_path, monkeypatch):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    waves = tmp_path / "copernicus" / "balearic_waves.nc"
+    currents = tmp_path / "copernicus" / "balearic_currents.nc"
+    waves.parent.mkdir(parents=True)
+    waves.write_text("waves", encoding="utf-8")
+    currents.write_text("currents", encoding="utf-8")
+
+    captured = {}
+
+    class Completed:
+        stdout = ""
+        stderr = ""
+        returncode = 0
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["cwd"] = kwargs.get("cwd")
+        return Completed()
+
+    monkeypatch.setattr(generator.subprocess, "run", fake_run)
+
+    generator.run_route_precompute(waves, currents, "2026-06-18", "2026-06-17T2345Z")
+
+    assert Path(captured["command"][3]).is_absolute()
+    assert Path(captured["command"][5]).is_absolute()
+    assert captured["cwd"] == generator.PROJECT_ROOT
+
+
 def test_daily_generator_atmospheric_context_is_disabled_by_default(monkeypatch):
     generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
     monkeypatch.delenv("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION", raising=False)
