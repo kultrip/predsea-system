@@ -32,6 +32,18 @@ CURRENT_U_VARIABLE = "uo"
 CURRENT_V_VARIABLE = "vo"
 
 
+def _latest_current_slice(variable):
+    if variable.ndim == 4:
+        return variable[-1, 0, :, :]
+    if variable.ndim == 3:
+        return variable[-1, :, :]
+    if variable.ndim == 2:
+        return variable[:, :]
+    raise ValueError(
+        f"Unsupported current variable shape {variable.shape} for {getattr(variable, 'name', 'unknown')}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -135,8 +147,8 @@ class MaritimeGrid:
 
         logger.info("Loading currents from %s", currents_path)
         with nc.Dataset(currents_path) as ds:
-            curr_u_raw = ds.variables[CURRENT_U_VARIABLE][-1, 0, :, :]   # surface layer
-            curr_v_raw = ds.variables[CURRENT_V_VARIABLE][-1, 0, :, :]
+            curr_u_raw = _latest_current_slice(ds.variables[CURRENT_U_VARIABLE])
+            curr_v_raw = _latest_current_slice(ds.variables[CURRENT_V_VARIABLE])
 
         # Crop to domain
         lat_idx = np.where(

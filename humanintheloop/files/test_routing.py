@@ -51,6 +51,28 @@ def make_synthetic_grid(
     return grid
 
 
+def _write_simple_netcdf(path, wave_shape=(2, 2), current_shape=(2, 2)):
+    from netCDF4 import Dataset
+
+    with Dataset(path, "w") as ds:
+        ds.createDimension("time", 2)
+        ds.createDimension("latitude", wave_shape[0])
+        ds.createDimension("longitude", wave_shape[1])
+        time = ds.createVariable("time", "f8", ("time",))
+        latitude = ds.createVariable("latitude", "f4", ("latitude",))
+        longitude = ds.createVariable("longitude", "f4", ("longitude",))
+        vhm0 = ds.createVariable("VHM0", "f4", ("time", "latitude", "longitude"))
+        uo = ds.createVariable("uo", "f4", ("time", "latitude", "longitude"))
+        vo = ds.createVariable("vo", "f4", ("time", "latitude", "longitude"))
+
+        time[:] = [0, 1]
+        latitude[:] = [39.0, 39.1]
+        longitude[:] = [2.0, 2.1]
+        vhm0[:] = [[[0.2, 0.3], [0.4, 0.5]], [[0.6, 0.7], [0.8, 0.9]]]
+        uo[:] = [[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]]
+        vo[:] = [[[0.0, 0.1], [0.2, 0.3]], [[0.4, 0.5], [0.6, 0.7]]]
+
+
 # ---------------------------------------------------------------------------
 # route_graph tests
 # ---------------------------------------------------------------------------
@@ -139,6 +161,16 @@ class TestMaritimeGrid:
         loaded = MaritimeGrid.load(save_path)
         assert loaded.graph is not None
         assert loaded.graph.shape == grid.graph.shape
+
+    def test_from_netcdf_accepts_three_dimensional_currents(self, tmp_path):
+        waves_path = tmp_path / "waves.nc"
+        currents_path = tmp_path / "currents.nc"
+        _write_simple_netcdf(waves_path)
+        _write_simple_netcdf(currents_path)
+
+        grid = MaritimeGrid.from_netcdf(str(waves_path), str(currents_path), lat_bounds=(38.5, 39.5), lon_bounds=(1.5, 2.5))
+        assert grid.current_u.shape == grid.wave_hs.shape
+        assert grid.current_v.shape == grid.wave_hs.shape
 
 
 # ---------------------------------------------------------------------------
