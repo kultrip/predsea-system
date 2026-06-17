@@ -225,6 +225,14 @@ Get coordinate-based distance between two sea points:
 curl "http://127.0.0.1:8000/places/distance/coordinates?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=39.5&destination_longitude=2.5"
 ```
 
+Get the sea-route geometry and waypoints between two places, with optional raw
+coordinate overrides:
+
+```bash
+curl "http://127.0.0.1:8000/places/route/palma/ibiza"
+curl "http://127.0.0.1:8000/places/route/palma/ibiza?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=38.92&destination_longitude=1.49"
+```
+
 The place weather endpoint returns the weather-only layer for the selected
 place. It includes wave height and direction, swell components, wind, current
 when available, water temperature when available, air temperature when
@@ -233,7 +241,9 @@ coordinate override is provided. The coordinate-only weather endpoint returns
 the same place-weather package for the nearest supported place to a raw
 latitude/longitude pair. The coordinate distance endpoint returns a maritime
 sea-route distance and a travel-time estimate for raw latitude/longitude
-pairs.
+pairs. The route geometry endpoint returns the navigable sea path as a list of
+waypoints, and it accepts place IDs plus optional raw coordinates on the same
+contract.
 
 Palma is also exposed as a small place family. The default place remains
 `palma`, and specific ports are available as separate places:

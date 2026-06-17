@@ -18,6 +18,7 @@ from api.schemas import (
     PlaceWeatherResponse,
     QuestionRequest,
     QuestionResponse,
+    RouteWaypointsResponse,
 )
 from api.services import answer_question, evidence_used, render_briefing
 import place_registry
@@ -251,6 +252,40 @@ def resolve_distance_side(label, *, place_query=None, latitude=None, longitude=N
             "longitude": float(longitude),
             "confidence": None,
         }
+    raise ValueError(f"Provide either a {label} place or {label} coordinates.")
+
+
+def resolve_route_side(label, *, place_query=None, latitude=None, longitude=None):
+    resolved = None
+    if place_query is not None:
+        resolved = place_registry.resolve_place_query(place_query)
+        if not resolved.get("matched") and (latitude is None or longitude is None):
+            raise ValueError(f"Unknown {label} place '{place_query}'.")
+
+    if latitude is not None and longitude is not None:
+        return {
+            "kind": "coordinates",
+            "query": place_query,
+            "place_id": resolved["place_id"] if resolved and resolved.get("matched") else None,
+            "place_name": resolved["place_name"] if resolved and resolved.get("matched") else None,
+            "type": resolved.get("type") if resolved and resolved.get("matched") else None,
+            "latitude": float(latitude),
+            "longitude": float(longitude),
+            "confidence": resolved.get("confidence", "high") if resolved and resolved.get("matched") else None,
+        }
+
+    if resolved and resolved.get("matched"):
+        return {
+            "kind": "place",
+            "query": place_query,
+            "place_id": resolved["place_id"],
+            "place_name": resolved["place_name"],
+            "type": resolved.get("type"),
+            "latitude": resolved["latitude"],
+            "longitude": resolved["longitude"],
+            "confidence": resolved.get("confidence", "high"),
+        }
+
     raise ValueError(f"Provide either a {label} place or {label} coordinates.")
 
 
@@ -689,6 +724,62 @@ def create_app(evidence_store=None, route_store=None):
             "computed_at_utc": metrics["computed_at_utc"],
             "source_tag": metrics["source_tag"],
         }
+
+    @app.get("/places/route/{origin}/{destination}", response_model=RouteWaypointsResponse)
+    def places_route(
+        origin: str,
+        destination: str,
+        origin_latitude: float | None = Query(default=None, ge=-90, le=90),
+        origin_longitude: float | None = Query(default=None, ge=-180, le=180),
+        destination_latitude: float | None = Query(default=None, ge=-90, le=90),
+        destination_longitude: float | None = Query(default=None, ge=-180, le=180),
+        typical_speed_kn: float = Query(15.0, gt=0),
+    ):
+        try:
+            origin_side = resolve_route_side(
+                "origin",
+                place_query=origin,
+                latitude=origin_latitude,
+                longitude=origin_longitude,
+            )
+            destination_side = resolve_route_side(
+                "destination",
+                place_query=destination,
+                latitude=destination_latitude,
+                longitude=destination_longitude,
+            )
+            metrics = place_registry.coordinates_route_geometry_metrics(
+                origin_place_id=origin_side.get("place_id") or origin,
+                origin_place_name=origin_side.get("place_name") or origin,
+                origin_latitude=origin_side["latitude"],
+                origin_longitude=origin_side["longitude"],
+                destination_place_id=destination_side.get("place_id") or destination,
+                destination_place_name=destination_side.get("place_name") or destination,
+                destination_latitude=destination_side["latitude"],
+                destination_longitude=destination_side["longitude"],
+                typical_speed_kn=typical_speed_kn,
+            )
+            return {
+                "origin_place_id": origin_side.get("place_id"),
+                "origin_place_name": origin_side.get("place_name"),
+                "origin_latitude": origin_side["latitude"],
+                "origin_longitude": origin_side["longitude"],
+                "destination_place_id": destination_side.get("place_id"),
+                "destination_place_name": destination_side.get("place_name"),
+                "destination_latitude": destination_side["latitude"],
+                "destination_longitude": destination_side["longitude"],
+                "distance_nm": metrics["distance_nm"],
+                "estimated_time_h": metrics["estimated_time_h"],
+                "waypoints": metrics["waypoints"],
+                "source_tag": metrics["source_tag"],
+                "computed_at_utc": metrics["computed_at_utc"],
+            }
+        except ValueError as error:
+            message = str(error)
+            status_code = 422 if message.startswith(("Unknown", "Provide")) else 404
+            if "requires the searoute package" in message:
+                status_code = 503
+            raise HTTPException(status_code=status_code, detail=message) from error
 
     @app.get("/routes/optimal/status")
     def routes_optimal_status():

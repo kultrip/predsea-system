@@ -1179,6 +1179,83 @@ def test_places_distance_coordinates_endpoint_returns_maritime_distance(tmp_path
     assert payload["source_tag"] == "graph_sea_route_v1"
 
 
+def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
+    def fake_route_geometry(**kwargs):
+        return {
+            "origin_place_id": kwargs["origin_place_id"],
+            "origin_place_name": kwargs["origin_place_name"],
+            "destination_place_id": kwargs["destination_place_id"],
+            "destination_place_name": kwargs["destination_place_name"],
+            "distance_nm": 100.0,
+            "estimated_time_h": 6.67,
+            "waypoints": [
+                {"lat": kwargs["origin_latitude"], "lng": kwargs["origin_longitude"]},
+                {"lat": 39.2, "lng": 2.1},
+                {"lat": kwargs["destination_latitude"], "lng": kwargs["destination_longitude"]},
+            ],
+            "computed_at_utc": "2026-06-17 12:00 UTC",
+            "source_tag": "graph_sea_route_v1",
+        }
+
+    monkeypatch.setattr(place_registry, "coordinates_route_geometry_metrics", fake_route_geometry)
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/places/route/palma/ibiza")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_place_id"] == "palma"
+    assert payload["destination_place_id"] == "ibiza"
+    assert payload["distance_nm"] == 100.0
+    assert payload["waypoints"][0] == {"lat": 39.52, "lng": 2.58}
+    assert payload["source_tag"] == "graph_sea_route_v1"
+
+
+def test_places_route_endpoint_uses_coordinate_overrides(tmp_path, monkeypatch):
+    seen = {}
+
+    def fake_route_geometry(**kwargs):
+        seen.update(kwargs)
+        return {
+            "origin_place_id": kwargs["origin_place_id"],
+            "origin_place_name": kwargs["origin_place_name"],
+            "origin_latitude": kwargs["origin_latitude"],
+            "origin_longitude": kwargs["origin_longitude"],
+            "destination_place_id": kwargs["destination_place_id"],
+            "destination_place_name": kwargs["destination_place_name"],
+            "destination_latitude": kwargs["destination_latitude"],
+            "destination_longitude": kwargs["destination_longitude"],
+            "distance_nm": 99.0,
+            "estimated_time_h": 6.6,
+            "waypoints": [
+                {"lat": kwargs["origin_latitude"], "lng": kwargs["origin_longitude"]},
+                {"lat": kwargs["destination_latitude"], "lng": kwargs["destination_longitude"]},
+            ],
+            "computed_at_utc": "2026-06-17 12:00 UTC",
+            "source_tag": "graph_sea_route_v1",
+        }
+
+    monkeypatch.setattr(place_registry, "coordinates_route_geometry_metrics", fake_route_geometry)
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get(
+        "/places/route/palma/ibiza?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=38.92&destination_longitude=1.49"
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_place_id"] == "palma"
+    assert payload["origin_latitude"] == 39.0
+    assert payload["origin_longitude"] == 2.0
+    assert payload["destination_place_id"] == "ibiza"
+    assert payload["destination_latitude"] == 38.92
+    assert payload["destination_longitude"] == 1.49
+    assert seen["origin_latitude"] == 39.0
+    assert seen["origin_longitude"] == 2.0
+    assert seen["destination_latitude"] == 38.92
+    assert seen["destination_longitude"] == 1.49
+
+
 def test_routes_optimal_status_reports_route_store_state(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 

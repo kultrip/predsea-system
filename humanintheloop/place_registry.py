@@ -111,6 +111,97 @@ def _haversine_nm(lat1, lon1, lat2, lon2):
     return 2.0 * radius_nm * atan2(sqrt(a), sqrt(1.0 - a))
 
 
+def _normalize_route_waypoints(route):
+    def iter_points(node):
+        if node is None:
+            return
+        if isinstance(node, dict):
+            latitude = node.get("lat")
+            if latitude is None:
+                latitude = node.get("latitude")
+            longitude = node.get("lng")
+            if longitude is None:
+                longitude = node.get("lon")
+            if longitude is None:
+                longitude = node.get("longitude")
+            if latitude is not None and longitude is not None:
+                yield {"lat": float(latitude), "lng": float(longitude)}
+            return
+        if isinstance(node, (list, tuple)):
+            if len(node) >= 2 and all(isinstance(value, (int, float)) for value in node[:2]):
+                yield {"lat": float(node[1]), "lng": float(node[0])}
+                return
+            for child in node:
+                yield from iter_points(child)
+
+    candidates = []
+    if isinstance(route, dict):
+        geometry = route.get("geometry")
+        if isinstance(geometry, dict):
+            candidates.append(geometry.get("coordinates"))
+        candidates.append(route.get("coordinates"))
+        candidates.append(route.get("path"))
+        candidates.append(route.get("waypoints"))
+    else:
+        geometry = getattr(route, "geometry", None)
+        if geometry is not None:
+            candidates.append(getattr(geometry, "coordinates", None))
+        candidates.append(getattr(route, "coordinates", None))
+        candidates.append(getattr(route, "path", None))
+        candidates.append(getattr(route, "waypoints", None))
+
+    waypoints = []
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        waypoints.extend(list(iter_points(candidate)))
+        if waypoints:
+            break
+    return waypoints
+
+
+def _searoute_metrics(
+    origin_longitude,
+    origin_latitude,
+    destination_longitude,
+    destination_latitude,
+    *,
+    speed_kn,
+):
+    try:
+        import searoute as sr
+    except Exception as error:  # pragma: no cover - dependency/runtime failure
+        raise ValueError("Sea route geometry requires the searoute package") from error
+
+    route = sr.searoute(
+        [float(origin_longitude), float(origin_latitude)],
+        [float(destination_longitude), float(destination_latitude)],
+        units="naut",
+        speed_knot=float(speed_kn or DEFAULT_TRAVEL_SPEED_KN),
+    )
+    properties = route.get("properties") if isinstance(route, dict) else getattr(route, "properties", None)
+    if not isinstance(properties, dict):
+        properties = properties or {}
+    waypoints = _normalize_route_waypoints(route)
+    length_nm = properties.get("length")
+    duration_hours = properties.get("duration_hours")
+    if length_nm is None and duration_hours is None:
+        raise ValueError("Sea route geometry returned no usable route")
+    if not waypoints:
+        raise ValueError("Sea route geometry returned no waypoints")
+    speed_kn = float(speed_kn or DEFAULT_TRAVEL_SPEED_KN)
+    if length_nm is None and duration_hours is not None:
+        length_nm = float(duration_hours) * speed_kn
+    if duration_hours is None and length_nm is not None:
+        duration_hours = float(length_nm) / speed_kn
+    return {
+        "distance_nm": float(length_nm),
+        "estimated_time_h": float(duration_hours),
+        "waypoints": waypoints,
+        "source_tag": "graph_sea_route_v1",
+    }
+
+
 PLACE_CATALOG = {
     "ibiza": {
         "name": "Ibiza",
@@ -472,39 +563,62 @@ def coordinates_connection_metrics(
     destination_longitude,
     typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
 ):
-    try:
-        import searoute as sr
-    except Exception as error:  # pragma: no cover - dependency/runtime failure
-        raise ValueError("Coordinate maritime fallback requires the searoute package") from error
-
-    route = sr.searoute(
-        [float(origin_longitude), float(origin_latitude)],
-        [float(destination_longitude), float(destination_latitude)],
-        units="naut",
-        speed_knot=float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN),
+    metrics = _searoute_metrics(
+        origin_longitude,
+        origin_latitude,
+        destination_longitude,
+        destination_latitude,
+        speed_kn=typical_speed_kn,
     )
-    properties = route.get("properties") or {}
-    length_nm = properties.get("length")
-    duration_hours = properties.get("duration_hours")
-    if length_nm is None and duration_hours is None:
-        raise ValueError(
-            f"Coordinate maritime fallback returned no usable route for '{origin_place_id}' -> '{destination_place_id}'"
-        )
-    if length_nm is None and duration_hours is not None:
-        length_nm = float(duration_hours) * float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
-    if duration_hours is None and length_nm is not None:
-        duration_hours = float(length_nm) / float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
     typical_speed_kn = float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
     return {
         "origin_place_id": origin_place_id,
         "origin_place_name": origin_place_name,
         "destination_place_id": destination_place_id,
         "destination_place_name": destination_place_name,
-        "distance_nm": float(length_nm),
+        "distance_nm": float(metrics["distance_nm"]),
         "typical_speed_kn": typical_speed_kn,
-        "typical_travel_time_minutes": int(round(float(duration_hours) * 60.0)),
+        "typical_travel_time_minutes": int(round(float(metrics["estimated_time_h"]) * 60.0)),
         "computed_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-        "source_tag": "graph_sea_route_v1",
+        "source_tag": metrics["source_tag"],
+    }
+
+
+def coordinates_route_geometry_metrics(
+    *,
+    origin_place_id,
+    origin_place_name,
+    origin_latitude,
+    origin_longitude,
+    destination_place_id,
+    destination_place_name,
+    destination_latitude,
+    destination_longitude,
+    typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
+):
+    metrics = _searoute_metrics(
+        origin_longitude,
+        origin_latitude,
+        destination_longitude,
+        destination_latitude,
+        speed_kn=typical_speed_kn,
+    )
+    typical_speed_kn = float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
+    return {
+        "origin_place_id": origin_place_id,
+        "origin_place_name": origin_place_name,
+        "origin_latitude": float(origin_latitude),
+        "origin_longitude": float(origin_longitude),
+        "destination_place_id": destination_place_id,
+        "destination_place_name": destination_place_name,
+        "destination_latitude": float(destination_latitude),
+        "destination_longitude": float(destination_longitude),
+        "distance_nm": float(metrics["distance_nm"]),
+        "estimated_time_h": round(float(metrics["estimated_time_h"]), 2),
+        "typical_speed_kn": typical_speed_kn,
+        "waypoints": metrics["waypoints"],
+        "computed_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "source_tag": metrics["source_tag"],
     }
 
 

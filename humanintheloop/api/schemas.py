@@ -217,6 +217,27 @@ class CoordinateDistanceResponse(BaseModel):
     source_tag: str
 
 
+class RouteWaypoint(BaseModel):
+    lat: float
+    lng: float
+
+
+class RouteWaypointsResponse(BaseModel):
+    origin_place_id: Optional[str] = None
+    origin_place_name: Optional[str] = None
+    origin_latitude: float
+    origin_longitude: float
+    destination_place_id: Optional[str] = None
+    destination_place_name: Optional[str] = None
+    destination_latitude: float
+    destination_longitude: float
+    distance_nm: float
+    estimated_time_h: float
+    waypoints: List[RouteWaypoint] = Field(default_factory=list)
+    source_tag: str
+    computed_at_utc: str
+
+
 class RouteSummary(BaseModel):
     route_id: str
     route: str
