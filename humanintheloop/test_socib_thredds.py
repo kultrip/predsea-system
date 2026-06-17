@@ -27,3 +27,12 @@ def test_with_retries_raises_last_error_after_attempts(monkeypatch):
             attempts=2,
             delay_seconds=0,
         )
+
+
+def test_utc_naive_timestamp_converts_timezone_aware_values():
+    import pandas as pd
+
+    value = socib_thredds._utc_naive_timestamp(pd.Timestamp("2026-06-18T06:00:00+02:00"))
+
+    assert str(value.tzinfo) == "None"
+    assert value.isoformat() == "2026-06-18T04:00:00"

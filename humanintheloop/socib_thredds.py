@@ -3,6 +3,8 @@ import os
 import time
 from pathlib import Path
 
+import pandas as pd
+
 
 WMOP_SURFACE_URL = (
     "https://thredds.socib.es/thredds/dodsC/"
@@ -56,6 +58,15 @@ def forecast_window():
     return now - datetime.timedelta(hours=6), now + datetime.timedelta(days=1)
 
 
+def _utc_naive_timestamp(value):
+    timestamp = pd.Timestamp(value)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize("UTC")
+    else:
+        timestamp = timestamp.tz_convert("UTC")
+    return timestamp.tz_localize(None)
+
+
 def with_retries(label, operation, attempts=None, delay_seconds=None):
     attempts = attempts or THREDDS_ATTEMPTS
     delay_seconds = THREDDS_RETRY_DELAY_SECONDS if delay_seconds is None else delay_seconds
@@ -76,6 +87,8 @@ def fetch_sapo_waves(output_path):
     import xarray as xr
 
     start_time, end_time = forecast_window()
+    start_time = _utc_naive_timestamp(start_time)
+    end_time = _utc_naive_timestamp(end_time)
     with xr.open_dataset(SAPO_IB_URL) as dataset:
         time_name = "time2" if "time2" in dataset.coords else "time"
         subset = dataset[[
@@ -123,6 +136,8 @@ def fetch_wmop_currents(output_path):
     import xarray as xr
 
     start_time, end_time = forecast_window()
+    start_time = _utc_naive_timestamp(start_time)
+    end_time = _utc_naive_timestamp(end_time)
     with xr.open_dataset(WMOP_SURFACE_URL) as dataset:
         subset = dataset[["u", "v"]].sel(
             lon_uv=slice(LON_MIN, LON_MAX),

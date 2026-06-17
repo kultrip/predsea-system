@@ -1,7 +1,11 @@
 import copernicusmarine
 import datetime
 import os
+import shutil
 import time
+from pathlib import Path
+
+import xarray as xr
 
 OUTPUT_DIR = "./mvp_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -136,6 +140,72 @@ def fetch_wave_forecast(dry_run=False):
         )
 
 
+def _is_hidden_or_temp_path(path):
+    parts = Path(path).parts
+    return any(part.startswith(".") or part.startswith("._") or part == "__MACOSX" for part in parts)
+
+
+def _classify_forecast_dataset(path):
+    try:
+        with xr.open_dataset(path) as ds:
+            data_vars = {str(name).lower() for name in ds.data_vars}
+            if {"uo", "vo"}.issubset(data_vars) or any(name in data_vars for name in {"uo", "vo", "current_u", "current_v"}):
+                return "currents"
+            if any(name in data_vars for name in {"vhm0", "vmdr", "vtpk", "wave_height", "wave_direction"}):
+                return "waves"
+    except Exception:
+        pass
+    name = Path(path).name.lower()
+    if any(token in name for token in ("curr", "phy", "uvo")):
+        return "currents"
+    if any(token in name for token in ("wave", "wav", "sea")):
+        return "waves"
+    return None
+
+
+def resolve_forecast_output_paths(output_dir):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    waves_target = output_dir / "balearic_waves.nc"
+    currents_target = output_dir / "balearic_currents.nc"
+    if waves_target.exists() and currents_target.exists():
+        return {"waves_path": waves_target, "currents_path": currents_target}
+
+    candidates = []
+    for candidate in output_dir.rglob("*.nc"):
+        if _is_hidden_or_temp_path(candidate):
+            continue
+        if candidate.name in {"balearic_waves.nc", "balearic_currents.nc"}:
+            candidates.append(candidate)
+            continue
+        classification = _classify_forecast_dataset(candidate)
+        if classification:
+            candidates.append((classification, candidate))
+
+    classified = {"waves": None, "currents": None}
+    for item in candidates:
+        if isinstance(item, tuple):
+            classification, candidate = item
+        else:
+            candidate = item
+            classification = "waves" if "wave" in candidate.name.lower() else "currents"
+        if classification == "waves" and classified["waves"] is None:
+            classified["waves"] = candidate
+        elif classification == "currents" and classified["currents"] is None:
+            classified["currents"] = candidate
+    if classified["waves"] is None or classified["currents"] is None:
+        raise FileNotFoundError(
+            f"Could not resolve Copernicus forecast outputs in {output_dir}; "
+            "expected wave and current NetCDF files."
+        )
+
+    if classified["waves"] != waves_target:
+        shutil.copy2(classified["waves"], waves_target)
+    if classified["currents"] != currents_target:
+        shutil.copy2(classified["currents"], currents_target)
+    return {"waves_path": waves_target, "currents_path": currents_target}
+
+
 def get_balearic_forecast(dry_run=False):
     print("Fetching Balearic Currents (4.2km resolution)...")
     try:
@@ -154,10 +224,21 @@ def get_balearic_forecast(dry_run=False):
         fetch_wave_forecast(dry_run=dry_run)
         if dry_run:
             print("\nDry run complete. No files were downloaded.")
-            return
+            return {
+                "available": True,
+                "waves_path": Path(OUTPUT_DIR) / "balearic_waves.nc",
+                "currents_path": Path(OUTPUT_DIR) / "balearic_currents.nc",
+            }
+
+        resolved = resolve_forecast_output_paths(OUTPUT_DIR)
 
         print(f"\nSuccess! Files downloaded to {OUTPUT_DIR}/")
         print("You can now open these with xarray to find the 'Certeza' for your captains.")
+        return {
+            "available": True,
+            "waves_path": resolved["waves_path"],
+            "currents_path": resolved["currents_path"],
+        }
 
     except Exception as e:
         print(f"An error occurred: {e}")

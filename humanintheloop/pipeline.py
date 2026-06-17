@@ -155,10 +155,15 @@ def _step_ocean_forecast(output_dir, route, dry_run):
         import route_analysis
 
         if not dry_run:
-            fetch_data.get_balearic_forecast(dry_run=False)
+            forecast_files = fetch_data.get_balearic_forecast(dry_run=False) or {}
+        else:
+            forecast_files = {
+                "waves_path": Path(fetch_data.OUTPUT_DIR) / "balearic_waves.nc",
+                "currents_path": Path(fetch_data.OUTPUT_DIR) / "balearic_currents.nc",
+            }
 
-        waves_path = Path(fetch_data.OUTPUT_DIR) / "balearic_waves.nc"
-        currents_path = Path(fetch_data.OUTPUT_DIR) / "balearic_currents.nc"
+        waves_path = Path(forecast_files["waves_path"])
+        currents_path = Path(forecast_files["currents_path"])
 
         forecast = route_analysis.forecast_summary_from_files(
             waves_path, currents_path, route=route,

@@ -473,16 +473,15 @@ def fetch_forecast_sources(modules, run_dir):
             dry_run=False,
         )
 
-    modules.fetch_data.get_balearic_forecast(dry_run=False)
-    output_dir = Path(modules.fetch_data.OUTPUT_DIR)
+    forecast_files = modules.fetch_data.get_balearic_forecast(dry_run=False) or {}
     return [
         {
             "id": "copernicus",
             "label": "Copernicus Marine Mediterranean forecast",
             "available": True,
             "preferred": True,
-            "waves_path": output_dir / "balearic_waves.nc",
-            "currents_path": output_dir / "balearic_currents.nc",
+            "waves_path": Path(forecast_files.get("waves_path") or Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc"),
+            "currents_path": Path(forecast_files.get("currents_path") or Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc"),
         }
     ]
 

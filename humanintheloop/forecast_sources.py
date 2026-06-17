@@ -154,12 +154,12 @@ def source_error_from_process(source_id, completed):
 def fetch_copernicus_forecast(fetch_data, dry_run=False):
     source = dict(COPERNICUS_SOURCE)
     try:
-        fetch_data.get_balearic_forecast(dry_run=dry_run)
+        result = fetch_data.get_balearic_forecast(dry_run=dry_run) or {}
         output_dir = Path(fetch_data.OUTPUT_DIR)
         source.update(
             available=True,
-            waves_path=output_dir / "balearic_waves.nc",
-            currents_path=output_dir / "balearic_currents.nc",
+            waves_path=Path(result.get("waves_path") or output_dir / "balearic_waves.nc"),
+            currents_path=Path(result.get("currents_path") or output_dir / "balearic_currents.nc"),
         )
     except Exception as error:
         source.update(available=False, error=str(error))

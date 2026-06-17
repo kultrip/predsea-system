@@ -16,13 +16,13 @@ def fetch_copernicus(output_dir, dry_run=False):
 
     fetch_data.OUTPUT_DIR = str(output_dir)
     Path(fetch_data.OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
-    fetch_data.get_balearic_forecast(dry_run=dry_run)
+    result = fetch_data.get_balearic_forecast(dry_run=dry_run) or {}
     return {
         "id": "copernicus",
         "label": "Copernicus Marine Mediterranean forecast",
         "available": True,
-        "waves_path": str(output_dir / "balearic_waves.nc"),
-        "currents_path": str(output_dir / "balearic_currents.nc"),
+        "waves_path": str(Path(result.get("waves_path") or output_dir / "balearic_waves.nc")),
+        "currents_path": str(Path(result.get("currents_path") or output_dir / "balearic_currents.nc")),
         "metadata": {
             "wave_model": fetch_data.WAV_ID,
             "current_model": fetch_data.PHY_ID,
