@@ -49,6 +49,19 @@ def _is_valid_thredds_ref(name, href):
     return True
 
 
+def _is_valid_dataset_url_path(url_path):
+    if _is_hidden_or_temp_ref(url_path):
+        return False
+    text = str(url_path or "").lower()
+    if not text:
+        return False
+    if text.endswith((".nc", ".nc4", ".nc5")):
+        return True
+    if text.endswith("/catalog.xml"):
+        return True
+    return False
+
+
 def _absolute_thredds_url(href):
     if not href:
         return None
@@ -414,7 +427,7 @@ def discover_latest_dataset_url(
             {
                 dataset.attrib.get("urlPath")
                 for dataset in root.findall(".//t:dataset", ns)
-                if dataset.attrib.get("urlPath")
+                if _is_valid_dataset_url_path(dataset.attrib.get("urlPath"))
             }
         )
         if dataset_urls:
@@ -447,7 +460,13 @@ def discover_latest_dataset_url(
             )
         )
         if dataset_links:
-            raw_links = [link for link in dataset_links if "_analysis" not in link.lower() and not _is_hidden_or_temp_ref(link)]
+            raw_links = [
+                link
+                for link in dataset_links
+                if _is_valid_dataset_url_path(link)
+                and "_analysis" not in link.lower()
+                and not _is_hidden_or_temp_ref(link)
+            ]
             chosen = (raw_links or dataset_links)[-1]
             return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 

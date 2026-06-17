@@ -189,6 +189,31 @@ def test_discover_latest_wave_forecast_real():
         pytest.skip("Puertos del Estado THREDDS not reachable")
 
 
+def test_discover_latest_dataset_url_ignores_non_netcdf_catalog_targets(monkeypatch):
+    from predsea.connectors.puertos_del_estado.station_catalog import discover_latest_dataset_url
+
+    xml = """
+    <catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0"
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+      <dataset>
+        <dataset urlPath="seadata/model/wave/local/A01/HOURLY/out" />
+        <dataset urlPath="seadata/model/wave/local/A01/HOURLY/HW-2026061700-B2026061700-HC.nc" />
+        <dataset urlPath="seadata/model/wave/coast/S14/bestPacked.json" />
+      </dataset>
+    </catalog>
+    """
+
+    monkeypatch.setattr(
+        "predsea.connectors.puertos_del_estado.station_catalog.fetch_text",
+        lambda *args, **kwargs: {"text": xml, "cache_path": None, "from_cache": False},
+    )
+
+    url = discover_latest_dataset_url("https://example.test/catalog.xml")
+    assert url.endswith("HW-2026061700-B2026061700-HC.nc")
+    assert "out" not in url
+    assert "bestPacked.json" not in url
+
+
 def test_fetch_real_wave_forecast():
     """Integration test — requires network access to opendap.puertos.es."""
     try:
