@@ -169,7 +169,7 @@ def test_daily_generator_snapshot_lineage_includes_wind_ocean_and_ground_truth()
             "status": "active",
         },
         "ground_truth_validation": {
-            "source": "socib_observations",
+            "source": "puertos_observations",
             "status": "matched_successfully",
             "station_count": 1,
         },

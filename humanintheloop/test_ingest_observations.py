@@ -1,16 +1,44 @@
 """Tests for observation ingestion orchestrator."""
 
-import os
+import sys
+import types
 
 import ingest_observations
 
 
-def test_fetch_all_observations_includes_socib(monkeypatch):
+def test_fetch_all_observations_returns_puertos_first_bundle(monkeypatch):
     monkeypatch.delenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", raising=False)
-    result = ingest_observations.fetch_all_observations(include_puertos=False)
-    # SOCIB may or may not succeed depending on network, but the function should not crash
+    monkeypatch.delenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", raising=False)
+
+    puertos_result = {
+        "observations": {"puertos_mallorca": {"wave_height_m": 0.8}},
+        "measurements": {"puertos_mallorca": [{"raw_key": "wave_height_m", "value": 0.8}]},
+        "errors": {},
+        "catalog_stations": [{"station_id": "puertos_mallorca"}],
+    }
+    portus_result = {
+        "observations": {"portus_ibiza": {"wave_height_m": 0.4}},
+        "predictions": {},
+        "errors": {},
+    }
+
+    monkeypatch.setitem(
+        sys.modules,
+        "fetch_puertos_estado",
+        types.SimpleNamespace(fetch_balearic_observations=lambda dry_run=False: puertos_result),
+    )
+    monkeypatch.setattr(
+        ingest_observations.fetch_portus,
+        "fetch_portus_bundle",
+        lambda dry_run=False: portus_result,
+    )
+
+    result = ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
     assert "observations" in result
-    assert "ground_truth_lineage" in result
+    assert result["ground_truth_lineage"]["source"] == "puertos_del_estado_and_puertos_portus"
+    assert "puertos_puertos_mallorca" in result["observations"]
+    assert "portus_ibiza" in result["observations"]
+    assert "socib" not in result["errors"]
 
 
 def test_puertos_enabled_by_default(monkeypatch):
@@ -37,21 +65,21 @@ def test_ground_truth_lineage_with_both_sources():
     observations = {"canal_de_ibiza": {}, "puertos_mahon": {}}
     lineage = ingest_observations._build_ground_truth_lineage(
         observations,
-        ["socib_observations", "puertos_del_estado"],
+        ["puertos_del_estado", "puertos_portus"],
         {},
     )
-    assert lineage["source"] == "socib_and_puertos_del_estado"
+    assert lineage["source"] == "puertos_del_estado_and_puertos_portus"
     assert lineage["status"] == "matched_successfully"
     assert lineage["station_count"] == 2
 
 
-def test_ground_truth_lineage_socib_only():
+def test_ground_truth_lineage_puertos_only():
     lineage = ingest_observations._build_ground_truth_lineage(
         {"canal_de_ibiza": {}},
-        ["socib_observations"],
+        ["puertos_del_estado"],
         {},
     )
-    assert lineage["source"] == "socib_observations"
+    assert lineage["source"] == "puertos_del_estado"
     assert lineage["status"] == "matched_successfully"
 
 

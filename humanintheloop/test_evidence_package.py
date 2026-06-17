@@ -114,7 +114,7 @@ def test_build_route_evidence_package_has_decision_ready_structure():
             "status": "active",
         },
         "ground_truth_validation": {
-            "source": "socib_observations",
+            "source": "puertos_observations",
             "status": "matched_successfully",
         },
     }

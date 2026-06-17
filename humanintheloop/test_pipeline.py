@@ -121,7 +121,7 @@ def test_evidence_package_preserves_pipeline_lineage():
                 "status": "interpolated_to_1.3km",
             },
             "ground_truth_validation": {
-                "source": "socib_and_puertos_del_estado",
+                "source": "puertos_observations",
                 "status": "matched_successfully",
             },
         },
@@ -130,4 +130,4 @@ def test_evidence_package_preserves_pipeline_lineage():
     package = evidence_package.build_route_evidence_package(snapshot, route)
     assert package["data_lineage"]["wind_forecast"]["source"] == "meteo_france_arome"
     assert package["data_lineage"]["ocean_forecast"]["status"] == "interpolated_to_1.3km"
-    assert package["data_lineage"]["ground_truth_validation"]["source"] == "socib_and_puertos_del_estado"
+    assert package["data_lineage"]["ground_truth_validation"]["source"] == "puertos_observations"

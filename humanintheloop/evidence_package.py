@@ -140,7 +140,7 @@ def data_lineage(snapshot, observations):
             "status": "active",
         },
         "ground_truth_validation": {
-            "source": "socib_observations" if observations else None,
+            "source": "puertos_observations" if observations else None,
             "status": "matched_successfully" if observations else "unavailable",
         },
     }

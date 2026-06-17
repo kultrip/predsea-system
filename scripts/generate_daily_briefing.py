@@ -241,7 +241,7 @@ def safe_load_observations(briefing):
     try:
         return briefing.load_observations()
     except Exception as error:
-        print(f"Warning: SOCIB observations unavailable; continuing without buoy truth. {error}")
+        print(f"Warning: observations unavailable; continuing without buoy truth. {error}")
         return {}
 
 
@@ -623,7 +623,7 @@ def ocean_lineage_for_source(source):
 def ground_truth_lineage_for_observations(observations):
     if observations:
         return {
-            "source": "socib_observations",
+            "source": "puertos_observations",
             "status": "matched_successfully",
             "station_count": len(observations),
         }

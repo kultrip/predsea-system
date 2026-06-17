@@ -5,7 +5,7 @@ Coordinates the full Phase 2 data pipeline:
 1. Atmospheric ingestion (tiered: AROME -> HARMONIE -> ECMWF)
 2. Oceanographic forecast download (Copernicus)
 3. Grid blending (interpolate ocean onto atmospheric grid)
-4. Observation ingestion (SOCIB + Puertos del Estado)
+4. Observation ingestion (Puertos del Estado + Portus)
 5. Route analysis with blended data
 6. Evidence package generation with full lineage
 

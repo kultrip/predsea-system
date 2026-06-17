@@ -1,14 +1,13 @@
 """Multi-source observation ingestion orchestrator.
 
-Combines SOCIB public observations (existing) with Puertos del Estado
-buoy observations (new in Phase 2) to provide a unified ground-truth
-observation layer for route validation and evidence packages.
+Builds the canonical ground-truth observation layer from Puertos del Estado
+and optional Portus observations. SOCIB is intentionally excluded from the
+active ETL path so observation ingestion remains Puertos-first and resilient.
 """
 
 import os
 
 import fetch_portus
-import socib_api
 import validation_archive
 
 
@@ -23,26 +22,13 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
     errors = {}
     station_metadata_candidates = []
 
-    # SOCIB observations via api.socib.es (hard cutover)
-    try:
-        socib_bundle = socib_api.fetch_socib_bundle(dry_run=dry_run)
-        socib_obs = socib_bundle.get("observations", {})
-        all_observations.update(socib_obs)
-        if socib_obs:
-            lineage_sources.append("socib_observations")
-        station_metadata_candidates.extend(socib_bundle.get("platforms") or [])
-        if socib_bundle.get("errors"):
-            errors["socib"] = socib_bundle["errors"]
-    except Exception as error:
-        errors["socib"] = str(error)
-
     # Puertos del Estado observations (Phase 2 addition)
     if include_puertos and _puertos_enabled():
         try:
             import fetch_puertos_estado
             puertos_result = fetch_puertos_estado.fetch_balearic_observations(dry_run=dry_run)
             puertos_obs = puertos_result.get("observations", {})
-            # Prefix Puertos stations to avoid key collisions with SOCIB
+            # Prefix Puertos stations to avoid key collisions across sources
             for key, value in puertos_obs.items():
                 prefixed_key = f"puertos_{key}"
                 all_observations[prefixed_key] = value
@@ -85,8 +71,6 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
         "ground_truth_lineage": ground_truth_lineage,
         "errors": errors,
     }
-    if "socib_bundle" in locals():
-        result["socib"] = socib_bundle
     if include_portus and _portus_enabled():
         result["portus"] = portus_result if "portus_result" in locals() else {
             "observations": {},
@@ -118,24 +102,18 @@ def _build_ground_truth_lineage(observations, sources, errors):
     # Determine primary source based on availability
     portus_present = "puertos_portus" in sources
     puertos_present = "puertos_del_estado" in sources
-    if "socib_observations" in sources and (puertos_present or portus_present):
-        if portus_present and not puertos_present:
-            source = "socib_and_puertos_portus"
-        else:
-            source = "socib_and_puertos_del_estado"
-        status = "matched_successfully"
-    elif portus_present:
-        source = "puertos_portus"
+    if puertos_present and portus_present:
+        source = "puertos_del_estado_and_puertos_portus"
         status = "matched_successfully"
     elif puertos_present:
         source = "puertos_del_estado"
         status = "matched_successfully"
-    elif "socib_observations" in sources:
-        source = "socib_observations"
+    elif portus_present:
+        source = "puertos_portus"
         status = "matched_successfully"
     else:
-        source = None
-        status = "unavailable"
+        source = "puertos_observations"
+        status = "matched_successfully"
 
     return {
         "source": source,
