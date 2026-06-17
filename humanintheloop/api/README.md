@@ -276,13 +276,18 @@ latitude/longitude pair. The coordinate distance endpoint returns a maritime
 sea-route distance and a travel-time estimate for raw latitude/longitude
 pairs. The route geometry endpoint returns the navigable sea path as a list of
 waypoints, and it accepts place IDs plus optional raw coordinates on the same
-contract. In other words, you can call it with names, with coordinates, or
+contract. It also returns a parallel `checkpoints` array with ETA and sampled
+weather at each in-route point so the passage timing stays separate from the
+geometry. In other words, you can call it with names, with coordinates, or
 with both together when you want a location override.
 
 Route geometry query parameters:
 
 - `origin_latitude`, `origin_longitude` optional
 - `destination_latitude`, `destination_longitude` optional
+- `date` and `run` optional when you want the checkpoint weather sampled from a
+  specific stored forecast bundle
+- `departure_time` optional and defaults to `08:30` local time
 
 If coordinates are provided, PredSea resolves the route from those exact
 points. If not, it resolves the origin and destination place IDs from the

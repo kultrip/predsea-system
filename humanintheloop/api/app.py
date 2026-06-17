@@ -1,6 +1,7 @@
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +25,7 @@ from api.services import answer_question, evidence_used, render_briefing
 import place_registry
 from place_registry import default_place_id_for_query
 import place_weather
+import route_analysis
 from route_store import RouteStore
 
 
@@ -103,6 +105,151 @@ def load_place_weather_response(
     response["requested_latitude"] = resolved.get("requested_latitude")
     response["requested_longitude"] = resolved.get("requested_longitude")
     return response
+
+
+def parse_departure_datetime(run_date, departure_time):
+    if not run_date:
+        return None
+    if not departure_time:
+        departure_time = "08:30"
+    try:
+        local_zone = ZoneInfo("Europe/Madrid")
+    except Exception:
+        local_zone = timezone.utc
+    try:
+        date_part = datetime.fromisoformat(run_date).date()
+    except ValueError:
+        return None
+    try:
+        hour_str, minute_str = departure_time[:5].split(":", 1)
+        departure_clock = datetime.combine(
+            date_part,
+            datetime.min.time().replace(hour=int(hour_str), minute=int(minute_str)),
+        )
+        return departure_clock.replace(tzinfo=local_zone)
+    except Exception:
+        return None
+
+
+def format_utc_timestamp(moment):
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def route_waypoint_weather(store, *, run_date, run_id, latitude, longitude, eta_local_time_text):
+    try:
+        resolved = place_weather.resolve_place("current_position", latitude=latitude, longitude=longitude)
+        payload = store.load_place_weather(resolved["place_id"], run_date, run_id)
+    except Exception:
+        return {}
+    hourly = list(payload.get("hourly") or [])
+    sample = place_weather.select_hourly_sample(hourly, eta_local_time_text) or {}
+    if not sample:
+        return {}
+    weather = {
+        "place_id": payload.get("place_id"),
+        "place_name": payload.get("place_name"),
+        "resolved_latitude": payload.get("resolved_latitude"),
+        "resolved_longitude": payload.get("resolved_longitude"),
+        "distance_to_place_nm": payload.get("distance_to_place_nm"),
+        "inside_domain": payload.get("inside_domain"),
+        "time_utc": sample.get("time_utc"),
+        "time_local": sample.get("time"),
+        "wave_height_m": sample.get("wave_m"),
+        "wave_direction_deg": sample.get("wave_direction_deg"),
+        "wave_sea_state": sample.get("wave_sea_state"),
+        "swell_1_height_m": sample.get("swell_1_height_m"),
+        "swell_1_direction_deg": sample.get("swell_1_direction_deg"),
+        "swell_2_height_m": sample.get("swell_2_height_m"),
+        "swell_2_direction_deg": sample.get("swell_2_direction_deg"),
+        "wind_wave_height_m": sample.get("wind_wave_height_m"),
+        "wind_wave_direction_deg": sample.get("wind_wave_direction_deg"),
+        "current_kn": sample.get("current_kn"),
+        "current_direction_deg": sample.get("current_direction_deg"),
+        "wind_kn": payload.get("wind_kn"),
+        "wind_direction_deg": payload.get("wind_direction_deg"),
+        "water_temperature_c": payload.get("water_temperature_c") or payload.get("water_temp_c"),
+        "air_temperature_c": payload.get("air_temperature_c") or payload.get("temperature_c"),
+        "freshness_status": payload.get("freshness_status"),
+        "freshness_state": payload.get("freshness_state"),
+        "freshness_warning": payload.get("freshness_warning"),
+        "source": payload.get("source"),
+        "source_system": payload.get("source_system"),
+        "source_label": payload.get("source_label"),
+        "network": payload.get("network"),
+        "station_id": payload.get("station_id"),
+        "station_name": payload.get("station_name"),
+        "catalog_id": payload.get("catalog_id"),
+        "catalog_url": payload.get("catalog_url"),
+        "last_sample_utc": payload.get("last_sample_utc"),
+        "observed_at_utc": payload.get("observed_at_utc"),
+        "source_time_coordinate_utc": payload.get("source_time_coordinate_utc"),
+        "qc_flag": payload.get("qc_flag"),
+        "quality_score": payload.get("quality_score"),
+        "is_future_timestamp": payload.get("is_future_timestamp"),
+    }
+    return {key: value for key, value in weather.items() if value is not None}
+
+
+def build_route_checkpoints(
+    store,
+    *,
+    run_date,
+    run_id,
+    departure_time,
+    typical_speed_kn,
+    origin_latitude,
+    origin_longitude,
+    waypoints,
+    destination_latitude,
+    destination_longitude,
+):
+    departure_dt_local = parse_departure_datetime(run_date, departure_time)
+    if departure_dt_local is None:
+        return []
+
+    route_points = [
+        {"lat": float(origin_latitude), "lng": float(origin_longitude)},
+        *[
+            {"lat": float(point["lat"]), "lng": float(point["lng"])}
+            for point in (waypoints or [])
+            if point.get("lat") is not None and point.get("lng") is not None
+        ],
+        {"lat": float(destination_latitude), "lng": float(destination_longitude)},
+    ]
+    checkpoints = []
+    cumulative_nm = 0.0
+
+    for index, point in enumerate(route_points[1:-1]):
+        previous = route_points[index]
+        cumulative_nm += route_analysis.haversine_nm(
+            previous["lat"],
+            previous["lng"],
+            point["lat"],
+            point["lng"],
+        )
+        eta_local = departure_dt_local + timedelta(hours=cumulative_nm / float(typical_speed_kn or 15.0))
+        eta_utc = format_utc_timestamp(eta_local)
+        eta_local_time = eta_local.astimezone(ZoneInfo("Europe/Madrid")).strftime("%H:%M")
+        weather = route_waypoint_weather(
+            store,
+            run_date=run_date,
+            run_id=run_id,
+            latitude=point["lat"],
+            longitude=point["lng"],
+            eta_local_time_text=eta_local_time,
+        )
+        checkpoints.append(
+            {
+                "waypoint_index": index,
+                "lat": float(point["lat"]),
+                "lng": float(point["lng"]),
+                "eta_utc": eta_utc,
+                "distance_from_origin_nm": round(cumulative_nm, 2),
+                "forecast_time_utc": eta_utc,
+                "weather": weather,
+            }
+        )
+    return checkpoints
 
 
 def requested_minutes(time_text):
@@ -740,6 +887,13 @@ def create_app(evidence_store=None, route_store=None):
     def places_route(
         origin: str,
         destination: str,
+        date: str | None = None,
+        run: str | None = None,
+        departure_time: str = Query(
+            "08:30",
+            pattern="^([01]\\d|2[0-3]):[0-5]\\d$",
+            description="Local departure time used to compute ETA at each route checkpoint.",
+        ),
         origin_latitude: float | None = Query(
             default=None,
             ge=-90,
@@ -769,8 +923,15 @@ def create_app(evidence_store=None, route_store=None):
             gt=0,
             description="Typical vessel speed used to estimate travel time when the route geometry is returned.",
         ),
-    ):
+        ):
         try:
+            refresh_route_store(route_store)
+            try:
+                run_date = store.resolve_date(date)
+                run_id = store.resolve_run(run_date, run)
+            except EvidenceNotFoundError:
+                run_date = None
+                run_id = None
             origin_side = resolve_route_side(
                 "origin",
                 place_query=origin,
@@ -794,6 +955,18 @@ def create_app(evidence_store=None, route_store=None):
                 destination_longitude=destination_side["longitude"],
                 typical_speed_kn=typical_speed_kn,
             )
+            checkpoints = build_route_checkpoints(
+                store,
+                run_date=run_date,
+                run_id=run_id,
+                departure_time=departure_time,
+                typical_speed_kn=typical_speed_kn,
+                origin_latitude=origin_side["latitude"],
+                origin_longitude=origin_side["longitude"],
+                waypoints=metrics["waypoints"],
+                destination_latitude=destination_side["latitude"],
+                destination_longitude=destination_side["longitude"],
+            )
             return {
                 "origin_place_id": origin_side.get("place_id"),
                 "origin_place_name": origin_side.get("place_name"),
@@ -806,6 +979,7 @@ def create_app(evidence_store=None, route_store=None):
                 "distance_nm": metrics["distance_nm"],
                 "estimated_time_h": metrics["estimated_time_h"],
                 "waypoints": metrics["waypoints"],
+                "checkpoints": checkpoints,
                 "source_tag": metrics["source_tag"],
                 "computed_at_utc": metrics["computed_at_utc"],
             }

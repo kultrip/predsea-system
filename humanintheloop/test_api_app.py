@@ -1197,10 +1197,24 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
             "source_tag": "graph_sea_route_v1",
         }
 
+    def fake_checkpoints(*args, **kwargs):
+        return [
+            {
+                "waypoint_index": 0,
+                "lat": 39.2,
+                "lng": 2.1,
+                "eta_utc": "2026-06-17T13:30:00Z",
+                "distance_from_origin_nm": 28.0,
+                "forecast_time_utc": "2026-06-17T13:30:00Z",
+                "weather": {"wave_height_m": 1.1, "current_kn": 0.5},
+            }
+        ]
+
     monkeypatch.setattr(place_registry, "coordinates_route_geometry_metrics", fake_route_geometry)
+    monkeypatch.setattr("api.app.build_route_checkpoints", fake_checkpoints)
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 
-    response = client.get("/places/route/palma/ibiza")
+    response = client.get("/places/route/palma/ibiza?date=2026-06-17&run=latest&departure_time=08:30")
 
     assert response.status_code == 200
     payload = response.json()
@@ -1208,6 +1222,8 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
     assert payload["destination_place_id"] == "ibiza"
     assert payload["distance_nm"] == 100.0
     assert payload["waypoints"][0] == {"lat": 39.52, "lng": 2.58}
+    assert payload["checkpoints"][0]["eta_utc"] == "2026-06-17T13:30:00Z"
+    assert payload["checkpoints"][0]["weather"]["wave_height_m"] == 1.1
     assert payload["source_tag"] == "graph_sea_route_v1"
 
 
@@ -1236,10 +1252,11 @@ def test_places_route_endpoint_uses_coordinate_overrides(tmp_path, monkeypatch):
         }
 
     monkeypatch.setattr(place_registry, "coordinates_route_geometry_metrics", fake_route_geometry)
+    monkeypatch.setattr("api.app.build_route_checkpoints", lambda *args, **kwargs: [])
     client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
 
     response = client.get(
-        "/places/route/palma/ibiza?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=38.92&destination_longitude=1.49"
+        "/places/route/palma/ibiza?origin_latitude=39.0&origin_longitude=2.0&destination_latitude=38.92&destination_longitude=1.49&departure_time=09:15"
     )
 
     assert response.status_code == 200
