@@ -11,6 +11,38 @@ The guaranteed minimum surface is:
 
 Those surfaces are the stable contract for the API and WhatsApp layers.
 
+## Capability map
+
+PredSea’s public API is organized around a few operational families:
+
+- **Weather & conditions**
+  - place weather for named locations or raw coordinates
+  - location questions from shared GPS coordinates
+  - route questions for passage planning
+
+- **Places & resolution**
+  - canonical place resolution
+  - fixed nautical distance between known places
+  - mixed place/coordinate distance
+  - maritime sea-route distance for raw coordinates
+
+- **Route geometry**
+  - navigable waypoints between two places
+  - optional coordinate overrides on day one
+
+- **Optimal routing**
+  - weather/current-aware route cache and status
+
+- **Observations & evidence**
+  - forecast and observation-backed weather responses
+  - freshness metadata for source timing
+  - route evidence bundles for captain questions
+
+- **Operations**
+  - health checks
+  - route listings
+  - briefing outputs for WhatsApp-style consumption
+
 For the full API and WhatsApp integration guide, see:
 
 ```text
