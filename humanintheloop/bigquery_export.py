@@ -28,6 +28,7 @@ DEFAULT_LOCATION = "europe-west1"
 BIGQUERY_SCOPE = "https://www.googleapis.com/auth/bigquery"
 SCHEMA_VERSION = "predsea.bigquery.evidence_rows.v1"
 INSERT_BATCH_SIZE = 500
+FAILED_ROW_SAMPLE_LIMIT = 10
 
 
 @dataclass(frozen=True)
@@ -128,6 +129,10 @@ def export_validation_archive_to_bigquery(
             "exported_rows": len(rows),
             "failed_rows": insert_result.get("failed_rows", 0),
             "insert_errors": insert_result.get("insert_errors", []),
+            "failed_row_samples": insert_result.get("failed_row_samples", []),
+            "error_messages": insert_result.get("error_messages", []),
+            "response_status": insert_result.get("response_status"),
+            "response_body": insert_result.get("response_body"),
         }
     except Exception as error:
         return {
@@ -204,6 +209,10 @@ def export_station_metadata_to_bigquery(
             "exported_rows": len(rows),
             "failed_rows": insert_result.get("failed_rows", 0),
             "insert_errors": insert_result.get("insert_errors", []),
+            "failed_row_samples": insert_result.get("failed_row_samples", []),
+            "error_messages": insert_result.get("error_messages", []),
+            "response_status": insert_result.get("response_status"),
+            "response_body": insert_result.get("response_body"),
         }
     except Exception as error:
         return {
@@ -282,6 +291,10 @@ def export_validation_rows_to_bigquery(
             "exported_rows": len(rows),
             "failed_rows": insert_result.get("failed_rows", 0),
             "insert_errors": insert_result.get("insert_errors", []),
+            "failed_row_samples": insert_result.get("failed_row_samples", []),
+            "error_messages": insert_result.get("error_messages", []),
+            "response_status": insert_result.get("response_status"),
+            "response_body": insert_result.get("response_body"),
         }
     except Exception as error:
         return {
@@ -681,7 +694,9 @@ def insert_rows(session, config: BigQueryConfig, rows: Sequence[dict]):
     )
     failed_rows = 0
     insert_errors: List[dict] = []
-    for batch in chunks(rows, INSERT_BATCH_SIZE):
+    failed_row_samples: List[dict] = []
+    error_messages: List[str] = []
+    for batch_number, batch in enumerate(chunks(rows, INSERT_BATCH_SIZE), start=1):
         payload = {
             "skipInvalidRows": False,
             "ignoreUnknownValues": False,
@@ -694,22 +709,217 @@ def insert_rows(session, config: BigQueryConfig, rows: Sequence[dict]):
             ],
         }
         response = session.post(insert_url, json=payload)
-        response.raise_for_status()
-        body = response.json() if response.text else {}
+        body = _response_body(response)
+        if response.status_code >= 400:
+            error_message = _response_error_message(body, response.text, response.status_code)
+            error_messages.append(error_message)
+            failed_row_samples.extend(
+                _failed_row_samples_for_batch(
+                    batch,
+                    batch_number=batch_number,
+                    reason=error_message,
+                    batch_errors=body.get("error") or body.get("errors") or [],
+                )
+            )
+            return {
+                "status": "error",
+                "failed_rows": max(failed_rows, len(batch)),
+                "insert_errors": insert_errors,
+                "failed_row_samples": _dedupe_failed_row_samples(failed_row_samples),
+                "error_messages": _dedupe_strings(error_messages),
+                "response_status": response.status_code,
+                "response_body": body or response.text,
+            }
         batch_errors = body.get("insertErrors") or []
         if batch_errors:
             failed_rows += len(batch_errors)
-            insert_errors.extend(batch_errors)
+            insert_errors.extend(
+                _format_batch_errors(batch, batch_errors, batch_number=batch_number)
+            )
+            failed_row_samples.extend(
+                _failed_row_samples_for_batch(
+                    batch,
+                    batch_number=batch_number,
+                    reason="BigQuery insertAll partial failure",
+                    batch_errors=batch_errors,
+                )
+            )
+            error_messages.extend(_flatten_batch_error_messages(batch_errors))
     return {
         "status": "written" if not insert_errors else "partial_failure",
         "failed_rows": failed_rows,
         "insert_errors": insert_errors,
+        "failed_row_samples": _dedupe_failed_row_samples(failed_row_samples),
+        "error_messages": _dedupe_strings(error_messages),
     }
 
 
 def chunks(rows: Sequence[dict], size: int):
     for index in range(0, len(rows), size):
         yield rows[index : index + size]
+
+
+def _format_batch_errors(batch, batch_errors, *, batch_number):
+    formatted = []
+    for batch_error in batch_errors or []:
+        if not isinstance(batch_error, dict):
+            continue
+        row_index = batch_error.get("index")
+        row = batch[row_index] if isinstance(row_index, int) and 0 <= row_index < len(batch) else None
+        errors = batch_error.get("errors") or []
+        formatted.append(
+            {
+                "batch_number": batch_number,
+                "index": row_index,
+                "row_hash": (row or {}).get("row_hash"),
+                "row_sample": _row_sample(row),
+                "errors": errors,
+                "messages": _flatten_error_messages(errors),
+            }
+        )
+    return formatted
+
+
+def _failed_row_samples_for_batch(batch, *, batch_number, reason, batch_errors=None):
+    samples = []
+    if batch_errors:
+        for batch_error in batch_errors:
+            if not isinstance(batch_error, dict):
+                continue
+            row_index = batch_error.get("index")
+            row = batch[row_index] if isinstance(row_index, int) and 0 <= row_index < len(batch) else None
+            samples.append(
+                {
+                    "batch_number": batch_number,
+                    "index": row_index,
+                    "reason": reason,
+                    "row_hash": (row or {}).get("row_hash"),
+                    "row_sample": _row_sample(row),
+                    "error_messages": _flatten_error_messages(batch_error.get("errors") or []),
+                }
+            )
+    if not samples:
+        for row_index, row in enumerate(batch[:FAILED_ROW_SAMPLE_LIMIT]):
+            samples.append(
+                {
+                    "batch_number": batch_number,
+                    "index": row_index,
+                    "reason": reason,
+                    "row_hash": (row or {}).get("row_hash"),
+                    "row_sample": _row_sample(row),
+                    "error_messages": [reason],
+                }
+            )
+    return samples[:FAILED_ROW_SAMPLE_LIMIT]
+
+
+def _row_sample(row):
+    if not isinstance(row, dict):
+        return row
+    keys = (
+        "schema_version",
+        "record_type",
+        "run_date",
+        "run_id",
+        "provider",
+        "source_system",
+        "source_label",
+        "station_id",
+        "station_name",
+        "reference_station_id",
+        "reference_station_name",
+        "route_id",
+        "route_name",
+        "variable",
+        "value",
+        "units",
+        "sample_time_utc",
+        "observed_at_utc",
+        "source_time_coordinate_utc",
+        "target_time_utc",
+        "target_local_time",
+        "forecast_created_at_utc",
+        "quality_score",
+        "freshness_status",
+        "freshness_state",
+        "qc_flag",
+        "dataset_url",
+        "latitude",
+        "longitude",
+    )
+    return {key: row.get(key) for key in keys if key in row}
+
+
+def _flatten_batch_error_messages(batch_errors):
+    messages = []
+    for batch_error in batch_errors or []:
+        if not isinstance(batch_error, dict):
+            continue
+        messages.extend(_flatten_error_messages(batch_error.get("errors") or []))
+    return messages
+
+
+def _flatten_error_messages(errors):
+    messages = []
+    for error in errors or []:
+        if isinstance(error, dict):
+            message = error.get("message") or error.get("reason")
+            if message:
+                messages.append(str(message))
+        elif error:
+            messages.append(str(error))
+    return messages
+
+
+def _response_error_message(body, response_text, status_code):
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict):
+            message = error.get("message")
+            if message:
+                return str(message)
+            details = error.get("errors") or []
+            messages = _flatten_error_messages(details)
+            if messages:
+                return "; ".join(messages[:3])
+        messages = _flatten_batch_error_messages(body.get("insertErrors") or [])
+        if messages:
+            return "; ".join(messages[:3])
+    if isinstance(response_text, str) and response_text.strip():
+        return response_text.strip()[:1000]
+    return f"BigQuery insertAll returned HTTP {status_code}"
+
+
+def _response_body(response):
+    if not getattr(response, "text", None):
+        return {}
+    try:
+        return response.json()
+    except Exception:
+        return {"raw_response_text": response.text}
+
+
+def _dedupe_failed_row_samples(samples):
+    deduped = []
+    seen = set()
+    for sample in samples or []:
+        fingerprint = json.dumps(sample, sort_keys=True, default=str)
+        if fingerprint in seen:
+            continue
+        seen.add(fingerprint)
+        deduped.append(sample)
+    return deduped
+
+
+def _dedupe_strings(values):
+    deduped = []
+    seen = set()
+    for value in values or []:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
 
 
 def authorized_bigquery_session():

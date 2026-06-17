@@ -125,3 +125,69 @@ def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, mo
 
     assert result["status"] == "skipped"
     assert result["exported_rows"] == 0
+
+
+def test_insert_rows_reports_failed_row_samples_and_messages():
+    class FakeResponse:
+        status_code = 200
+        text = "{\"insertErrors\": [{\"index\": 1, \"errors\": [{\"reason\": \"invalid\", \"message\": \"bad value\"}]}]}"
+
+        def json(self):
+            return {
+                "insertErrors": [
+                    {
+                        "index": 1,
+                        "errors": [
+                            {
+                                "reason": "invalid",
+                                "message": "bad value",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+    class FakeSession:
+        def post(self, url, json):
+            return FakeResponse()
+
+    rows = [
+        {
+            "row_hash": "row-1",
+            "schema_version": "predsea.validation.v1",
+            "record_type": "observation",
+            "run_date": "2026-06-18",
+            "run_id": "2026-06-18T1200Z",
+            "provider": "puertos_del_estado",
+            "station_id": "puertos_ibiza",
+            "station_name": "Ibiza",
+            "variable": "wave_height",
+            "sample_time_utc": "2026-06-18T06:00:00Z",
+            "value": 0.4,
+            "units": "m",
+        },
+        {
+            "row_hash": "row-2",
+            "schema_version": "predsea.validation.v1",
+            "record_type": "observation",
+            "run_date": "2026-06-18",
+            "run_id": "2026-06-18T1200Z",
+            "provider": "puertos_del_estado",
+            "station_id": "puertos_palma",
+            "station_name": "Palma",
+            "variable": "wind_speed",
+            "sample_time_utc": "2026-06-18T07:00:00Z",
+            "value": 4.2,
+            "units": "m/s",
+        },
+    ]
+    config = bigquery_export.BigQueryConfig("predsea-api", "predsea_validation", "evidence_rows")
+
+    result = bigquery_export.insert_rows(FakeSession(), config, rows)
+
+    assert result["status"] == "partial_failure"
+    assert result["failed_rows"] == 1
+    assert result["error_messages"] == ["bad value"]
+    assert result["insert_errors"][0]["row_hash"] == "row-2"
+    assert result["failed_row_samples"][0]["row_hash"] == "row-2"
+    assert result["failed_row_samples"][0]["row_sample"]["station_id"] == "puertos_palma"
