@@ -278,7 +278,9 @@ pairs. The route geometry endpoint returns the navigable sea path as a list of
 waypoints, and it accepts place IDs plus optional raw coordinates on the same
 contract. It also returns a parallel `checkpoints` array with local ETA and
 sampled weather at each in-route point so the passage timing stays separate
-from the geometry. In other words, you can call it with names, with
+from the geometry. The checkpoint weather block uses `sample_time_local` for
+the sampled forecast slot, while source provenance still carries the original
+UTC observation metadata. In other words, you can call it with names, with
 coordinates, or with both together when you want a location override.
 
 Route geometry query parameters:
