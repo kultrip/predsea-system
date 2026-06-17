@@ -214,6 +214,44 @@ def test_discover_latest_dataset_url_ignores_non_netcdf_catalog_targets(monkeypa
     assert "bestPacked.json" not in url
 
 
+def test_open_dataset_refuses_invalid_dataset_urls(monkeypatch):
+    from predsea.connectors.puertos_del_estado.client import open_dataset
+
+    calls = {"count": 0}
+
+    def fake_open_dataset(*args, **kwargs):
+        calls["count"] += 1
+        raise AssertionError("should not be called")
+
+    monkeypatch.setattr("predsea.connectors.puertos_del_estado.client.xr.open_dataset", fake_open_dataset)
+
+    with pytest.raises(ValueError):
+        open_dataset("https://opendap.puertos.es/thredds/catalog/some/catalog/")
+
+    assert calls["count"] == 0
+
+
+def test_open_dataset_stops_retrying_on_invalid_cdm_error(monkeypatch):
+    from predsea.connectors.puertos_del_estado.client import open_dataset
+
+    calls = {"count": 0}
+
+    def fake_open_dataset(*args, **kwargs):
+        calls["count"] += 1
+        raise RuntimeError("java.io.IOException: not a valid CDM file")
+
+    monkeypatch.setattr("predsea.connectors.puertos_del_estado.client.xr.open_dataset", fake_open_dataset)
+
+    with pytest.raises(RuntimeError):
+        open_dataset(
+            "https://opendap.puertos.es/thredds/dodsC/seadata/model/wave/local/A01/HOURLY/HW-2026061700-B2026061700-HC.nc",
+            max_retries=3,
+            backoff_seconds=0,
+        )
+
+    assert calls["count"] == 1
+
+
 def test_fetch_real_wave_forecast():
     """Integration test — requires network access to opendap.puertos.es."""
     try:

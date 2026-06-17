@@ -55,11 +55,26 @@ def _is_valid_dataset_url_path(url_path):
     text = str(url_path or "").lower()
     if not text:
         return False
+    if text.endswith("/"):
+        return False
+    if any(marker in text for marker in (".json", "/catalog", "/out")):
+        return False
     if text.endswith((".nc", ".nc4", ".nc5")):
         return True
-    if text.endswith("/catalog.xml"):
+    if "/dodsc/" in text:
         return True
     return False
+
+
+def _is_valid_catalog_page_url(url):
+    if _is_hidden_or_temp_ref(url):
+        return False
+    text = str(url or "").lower()
+    if not text:
+        return False
+    if text.endswith("/") or any(marker in text for marker in (".json", "/out")):
+        return False
+    return text.endswith("/catalog.xml") or text.endswith("/catalog.html")
 
 
 def _absolute_thredds_url(href):
@@ -446,7 +461,7 @@ def discover_latest_dataset_url(
                 child_links.append(_absolute_thredds_url(href))
             else:
                 child_links.append(urljoin(station_catalog_url, href))
-        child_links = sorted({link for link in child_links if link})
+        child_links = sorted({link for link in child_links if link and _is_valid_catalog_page_url(link)})
     else:
         html = xml_text
         dataset_links = sorted(
@@ -479,7 +494,7 @@ def discover_latest_dataset_url(
                 child_links.append(_absolute_thredds_url(href))
             else:
                 child_links.append(urljoin(station_catalog_url, href))
-        child_links = sorted({link for link in child_links if link})
+        child_links = sorted({link for link in child_links if link and _is_valid_catalog_page_url(link)})
 
     for child_url in reversed([link for link in child_links if link]):
         try:

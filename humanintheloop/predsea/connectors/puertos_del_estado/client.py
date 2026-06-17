@@ -27,6 +27,15 @@ def _cache_path(cache_dir, cache_key, suffix):
     return cache_dir / f"{cache_key}{suffix}"
 
 
+def _is_allowed_dataset_url(url):
+    text = str(url or "").lower()
+    if not text:
+        return False
+    if text.endswith("/") or any(marker in text for marker in (".ds_store", ".json", "/catalog", "/out")):
+        return False
+    return "/dodsc/" in text or text.endswith((".nc", ".nc4", ".nc5"))
+
+
 def cache_json(cache_dir, cache_key, payload):
     path = _cache_path(cache_dir, cache_key, ".json")
     if path is None:
@@ -112,6 +121,8 @@ def open_dataset(
 ):
     if xr is None:  # pragma: no cover - import guard
         raise RuntimeError("xarray is required to read Puertos del Estado NetCDF datasets")
+    if not _is_allowed_dataset_url(url):
+        raise ValueError(f"Refusing to open non-dataset URL: {url}")
 
     last_error = None
     for attempt in range(max_retries):
@@ -120,6 +131,9 @@ def open_dataset(
             return xr.open_dataset(url, decode_times=True)
         except Exception as error:  # pragma: no cover - network retry path
             last_error = error
+            message = str(error).lower()
+            if "not a valid cdm file" in message or "not a valid dataset" in message:
+                raise
             if attempt >= max_retries - 1:
                 raise
             time.sleep(backoff_seconds * (2 ** attempt))
