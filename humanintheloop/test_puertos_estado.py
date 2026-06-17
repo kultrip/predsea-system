@@ -74,11 +74,15 @@ def test_parse_station_dataset_uses_netcdf_time_coordinate():
     records = parse_station_dataset(ds, station, dataset_url="https://example.test/dataset.nc4")
 
     assert {record["raw_key"] for record in records} == {"sea_level_m", "depth_m"}
-    latest = next(record for record in records if record["raw_key"] == "sea_level_m")
-    assert latest["sample_time_utc"] == "2026-06-13T02:00:00Z"
-    assert latest["observed_at_utc"] == "2026-06-13T02:00:00Z"
-    assert latest["source_field"] == "SLEV"
-    assert latest["source_label"] == "REDMAR"
+    sea_level_samples = [record for record in records if record["raw_key"] == "sea_level_m"]
+    assert [record["sample_time_utc"] for record in sea_level_samples] == [
+        "2026-06-13T00:00:00Z",
+        "2026-06-13T01:00:00Z",
+        "2026-06-13T02:00:00Z",
+    ]
+    assert all(record["observed_at_utc"] == record["sample_time_utc"] for record in sea_level_samples)
+    assert all(record["source_field"] == "SLEV" for record in sea_level_samples)
+    assert all(record["source_label"] == "REDMAR" for record in sea_level_samples)
 
 
 def test_latest_value_from_dataarray_skips_future_coordinate():
@@ -131,13 +135,15 @@ def test_redext_parser_uses_station_coordinates_for_grid_sampling():
     }
 
     records = parse_station_dataset(ds, station, dataset_url="https://example.test/dataset.nc4")
-    assert len(records) == 1
-    record = records[0]
-    assert record["raw_key"] == "wave_height_m"
-    assert record["value"] == 0.6
-    assert record["sample_time_utc"] == "2026-06-13T01:00:00Z"
-    assert record["observed_at_utc"] == "2026-06-13T01:00:00Z"
-    assert record["source_label"] == "REDEXT"
+    assert len(records) == 2
+    assert [record["sample_time_utc"] for record in records] == [
+        "2026-06-13T00:00:00Z",
+        "2026-06-13T01:00:00Z",
+    ]
+    assert all(record["raw_key"] == "wave_height_m" for record in records)
+    assert records[-1]["value"] == 0.6
+    assert all(record["observed_at_utc"] == record["sample_time_utc"] for record in records)
+    assert all(record["source_label"] == "REDEXT" for record in records)
 
 
 def test_redcos_parser_marks_coastal_network():

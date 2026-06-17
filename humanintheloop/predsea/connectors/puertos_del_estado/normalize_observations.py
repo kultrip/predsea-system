@@ -285,6 +285,120 @@ def latest_valid_sample_from_dataarray(
     }
 
 
+def sampled_valid_samples_from_dataarray(
+    da,
+    *,
+    qc_da=None,
+    fill_values=None,
+    now_utc=None,
+    latitude=None,
+    longitude=None,
+    tolerance_minutes=5,
+    sample_frequency="1h",
+):
+    candidate = da
+    if latitude is not None and longitude is not None:
+        candidate = select_spatial_point(candidate, latitude, longitude)
+    time_dim = _time_dim_name(candidate)
+    if time_dim is None:
+        return []
+    for dim in list(candidate.dims):
+        if dim != time_dim and candidate.sizes.get(dim, 0) == 1:
+            candidate = candidate.isel({dim: 0}, drop=True)
+    try:
+        candidate = candidate.transpose(time_dim, ...)
+    except Exception:
+        pass
+    times, values = _series_from_dataarray(candidate, time_dim=time_dim)
+    if len(times) == 0:
+        return []
+
+    time_index = pd.DatetimeIndex(times)
+    fill_values = _fill_values_from_dataarray(candidate, fill_values)
+    valid_indexes = []
+    for index, (time_value, value) in enumerate(zip(time_index, values)):
+        if pd.isna(time_value) or _is_fill_value(value, fill_values):
+            continue
+        valid_indexes.append(index)
+    if not valid_indexes:
+        return []
+
+    qc_values = None
+    if qc_da is not None:
+        qc_candidate = qc_da
+        if latitude is not None and longitude is not None:
+            qc_candidate = select_spatial_point(qc_candidate, latitude, longitude)
+        qc_time_dim = _time_dim_name(qc_candidate)
+        if qc_time_dim is not None:
+            for dim in list(qc_candidate.dims):
+                if dim != qc_time_dim and qc_candidate.sizes.get(dim, 0) == 1:
+                    qc_candidate = qc_candidate.isel({dim: 0}, drop=True)
+            try:
+                qc_candidate = qc_candidate.transpose(qc_time_dim, ...)
+            except Exception:
+                pass
+            qc_times, qc_values = _series_from_dataarray(qc_candidate, time_dim=qc_time_dim)
+            if len(qc_times) != len(time_index):
+                qc_values = np.asarray(qc_candidate.values).reshape(-1)[: len(time_index)]
+                if len(qc_values) < len(time_index):
+                    qc_values = None
+
+    valid_times = time_index[valid_indexes]
+    start = valid_times.min().floor(sample_frequency)
+    end = valid_times.max().floor(sample_frequency)
+    if end < start:
+        end = start
+    sampled_times = pd.date_range(start=start, end=end, freq=sample_frequency)
+    now_dt = parse_utc_timestamp(now_utc) if now_utc is not None else datetime.now(timezone.utc)
+    samples = []
+
+    for target_time in sampled_times:
+        try:
+            nearest_index = int(time_index.get_indexer([target_time], method="nearest")[0])
+        except Exception:
+            continue
+        if nearest_index < 0 or nearest_index >= len(time_index):
+            continue
+        source_time = time_index[nearest_index]
+        value = values[nearest_index]
+        if pd.isna(source_time) or _is_fill_value(value, fill_values):
+            continue
+        qc_flag = None
+        if qc_values is not None and nearest_index < len(qc_values):
+            qc_flag = qc_values[nearest_index]
+            try:
+                qc_flag = int(qc_flag) if qc_flag is not None else None
+            except Exception:
+                qc_flag = None
+        freshness_status = freshness_status_from_sample_time(target_time, now_utc=now_dt, tolerance_minutes=tolerance_minutes)
+        is_qc_good = qc_value_is_good(qc_flag)
+        samples.append(
+            {
+                "selected_index": nearest_index,
+                "value": to_float(value),
+                "source_time_coordinate_utc": timestamp_text(source_time),
+                "sample_time_utc": timestamp_text(target_time),
+                "observed_at_utc": timestamp_text(target_time),
+                "is_future_timestamp": freshness_status == "future",
+                "is_future": freshness_status == "future",
+                "freshness_status": freshness_status,
+                "freshness_state": FRESHNESS_LABELS.get(freshness_status, "UNKNOWN"),
+                "qc_flag": qc_flag,
+                "is_qc_good": is_qc_good,
+                "quality_score": quality_score_for_sample(
+                    freshness_status=freshness_status,
+                    qc_flag=qc_flag,
+                    is_qc_good=is_qc_good,
+                    network=getattr(candidate, "attrs", {}).get("network"),
+                    source_system=getattr(candidate, "attrs", {}).get("source_system"),
+                    source_label=getattr(candidate, "attrs", {}).get("source_label"),
+                ),
+            }
+        )
+
+    return samples
+
+
 def qc_flag_for_sample(
     ds,
     source_field,

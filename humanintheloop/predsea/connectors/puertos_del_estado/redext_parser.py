@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .common import SOURCE_SYSTEM, latest_sample_from_dataarray, normalize_text
+from .common import SOURCE_SYSTEM, normalize_text
+from .normalize_observations import build_measurement_record, sampled_valid_samples_from_dataarray
 
 
 def _qc_dataarray_for_measurement(ds, source_field):
@@ -74,41 +75,26 @@ def parse_station_dataset(ds, station_meta, dataset_url=None):
         if not variable or not raw_key:
             continue
         qc_da = _qc_dataarray_for_measurement(ds, source_field)
-        sample = latest_sample_from_dataarray(da, latitude=latitude, longitude=longitude, qc_da=qc_da)
-        if not sample:
+        samples = sampled_valid_samples_from_dataarray(da, latitude=latitude, longitude=longitude, qc_da=qc_da)
+        if not samples:
             continue
-        value = sample["value"]
-        sample_time = sample["sample_time_utc"]
-        qc_flag = sample.get("qc_flag")
-        records.append(
-            {
-                "source": SOURCE_SYSTEM,
-                "source_system": SOURCE_SYSTEM,
-                "source_label": "REDEXT",
-                "provider": SOURCE_SYSTEM,
-                "station_id": station_meta.get("station_id"),
-                "station_name": station_meta.get("station_name"),
-                "station_code": station_meta.get("catalog_id"),
-                "catalog_id": station_meta.get("catalog_id"),
-                "catalog_url": station_meta.get("catalog_url"),
-                "dataset_url": dataset_url,
-                "latitude": station_meta.get("latitude"),
-                "longitude": station_meta.get("longitude"),
-                "source_field": source_field,
-                "variable": variable,
-                "raw_key": raw_key,
-                "value": value,
-                "units": da.attrs.get("units"),
-                "qc_flag": qc_flag,
-                "is_qc_good": qc_flag in (1, 2) if qc_flag is not None else None,
-                "is_future": sample.get("is_future", False),
-                "is_future_timestamp": sample.get("is_future_timestamp", sample.get("is_future", False)),
-                "freshness_status": sample.get("freshness_status"),
-                "freshness_state": sample.get("freshness_state"),
-                "quality_score": sample.get("quality_score"),
-                "source_time_coordinate_utc": sample.get("source_time_coordinate_utc"),
-                "sample_time_utc": sample_time,
-                "observed_at_utc": sample_time,
-            }
-        )
+        for sample in samples:
+            records.append(
+                build_measurement_record(
+                    station_meta,
+                    raw_key=raw_key,
+                    variable=variable,
+                    source_field=source_field,
+                    value=sample["value"],
+                    units=da.attrs.get("units"),
+                    sample=sample,
+                    qc_flag=sample.get("qc_flag"),
+                    is_qc_good=sample.get("is_qc_good"),
+                    source_label="REDEXT",
+                    source_system=SOURCE_SYSTEM,
+                    dataset_url=dataset_url,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+            )
     return records

@@ -5,10 +5,10 @@ class FakeFetchData:
     OUTPUT_DIR = "/tmp/predsea-test-output"
 
 
-def test_configured_forecast_sources_default_to_copernicus_only(monkeypatch):
+def test_configured_forecast_sources_default_to_copernicus_and_socib(monkeypatch):
     monkeypatch.delenv("PREDSEA_ENABLE_SOCIB_MODEL_FORECASTS", raising=False)
 
-    assert forecast_sources.configured_source_ids() == ["copernicus"]
+    assert forecast_sources.configured_source_ids() == ["copernicus", "socib"]
 
 
 def test_configured_forecast_sources_can_opt_into_socib_models(monkeypatch):
@@ -30,5 +30,5 @@ def test_fetch_available_forecasts_calls_configured_sources_without_scoping_erro
         dry_run=True,
     )
 
-    assert [source["id"] for source in result] == ["copernicus"]
+    assert [source["id"] for source in result] == ["copernicus", "socib"]
     assert result[0]["available"] is True

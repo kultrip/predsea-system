@@ -170,3 +170,73 @@ def test_validation_archive_keeps_future_observations(tmp_path, monkeypatch):
     assert observation_rows[0]["is_future"] is True
     assert observation_rows[0]["freshness_status"] == "future"
     assert "station_metadata" in station_metadata_path.read_text(encoding="utf-8")
+
+
+def test_validation_archive_flattens_measurements_to_long_rows(tmp_path):
+    run_dir = tmp_path / "outputs" / "2026-06-15" / "runs" / "2026-06-15T1200Z"
+    observations = {
+        "puertos_ibiza": {
+            "provider": "puertos_del_estado",
+            "source_system": "puertos_del_estado",
+            "source_label": "REDEXT",
+            "station_name": "Ibiza",
+            "dataset_url": "https://example.test/dataset.nc4",
+            "measurements": [
+                {
+                    "station_id": "puertos_ibiza",
+                    "station_name": "Ibiza",
+                    "variable": "wave_height",
+                    "raw_key": "wave_height_m",
+                    "source_field": "VHM0",
+                    "value": 0.42,
+                    "units": "m",
+                    "sample_time_utc": "2026-06-15T06:00:00Z",
+                    "observed_at_utc": "2026-06-15T06:00:00Z",
+                    "source_time_coordinate_utc": "2026-06-15T06:00:00Z",
+                    "qc_flag": 1,
+                    "freshness_status": "live",
+                    "freshness_state": "LIVE",
+                    "quality_score": 0.91,
+                    "dataset_url": "https://example.test/dataset.nc4",
+                },
+                {
+                    "station_id": "puertos_ibiza",
+                    "station_name": "Ibiza",
+                    "variable": "wind_speed",
+                    "raw_key": "wind_speed_mps",
+                    "source_field": "WSPD",
+                    "value": 4.1,
+                    "units": "m/s",
+                    "sample_time_utc": "2026-06-15T07:00:00Z",
+                    "observed_at_utc": "2026-06-15T07:00:00Z",
+                    "source_time_coordinate_utc": "2026-06-15T07:00:00Z",
+                    "qc_flag": 2,
+                    "freshness_status": "recent",
+                    "freshness_state": "RECENT",
+                    "quality_score": 0.87,
+                    "dataset_url": "https://example.test/dataset.nc4",
+                },
+            ],
+        }
+    }
+
+    summary = validation_archive.write_validation_archive(
+        run_dir,
+        "2026-06-15",
+        "2026-06-15T1200Z",
+        {},
+        {},
+        observations,
+        tmp_path / "outputs",
+    )
+
+    observation_rows = [
+        json.loads(line)
+        for line in (run_dir / "validation" / "observation_samples.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    assert summary["observation_rows"] == 2
+    assert [row["variable"] for row in observation_rows] == ["wave_height", "wind_speed"]
+    assert all(row["station_id"] == "puertos_ibiza" for row in observation_rows)
+    assert all(row["dataset_url"] == "https://example.test/dataset.nc4" for row in observation_rows)

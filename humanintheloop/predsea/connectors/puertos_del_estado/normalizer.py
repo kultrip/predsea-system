@@ -58,6 +58,7 @@ def measurements_to_observation_record(station_meta, measurements):
             source_label=source_label,
             distance_to_route_nm=station_meta.get("distance_to_route_nm"),
         ),
+        "measurements": measurements,
     }
     for measurement in measurements:
         raw_key = measurement.get("raw_key")

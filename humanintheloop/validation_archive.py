@@ -121,6 +121,72 @@ def build_observation_rows(observations, run_date, run_id):
     for station_id, record in sorted((observations or {}).items()):
         if not isinstance(record, dict):
             continue
+        measurements = record.get("measurements")
+        if isinstance(measurements, list) and measurements:
+            for measurement in measurements:
+                if not isinstance(measurement, dict):
+                    continue
+                observed_at = normalize_timestamp(
+                    measurement.get("observed_at_utc")
+                    or measurement.get("sample_time_utc")
+                    or measurement.get("source_time_coordinate_utc")
+                )
+                sample_time = normalize_timestamp(
+                    measurement.get("sample_time_utc")
+                    or measurement.get("observed_at_utc")
+                    or measurement.get("source_time_coordinate_utc")
+                )
+                source_time_coordinate_utc = normalize_timestamp(
+                    measurement.get("source_time_coordinate_utc") or sample_time or observed_at
+                )
+                freshness_status = (measurement.get("freshness_status") or measurement.get("freshness_state") or "UNKNOWN").lower()
+                freshness_state = (measurement.get("freshness_state") or freshness_status or "UNKNOWN").upper()
+                qc_flag = measurement.get("qc_flag")
+                future_flag = (
+                    is_future_timestamp(sample_time, collected_at_utc)
+                    or is_future_timestamp(observed_at, collected_at_utc)
+                    or is_future_timestamp(source_time_coordinate_utc, collected_at_utc)
+                    or measurement.get("is_future")
+                    or measurement.get("is_future_timestamp")
+                )
+                rows.append(
+                    {
+                        "schema_version": SCHEMA_VERSION,
+                        "record_type": "observation",
+                        "run_date": run_date,
+                        "run_id": run_id,
+                        "provider": measurement.get("provider") or record.get("provider") or record.get("source") or "socib",
+                        "source_system": measurement.get("source_system") or record.get("source_system") or record.get("provider") or record.get("source") or "socib",
+                        "source_label": measurement.get("source_label") or record.get("source_label") or record.get("station_name"),
+                        "station_id": measurement.get("station_id") or station_id,
+                        "station_name": measurement.get("station_name") or record.get("station_name") or record.get("name"),
+                        "sample_time_utc": sample_time,
+                        "observed_at_utc": observed_at,
+                        "source_time_coordinate_utc": source_time_coordinate_utc,
+                        "collected_at_utc": collected_at_utc,
+                        "variable": measurement.get("variable"),
+                        "source_field": measurement.get("source_field") or measurement.get("raw_key"),
+                        "value": normalize_observed_value(measurement.get("raw_key") or measurement.get("source_field") or measurement.get("variable"), measurement.get("value")),
+                        "raw_value": measurement.get("value"),
+                        "units": measurement.get("units"),
+                        "qc_flag": qc_flag,
+                        "freshness_status": freshness_status if freshness_status != "unknown" else freshness_state_from_observation(observed_at, collected_at_utc).lower(),
+                        "freshness_state": freshness_state or freshness_state_from_observation(observed_at, collected_at_utc),
+                        "quality_score": numeric_value(measurement.get("quality_score")),
+                        "latitude": measurement.get("latitude") if measurement.get("latitude") is not None else record.get("latitude"),
+                        "longitude": measurement.get("longitude") if measurement.get("longitude") is not None else record.get("longitude"),
+                        "depth_m": measurement.get("depth_m") if measurement.get("depth_m") is not None else record.get("depth_m"),
+                        "is_future": bool(future_flag),
+                        "is_future_timestamp": bool(future_flag),
+                        "is_qc_good": measurement.get("is_qc_good"),
+                        "nearest_routes": measurement.get("nearest_routes") or record.get("nearest_routes") or [],
+                        "distance_to_route_nm": numeric_value(
+                            measurement.get("distance_to_route_nm") if measurement.get("distance_to_route_nm") is not None else record.get("distance_to_route_nm")
+                        ),
+                        "dataset_url": measurement.get("dataset_url") or record.get("dataset_url"),
+                    }
+                )
+            continue
         sample_time = normalize_timestamp(
             record.get("sample_time_utc") or record.get("last_sample_utc") or record.get("observed_at_utc")
         )
@@ -176,6 +242,7 @@ def build_observation_rows(observations, run_date, run_id):
                     "is_qc_good": record.get("is_qc_good"),
                     "nearest_routes": record.get("nearest_routes") or [],
                     "distance_to_route_nm": numeric_value(record.get("distance_to_route_nm")),
+                    "dataset_url": record.get("dataset_url") or record.get("catalog_url"),
                 }
             )
     return rows

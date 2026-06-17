@@ -69,12 +69,15 @@ def test_hfradar_parser_emits_current_components():
     records = parse_station_dataset(ds, station, dataset_url="https://example.test/radar.nc")
     variables = {record["variable"] for record in records}
     assert {"current_u", "current_v"}.issubset(variables)
-    current_u = next(record for record in records if record["variable"] == "current_u")
-    assert current_u["source_label"] == "HF_RADAR"
-    assert current_u["sample_time_utc"] == "2026-06-15T11:00:00Z"
-    assert current_u["observed_at_utc"] == "2026-06-15T11:00:00Z"
-    assert current_u["qc_flag"] is None
-    assert current_u["is_qc_good"] is None
+    current_u_samples = [record for record in records if record["variable"] == "current_u"]
+    assert [record["sample_time_utc"] for record in current_u_samples] == [
+        "2026-06-15T10:00:00Z",
+        "2026-06-15T11:00:00Z",
+    ]
+    assert all(record["source_label"] == "HF_RADAR" for record in current_u_samples)
+    assert all(record["observed_at_utc"] == record["sample_time_utc"] for record in current_u_samples)
+    assert all(record["qc_flag"] is None for record in current_u_samples)
+    assert all(record["is_qc_good"] is None for record in current_u_samples)
 
 
 def test_hfradar_parser_returns_empty_list_when_component_missing():
