@@ -463,15 +463,18 @@ def discover_latest_dataset_url(
         child_links = sorted({link for link in child_links if link})
 
     for child_url in reversed([link for link in child_links if link]):
-        latest = discover_latest_dataset_url(
-            child_url,
-            session=session,
-            timeout=timeout,
-            max_retries=max_retries,
-            backoff_seconds=backoff_seconds,
-            cache_dir=cache_dir,
-            _visited=visited,
-        )
+        try:
+            latest = discover_latest_dataset_url(
+                child_url,
+                session=session,
+                timeout=timeout,
+                max_retries=max_retries,
+                backoff_seconds=backoff_seconds,
+                cache_dir=cache_dir,
+                _visited=visited,
+            )
+        except Exception:
+            latest = None
         if latest:
             return latest
     return None
@@ -496,14 +499,17 @@ def discover_observation_stations(
     )
     discovered = []
     for station in stations:
-        latest_dataset_url = discover_latest_dataset_url(
-            station["catalog_url"],
-            session=session,
-            timeout=timeout,
-            max_retries=max_retries,
-            backoff_seconds=backoff_seconds,
-            cache_dir=cache_dir,
-        )
+        try:
+            latest_dataset_url = discover_latest_dataset_url(
+                station["catalog_url"],
+                session=session,
+                timeout=timeout,
+                max_retries=max_retries,
+                backoff_seconds=backoff_seconds,
+                cache_dir=cache_dir,
+            )
+        except Exception:
+            latest_dataset_url = None
         if not latest_dataset_url:
             continue
         discovered.append(

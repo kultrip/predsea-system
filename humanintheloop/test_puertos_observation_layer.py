@@ -170,3 +170,44 @@ def test_discover_latest_dataset_url_ignores_hidden_dataset_refs(monkeypatch):
 
     url = station_catalog.discover_latest_dataset_url("https://example.test/catalog.xml")
     assert url == "https://opendap.puertos.es/thredds/dodsC/wave_local_a12a/HW-2026060900-B2026060900-HC.nc"
+
+
+def test_discover_observation_stations_skips_timeouts(monkeypatch):
+    from requests.exceptions import ReadTimeout
+
+    from predsea.connectors.puertos_del_estado import station_catalog
+
+    monkeypatch.setattr(
+        station_catalog,
+        "discover_station_catalogs",
+        lambda **kwargs: [
+            {
+                "station_id": "puertos_bad",
+                "station_name": "Bad Station",
+                "station_key": "bad_station",
+                "catalog_url": "https://example.test/bad/catalog.xml",
+                "network": "redext",
+                "source_label": "REDEXT",
+            },
+            {
+                "station_id": "puertos_good",
+                "station_name": "Good Station",
+                "station_key": "good_station",
+                "catalog_url": "https://example.test/good/catalog.xml",
+                "network": "redext",
+                "source_label": "REDEXT",
+            },
+        ],
+    )
+
+    def fake_latest_dataset_url(catalog_url, **kwargs):
+        if "bad" in catalog_url:
+            raise ReadTimeout("timed out")
+        return "https://example.test/good/dataset.nc4"
+
+    monkeypatch.setattr(station_catalog, "discover_latest_dataset_url", fake_latest_dataset_url)
+
+    stations = station_catalog.discover_observation_stations()
+    assert len(stations) == 1
+    assert stations[0]["station_id"] == "puertos_good"
+    assert stations[0]["latest_dataset_url"] == "https://example.test/good/dataset.nc4"
