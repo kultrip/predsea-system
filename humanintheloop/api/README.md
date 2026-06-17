@@ -226,7 +226,8 @@ curl "http://127.0.0.1:8000/places/distance/coordinates?origin_latitude=39.0&ori
 ```
 
 Get the sea-route geometry and waypoints between two places, with optional raw
-coordinate overrides:
+coordinate overrides. If you pass latitude/longitude, those coordinates win and
+PredSea uses them instead of the place names:
 
 ```bash
 curl "http://127.0.0.1:8000/places/route/palma/ibiza"
@@ -243,7 +244,17 @@ latitude/longitude pair. The coordinate distance endpoint returns a maritime
 sea-route distance and a travel-time estimate for raw latitude/longitude
 pairs. The route geometry endpoint returns the navigable sea path as a list of
 waypoints, and it accepts place IDs plus optional raw coordinates on the same
-contract.
+contract. In other words, you can call it with names, with coordinates, or
+with both together when you want a location override.
+
+Route geometry query parameters:
+
+- `origin_latitude`, `origin_longitude` optional
+- `destination_latitude`, `destination_longitude` optional
+
+If coordinates are provided, PredSea resolves the route from those exact
+points. If not, it resolves the origin and destination place IDs from the
+canonical place registry first.
 
 Palma is also exposed as a small place family. The default place remains
 `palma`, and specific ports are available as separate places:

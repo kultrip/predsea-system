@@ -725,15 +725,50 @@ def create_app(evidence_store=None, route_store=None):
             "source_tag": metrics["source_tag"],
         }
 
-    @app.get("/places/route/{origin}/{destination}", response_model=RouteWaypointsResponse)
+    @app.get(
+        "/places/route/{origin}/{destination}",
+        response_model=RouteWaypointsResponse,
+        summary="Get navigable route waypoints between two places",
+        description=(
+            "Return the navigable sea-route geometry between two places as an "
+            "ordered list of waypoints. You can call the endpoint with place "
+            "IDs only, or provide raw latitude/longitude overrides for either "
+            "side on day one. When coordinates are supplied, PredSea uses the "
+            "exact locations instead of the place registry resolution."
+        ),
+    )
     def places_route(
         origin: str,
         destination: str,
-        origin_latitude: float | None = Query(default=None, ge=-90, le=90),
-        origin_longitude: float | None = Query(default=None, ge=-180, le=180),
-        destination_latitude: float | None = Query(default=None, ge=-90, le=90),
-        destination_longitude: float | None = Query(default=None, ge=-180, le=180),
-        typical_speed_kn: float = Query(15.0, gt=0),
+        origin_latitude: float | None = Query(
+            default=None,
+            ge=-90,
+            le=90,
+            description="Optional raw latitude for the origin. If provided, it overrides the origin place ID.",
+        ),
+        origin_longitude: float | None = Query(
+            default=None,
+            ge=-180,
+            le=180,
+            description="Optional raw longitude for the origin. If provided, it overrides the origin place ID.",
+        ),
+        destination_latitude: float | None = Query(
+            default=None,
+            ge=-90,
+            le=90,
+            description="Optional raw latitude for the destination. If provided, it overrides the destination place ID.",
+        ),
+        destination_longitude: float | None = Query(
+            default=None,
+            ge=-180,
+            le=180,
+            description="Optional raw longitude for the destination. If provided, it overrides the destination place ID.",
+        ),
+        typical_speed_kn: float = Query(
+            15.0,
+            gt=0,
+            description="Typical vessel speed used to estimate travel time when the route geometry is returned.",
+        ),
     ):
         try:
             origin_side = resolve_route_side(
