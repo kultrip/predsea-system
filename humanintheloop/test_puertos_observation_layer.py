@@ -77,6 +77,35 @@ def test_hfradar_parser_emits_current_components():
     assert current_u["is_qc_good"] is None
 
 
+def test_hfradar_parser_returns_empty_list_when_component_missing():
+    import pandas as pd
+    import xarray as xr
+
+    from predsea.connectors.puertos_del_estado.hfradar_connector import parse_station_dataset
+
+    ds = xr.Dataset(
+        {
+            "u": ("time", [0.2, 0.4]),
+            "stdu": ("time", [0.01, 0.02]),
+        },
+        coords={
+            "time": pd.to_datetime(["2026-06-15T10:00:00Z", "2026-06-15T11:00:00Z"], utc=True),
+        },
+    )
+    station = {
+        "station_id": "puertos_delta_del_ebro",
+        "station_name": "Delta del Ebro",
+        "catalog_id": "radar_local_deltaebro",
+        "catalog_url": "https://opendap.puertos.es/thredds/catalog/radar_local_deltaebro/catalog.xml",
+        "network": "hfradar",
+        "latitude": 40.0,
+        "longitude": 1.0,
+    }
+
+    records = parse_station_dataset(ds, station, dataset_url="https://example.test/radar.nc")
+    assert records == []
+
+
 def test_station_catalog_discovers_hfradar_network(monkeypatch):
     from predsea.connectors.puertos_del_estado import station_catalog
 
@@ -120,3 +149,24 @@ def test_station_catalog_discovers_hfradar_network(monkeypatch):
     radar = next(station for station in stations if station["network"] == "hfradar")
     assert radar["source_label"] == "HF_RADAR"
     assert radar["station_id"] == "puertos_delta_del_ebro"
+
+
+def test_discover_latest_dataset_url_ignores_hidden_dataset_refs(monkeypatch):
+    from predsea.connectors.puertos_del_estado import station_catalog
+
+    xml = """
+    <catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0">
+      <dataset name=".DS_Store" urlPath="._junk.nc"/>
+      <dataset name="Hidden" urlPath="__MACOSX/._bad.nc"/>
+      <dataset name="Valid" urlPath="wave_local_a12a/HW-2026060900-B2026060900-HC.nc"/>
+    </catalog>
+    """
+
+    monkeypatch.setattr(
+        station_catalog,
+        "fetch_text",
+        lambda *args, **kwargs: {"text": xml},
+    )
+
+    url = station_catalog.discover_latest_dataset_url("https://example.test/catalog.xml")
+    assert url == "https://opendap.puertos.es/thredds/dodsC/wave_local_a12a/HW-2026060900-B2026060900-HC.nc"

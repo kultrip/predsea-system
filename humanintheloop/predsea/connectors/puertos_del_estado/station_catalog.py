@@ -20,6 +20,35 @@ RADAR_NETWORK_LABEL = "HF_RADAR"
 ROUTE_IDS = ("palma_ibiza", "palma_barcelona", "palma_cabrera", "palma_valencia", "ibiza_formentera", "alcudia_ciutadella")
 
 
+def _is_hidden_or_temp_ref(value):
+    text = normalize_text(str(value or ""))
+    if not text:
+        return True
+    lowered = str(value).lower()
+    if lowered in {".ds_store", "__macosx"}:
+        return True
+    if lowered.startswith("._"):
+        return True
+    if lowered.endswith("~"):
+        return True
+    if "/." in lowered:
+        return True
+    if any(part in lowered for part in ("/__macosx/", "/.ds_store", ".tmp", ".temp")):
+        return True
+    return False
+
+
+def _is_valid_thredds_ref(name, href):
+    if _is_hidden_or_temp_ref(name) or _is_hidden_or_temp_ref(href):
+        return False
+    href_text = str(href or "").lower()
+    if not href_text:
+        return False
+    if not re.search(r"\.(?:nc4?|nc)$", href_text, re.IGNORECASE) and "/catalog.xml" not in href_text:
+        return False
+    return True
+
+
 def _absolute_thredds_url(href):
     if not href:
         return None
@@ -47,6 +76,8 @@ def _discover_root_catalog_refs(*, session=None, timeout=60, max_retries=3, back
         href = ref.attrib.get("{http://www.w3.org/1999/xlink}href")
         if not name or not href:
             continue
+        if not _is_valid_thredds_ref(name, href):
+            continue
         absolute = _absolute_thredds_url(href)
         if absolute:
             refs.append({"name": name, "href": href, "catalog_url": absolute})
@@ -56,7 +87,10 @@ def _discover_root_catalog_refs(*, session=None, timeout=60, max_retries=3, back
 def _root_ref_index(refs, *, prefix=None):
     grouped = defaultdict(list)
     for ref in refs:
-        if prefix and not ref["href"].split("/")[-2].startswith(prefix):
+        if _is_hidden_or_temp_ref(ref.get("name")) or _is_hidden_or_temp_ref(ref.get("href")):
+            continue
+        href_parts = str(ref.get("href") or "").split("/")
+        if prefix and (len(href_parts) < 2 or not href_parts[-2].startswith(prefix)):
             continue
         grouped[normalize_text(ref["name"])].append(ref)
     return grouped
@@ -82,7 +116,18 @@ def _score_catalog_match(station_name, candidate_name):
 def _best_catalog_ref(name, refs, *, prefix=None):
     if not refs:
         return None
-    candidates = [ref for ref in refs if prefix is None or ref["href"].split("/")[-2].startswith(prefix)]
+    candidates = []
+    for ref in refs:
+        href = ref.get("href") or ""
+        if _is_hidden_or_temp_ref(ref.get("name")) or _is_hidden_or_temp_ref(href):
+            continue
+        path_parts = href.split("/")
+        if prefix is not None:
+            if len(path_parts) < 2:
+                continue
+            if not path_parts[-2].startswith(prefix):
+                continue
+        candidates.append(ref)
     if not candidates:
         candidates = list(refs)
     best = None
@@ -161,8 +206,12 @@ def _merge_catalog_entries(entries):
 def _catalog_url_for_station(entry, network, root_refs):
     xlink = entry.get("Xlink")
     if isinstance(xlink, str) and xlink.startswith("/thredds/catalog/"):
+        if _is_hidden_or_temp_ref(xlink):
+            return None
         return _absolute_thredds_url(xlink)
     if isinstance(xlink, str) and xlink.startswith("https://opendap.puertos.es/thredds/catalog/"):
+        if _is_hidden_or_temp_ref(xlink):
+            return None
         return xlink
     name = entry.get("Name") or ""
     prefix = {
@@ -369,7 +418,7 @@ def discover_latest_dataset_url(
             }
         )
         if dataset_urls:
-            raw_links = [link for link in dataset_urls if "_analysis" not in link.lower()]
+            raw_links = [link for link in dataset_urls if "_analysis" not in link.lower() and not _is_hidden_or_temp_ref(link)]
             chosen = (raw_links or dataset_urls)[-1]
             return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 
@@ -398,7 +447,7 @@ def discover_latest_dataset_url(
             )
         )
         if dataset_links:
-            raw_links = [link for link in dataset_links if "_analysis" not in link.lower()]
+            raw_links = [link for link in dataset_links if "_analysis" not in link.lower() and not _is_hidden_or_temp_ref(link)]
             chosen = (raw_links or dataset_links)[-1]
             return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 

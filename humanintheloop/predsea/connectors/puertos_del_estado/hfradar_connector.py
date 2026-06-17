@@ -39,50 +39,63 @@ def _qc_flag_for_measurement(ds, source_field):
 
 
 def _radar_sample(ds, station_meta):
-    latitude = station_meta.get("latitude")
-    longitude = station_meta.get("longitude")
-    u_da = _dataarray_for_name(ds, "u", "U")
-    v_da = _dataarray_for_name(ds, "v", "V")
-    if u_da is None or v_da is None:
+    try:
+        latitude = station_meta.get("latitude")
+        longitude = station_meta.get("longitude")
+        u_da = _dataarray_for_name(ds, "u", "U")
+        v_da = _dataarray_for_name(ds, "v", "V")
+        if u_da is None or v_da is None:
+            return None
+        u_sample = latest_valid_sample_from_dataarray(u_da, latitude=latitude, longitude=longitude)
+        v_sample = latest_valid_sample_from_dataarray(v_da, latitude=latitude, longitude=longitude)
+        if not u_sample or not v_sample:
+            return None
+        if u_sample.get("sample_time_utc") != v_sample.get("sample_time_utc"):
+            # Keep the latest common time when the two components drift slightly.
+            latest_time = max(u_sample.get("sample_time_utc") or "", v_sample.get("sample_time_utc") or "")
+            if latest_time:
+                u_time = u_sample.get("sample_time_utc")
+                v_time = v_sample.get("sample_time_utc")
+                if u_time != latest_time:
+                    u_sample = latest_valid_sample_from_dataarray(
+                        u_da,
+                        latitude=latitude,
+                        longitude=longitude,
+                        now_utc=latest_time,
+                    )
+                if v_time != latest_time:
+                    v_sample = latest_valid_sample_from_dataarray(
+                        v_da,
+                        latitude=latitude,
+                        longitude=longitude,
+                        now_utc=latest_time,
+                    )
+        if not u_sample or not v_sample:
+            return None
+        u_value = u_sample.get("value")
+        v_value = v_sample.get("value")
+        if u_value is None or v_value is None:
+            return None
+        speed = round(math.sqrt(float(u_value) ** 2 + float(v_value) ** 2), 3)
+        direction = (math.degrees(math.atan2(float(u_value), float(v_value))) + 360.0) % 360.0
+        qc_flag = _qc_flag_for_measurement(ds, "u")
+        if qc_flag is None:
+            qc_flag = _qc_flag_for_measurement(ds, "v")
+        sample = {
+            "sample_time_utc": u_sample.get("sample_time_utc") or v_sample.get("sample_time_utc"),
+            "observed_at_utc": u_sample.get("observed_at_utc") or v_sample.get("observed_at_utc"),
+            "source_time_coordinate_utc": u_sample.get("source_time_coordinate_utc") or v_sample.get("source_time_coordinate_utc"),
+            "qc_flag": qc_flag,
+            "is_qc_good": u_sample.get("is_qc_good") if u_sample.get("is_qc_good") is not None else v_sample.get("is_qc_good"),
+            "freshness_status": u_sample.get("freshness_status") or v_sample.get("freshness_status"),
+            "freshness_state": u_sample.get("freshness_state") or v_sample.get("freshness_state"),
+            "quality_score": max(u_sample.get("quality_score") or 0, v_sample.get("quality_score") or 0),
+            "is_future_timestamp": bool(u_sample.get("is_future_timestamp") or v_sample.get("is_future_timestamp")),
+            "is_future": bool(u_sample.get("is_future") or v_sample.get("is_future")),
+        }
+        return sample, speed, direction, u_value, v_value, qc_flag
+    except Exception:
         return None
-    u_sample = latest_valid_sample_from_dataarray(u_da, latitude=latitude, longitude=longitude)
-    v_sample = latest_valid_sample_from_dataarray(v_da, latitude=latitude, longitude=longitude)
-    if not u_sample or not v_sample:
-        return None
-    if u_sample.get("sample_time_utc") != v_sample.get("sample_time_utc"):
-        # Keep the latest common time when the two components drift slightly.
-        latest_time = max(u_sample.get("sample_time_utc") or "", v_sample.get("sample_time_utc") or "")
-        if latest_time:
-            u_time = u_sample.get("sample_time_utc")
-            v_time = v_sample.get("sample_time_utc")
-            if u_time != latest_time:
-                u_sample = latest_valid_sample_from_dataarray(u_da, latitude=latitude, longitude=longitude, now_utc=latest_time)
-            if v_time != latest_time:
-                v_sample = latest_valid_sample_from_dataarray(v_da, latitude=latitude, longitude=longitude, now_utc=latest_time)
-    if not u_sample or not v_sample:
-        return None
-    u_value = u_sample.get("value")
-    v_value = v_sample.get("value")
-    if u_value is None or v_value is None:
-        return None
-    speed = round(math.sqrt(float(u_value) ** 2 + float(v_value) ** 2), 3)
-    direction = (math.degrees(math.atan2(float(u_value), float(v_value))) + 360.0) % 360.0
-    qc_flag = _qc_flag_for_measurement(ds, "u")
-    if qc_flag is None:
-        qc_flag = _qc_flag_for_measurement(ds, "v")
-    sample = {
-        "sample_time_utc": u_sample.get("sample_time_utc") or v_sample.get("sample_time_utc"),
-        "observed_at_utc": u_sample.get("observed_at_utc") or v_sample.get("observed_at_utc"),
-        "source_time_coordinate_utc": u_sample.get("source_time_coordinate_utc") or v_sample.get("source_time_coordinate_utc"),
-        "qc_flag": qc_flag,
-        "is_qc_good": u_sample.get("is_qc_good") if u_sample.get("is_qc_good") is not None else v_sample.get("is_qc_good"),
-        "freshness_status": u_sample.get("freshness_status") or v_sample.get("freshness_status"),
-        "freshness_state": u_sample.get("freshness_state") or v_sample.get("freshness_state"),
-        "quality_score": max(u_sample.get("quality_score") or 0, v_sample.get("quality_score") or 0),
-        "is_future_timestamp": bool(u_sample.get("is_future_timestamp") or v_sample.get("is_future_timestamp")),
-        "is_future": bool(u_sample.get("is_future") or v_sample.get("is_future")),
-    }
-    return sample, speed, direction, u_value, v_value, qc_flag
 
 
 def parse_station_dataset(ds, station_meta, dataset_url=None):
