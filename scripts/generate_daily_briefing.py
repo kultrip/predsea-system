@@ -163,6 +163,7 @@ def publish_latest_copernicus_files(source):
         if local_path is None:
             continue
         try:
+            print(f"Publishing forecast file {key}: {local_path} -> {gcs_uri}", flush=True)
             upload_file_to_gcs(local_path, gcs_uri)
             print(f"Uploaded {key} to {gcs_uri}", flush=True)
             published[key] = gcs_uri
@@ -180,6 +181,12 @@ def run_route_precompute(waves_path, currents_path, run_date, run_id):
     if not PRECOMPUTE_ROUTES_SCRIPT.exists():
         raise FileNotFoundError(f"Route precompute script not found: {PRECOMPUTE_ROUTES_SCRIPT}")
 
+    print(
+        "Route precompute inputs: "
+        f"waves={waves_path} currents={currents_path} output={ROUTES_GCS_PREFIX} "
+        f"run_date={run_date} run_id={run_id}",
+        flush=True,
+    )
     command = [
         sys.executable,
         str(PRECOMPUTE_ROUTES_SCRIPT),
@@ -858,12 +865,14 @@ def generate_daily_briefings(
             station_metadata=station_metadata,
         )
     if hasattr(modules, "bigquery_export"):
+        print("Exporting validation archive to BigQuery...", flush=True)
         bigquery_export_result = modules.bigquery_export.export_validation_archive_to_bigquery(
             run_dir,
             dry_run=False,
         )
         write_bigquery_export_diagnostics(run_dir, "bigquery_export", bigquery_export_result)
         if hasattr(modules.bigquery_export, "export_station_metadata_to_bigquery"):
+            print("Exporting station metadata to BigQuery...", flush=True)
             station_metadata_export_result = modules.bigquery_export.export_station_metadata_to_bigquery(
                 run_dir,
                 dry_run=False,

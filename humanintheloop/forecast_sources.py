@@ -29,6 +29,7 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
     sources = []
     for source_id, output_path in source_configs:
         print(f"Fetching forecast source: {source_id}", flush=True)
+        print(f"  Output directory: {output_path}", flush=True)
         source = fetch_source_with_attempts(
             source_id,
             output_path,
@@ -37,7 +38,13 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
             dry_run=dry_run,
         )
         if source.get("available"):
-            print(f"Forecast source ready: {source_id}", flush=True)
+            waves_path = source.get("waves_path")
+            currents_path = source.get("currents_path")
+            print(
+                f"Forecast source ready: {source_id} "
+                f"(waves={waves_path}, currents={currents_path})",
+                flush=True,
+            )
         else:
             print(f"Forecast source unavailable: {source_id} ({source.get('error')})", flush=True)
         sources.append(source)
@@ -210,4 +217,8 @@ def source_manifest_entry(source):
         entry["error"] = source["error"]
     if source.get("metadata"):
         entry["metadata"] = source["metadata"]
+    if source.get("waves_path"):
+        entry["waves_path"] = str(source["waves_path"])
+    if source.get("currents_path"):
+        entry["currents_path"] = str(source["currents_path"])
     return entry

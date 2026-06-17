@@ -169,6 +169,10 @@ def resolve_forecast_output_paths(output_dir):
     waves_target = output_dir / "balearic_waves.nc"
     currents_target = output_dir / "balearic_currents.nc"
     if waves_target.exists() and currents_target.exists():
+        print(
+            f"Resolved canonical Copernicus outputs: waves={waves_target} currents={currents_target}",
+            flush=True,
+        )
         return {"waves_path": waves_target, "currents_path": currents_target}
 
     candidates = []
@@ -203,6 +207,12 @@ def resolve_forecast_output_paths(output_dir):
         shutil.copy2(classified["waves"], waves_target)
     if classified["currents"] != currents_target:
         shutil.copy2(classified["currents"], currents_target)
+    print(
+        "Resolved Copernicus forecast outputs: "
+        f"waves={waves_target} (from {classified['waves']}), "
+        f"currents={currents_target} (from {classified['currents']})",
+        flush=True,
+    )
     return {"waves_path": waves_target, "currents_path": currents_target}
 
 
@@ -233,6 +243,10 @@ def get_balearic_forecast(dry_run=False):
         resolved = resolve_forecast_output_paths(OUTPUT_DIR)
 
         print(f"\nSuccess! Files downloaded to {OUTPUT_DIR}/")
+        print(
+            f"Canonical forecast files: waves={resolved['waves_path']} currents={resolved['currents_path']}",
+            flush=True,
+        )
         print("You can now open these with xarray to find the 'Certeza' for your captains.")
         return {
             "available": True,
