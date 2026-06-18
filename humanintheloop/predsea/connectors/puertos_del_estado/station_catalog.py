@@ -417,10 +417,14 @@ def discover_latest_dataset_url(
 ):
     if not station_catalog_url:
         return None
+        
+    # Standardize the string reference by removing trailing junk/queries to ensure the deduplication works perfectly
+    normalized_url = station_catalog_url.split('?')[0].rstrip('/')
+    
     visited = set(_visited or ())
-    if station_catalog_url in visited:
+    if normalized_url in visited:
         return None
-    visited.add(station_catalog_url)
+    visited.add(normalized_url)
 
     fetched = fetch_text(
         station_catalog_url,
@@ -429,39 +433,46 @@ def discover_latest_dataset_url(
         max_retries=max_retries,
         backoff_seconds=backoff_seconds,
         cache_dir=cache_dir,
-        cache_key=f"puertos_catalog_{normalize_text(station_catalog_url)}",
+        cache_key=f"puertos_catalog_{normalize_text(normalized_url)}",
     )
     xml_text = fetched["text"]
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
         root = None
+        
     if root is not None:
         ns = {"t": "http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0"}
         dataset_urls = sorted(
             {
                 dataset.attrib.get("urlPath")
                 for dataset in root.findall(".//t:dataset", ns)
-                if _is_valid_dataset_url_path(dataset.attrib.get("urlPath"))
+                if dataset.attrib.get("urlPath")
             }
         )
         if dataset_urls:
-            raw_links = [link for link in dataset_urls if "_analysis" not in link.lower() and not _is_hidden_or_temp_ref(link)]
-            chosen = (raw_links or dataset_urls)[-1]
-            return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
+            raw_links = [link for link in dataset_urls if "_analysis" not in link.lower() and ".ds_store" not in link.lower()]
+            if raw_links:
+                chosen = raw_links[-1]
+                return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 
         child_links = []
         for ref in root.findall(".//t:catalogRef", ns):
             href = ref.attrib.get("{http://www.w3.org/1999/xlink}href") or ref.attrib.get("xlink:href")
             if not href:
                 continue
+            
+            # Defensive guard: skip known cyclic references or dot directories
+            if href in ("..", ".", "./") or "catalog.xml" in href and href == station_catalog_url.split('/')[-1]:
+                continue
+                
             if href.startswith("http://") or href.startswith("https://"):
                 child_links.append(href)
             elif href.startswith("/thredds/"):
                 child_links.append(_absolute_thredds_url(href))
             else:
                 child_links.append(urljoin(station_catalog_url, href))
-        child_links = sorted({link for link in child_links if link and _is_valid_catalog_page_url(link)})
+        child_links = sorted({link for link in child_links if link})
     else:
         html = xml_text
         dataset_links = sorted(
@@ -475,15 +486,10 @@ def discover_latest_dataset_url(
             )
         )
         if dataset_links:
-            raw_links = [
-                link
-                for link in dataset_links
-                if _is_valid_dataset_url_path(link)
-                and "_analysis" not in link.lower()
-                and not _is_hidden_or_temp_ref(link)
-            ]
-            chosen = (raw_links or dataset_links)[-1]
-            return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
+            raw_links = [link for link in dataset_links if "_analysis" not in link.lower() and ".ds_store" not in link.lower()]
+            if raw_links:
+                chosen = raw_links[-1]
+                return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 
         child_links = []
         for match in re.finditer(r'href="(?P<href>[^"]+/catalog\.xml)"', html, re.IGNORECASE):
@@ -494,25 +500,25 @@ def discover_latest_dataset_url(
                 child_links.append(_absolute_thredds_url(href))
             else:
                 child_links.append(urljoin(station_catalog_url, href))
-        child_links = sorted({link for link in child_links if link and _is_valid_catalog_page_url(link)})
+        child_links = sorted({link for link in child_links if link})
 
     for child_url in reversed([link for link in child_links if link]):
-        try:
-            latest = discover_latest_dataset_url(
-                child_url,
-                session=session,
-                timeout=timeout,
-                max_retries=max_retries,
-                backoff_seconds=backoff_seconds,
-                cache_dir=cache_dir,
-                _visited=visited,
-            )
-        except Exception:
-            latest = None
+        # Double check that the child isn't just the parent re-badged
+        if child_url.split('?')[0].rstrip('/') in visited:
+            continue
+            
+        latest = discover_latest_dataset_url(
+            child_url,
+            session=session,
+            timeout=timeout,
+            max_retries=max_retries,
+            backoff_seconds=backoff_seconds,
+            cache_dir=cache_dir,
+            _visited=visited,
+        )
         if latest:
             return latest
     return None
-
 
 def discover_observation_stations(
     *,
