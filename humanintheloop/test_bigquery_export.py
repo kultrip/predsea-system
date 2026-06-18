@@ -82,6 +82,32 @@ def test_build_normalized_rows_combines_forecast_and_observation(tmp_path):
     assert forecast["row_hash"]
 
 
+def test_normalize_observation_row_filters_unknown_fields():
+    row = {
+        "provider": "puertos_del_estado",
+        "network": "redmar",
+        "station_id": "alcudia",
+        "station_name": "Alcudia",
+        "variable": "wave_height",
+        "value": 0.85,
+        "units": "m",
+        "observed_at_utc": "2026-06-18 06:00 UTC",
+        "freshness_status": "live",
+        "quality_score": 0.92,
+        "nearest_routes": ["alcudia_ciutadella", "palma_barcelona"],
+        "distance_to_route_nm": 2.3,
+        "resolution_km": 4.2,
+        "unexpected_column": "should be dropped",
+    }
+
+    normalized = bigquery_export.normalize_observation_row(row, ingested_at_utc="2026-06-18T00:00:00Z")
+
+    assert "unexpected_column" not in normalized
+    assert normalized["row_hash"]
+    assert normalized["provider"] == "puertos_del_estado"
+    assert normalized["nearest_routes"] == ["alcudia_ciutadella", "palma_barcelona"]
+
+
 def test_build_normalized_rows_supports_portus_observation_aliases():
     observation_records = {
         "portus_3545": {

@@ -402,8 +402,10 @@ def normalize_observation_row(row, ingested_at_utc):
         "distance_to_ibiza": numeric_value(row.get("distance_to_ibiza")),
         "distance_to_menorca": numeric_value(row.get("distance_to_menorca")),
     }
-    normalized["row_hash"] = stable_row_hash(normalized)
-    return normalized
+    allowed_fields = {field["name"] for field in bigquery_schema()}
+    filtered_normalized = {key: value for key, value in normalized.items() if key in allowed_fields}
+    filtered_normalized["row_hash"] = stable_row_hash(filtered_normalized)
+    return filtered_normalized
 
 
 def normalize_forecast_row(row, ingested_at_utc):
@@ -509,7 +511,7 @@ def normalize_station_metadata_row(row, ingested_at_utc):
     }
     normalized["distance_to_menorca"] = numeric_value(row.get("distance_to_menorca"))
     # Dynamic filtering layer against local schema definition
-    allowed_fields = {field["name"] for field in bigquery_schema()}
+    allowed_fields = {field["name"] for field in station_metadata_schema()}
     filtered_normalized = {k: v for k, v in normalized.items() if k in allowed_fields}
     filtered_normalized["row_hash"] = stable_row_hash(filtered_normalized)
     return filtered_normalized
@@ -720,10 +722,10 @@ def insert_rows(session, config: BigQueryConfig, rows: Sequence[dict]):
     insert_errors: List[dict] = []
     failed_row_samples: List[dict] = []
     error_messages: List[str] = []
-for batch_number, batch in enumerate(chunks(rows, INSERT_BATCH_SIZE), start=1):
+    for batch_number, batch in enumerate(chunks(rows, INSERT_BATCH_SIZE), start=1):
         payload = {
             "skipInvalidRows": False,
-            "ignoreUnknownValues": True, # Swapped to True to prevent top-level HTTP 400 rejections
+            "ignoreUnknownValues": True,  # Swapped to True to prevent top-level HTTP 400 rejections
             "rows": [
                 {
                     "insertId": row.get("row_hash"),
