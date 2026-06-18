@@ -13,11 +13,11 @@ SOCIB_SOURCE = {
     "id": "socib",
     "label": "SOCIB WMOP/SAPO forecast",
 }
-SOURCE_TIMEOUT_SECONDS = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "900"))
+SOURCE_TIMEOUT_SECONDS = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "1800"))
 SOURCE_ATTEMPTS = int(os.getenv("PREDSEA_SOURCE_ATTEMPTS", "1"))
 
 
-def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
+def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False, forecast_run_date=None):
     """Fetch all configured forecast sources without letting one source block another."""
     output_dir = Path(output_dir or fetch_data.OUTPUT_DIR)
     timeout_seconds = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", str(SOURCE_TIMEOUT_SECONDS)))
@@ -36,6 +36,7 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False):
             timeout_seconds=timeout_seconds,
             attempts=attempts,
             dry_run=dry_run,
+            forecast_run_date=forecast_run_date,
         )
         if source.get("available"):
             waves_path = source.get("waves_path")
@@ -63,7 +64,7 @@ def source_output_dir(source_id, output_dir):
     return output_dir / source_id
 
 
-def fetch_source_with_attempts(source_id, output_dir, timeout_seconds, attempts=1, dry_run=False):
+def fetch_source_with_attempts(source_id, output_dir, timeout_seconds, attempts=1, dry_run=False, forecast_run_date=None):
     attempts = max(1, int(attempts))
     last_source = None
     for attempt in range(1, attempts + 1):
@@ -74,6 +75,7 @@ def fetch_source_with_attempts(source_id, output_dir, timeout_seconds, attempts=
             output_dir,
             timeout_seconds=timeout_seconds,
             dry_run=dry_run,
+            forecast_run_date=forecast_run_date,
         )
         if source.get("available"):
             if attempt > 1:
@@ -85,7 +87,7 @@ def fetch_source_with_attempts(source_id, output_dir, timeout_seconds, attempts=
     return last_source or source_template(source_id)
 
 
-def fetch_source_via_subprocess(source_id, output_dir, timeout_seconds, dry_run=False):
+def fetch_source_via_subprocess(source_id, output_dir, timeout_seconds, dry_run=False, forecast_run_date=None):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     source = source_template(source_id)
@@ -100,6 +102,8 @@ def fetch_source_via_subprocess(source_id, output_dir, timeout_seconds, dry_run=
     ]
     if dry_run:
         command.append("--dry-run")
+    if forecast_run_date:
+        command.extend(["--forecast-run-date", str(forecast_run_date)])
 
     try:
         completed = subprocess.run(
@@ -164,6 +168,8 @@ def fetch_copernicus_forecast(fetch_data, dry_run=False):
             available=True,
             waves_path=Path(result.get("waves_path") or output_dir / "balearic_waves.nc"),
             currents_path=Path(result.get("currents_path") or output_dir / "balearic_currents.nc"),
+            forecast_source_status=result.get("forecast_source_status", "live"),
+            forecast_run_date=result.get("forecast_run_date"),
         )
     except Exception as error:
         source.update(available=False, error=str(error))
@@ -209,6 +215,8 @@ def source_manifest_entry(source):
         "label": source.get("label"),
         "available": bool(source.get("available")),
         "preferred": bool(source.get("preferred")),
+        "forecast_source_status": source.get("forecast_source_status"),
+        "forecast_run_date": source.get("forecast_run_date"),
     }
     if source.get("error"):
         entry["error"] = source["error"]

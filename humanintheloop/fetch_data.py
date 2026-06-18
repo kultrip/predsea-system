@@ -1,5 +1,6 @@
 import copernicusmarine
 import datetime
+import json
 import os
 import shutil
 import time
@@ -216,7 +217,15 @@ def resolve_forecast_output_paths(output_dir):
     return {"waves_path": waves_target, "currents_path": currents_target}
 
 
-def get_balearic_forecast(dry_run=False):
+def write_forecast_source_manifest(output_dir, metadata):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_dir / "forecast_source.json"
+    manifest_path.write_text(json.dumps(metadata, indent=2, default=str), encoding="utf-8")
+    return manifest_path
+
+
+def get_balearic_forecast(dry_run=False, forecast_run_date=None):
     print("Fetching Balearic Currents (4.2km resolution)...")
     try:
         if not dry_run:
@@ -234,11 +243,27 @@ def get_balearic_forecast(dry_run=False):
         fetch_wave_forecast(dry_run=dry_run)
         if dry_run:
             print("\nDry run complete. No files were downloaded.")
-            return {
+            result = {
                 "available": True,
                 "waves_path": Path(OUTPUT_DIR) / "balearic_waves.nc",
                 "currents_path": Path(OUTPUT_DIR) / "balearic_currents.nc",
+                "forecast_source_status": "live",
+                "forecast_run_date": forecast_run_date,
             }
+            write_forecast_source_manifest(OUTPUT_DIR, {
+                "id": "copernicus",
+                "label": "Copernicus Marine Mediterranean forecast",
+                "available": True,
+                "forecast_source_status": "live",
+                "forecast_run_date": forecast_run_date,
+                "waves_path": str(result["waves_path"]),
+                "currents_path": str(result["currents_path"]),
+                "metadata": {
+                    "wave_model": WAV_ID,
+                    "current_model": PHY_ID,
+                },
+            })
+            return result
 
         resolved = resolve_forecast_output_paths(OUTPUT_DIR)
 
@@ -248,11 +273,27 @@ def get_balearic_forecast(dry_run=False):
             flush=True,
         )
         print("You can now open these with xarray to find the 'Certeza' for your captains.")
-        return {
+        result = {
             "available": True,
             "waves_path": resolved["waves_path"],
             "currents_path": resolved["currents_path"],
+            "forecast_source_status": "live",
+            "forecast_run_date": forecast_run_date,
         }
+        write_forecast_source_manifest(OUTPUT_DIR, {
+            "id": "copernicus",
+            "label": "Copernicus Marine Mediterranean forecast",
+            "available": True,
+            "forecast_source_status": "live",
+            "forecast_run_date": forecast_run_date,
+            "waves_path": str(resolved["waves_path"]),
+            "currents_path": str(resolved["currents_path"]),
+            "metadata": {
+                "wave_model": WAV_ID,
+                "current_model": PHY_ID,
+            },
+        })
+        return result
 
     except Exception as e:
         print(f"An error occurred: {e}")

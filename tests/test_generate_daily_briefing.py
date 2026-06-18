@@ -397,6 +397,21 @@ def test_generate_daily_briefings_reuses_cached_forecast_bundle_when_all_live_so
     currents_path = cached_dir / "balearic_currents.nc"
     waves_path.write_text("cached waves", encoding="utf-8")
     currents_path.write_text("cached currents", encoding="utf-8")
+    (cached_dir / "forecast_source.json").write_text(
+        json.dumps(
+            {
+                "id": "copernicus",
+                "label": "Cached Copernicus Marine Mediterranean forecast",
+                "available": True,
+                "forecast_source_status": "cached",
+                "forecast_run_date": "2026-06-04",
+                "waves_path": str(waves_path),
+                "currents_path": str(currents_path),
+                "metadata": {"source_type": "cached_bundle", "cache_dir": str(cached_dir)},
+            }
+        ),
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
     monkeypatch.setattr(runner, "maybe_generate_route_map", lambda *args, **kwargs: None)

@@ -159,6 +159,38 @@ def test_daily_generator_route_precompute_uses_absolute_paths(tmp_path, monkeypa
     assert captured["cwd"] == generator.PROJECT_ROOT
 
 
+def test_daily_generator_cached_forecast_source_requires_matching_run_date(tmp_path):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    cache_dir = tmp_path / "copernicus"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "balearic_waves.nc").write_text("waves", encoding="utf-8")
+    (cache_dir / "balearic_currents.nc").write_text("currents", encoding="utf-8")
+    (cache_dir / "forecast_source.json").write_text(
+        json.dumps(
+            {
+                "id": "copernicus",
+                "label": "Copernicus Marine Mediterranean forecast",
+                "available": True,
+                "forecast_source_status": "live",
+                "forecast_run_date": "2026-06-18",
+                "waves_path": str(cache_dir / "balearic_waves.nc"),
+                "currents_path": str(cache_dir / "balearic_currents.nc"),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    source = generator.cached_forecast_source(
+        type("FetchData", (), {"OUTPUT_DIR": str(tmp_path)}),
+        run_date="2026-06-18",
+    )
+
+    assert source is not None
+    assert source["forecast_source_status"] == "cached"
+    assert source["forecast_run_date"] == "2026-06-18"
+    assert source["metadata"]["manifest_path"].endswith("forecast_source.json")
+
+
 def test_daily_generator_atmospheric_context_is_disabled_by_default(monkeypatch):
     generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
     monkeypatch.delenv("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION", raising=False)

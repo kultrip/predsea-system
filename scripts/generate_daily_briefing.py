@@ -1,10 +1,12 @@
 import argparse
+import inspect
 import importlib.util
 import json
 import os
 import subprocess
 import shutil
 import sys
+import tempfile
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +24,7 @@ DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "outputs"
 COPERNICUS_GCS_PREFIX = "gs://predsea-daily-outputs/copernicus"
 COPERNICUS_LATEST_WAVES_GCS_URI = f"{COPERNICUS_GCS_PREFIX}/waves_latest.nc"
 COPERNICUS_LATEST_CURRENTS_GCS_URI = f"{COPERNICUS_GCS_PREFIX}/currents_latest.nc"
+COPERNICUS_BUNDLE_GCS_PREFIX = f"{COPERNICUS_GCS_PREFIX}/bundles"
 ROUTES_GCS_PREFIX = "gs://predsea-daily-outputs/routes"
 PRECOMPUTE_ROUTES_SCRIPT = HUMANINTHELOOP_DIR / "files" / "precompute_routes.py"
 DEFAULT_LOCAL_TIMEZONE = "Europe/Madrid"
@@ -152,7 +155,26 @@ def upload_file_to_gcs(local_path, gcs_uri):
     return gcs_uri
 
 
-def publish_latest_copernicus_files(source):
+def upload_json_to_gcs(payload, gcs_uri):
+    if not gcs_uri.startswith("gs://"):
+        raise ValueError(f"Expected GCS URI, got {gcs_uri!r}")
+    from google.cloud import storage
+
+    bucket_name, blob_name = gcs_uri[5:].split("/", 1)
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    blob.upload_from_string(json.dumps(payload, indent=2), content_type="application/json")
+    return gcs_uri
+
+
+def copernicus_bundle_prefix(run_date):
+    if not run_date:
+        return None
+    return f"{COPERNICUS_BUNDLE_GCS_PREFIX}/{run_date}"
+
+
+def publish_latest_copernicus_files(source, run_date=None):
     published = {}
     uploads = {
         "waves_path": COPERNICUS_LATEST_WAVES_GCS_URI,
@@ -174,6 +196,41 @@ def publish_latest_copernicus_files(source):
                 flush=True,
             )
             published[key] = str(local_path)
+    bundle_prefix = copernicus_bundle_prefix(run_date or source.get("forecast_run_date"))
+    if bundle_prefix:
+        bundle_manifest = {
+            "id": source.get("id", "copernicus"),
+            "label": source.get("label", "Copernicus Marine Mediterranean forecast"),
+            "available": bool(source.get("available", True)),
+            "forecast_source_status": source.get("forecast_source_status", "live"),
+            "forecast_run_date": run_date or source.get("forecast_run_date"),
+            "waves_path": str(source.get("waves_path")) if source.get("waves_path") else None,
+            "currents_path": str(source.get("currents_path")) if source.get("currents_path") else None,
+            "metadata": source.get("metadata", {}),
+        }
+        bundle_uploads = {
+            "waves_path": f"{bundle_prefix}/balearic_waves.nc",
+            "currents_path": f"{bundle_prefix}/balearic_currents.nc",
+            "manifest": f"{bundle_prefix}/forecast_source.json",
+        }
+        for key, gcs_uri in bundle_uploads.items():
+            try:
+                if key == "manifest":
+                    print(f"Publishing forecast manifest -> {gcs_uri}", flush=True)
+                    upload_json_to_gcs(bundle_manifest, gcs_uri)
+                    print(f"Uploaded forecast manifest to {gcs_uri}", flush=True)
+                else:
+                    local_path = source.get(key)
+                    if local_path is None:
+                        continue
+                    print(f"Publishing forecast bundle file {key}: {local_path} -> {gcs_uri}", flush=True)
+                    upload_file_to_gcs(local_path, gcs_uri)
+                    print(f"Uploaded forecast bundle file {key} to {gcs_uri}", flush=True)
+            except Exception as error:
+                print(
+                    f"Warning: could not upload forecast bundle {key} to {gcs_uri}; continuing. {error}",
+                    flush=True,
+                )
     return published
 
 
@@ -474,21 +531,41 @@ def write_bigquery_export_diagnostics(run_dir, name, result):
     return diagnostics
 
 
-def fetch_forecast_sources(modules, run_dir):
+def fetch_forecast_sources(modules, run_dir, run_date=None):
     if hasattr(modules, "forecast_sources"):
-        return modules.forecast_sources.fetch_available_forecasts(
-            modules.fetch_data,
-            output_dir=Path(modules.fetch_data.OUTPUT_DIR),
-            dry_run=False,
-        )
+        fetch_forecasts = modules.forecast_sources.fetch_available_forecasts
+        try:
+            return fetch_forecasts(
+                modules.fetch_data,
+                output_dir=Path(modules.fetch_data.OUTPUT_DIR),
+                dry_run=False,
+                forecast_run_date=run_date,
+            )
+        except TypeError as error:
+            if "forecast_run_date" not in str(error):
+                raise
+            return fetch_forecasts(
+                modules.fetch_data,
+                output_dir=Path(modules.fetch_data.OUTPUT_DIR),
+                dry_run=False,
+            )
 
-    forecast_files = modules.fetch_data.get_balearic_forecast(dry_run=False) or {}
+    forecast_kwargs = {"dry_run": False}
+    try:
+        signature = inspect.signature(modules.fetch_data.get_balearic_forecast)
+        if "forecast_run_date" in signature.parameters:
+            forecast_kwargs["forecast_run_date"] = run_date
+    except (TypeError, ValueError):
+        pass
+    forecast_files = modules.fetch_data.get_balearic_forecast(**forecast_kwargs) or {}
     return [
         {
             "id": "copernicus",
             "label": "Copernicus Marine Mediterranean forecast",
             "available": True,
             "preferred": True,
+            "forecast_source_status": forecast_files.get("forecast_source_status", "live"),
+            "forecast_run_date": forecast_files.get("forecast_run_date"),
             "waves_path": Path(forecast_files.get("waves_path") or Path(modules.fetch_data.OUTPUT_DIR) / "balearic_waves.nc"),
             "currents_path": Path(forecast_files.get("currents_path") or Path(modules.fetch_data.OUTPUT_DIR) / "balearic_currents.nc"),
         }
@@ -506,7 +583,76 @@ def preferred_forecast_source(sources):
     return next((source for source in available if source.get("preferred")), available[0])
 
 
-def cached_forecast_source(fetch_data):
+def load_forecast_manifest(candidate_dir):
+    manifest_path = Path(candidate_dir) / "forecast_source.json"
+    if not manifest_path.exists():
+        return None
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def forecast_manifest_matches_run_date(manifest, run_date):
+    if not manifest:
+        return False
+    if not run_date:
+        return True
+    candidate_dates = (
+        manifest.get("forecast_run_date"),
+        manifest.get("run_date"),
+        manifest.get("forecast_bundle_date"),
+    )
+    return any(candidate == run_date for candidate in candidate_dates if candidate)
+
+
+def load_cached_copernicus_bundle_from_gcs(run_date):
+    if not run_date:
+        return None
+    bundle_prefix = f"{COPERNICUS_BUNDLE_GCS_PREFIX}/{run_date}"
+    try:
+        from google.cloud import storage
+    except Exception:
+        return None
+
+    try:
+        client = storage.Client()
+        bucket_name, prefix = bundle_prefix[5:].split("/", 1)
+        bucket = client.bucket(bucket_name)
+        manifest_blob = bucket.blob(f"{prefix}/forecast_source.json")
+        if not manifest_blob.exists():
+            return None
+        manifest = json.loads(manifest_blob.download_as_text(encoding="utf-8"))
+        if not forecast_manifest_matches_run_date(manifest, run_date):
+            return None
+        temp_dir = Path(tempfile.mkdtemp(prefix=f"predsea-copernicus-{run_date}-"))
+        waves_path = temp_dir / "balearic_waves.nc"
+        currents_path = temp_dir / "balearic_currents.nc"
+        bucket.blob(f"{prefix}/balearic_waves.nc").download_to_filename(str(waves_path))
+        bucket.blob(f"{prefix}/balearic_currents.nc").download_to_filename(str(currents_path))
+        return {
+            "id": "copernicus",
+            "label": "Cached Copernicus Marine Mediterranean forecast",
+            "available": True,
+            "preferred": True,
+            "cached": True,
+            "forecast_source_status": "cached",
+            "forecast_run_date": run_date,
+            "waves_path": waves_path,
+            "currents_path": currents_path,
+            "metadata": {
+                "source_type": "cached_bundle",
+                "cache_source": "gcs",
+                "cache_prefix": bundle_prefix,
+                "manifest_path": f"{bundle_prefix}/forecast_source.json",
+            },
+        }
+    except Exception as error:
+        print(f"Warning: could not load cached Copernicus bundle from GCS for {run_date}: {error}", flush=True)
+        return None
+
+
+def cached_forecast_source(fetch_data, run_date=None):
     output_dir = Path(getattr(fetch_data, "OUTPUT_DIR", PROJECT_ROOT / "mvp_data"))
     candidate_dirs = [
         output_dir,
@@ -520,9 +666,12 @@ def cached_forecast_source(fetch_data):
         if candidate_dir in seen:
             continue
         seen.add(candidate_dir)
+        manifest = load_forecast_manifest(candidate_dir)
+        if manifest and not forecast_manifest_matches_run_date(manifest, run_date):
+            continue
         waves_path = candidate_dir / "balearic_waves.nc"
         currents_path = candidate_dir / "balearic_currents.nc"
-        if waves_path.exists() and currents_path.exists():
+        if waves_path.exists() and currents_path.exists() and forecast_manifest_matches_run_date(manifest, run_date):
             print(
                 "Warning: no live forecast source available; reusing cached Copernicus bundle "
                 f"from {candidate_dir}.",
@@ -534,13 +683,24 @@ def cached_forecast_source(fetch_data):
                 "available": True,
                 "preferred": True,
                 "cached": True,
+                "forecast_source_status": "cached",
+                "forecast_run_date": run_date if run_date else (manifest.get("forecast_run_date") if manifest else None),
                 "waves_path": waves_path,
                 "currents_path": currents_path,
                 "metadata": {
                     "source_type": "cached_bundle",
                     "cache_dir": str(candidate_dir),
+                    "manifest_path": str(candidate_dir / "forecast_source.json") if manifest else None,
                 },
             }
+    gcs_cached = load_cached_copernicus_bundle_from_gcs(run_date)
+    if gcs_cached:
+        print(
+            "Warning: no live forecast source available; reusing cached Copernicus bundle "
+            f"from GCS prefix {gcs_cached['metadata'].get('cache_prefix')}.",
+            flush=True,
+        )
+        return gcs_cached
     return None
 
 
@@ -781,10 +941,15 @@ def generate_daily_briefings(
         observation_bundle = safe_load_observation_bundle(modules.briefing)
         observations = observation_bundle.get("observations", {})
         station_metadata = observation_bundle.get("station_metadata", [])
-        sources = fetch_forecast_sources(modules, run_dir)
+        try:
+            sources = fetch_forecast_sources(modules, run_dir, run_date=run_date)
+        except TypeError as error:
+            if "run_date" not in str(error):
+                raise
+            sources = fetch_forecast_sources(modules, run_dir)
         preferred_source = preferred_forecast_source(sources)
         if preferred_source is None:
-            preferred_source = cached_forecast_source(modules.fetch_data)
+            preferred_source = cached_forecast_source(modules.fetch_data, run_date=run_date)
             if preferred_source is None:
                 raise RuntimeError(
                     "No forecast source available and no cached Copernicus bundle found; "
@@ -904,7 +1069,7 @@ def generate_daily_briefings(
 
     if not os.environ.get("PYTEST_CURRENT_TEST"):
         try:
-            published_sources = publish_latest_copernicus_files(preferred_source)
+            published_sources = publish_latest_copernicus_files(preferred_source, run_date=run_date)
             run_route_precompute(
                 waves_path=published_sources.get("waves_path", preferred_source["waves_path"]),
                 currents_path=published_sources.get("currents_path", preferred_source["currents_path"]),
