@@ -159,6 +159,34 @@ def test_daily_generator_route_precompute_uses_absolute_paths(tmp_path, monkeypa
     assert captured["cwd"] == generator.PROJECT_ROOT
 
 
+def test_daily_generator_route_precompute_preserves_gcs_uris(tmp_path, monkeypatch):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    captured = {}
+
+    class Completed:
+        stdout = ""
+        stderr = ""
+        returncode = 0
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["cwd"] = kwargs.get("cwd")
+        return Completed()
+
+    monkeypatch.setattr(generator.subprocess, "run", fake_run)
+
+    generator.run_route_precompute(
+        "gs://predsea-daily-outputs/copernicus/waves_latest.nc",
+        "gs://predsea-daily-outputs/copernicus/currents_latest.nc",
+        "2026-06-18",
+        "2026-06-18T1922Z",
+    )
+
+    assert captured["command"][3] == "gs://predsea-daily-outputs/copernicus/waves_latest.nc"
+    assert captured["command"][5] == "gs://predsea-daily-outputs/copernicus/currents_latest.nc"
+    assert captured["cwd"] == generator.PROJECT_ROOT
+
+
 def test_daily_generator_cached_forecast_source_requires_matching_run_date(tmp_path):
     generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
     cache_dir = tmp_path / "copernicus"

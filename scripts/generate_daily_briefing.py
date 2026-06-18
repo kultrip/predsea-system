@@ -173,6 +173,15 @@ def upload_file_to_gcs(local_path, gcs_uri):
     return gcs_uri
 
 
+def normalize_route_precompute_path(path):
+    if path is None:
+        return None
+    text = str(path)
+    if text.startswith("gs://"):
+        return text
+    return str(Path(text).expanduser().resolve())
+
+
 def upload_json_to_gcs(payload, gcs_uri):
     if not gcs_uri.startswith("gs://"):
         raise ValueError(f"Expected GCS URI, got {gcs_uri!r}")
@@ -256,8 +265,8 @@ def run_route_precompute(waves_path, currents_path, run_date, run_id):
     if not PRECOMPUTE_ROUTES_SCRIPT.exists():
         raise FileNotFoundError(f"Route precompute script not found: {PRECOMPUTE_ROUTES_SCRIPT}")
 
-    waves_path = Path(waves_path).expanduser().resolve()
-    currents_path = Path(currents_path).expanduser().resolve()
+    waves_path = normalize_route_precompute_path(waves_path)
+    currents_path = normalize_route_precompute_path(currents_path)
     print(
         "Route precompute inputs: "
         f"waves={waves_path} currents={currents_path} output={ROUTES_GCS_PREFIX} "
