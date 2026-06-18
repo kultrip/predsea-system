@@ -611,6 +611,10 @@ def station_metadata_schema():
     ]
 
 
+def schema_field_names(schema):
+    return {field["name"] for field in schema}
+
+
 def ensure_dataset(session, config: BigQueryConfig):
     dataset_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}"
     response = session.get(dataset_url)
@@ -664,7 +668,17 @@ def ensure_station_metadata_table(session, config: BigQueryConfig):
     table_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables/{config.table_id}"
     response = session.get(table_url)
     if response.status_code == 200:
-        return response.json()
+        existing = response.json()
+        existing_fields = schema_field_names(existing.get("schema", {}).get("fields", []))
+        desired_schema = station_metadata_schema()
+        desired_fields = schema_field_names(desired_schema)
+        if not desired_fields.issubset(existing_fields):
+            patch_payload = {"schema": {"fields": desired_schema}}
+            patch_response = session.patch(table_url, json=patch_payload)
+            if patch_response.status_code not in (200, 201, 409):
+                patch_response.raise_for_status()
+            return patch_response.json() if patch_response.text else patch_payload
+        return existing
     if response.status_code != 404:
         response.raise_for_status()
     payload = {

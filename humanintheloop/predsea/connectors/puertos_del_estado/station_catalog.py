@@ -66,6 +66,13 @@ def _is_valid_dataset_url_path(url_path):
     return False
 
 
+def _select_latest_valid_dataset_url(dataset_urls):
+    valid_urls = [url for url in dataset_urls if _is_valid_dataset_url_path(url)]
+    if valid_urls:
+        return valid_urls[-1]
+    return None
+
+
 def _is_valid_catalog_page_url(url):
     if _is_hidden_or_temp_ref(url):
         return False
@@ -452,8 +459,8 @@ def discover_latest_dataset_url(
         )
         if dataset_urls:
             raw_links = [link for link in dataset_urls if "_analysis" not in link.lower() and ".ds_store" not in link.lower()]
-            if raw_links:
-                chosen = raw_links[-1]
+            chosen = _select_latest_valid_dataset_url(raw_links)
+            if chosen:
                 return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 
         child_links = []
@@ -487,8 +494,8 @@ def discover_latest_dataset_url(
         )
         if dataset_links:
             raw_links = [link for link in dataset_links if "_analysis" not in link.lower() and ".ds_store" not in link.lower()]
-            if raw_links:
-                chosen = raw_links[-1]
+            chosen = _select_latest_valid_dataset_url(raw_links)
+            if chosen:
                 return urljoin(THREDDS_BASE_URL.rstrip("/") + "/dodsC/", chosen)
 
         child_links = []
@@ -505,6 +512,8 @@ def discover_latest_dataset_url(
     for child_url in reversed([link for link in child_links if link]):
         # Double check that the child isn't just the parent re-badged
         if child_url.split('?')[0].rstrip('/') in visited:
+            continue
+        if not _is_valid_catalog_page_url(child_url):
             continue
             
         latest = discover_latest_dataset_url(

@@ -140,6 +140,55 @@ def test_normalize_station_metadata_row_filters_unknown_fields():
     assert normalized["variables_supported"] == ["wave_height", "wind_speed"]
 
 
+def test_ensure_station_metadata_table_patches_missing_schema_fields():
+    class FakeResponse:
+        def __init__(self, status_code, payload=None):
+            self.status_code = status_code
+            self._payload = payload or {}
+            self.text = json.dumps(self._payload)
+
+        def json(self):
+            return self._payload
+
+        def raise_for_status(self):
+            raise AssertionError("unexpected HTTP error")
+
+    class FakeSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url):
+            self.calls.append(("get", url))
+            return FakeResponse(
+                200,
+                {
+                    "schema": {
+                        "fields": [
+                            {"name": "schema_version"},
+                            {"name": "row_hash"},
+                            {"name": "record_type"},
+                        ]
+                    }
+                },
+            )
+
+        def patch(self, url, json):
+            self.calls.append(("patch", url, json))
+            return FakeResponse(200, json)
+
+    session = FakeSession()
+    config = bigquery_export.BigQueryConfig("predsea-api", "predsea_validation", "station_metadata")
+
+    result = bigquery_export.ensure_station_metadata_table(session, config)
+
+    assert any(call[0] == "patch" for call in session.calls)
+    patched_schema = next(call[2]["schema"]["fields"] for call in session.calls if call[0] == "patch")
+    patched_names = {field["name"] for field in patched_schema}
+    assert "freshness_status" in patched_names
+    assert "is_future_timestamp" in patched_names
+    assert result["schema"]["fields"] == patched_schema
+
+
 def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, monkeypatch):
     write_validation_archive(tmp_path)
     monkeypatch.delenv("PREDSEA_BIGQUERY_PROJECT", raising=False)

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import xarray as xr
 
-OUTPUT_DIR = "./mvp_data"
+OUTPUT_DIR = str(Path(__file__).resolve().parent / "mvp_data")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 REQUIRED_COPERNICUS_ENV = (
     "COPERNICUSMARINE_SERVICE_USERNAME",
