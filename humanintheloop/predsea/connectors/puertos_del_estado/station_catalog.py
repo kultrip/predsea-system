@@ -17,7 +17,16 @@ PORTUSCOPIA_API_BASE = "https://portuscopia.puertos.es/portuscopiasvr/api"
 
 SUPPORTED_NETWORKS = {"redext", "redcos", "redmar", "hfradar"}
 RADAR_NETWORK_LABEL = "HF_RADAR"
-ROUTE_IDS = ("palma_ibiza", "palma_barcelona", "palma_cabrera", "palma_valencia", "ibiza_formentera", "alcudia_ciutadella")
+ROUTE_IDS = (
+    "palma_ibiza",
+    "palma_barcelona",
+    "palma_cabrera",
+    "palma_valencia",
+    "ibiza_formentera",
+    "alcudia_ciutadella",
+    "palma_ciutadella",
+    "palma_mahon",
+)
 
 
 def _is_hidden_or_temp_ref(value):

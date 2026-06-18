@@ -194,5 +194,69 @@
       {"name": "Mid Menorca Channel", "longitude": 3.48, "latitude": 39.96},
       {"name": "Ciutadella approach", "longitude": 3.78, "latitude": 40.00}
     ]
+  },
+  "palma_ciutadella": {
+    "id": "palma_ciutadella",
+    "name": "Palma -> Ciutadella",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Ciutadella",
+      "longitude": 3.8350,
+      "latitude": 40.0000
+    },
+    "validation": {
+      "truth_source": "ciutadella",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Menorca Channel arrival context using Ciutadella currents and coastal exposure"
+    },
+    "current_validation": {
+      "truth_source": "ciutadella",
+      "suitability": "Ciutadella current observations for Menorca Channel arrival context"
+    },
+    "route_note": "Palma to Ciutadella crossing; keep an eye on the northwest edge of Mallorca and the Menorca Channel approach.",
+    "sample_points": [
+      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+      {"name": "Mid Palma-Menorca", "longitude": 3.10, "latitude": 39.80},
+      {"name": "Ciutadella approach", "longitude": 3.78, "latitude": 40.00}
+    ]
+  },
+  "palma_mahon": {
+    "id": "palma_mahon",
+    "name": "Palma -> Mahon",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Mahon",
+      "longitude": 4.2660,
+      "latitude": 39.8890
+    },
+    "validation": {
+      "truth_source": "mahon",
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Menorca east-coast arrival context using Mahon observations"
+    },
+    "current_validation": {
+      "truth_source": "mahon",
+      "suitability": "Mahon observation context for the eastern Menorca approach"
+    },
+    "route_note": "Longer Palma to Mahon crossing; east Menorca approach is more exposed and should be checked with a fresh forecast window.",
+    "sample_points": [
+      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
+      {"name": "Mid Palma-Menorca", "longitude": 3.45, "latitude": 39.92},
+      {"name": "Mahon approach", "longitude": 4.10, "latitude": 39.90}
+    ]
   }
 }
