@@ -33,6 +33,7 @@ CURRENT_V_VARIABLE = "vo"
 
 
 def _latest_current_slice(variable):
+    logger.info("%s: dimensions=%s shape=%s", getattr(variable, "name", "current"), variable.dimensions, variable.shape)
     if variable.ndim == 4:
         return variable[-1, 0, :, :]
     if variable.ndim == 3:
