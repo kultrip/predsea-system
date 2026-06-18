@@ -501,8 +501,10 @@ def normalize_station_metadata_row(row, ingested_at_utc):
         "distance_to_ibiza": numeric_value(row.get("distance_to_ibiza")),
         "distance_to_menorca": numeric_value(row.get("distance_to_menorca")),
     }
-    normalized["row_hash"] = stable_row_hash(normalized)
-    return normalized
+    allowed_fields = {field["name"] for field in station_metadata_schema()}
+    filtered_normalized = {key: value for key, value in normalized.items() if key in allowed_fields}
+    filtered_normalized["row_hash"] = stable_row_hash(filtered_normalized)
+    return filtered_normalized
 
 
 def stable_row_hash(row):

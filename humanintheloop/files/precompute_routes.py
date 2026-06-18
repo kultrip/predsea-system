@@ -149,9 +149,11 @@ def precompute(
     # Download NetCDF if needed
     waves_local    = read_netcdf_path(waves_path)
     currents_local = read_netcdf_path(currents_path)
+    waves_local = os.path.abspath(waves_local)
+    currents_local = os.path.abspath(currents_local)
 
     # Build all priority graphs — one grid load, three graph builds
-    logger.info("Loading Copernicus grid...")
+    logger.info("Loading Copernicus grid from: %s", waves_local)
     grid = MaritimeGrid.from_netcdf(waves_local, currents_local)
     grid.build_vertex_index()
 

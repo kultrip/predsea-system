@@ -114,6 +114,32 @@ def test_build_normalized_rows_supports_portus_observation_aliases():
     assert wave_row["row_hash"]
 
 
+def test_normalize_station_metadata_row_filters_unknown_fields():
+    row = {
+        "provider": "puertos_del_estado",
+        "network": "redext",
+        "station_id": "dragonera",
+        "station_name": "Dragonera",
+        "latitude": 39.59,
+        "longitude": 2.33,
+        "depth_m": 0.0,
+        "variables_supported": ["wave_height", "wind_speed"],
+        "nearest_routes": ["palma_ibiza"],
+        "distance_to_route_nm": 1.7,
+        "freshness_status": "live",
+        "resolution_km": 4.2,
+        "unexpected_column": "should be dropped",
+    }
+
+    normalized = bigquery_export.normalize_station_metadata_row(row, ingested_at_utc="2026-06-18T00:00:00Z")
+
+    assert "unexpected_column" not in normalized
+    assert "resolution_km" not in normalized
+    assert normalized["row_hash"]
+    assert normalized["provider"] == "puertos_del_estado"
+    assert normalized["variables_supported"] == ["wave_height", "wind_speed"]
+
+
 def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, monkeypatch):
     write_validation_archive(tmp_path)
     monkeypatch.delenv("PREDSEA_BIGQUERY_PROJECT", raising=False)

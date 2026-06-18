@@ -191,6 +191,34 @@ def test_daily_generator_cached_forecast_source_requires_matching_run_date(tmp_p
     assert source["metadata"]["manifest_path"].endswith("forecast_source.json")
 
 
+def test_publish_latest_copernicus_files_resolves_relative_paths_from_humanintheloop(tmp_path, monkeypatch):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    human_root = tmp_path / "humanintheloop"
+    cache_dir = human_root / "mvp_data" / "copernicus"
+    cache_dir.mkdir(parents=True)
+    waves = cache_dir / "balearic_waves.nc"
+    currents = cache_dir / "balearic_currents.nc"
+    waves.write_text("waves", encoding="utf-8")
+    currents.write_text("currents", encoding="utf-8")
+    uploaded = []
+
+    monkeypatch.setattr(generator, "HUMANINTHELOOP_DIR", human_root)
+    monkeypatch.setattr(generator, "upload_file_to_gcs", lambda local_path, gcs_uri: uploaded.append((str(local_path), gcs_uri)))
+
+    result = generator.publish_latest_copernicus_files(
+        {
+            "waves_path": "mvp_data/copernicus/balearic_waves.nc",
+            "currents_path": "mvp_data/copernicus/balearic_currents.nc",
+            "forecast_run_date": "2026-06-18",
+        },
+        run_date="2026-06-18",
+    )
+
+    assert uploaded[0][0] == str(waves.resolve())
+    assert uploaded[1][0] == str(currents.resolve())
+    assert result["waves_path"].startswith("gs://") or result["waves_path"].endswith("balearic_waves.nc")
+
+
 def test_daily_generator_atmospheric_context_is_disabled_by_default(monkeypatch):
     generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
     monkeypatch.delenv("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION", raising=False)

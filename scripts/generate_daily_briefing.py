@@ -139,6 +139,24 @@ def resolve_repo_path(path):
     return PROJECT_ROOT / candidate
 
 
+def resolve_humanintheloop_path(path):
+    if path is None:
+        return None
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return candidate
+    search_roots = [
+        HUMANINTHELOOP_DIR,
+        Path.cwd(),
+        PROJECT_ROOT,
+    ]
+    for root in search_roots:
+        resolved = (Path(root) / candidate).resolve()
+        if resolved.exists():
+            return resolved
+    return (HUMANINTHELOOP_DIR / candidate).resolve()
+
+
 def upload_file_to_gcs(local_path, gcs_uri):
     local_path = Path(local_path)
     if not local_path.exists():
@@ -181,7 +199,7 @@ def publish_latest_copernicus_files(source, run_date=None):
         "currents_path": COPERNICUS_LATEST_CURRENTS_GCS_URI,
     }
     for key, gcs_uri in uploads.items():
-        local_path = source.get(key)
+        local_path = resolve_humanintheloop_path(source.get(key))
         if local_path is None:
             continue
         try:
@@ -220,7 +238,7 @@ def publish_latest_copernicus_files(source, run_date=None):
                     upload_json_to_gcs(bundle_manifest, gcs_uri)
                     print(f"Uploaded forecast manifest to {gcs_uri}", flush=True)
                 else:
-                    local_path = source.get(key)
+                    local_path = resolve_humanintheloop_path(source.get(key))
                     if local_path is None:
                         continue
                     print(f"Publishing forecast bundle file {key}: {local_path} -> {gcs_uri}", flush=True)
