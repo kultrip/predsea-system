@@ -57,10 +57,55 @@ PREDSEA_GCS_PREFIX=predictions
 
 Current route IDs:
 
-- `palma_ibiza`
-- `palma_cabrera`
-- `ibiza_formentera`
+- `addaia_fornells`
+- `addaia_mahon`
 - `alcudia_ciutadella`
+- `alcudia_fornells`
+- `andratx_ibiza`
+- `andratx_san_antonio`
+- `barcelona_palamos`
+- `barcelona_tarragona`
+- `cabrera_ibiza`
+- `ciutadella_fornells`
+- `ciutadella_palma`
+- `formentera_palma`
+- `fornells_mahon`
+- `ibiza_formentera`
+- `ibiza_san_antonio`
+- `ibiza_soller`
+- `mahon_palma`
+- `palma_ibiza`
+- `palma_barcelona`
+- `palma_cabrera`
+- `palma_ciutadella`
+- `palma_mahon`
+- `palma_valencia`
+
+Canonical places:
+
+- `addaia`
+- `alcudia`
+- `andratx`
+- `barcelona`
+- `cabrera`
+- `can_pastilla`
+- `ciutadella`
+- `formentera`
+- `fornells`
+- `ibiza`
+- `la_savina`
+- `mahon`
+- `menorca`
+- `palamos`
+- `palma`
+- `port_adriano`
+- `port_de_palma`
+- `porto_portals`
+- `san_antonio`
+- `soller`
+- `tarragona`
+- `valencia`
+- `west_ibiza`
 
 Current map variables:
 
@@ -112,6 +157,15 @@ Response:
 
 `latest_run` can be `null` for older legacy daily folders that do not have
 run-based outputs.
+
+### Places
+
+```bash
+curl https://predsea-api-193957983101.europe-west1.run.app/places
+```
+
+This returns the canonical place registry with place IDs, display names,
+coordinates, parent-child links, aliases, and observation candidates.
 
 ### Routes
 

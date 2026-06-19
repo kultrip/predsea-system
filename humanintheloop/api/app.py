@@ -16,6 +16,7 @@ from api.schemas import (
     MixedDistanceResponse,
     PlaceConnectionMetricsResponse,
     PlaceResolutionResponse,
+    PlacesResponse,
     PlaceWeatherResponse,
     QuestionRequest,
     QuestionResponse,
@@ -620,6 +621,34 @@ def create_app(evidence_store=None, route_store=None):
             return response
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get(
+        "/places",
+        response_model=PlacesResponse,
+        summary="List canonical places",
+        description=(
+            "Return the canonical place registry used by PredSea for weather "
+            "lookups, route planning, and coordinate resolution."
+        ),
+    )
+    def places():
+        summaries = []
+        for place_id in place_registry.available_place_ids():
+            place = place_registry.place_definition(place_id)
+            summaries.append(
+                {
+                    "place_id": place_id,
+                    "place_name": place["name"],
+                    "type": place.get("type") or place.get("kind"),
+                    "latitude": place["latitude"],
+                    "longitude": place["longitude"],
+                    "parent_place_id": place.get("parent_place_id"),
+                    "children": list(place.get("children") or ()),
+                    "aliases": list(place.get("aliases") or ()),
+                    "observation_candidates": list(place.get("observation_candidates") or ()),
+                }
+            )
+        return {"places": summaries}
 
     @app.get("/places/resolve", response_model=PlaceResolutionResponse)
     def resolve_place_endpoint(query: str):

@@ -315,6 +315,21 @@ def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
     assert response.json() == {"date": "2026-05-29", "routes": ["palma_ibiza"]}
 
 
+def test_places_endpoint_lists_canonical_places(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/places")
+
+    assert response.status_code == 200
+    payload = response.json()
+    place_ids = [place["place_id"] for place in payload["places"]]
+    assert place_ids == sorted(place_ids)
+    assert {"san_antonio", "andratx", "fornells", "addaia", "tarragona", "palamos"}.issubset(set(place_ids))
+    palma = next(place for place in payload["places"] if place["place_id"] == "palma")
+    assert palma["place_name"] == "Palma"
+    assert "port_de_palma" in palma["children"]
+
+
 def test_local_store_uses_latest_run_folder_when_available(tmp_path):
     write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
     write_run_snapshot(tmp_path, run_id="2026-05-29T1230Z", wave_max=0.8)

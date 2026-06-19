@@ -21,6 +21,7 @@ PredSea’s public API is organized around a few operational families:
   - route questions for passage planning
 
 - **Places & resolution**
+  - canonical place list
   - canonical place resolution
   - fixed nautical distance between known places
   - mixed place/coordinate distance
@@ -59,6 +60,7 @@ Examples:
 
 ```bash
 curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/places
 curl http://127.0.0.1:8000/routes
 curl "http://127.0.0.1:8000/routes/palma_ibiza/evidence?date=2026-05-31&run=latest"
 curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-31&run=latest&vessel_class=medium&format=whatsapp"
@@ -91,6 +93,32 @@ Current route IDs:
 - `palma_mahon`
 - `palma_valencia`
 - `tarragona_valencia`
+
+Canonical places:
+
+- `addaia`
+- `alcudia`
+- `andratx`
+- `barcelona`
+- `cabrera`
+- `can_pastilla`
+- `ciutadella`
+- `formentera`
+- `fornells`
+- `ibiza`
+- `la_savina`
+- `mahon`
+- `menorca`
+- `palamos`
+- `palma`
+- `port_adriano`
+- `port_de_palma`
+- `porto_portals`
+- `san_antonio`
+- `soller`
+- `tarragona`
+- `valencia`
+- `west_ibiza`
 
 Current place-weather IDs:
 

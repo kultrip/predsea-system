@@ -179,6 +179,22 @@ class PlaceResolutionResponse(BaseModel):
     resolved_via: Optional[str] = None
 
 
+class PlaceSummary(BaseModel):
+    place_id: str
+    place_name: str
+    type: Optional[str] = None
+    latitude: float
+    longitude: float
+    parent_place_id: Optional[str] = None
+    children: List[str] = Field(default_factory=list)
+    aliases: List[str] = Field(default_factory=list)
+    observation_candidates: List[str] = Field(default_factory=list)
+
+
+class PlacesResponse(BaseModel):
+    places: List[PlaceSummary] = Field(default_factory=list)
+
+
 class DistanceEndpointSide(BaseModel):
     kind: Literal["place", "coordinates"]
     query: Optional[str] = None
