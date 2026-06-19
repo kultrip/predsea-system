@@ -8,7 +8,7 @@ The short version:
 - PredSea ingests observations from **Puertos del Estado** and **EMODnet Physics**
   as first-class observation sources.
 - **Portus observations** can be kept as an additional layer.
-- **SOCIB is not part of the active observation ETL path**.
+- **SOCIB is not part of the active observation ETL path because all SOCIB instruments are also part of Puertos del Estado**.
 - Forecasts are handled separately from observations.
 - The canonical output is a normalized observation archive and a BigQuery table.
 
@@ -70,7 +70,7 @@ lane and are not part of the observation layer described here.
 ## ETL cadence
 
 The hourly ETL run refreshes the observation layer and the validation archive.
-PredSea’s scheduled workflow runs hourly at `:49` UTC.
+PredSea’s scheduled workflow runs hourly at `:30` UTC.
 
 Within each run, the observation ETL is built to be additive:
 
