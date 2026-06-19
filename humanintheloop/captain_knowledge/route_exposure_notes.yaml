@@ -27,6 +27,15 @@
     ],
     "default_operational_bias": "Treat low wave height as only part of the comfort read."
   },
+  "ibiza_mahon": {
+    "route": "Ibiza -> Mahon",
+    "exposure": "Direct cross-island crossing from Ibiza into eastern Menorca with a long open-water fetch.",
+    "watch_patterns": [
+      "east Menorca swell on the arrival side",
+      "late-day exposure across the Balearic crossing"
+    ],
+    "default_operational_bias": "Prefer a fresh forecast before committing to the eastern Menorca approach."
+  },
   "alcudia_ciutadella": {
     "route": "Alcudia -> Ciutadella",
     "exposure": "Menorca Channel crossing; exposed conditions can restrict smaller vessels sooner than protected routes.",
@@ -36,24 +45,6 @@
       "schedule pressure masking comfort risk"
     ],
     "default_operational_bias": "Use conservative timing and be explicit when smaller vessels should wait."
-  },
-  "ciutadella_palma": {
-    "route": "Palma -> Ciutadella",
-    "exposure": "Menorca Channel crossing with arrival context near Ciutadella.",
-    "watch_patterns": [
-      "northerly swell in the channel",
-      "late-day exposed approach"
-    ],
-    "default_operational_bias": "Keep timing conservative when the channel is building."
-  },
-  "mahon_palma": {
-    "route": "Palma -> Mahon",
-    "exposure": "Longer Palma to east Menorca crossing with a more exposed arrival approach.",
-    "watch_patterns": [
-      "easterly swell on the Menorca side",
-      "long open-water fetch"
-    ],
-    "default_operational_bias": "Prefer a fresh forecast window before committing."
   },
   "formentera_palma": {
     "route": "Palma -> Formentera",

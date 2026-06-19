@@ -23,6 +23,7 @@ ROUTE_IDS = (
     "palma_cabrera",
     "palma_valencia",
     "ibiza_formentera",
+    "ibiza_mahon",
     "alcudia_ciutadella",
     "palma_ciutadella",
     "palma_mahon",

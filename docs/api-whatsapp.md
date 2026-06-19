@@ -67,13 +67,12 @@ Current route IDs:
 - `barcelona_tarragona`
 - `cabrera_ibiza`
 - `ciutadella_fornells`
-- `ciutadella_palma`
 - `formentera_palma`
 - `fornells_mahon`
 - `ibiza_formentera`
+- `ibiza_mahon`
 - `ibiza_san_antonio`
 - `ibiza_soller`
-- `mahon_palma`
 - `palma_ibiza`
 - `palma_barcelona`
 - `palma_cabrera`

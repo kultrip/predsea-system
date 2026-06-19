@@ -399,13 +399,12 @@ class RouteAnalysisTests(unittest.TestCase):
                 "barcelona_tarragona",
                 "cabrera_ibiza",
                 "ciutadella_fornells",
-                "ciutadella_palma",
                 "formentera_palma",
                 "fornells_mahon",
                 "ibiza_formentera",
+                "ibiza_mahon",
                 "ibiza_san_antonio",
                 "ibiza_soller",
-                "mahon_palma",
                 "palma_barcelona",
                 "palma_cabrera",
                 "palma_ciutadella",
@@ -424,6 +423,7 @@ class RouteAnalysisTests(unittest.TestCase):
         self.assertEqual(routes["palma_valencia"]["destination"]["name"], "Valencia")
         self.assertEqual(routes["palma_ciutadella"]["destination"]["name"], "Ciutadella")
         self.assertEqual(routes["palma_mahon"]["destination"]["name"], "Mahon")
+        self.assertEqual(routes["ibiza_mahon"]["destination"]["name"], "Mahon")
         self.assertEqual(routes["andratx_ibiza"]["id"], "andratx_ibiza")
         self.assertEqual(routes["ciutadella_fornells"]["destination"]["name"], "Cala Fornells")
 
