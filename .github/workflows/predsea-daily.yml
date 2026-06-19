@@ -2,7 +2,7 @@ name: PredSea Daily Briefing
 
 on:
   schedule:
-    # GitHub cron is UTC. Run hourly at :49.
+    # GitHub cron is UTC. Run twice per hour at :30.
     - cron: "30 * * * *"
   workflow_dispatch:
 
