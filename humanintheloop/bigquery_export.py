@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import math
 import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -38,6 +39,13 @@ class BigQueryConfig:
     dataset_id: str
     table_id: str
     location: str = DEFAULT_LOCATION
+
+
+def sanitize_float(value):
+    """Replace JSON-non-compliant floats (NaN, Inf) with None."""
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    return value
 
 
 def resolve_config(
@@ -407,7 +415,11 @@ def normalize_observation_row(row, ingested_at_utc):
         "distance_to_menorca": numeric_value(row.get("distance_to_menorca")),
     }
     allowed_fields = {field["name"] for field in bigquery_schema()}
-    filtered_normalized = {key: value for key, value in normalized.items() if key in allowed_fields}
+    filtered_normalized = {
+        key: sanitize_float(value)
+        for key, value in normalized.items()
+        if key in allowed_fields
+    }
     filtered_normalized["row_hash"] = stable_row_hash(filtered_normalized)
     return filtered_normalized
 
@@ -450,7 +462,11 @@ def normalize_forecast_row(row, ingested_at_utc):
 
     # Dynamic filtering layer against local schema definition
     allowed_fields = {field["name"] for field in bigquery_schema()}
-    filtered_normalized = {k: v for k, v in normalized.items() if k in allowed_fields}
+    filtered_normalized = {
+        key: sanitize_float(value)
+        for key, value in normalized.items()
+        if key in allowed_fields
+    }
 
     filtered_normalized["row_hash"] = stable_row_hash(filtered_normalized)
     return filtered_normalized

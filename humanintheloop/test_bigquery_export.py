@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 
 import bigquery_export
@@ -106,6 +107,49 @@ def test_normalize_observation_row_filters_unknown_fields():
     assert normalized["row_hash"]
     assert normalized["provider"] == "puertos_del_estado"
     assert normalized["nearest_routes"] == ["alcudia_ciutadella", "palma_barcelona"]
+
+
+def test_normalize_rows_sanitize_non_finite_floats():
+    observation_row = {
+        "provider": "puertos_del_estado",
+        "network": "redmar",
+        "station_id": "alcudia",
+        "station_name": "Alcudia",
+        "variable": "wave_height",
+        "value": math.nan,
+        "units": "m",
+        "observed_at_utc": "2026-06-18 06:00 UTC",
+        "quality_score": math.inf,
+        "distance_to_route_nm": -math.inf,
+    }
+    forecast_row = {
+        "route_id": "palma_ibiza",
+        "route_name": "Palma -> Ibiza",
+        "variable": "wave_height",
+        "value": math.nan,
+        "units": "m",
+        "target_time_utc": "2026-06-18T16:00:00Z",
+        "lead_time_hours": math.inf,
+        "resolution_km": -math.inf,
+    }
+
+    normalized_observation = bigquery_export.normalize_observation_row(
+        observation_row,
+        ingested_at_utc="2026-06-18T00:00:00Z",
+    )
+    normalized_forecast = bigquery_export.normalize_forecast_row(
+        forecast_row,
+        ingested_at_utc="2026-06-18T00:00:00Z",
+    )
+
+    assert normalized_observation["value"] is None
+    assert normalized_observation["quality_score"] is None
+    assert normalized_observation["distance_to_route_nm"] is None
+    assert normalized_forecast["value"] is None
+    assert normalized_forecast["lead_time_hours"] is None
+    assert normalized_forecast["resolution_km"] is None
+    assert normalized_observation["row_hash"]
+    assert normalized_forecast["row_hash"]
 
 
 def test_build_normalized_rows_supports_portus_observation_aliases():
