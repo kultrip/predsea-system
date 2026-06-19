@@ -187,6 +187,38 @@ def test_daily_generator_route_precompute_preserves_gcs_uris(tmp_path, monkeypat
     assert captured["cwd"] == generator.PROJECT_ROOT
 
 
+def test_write_bigquery_export_diagnostics_persists_reason_and_traceback(tmp_path):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    result = {
+        "status": "error",
+        "reason": "boom",
+        "traceback": "Traceback (most recent call last): ...",
+        "project_id": "predsea-api",
+        "dataset_id": "predsea_validation",
+        "table_id": "evidence_rows",
+        "observation_rows": 12,
+        "forecast_rows": 34,
+        "exported_rows": 46,
+        "failed_rows": 0,
+        "error_messages": [],
+        "failed_row_samples": [],
+        "insert_errors": [],
+        "response_status": 500,
+        "response_body": {"error": "boom"},
+    }
+
+    diagnostics = generator.write_bigquery_export_diagnostics(tmp_path / "run", "bigquery_export", result)
+
+    path = tmp_path / "run" / "validation" / "bigquery_export_bigquery_diagnostics.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert diagnostics["reason"] == "boom"
+    assert diagnostics["traceback"].startswith("Traceback")
+    assert payload["observation_rows"] == 12
+    assert payload["forecast_rows"] == 34
+    assert payload["reason"] == "boom"
+    assert payload["traceback"].startswith("Traceback")
+
+
 def test_daily_generator_cached_forecast_source_requires_matching_run_date(tmp_path):
     generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
     cache_dir = tmp_path / "copernicus"

@@ -524,14 +524,15 @@ def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_e
 def write_bigquery_export_diagnostics(run_dir, name, result):
     if not result:
         return None
-    if result.get("status") not in {"partial_failure", "error"} and not result.get("failed_row_samples") and not result.get("error_messages"):
-        return None
     diagnostics = {
         "name": name,
         "status": result.get("status"),
+        "reason": result.get("reason"),
         "project_id": result.get("project_id"),
         "dataset_id": result.get("dataset_id"),
         "table_id": result.get("table_id"),
+        "observation_rows": result.get("observation_rows", 0),
+        "forecast_rows": result.get("forecast_rows", 0),
         "exported_rows": result.get("exported_rows", 0),
         "failed_rows": result.get("failed_rows", 0),
         "error_messages": result.get("error_messages", []),
@@ -539,12 +540,16 @@ def write_bigquery_export_diagnostics(run_dir, name, result):
         "insert_errors": result.get("insert_errors", []),
         "response_status": result.get("response_status"),
         "response_body": result.get("response_body"),
+        "traceback": result.get("traceback"),
     }
     validation_dir = Path(run_dir) / "validation"
     validation_dir.mkdir(parents=True, exist_ok=True)
     diagnostics_path = validation_dir / f"{name}_bigquery_diagnostics.json"
     diagnostics_path.write_text(json.dumps(diagnostics, indent=2, default=str), encoding="utf-8")
-    print(f"{name}: {result.get('status')} ({result.get('exported_rows', 0)} rows)", flush=True)
+    summary = f"{name}: {result.get('status')} (obs={diagnostics['observation_rows']}, forecast={diagnostics['forecast_rows']}, exported={diagnostics['exported_rows']})"
+    if diagnostics["reason"]:
+        summary += f" reason={diagnostics['reason']}"
+    print(summary, flush=True)
     if diagnostics["failed_rows"]:
         print(
             f"{name} failed rows: {diagnostics['failed_rows']}",
@@ -1064,12 +1069,29 @@ def generate_daily_briefings(
             run_dir,
             dry_run=False,
         )
+        bq_status = bigquery_export_result.get("status")
+        bq_obs = bigquery_export_result.get("observation_rows", 0)
+        bq_fc = bigquery_export_result.get("forecast_rows", 0)
+        bq_exported = bigquery_export_result.get("exported_rows", 0)
+        bq_reason = bigquery_export_result.get("reason", "")
+        print(
+            f"bigquery_export: {bq_status} (obs={bq_obs}, forecast={bq_fc}, exported={bq_exported})"
+            + (f" reason={bq_reason}" if bq_reason else ""),
+            flush=True,
+        )
         write_bigquery_export_diagnostics(run_dir, "bigquery_export", bigquery_export_result)
         if hasattr(modules.bigquery_export, "export_station_metadata_to_bigquery"):
             print("Exporting station metadata to BigQuery...", flush=True)
             station_metadata_export_result = modules.bigquery_export.export_station_metadata_to_bigquery(
                 run_dir,
                 dry_run=False,
+            )
+            sm_status = station_metadata_export_result.get("status")
+            sm_reason = station_metadata_export_result.get("reason", "")
+            print(
+                f"station_metadata_export: {sm_status}"
+                + (f" reason={sm_reason}" if sm_reason else ""),
+                flush=True,
             )
             write_bigquery_export_diagnostics(run_dir, "station_metadata_export", station_metadata_export_result)
     validation_entry = validation_manifest_entry(validation_summary)

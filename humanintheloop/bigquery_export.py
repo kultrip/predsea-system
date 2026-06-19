@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -138,6 +139,7 @@ def export_validation_archive_to_bigquery(
         return {
             "status": "error",
             "reason": str(error),
+            "traceback": traceback.format_exc(),
             "project_id": config.project_id,
             "dataset_id": config.dataset_id,
             "table_id": config.table_id,
@@ -218,6 +220,7 @@ def export_station_metadata_to_bigquery(
         return {
             "status": "error",
             "reason": str(error),
+            "traceback": traceback.format_exc(),
             "project_id": config.project_id,
             "dataset_id": config.dataset_id,
             "table_id": config.table_id,
@@ -300,6 +303,7 @@ def export_validation_rows_to_bigquery(
         return {
             "status": "error",
             "reason": str(error),
+            "traceback": traceback.format_exc(),
             "project_id": config.project_id,
             "dataset_id": config.dataset_id,
             "table_id": config.table_id,
