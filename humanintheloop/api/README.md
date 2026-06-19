@@ -50,6 +50,12 @@ For the full API and WhatsApp integration guide, see:
 docs/api-whatsapp.md
 ```
 
+For the observation ETL, source families, variables, and storage layout, see:
+
+```text
+docs/observation-layer.md
+```
+
 Run from `humanintheloop/`:
 
 ```bash
