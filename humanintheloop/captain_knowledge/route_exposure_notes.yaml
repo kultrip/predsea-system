@@ -36,5 +36,149 @@
       "schedule pressure masking comfort risk"
     ],
     "default_operational_bias": "Use conservative timing and be explicit when smaller vessels should wait."
+  },
+  "ciutadella_palma": {
+    "route": "Palma -> Ciutadella",
+    "exposure": "Menorca Channel crossing with arrival context near Ciutadella.",
+    "watch_patterns": [
+      "northerly swell in the channel",
+      "late-day exposed approach"
+    ],
+    "default_operational_bias": "Keep timing conservative when the channel is building."
+  },
+  "mahon_palma": {
+    "route": "Palma -> Mahon",
+    "exposure": "Longer Palma to east Menorca crossing with a more exposed arrival approach.",
+    "watch_patterns": [
+      "easterly swell on the Menorca side",
+      "long open-water fetch"
+    ],
+    "default_operational_bias": "Prefer a fresh forecast window before committing."
+  },
+  "formentera_palma": {
+    "route": "Palma -> Formentera",
+    "exposure": "Long open-water passage into the Ibiza/Formentera corridor.",
+    "watch_patterns": [
+      "channel sea state across the full leg",
+      "small-vessel comfort margin eroding late in the day"
+    ],
+    "default_operational_bias": "Read this as an exposed crossing rather than a sheltered hop."
+  },
+  "andratx_ibiza": {
+    "route": "Ibiza -> Andratx",
+    "exposure": "Open-water crossing from Ibiza to southwest Mallorca.",
+    "watch_patterns": [
+      "westerly swell into the Mallorca approach",
+      "coastal acceleration near Andratx"
+    ],
+    "default_operational_bias": "Treat the Mallorca approach as the operational key segment."
+  },
+  "cabrera_ibiza": {
+    "route": "Ibiza -> Cabrera",
+    "exposure": "South Mallorca crossing with open-water exposure and short arrival shelter only near Cabrera.",
+    "watch_patterns": [
+      "southerly exposure along the crossing",
+      "approach timing near the Cabrera shoreline"
+    ],
+    "default_operational_bias": "Check the arrival side carefully before committing smaller vessels."
+  },
+  "ibiza_soller": {
+    "route": "Ibiza -> Soller",
+    "exposure": "Long exposed crossing into north Mallorca with few natural breaks.",
+    "watch_patterns": [
+      "fresh swell set along the whole leg",
+      "late-day fatigue on a long open-water run"
+    ],
+    "default_operational_bias": "Use a fresh forecast window and keep passenger comfort in mind."
+  },
+  "ibiza_san_antonio": {
+    "route": "Ibiza -> Sant Antoni de Portmany",
+    "exposure": "Short west Ibiza coastal leg with localized chop near the bay mouth.",
+    "watch_patterns": [
+      "west Ibiza wind funneling",
+      "short-period chop near San Antonio"
+    ],
+    "default_operational_bias": "Treat it as a local coastal leg, not just a tiny hop."
+  },
+  "andratx_san_antonio": {
+    "route": "Sant Antoni de Portmany -> Port d'Andratx",
+    "exposure": "Cross-island transit from west Ibiza to southwest Mallorca.",
+    "watch_patterns": [
+      "open-water mid-leg swell",
+      "Mallorca southwest approach"
+    ],
+    "default_operational_bias": "The arrival approach deserves as much attention as the crossing."
+  },
+  "addaia_mahon": {
+    "route": "Mahon -> Port d'Addaia",
+    "exposure": "Short Menorca east-coast coastal connection with local shoreline conditions.",
+    "watch_patterns": [
+      "east Menorca coastal chop",
+      "arrival exposure near Addaia"
+    ],
+    "default_operational_bias": "Small-vessel timing matters even on the shorter east-coast leg."
+  },
+  "fornells_mahon": {
+    "route": "Mahon -> Cala Fornells",
+    "exposure": "North-east Menorca coastal transit with local swell and short fetch.",
+    "watch_patterns": [
+      "north-east coastline exposure",
+      "tight timing around the Fornells approach"
+    ],
+    "default_operational_bias": "Read the local coastal conditions before assuming the run is easy."
+  },
+  "addaia_fornells": {
+    "route": "Port d'Addaia -> Cala Fornells",
+    "exposure": "Short north-east Menorca coastal connection with little room for error in fresh conditions.",
+    "watch_patterns": [
+      "nearshore swell on the Menorca east coast",
+      "arrival shelter at Fornells"
+    ],
+    "default_operational_bias": "Keep the route conservative if the east coast is lively."
+  },
+  "ciutadella_fornells": {
+    "route": "Ciutadella -> Cala Fornells",
+    "exposure": "North Menorca coastal leg with an exposed approach toward Fornells.",
+    "watch_patterns": [
+      "north coast swell",
+      "late-run fetch on the approach"
+    ],
+    "default_operational_bias": "Good for a coastal day, but still worth a fresh read."
+  },
+  "alcudia_fornells": {
+    "route": "Alcudia -> Cala Fornells",
+    "exposure": "Menorca transfer with exposed open-water sections and a north coast arrival.",
+    "watch_patterns": [
+      "channel swell between Mallorca and Menorca",
+      "arrival timing on the north coast"
+    ],
+    "default_operational_bias": "Treat it as a meaningful crossing rather than a simple hop."
+  },
+  "barcelona_tarragona": {
+    "route": "Barcelona -> Tarragona",
+    "exposure": "Mainland Catalan coast transit with busy traffic and changing shoreline exposure.",
+    "watch_patterns": [
+      "coastal gradient changes",
+      "traffic density near the approaches"
+    ],
+    "default_operational_bias": "Useful as a mainland leg, but not one to rush."
+  },
+  "tarragona_valencia": {
+    "route": "Tarragona -> Valencia",
+    "exposure": "Long mainland coastal transit with broad planning windows.",
+    "watch_patterns": [
+      "long coastal fetch",
+      "weather evolution across the whole leg"
+    ],
+    "default_operational_bias": "Plan with the longer horizon in mind and refresh before departure."
+  },
+  "barcelona_palamos": {
+    "route": "Barcelona -> Palamos",
+    "exposure": "Catalan coast transit north of Barcelona with frequent local gradients.",
+    "watch_patterns": [
+      "coastal wind shifts",
+      "approach exposure near Palamos"
+    ],
+    "default_operational_bias": "A good coastal connector, but still deserving of a proper forecast check."
   }
 }

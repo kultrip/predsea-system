@@ -47,6 +47,7 @@ def test_load_knowledge_has_structured_graham_rules():
         assert "confidence" in rule
     assert knowledge["vessel_thresholds"]["small"]["label"] == "under 15m"
     assert "palma_ibiza" in knowledge["route_exposure_notes"]
+    assert "andratx_ibiza" in knowledge["route_exposure_notes"]
     assert knowledge["cases"][0]["captain"] == "graham"
 
 

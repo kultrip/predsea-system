@@ -328,5 +328,115 @@
       "puertos_ibiza",
       "ibiza"
     ]
+  },
+  {
+    "id": "san_antonio",
+    "name": "Sant Antoni de Portmany",
+    "type": "port",
+    "latitude": 38.981,
+    "longitude": 1.303,
+    "parent_place_id": "ibiza",
+    "children": [],
+    "aliases": [
+      "san antonio",
+      "sant antoni",
+      "sant antoni de portmany"
+    ],
+    "observation_candidates": [
+      "canal_de_ibiza",
+      "puertos_ibiza",
+      "ibiza"
+    ]
+  },
+  {
+    "id": "andratx",
+    "name": "Port d'Andratx",
+    "type": "port",
+    "latitude": 39.544,
+    "longitude": 2.385,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "andratx",
+      "port d'andratx",
+      "port andratx"
+    ],
+    "observation_candidates": [
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
+    ]
+  },
+  {
+    "id": "fornells",
+    "name": "Cala Fornells",
+    "type": "anchorage",
+    "latitude": 39.937,
+    "longitude": 4.131,
+    "parent_place_id": "menorca",
+    "children": [],
+    "aliases": [
+      "fornells",
+      "cala fornells"
+    ],
+    "observation_candidates": [
+      "mahon",
+      "puertos_mahon",
+      "menorca"
+    ]
+  },
+  {
+    "id": "addaia",
+    "name": "Port d'Addaia",
+    "type": "port",
+    "latitude": 39.991,
+    "longitude": 4.201,
+    "parent_place_id": "menorca",
+    "children": [],
+    "aliases": [
+      "addaia",
+      "port d'addaia"
+    ],
+    "observation_candidates": [
+      "mahon",
+      "puertos_mahon",
+      "menorca"
+    ]
+  },
+  {
+    "id": "tarragona",
+    "name": "Tarragona",
+    "type": "main_place",
+    "latitude": 41.105,
+    "longitude": 1.25,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "tarragona"
+    ],
+    "observation_candidates": [
+      "barcelona",
+      "puertos_barcelona",
+      "valencia",
+      "puertos_valencia"
+    ]
+  },
+  {
+    "id": "palamos",
+    "name": "Palamos",
+    "type": "main_port",
+    "latitude": 41.847,
+    "longitude": 3.125,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "palamos",
+      "palamós"
+    ],
+    "observation_candidates": [
+      "barcelona",
+      "puertos_barcelona"
+    ]
   }
 ]

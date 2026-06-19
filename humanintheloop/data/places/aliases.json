@@ -1,14 +1,27 @@
 {
   "aliases": {
-    "palma": "palma_port",
-    "port palma": "palma_port",
-    "port de palma": "palma_port",
-    "porto portals": "porto_portals",
-    "portals": "porto_portals",
-    "ibiza": "ibiza_port",
+    "addaia": "addaia",
+    "andratx": "andratx",
+    "cala fornells": "fornells",
     "eivissa": "ibiza_port",
     "formentera": "la_savina",
+    "fornells": "fornells",
+    "ibiza": "ibiza_port",
     "mahon": "mahon",
-    "mao": "mahon"
+    "mao": "mahon",
+    "palamos": "palamos",
+    "palamós": "palamos",
+    "palma": "palma_port",
+    "port andratx": "andratx",
+    "port d'addaia": "addaia",
+    "port d'andratx": "andratx",
+    "port de palma": "palma_port",
+    "port palma": "palma_port",
+    "portals": "porto_portals",
+    "porto portals": "porto_portals",
+    "san antonio": "san_antonio",
+    "sant antoni": "san_antonio",
+    "sant antoni de portmany": "san_antonio",
+    "tarragona": "tarragona"
   }
 }

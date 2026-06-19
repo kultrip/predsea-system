@@ -90,6 +90,7 @@ def test_available_place_ids_include_new_locations():
     assert "port_de_palma" in place_ids
     assert "port_adriano" in place_ids
     assert "can_pastilla" in place_ids
+    assert {"san_antonio", "andratx", "fornells", "addaia", "tarragona", "palamos"}.issubset(set(place_ids))
 
 
 def test_palma_defaults_to_main_place_and_has_children():

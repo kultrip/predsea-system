@@ -389,14 +389,30 @@ class RouteAnalysisTests(unittest.TestCase):
         self.assertEqual(
             sorted(routes),
             [
+                "addaia_fornells",
+                "addaia_mahon",
                 "alcudia_ciutadella",
+                "alcudia_fornells",
+                "andratx_ibiza",
+                "andratx_san_antonio",
+                "barcelona_palamos",
+                "barcelona_tarragona",
+                "cabrera_ibiza",
+                "ciutadella_fornells",
+                "ciutadella_palma",
+                "formentera_palma",
+                "fornells_mahon",
                 "ibiza_formentera",
+                "ibiza_san_antonio",
+                "ibiza_soller",
+                "mahon_palma",
                 "palma_barcelona",
                 "palma_cabrera",
                 "palma_ciutadella",
                 "palma_ibiza",
                 "palma_mahon",
                 "palma_valencia",
+                "tarragona_valencia",
             ],
         )
         self.assertEqual(routes["palma_ibiza"]["name"], "Palma -> Ibiza")
@@ -408,6 +424,8 @@ class RouteAnalysisTests(unittest.TestCase):
         self.assertEqual(routes["palma_valencia"]["destination"]["name"], "Valencia")
         self.assertEqual(routes["palma_ciutadella"]["destination"]["name"], "Ciutadella")
         self.assertEqual(routes["palma_mahon"]["destination"]["name"], "Mahon")
+        self.assertEqual(routes["andratx_ibiza"]["id"], "andratx_ibiza")
+        self.assertEqual(routes["ciutadella_fornells"]["destination"]["name"], "Cala Fornells")
 
     def test_load_route_rejects_unknown_route_id(self):
         import route_analysis

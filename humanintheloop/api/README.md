@@ -67,12 +67,30 @@ curl "http://127.0.0.1:8000/places/ibiza/weather?date=2026-06-12&run=latest"
 
 Current route IDs:
 
-- `palma_ibiza`
+- `addaia_fornells`
+- `addaia_mahon`
+- `alcudia_ciutadella`
+- `alcudia_fornells`
+- `andratx_ibiza`
+- `andratx_san_antonio`
+- `barcelona_palamos`
+- `barcelona_tarragona`
+- `cabrera_ibiza`
+- `ciutadella_fornells`
+- `ciutadella_palma`
+- `formentera_palma`
+- `fornells_mahon`
+- `ibiza_formentera`
+- `ibiza_san_antonio`
+- `ibiza_soller`
+- `mahon_palma`
 - `palma_barcelona`
 - `palma_cabrera`
+- `palma_ciutadella`
+- `palma_ibiza`
+- `palma_mahon`
 - `palma_valencia`
-- `ibiza_formentera`
-- `alcudia_ciutadella`
+- `tarragona_valencia`
 
 Current place-weather IDs:
 
@@ -83,9 +101,15 @@ Current place-weather IDs:
 - `cabrera`
 - `ciutadella`
 - `alcudia`
+- `san_antonio`
+- `andratx`
+- `fornells`
+- `addaia`
 - `soller`
 - `barcelona`
 - `valencia`
+- `tarragona`
+- `palamos`
 
 Current map variables:
 

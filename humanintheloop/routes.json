@@ -9,7 +9,7 @@
     },
     "destination": {
       "name": "Ibiza",
-      "longitude": 1.4350,
+      "longitude": 1.435,
       "latitude": 38.9089
     },
     "validation": {
@@ -26,9 +26,21 @@
     },
     "route_note": "Exposed SW Mallorca to Ibiza crossing; watch the Ibiza Channel when NW swell builds.",
     "sample_points": [
-      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
-      {"name": "Mid Palma-Ibiza", "longitude": 2.04, "latitude": 39.19},
-      {"name": "Ibiza Channel", "longitude": 1.83, "latitude": 38.85}
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Ibiza",
+        "longitude": 2.04,
+        "latitude": 39.19
+      },
+      {
+        "name": "Ibiza Channel",
+        "longitude": 1.83,
+        "latitude": 38.85
+      }
     ]
   },
   "palma_barcelona": {
@@ -58,9 +70,21 @@
     },
     "route_note": "Mainland transit lane to Barcelona; forecast coverage is available, while validation will be added later when a trusted observation source is chosen.",
     "sample_points": [
-      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
-      {"name": "Mid Palma-Barcelona", "longitude": 2.35, "latitude": 40.45},
-      {"name": "Barcelona approach", "longitude": 2.19, "latitude": 41.20}
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Barcelona",
+        "longitude": 2.35,
+        "latitude": 40.45
+      },
+      {
+        "name": "Barcelona approach",
+        "longitude": 2.19,
+        "latitude": 41.2
+      }
     ]
   },
   "palma_cabrera": {
@@ -73,8 +97,8 @@
     },
     "destination": {
       "name": "Cabrera",
-      "longitude": 2.9320,
-      "latitude": 39.1510
+      "longitude": 2.932,
+      "latitude": 39.151
     },
     "validation": {
       "truth_source": "bahia_de_palma",
@@ -90,9 +114,21 @@
     },
     "route_note": "Shorter exposed run south of Mallorca; comfort depends on wave direction and shelter near Cabrera.",
     "sample_points": [
-      {"name": "Palma Bay south", "longitude": 2.58, "latitude": 39.42},
-      {"name": "Mid Palma-Cabrera", "longitude": 2.73, "latitude": 39.30},
-      {"name": "Cabrera approach", "longitude": 2.91, "latitude": 39.16}
+      {
+        "name": "Palma Bay south",
+        "longitude": 2.58,
+        "latitude": 39.42
+      },
+      {
+        "name": "Mid Palma-Cabrera",
+        "longitude": 2.73,
+        "latitude": 39.3
+      },
+      {
+        "name": "Cabrera approach",
+        "longitude": 2.91,
+        "latitude": 39.16
+      }
     ]
   },
   "palma_valencia": {
@@ -122,9 +158,21 @@
     },
     "route_note": "Mainland transit lane to Valencia; forecast coverage is available, while validation will be added later when a trusted observation source is chosen. Until the data domain is widened further west, the far-west end of the lane is only approximate.",
     "sample_points": [
-      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
-      {"name": "Mid Palma-Valencia", "longitude": 1.20, "latitude": 39.48},
-      {"name": "Valencia approach", "longitude": 0.55, "latitude": 39.47}
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Valencia",
+        "longitude": 1.2,
+        "latitude": 39.48
+      },
+      {
+        "name": "Valencia approach",
+        "longitude": 0.55,
+        "latitude": 39.47
+      }
     ]
   },
   "ibiza_formentera": {
@@ -132,13 +180,13 @@
     "name": "Ibiza -> Formentera",
     "origin": {
       "name": "Ibiza",
-      "longitude": 1.4350,
+      "longitude": 1.435,
       "latitude": 38.9089
     },
     "destination": {
       "name": "Formentera",
-      "longitude": 1.4160,
-      "latitude": 38.7340
+      "longitude": 1.416,
+      "latitude": 38.734
     },
     "validation": {
       "truth_source": "canal_de_ibiza",
@@ -154,9 +202,21 @@
     },
     "route_note": "Short channel route; current and local chop can matter even when wave height looks modest.",
     "sample_points": [
-      {"name": "Ibiza south approach", "longitude": 1.43, "latitude": 38.90},
-      {"name": "Freus channel", "longitude": 1.43, "latitude": 38.82},
-      {"name": "Formentera approach", "longitude": 1.42, "latitude": 38.74}
+      {
+        "name": "Ibiza south approach",
+        "longitude": 1.43,
+        "latitude": 38.9
+      },
+      {
+        "name": "Freus channel",
+        "longitude": 1.43,
+        "latitude": 38.82
+      },
+      {
+        "name": "Formentera approach",
+        "longitude": 1.42,
+        "latitude": 38.74
+      }
     ]
   },
   "alcudia_ciutadella": {
@@ -164,13 +224,13 @@
     "name": "Alcudia -> Ciutadella",
     "origin": {
       "name": "Alcudia",
-      "longitude": 3.1350,
-      "latitude": 39.8420
+      "longitude": 3.135,
+      "latitude": 39.842
     },
     "destination": {
       "name": "Ciutadella",
-      "longitude": 3.8370,
-      "latitude": 40.0010
+      "longitude": 3.837,
+      "latitude": 40.001
     },
     "validation": {
       "truth_source": null,
@@ -190,9 +250,21 @@
     },
     "route_note": "Menorca Channel crossing; exposed conditions can restrict smaller vessels sooner than other routes.",
     "sample_points": [
-      {"name": "Alcudia Bay offshore", "longitude": 3.20, "latitude": 39.88},
-      {"name": "Mid Menorca Channel", "longitude": 3.48, "latitude": 39.96},
-      {"name": "Ciutadella approach", "longitude": 3.78, "latitude": 40.00}
+      {
+        "name": "Alcudia Bay offshore",
+        "longitude": 3.2,
+        "latitude": 39.88
+      },
+      {
+        "name": "Mid Menorca Channel",
+        "longitude": 3.48,
+        "latitude": 39.96
+      },
+      {
+        "name": "Ciutadella approach",
+        "longitude": 3.78,
+        "latitude": 40.0
+      }
     ]
   },
   "palma_ciutadella": {
@@ -205,8 +277,8 @@
     },
     "destination": {
       "name": "Ciutadella",
-      "longitude": 3.8350,
-      "latitude": 40.0000
+      "longitude": 3.835,
+      "latitude": 40.0
     },
     "validation": {
       "truth_source": "ciutadella",
@@ -222,9 +294,21 @@
     },
     "route_note": "Palma to Ciutadella crossing; keep an eye on the northwest edge of Mallorca and the Menorca Channel approach.",
     "sample_points": [
-      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
-      {"name": "Mid Palma-Menorca", "longitude": 3.10, "latitude": 39.80},
-      {"name": "Ciutadella approach", "longitude": 3.78, "latitude": 40.00}
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Menorca",
+        "longitude": 3.1,
+        "latitude": 39.8
+      },
+      {
+        "name": "Ciutadella approach",
+        "longitude": 3.78,
+        "latitude": 40.0
+      }
     ]
   },
   "palma_mahon": {
@@ -237,8 +321,8 @@
     },
     "destination": {
       "name": "Mahon",
-      "longitude": 4.2660,
-      "latitude": 39.8890
+      "longitude": 4.266,
+      "latitude": 39.889
     },
     "validation": {
       "truth_source": "mahon",
@@ -254,9 +338,725 @@
     },
     "route_note": "Longer Palma to Mahon crossing; east Menorca approach is more exposed and should be checked with a fresh forecast window.",
     "sample_points": [
-      {"name": "Palma Bay offshore", "longitude": 2.55, "latitude": 39.45},
-      {"name": "Mid Palma-Menorca", "longitude": 3.45, "latitude": 39.92},
-      {"name": "Mahon approach", "longitude": 4.10, "latitude": 39.90}
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Menorca",
+        "longitude": 3.45,
+        "latitude": 39.92
+      },
+      {
+        "name": "Mahon approach",
+        "longitude": 4.1,
+        "latitude": 39.9
+      }
+    ]
+  },
+  "ciutadella_palma": {
+    "id": "ciutadella_palma",
+    "name": "Palma -> Ciutadella",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Ciutadella",
+      "longitude": 3.835,
+      "latitude": 40.0
+    },
+    "validation": {
+      "truth_source": "ciutadella",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Menorca Channel arrival context using Ciutadella currents and coastal exposure"
+    },
+    "current_validation": {
+      "truth_source": "ciutadella",
+      "suitability": "Ciutadella current observations for Menorca Channel arrival context"
+    },
+    "route_note": "Palma to Ciutadella crossing; keep an eye on the northwest edge of Mallorca and the Menorca Channel approach.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Menorca",
+        "longitude": 3.1,
+        "latitude": 39.8
+      },
+      {
+        "name": "Ciutadella approach",
+        "longitude": 3.78,
+        "latitude": 40.0
+      }
+    ]
+  },
+  "mahon_palma": {
+    "id": "mahon_palma",
+    "name": "Palma -> Mahon",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Mahon",
+      "longitude": 4.266,
+      "latitude": 39.889
+    },
+    "validation": {
+      "truth_source": "mahon",
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Menorca east-coast arrival context using Mahon observations"
+    },
+    "current_validation": {
+      "truth_source": "mahon",
+      "suitability": "Mahon observation context for the eastern Menorca approach"
+    },
+    "route_note": "Longer Palma to Mahon crossing; east Menorca approach is more exposed and should be checked with a fresh forecast window.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Palma-Menorca",
+        "longitude": 3.45,
+        "latitude": 39.92
+      },
+      {
+        "name": "Mahon approach",
+        "longitude": 4.1,
+        "latitude": 39.9
+      }
+    ]
+  },
+  "formentera_palma": {
+    "id": "formentera_palma",
+    "name": "Palma -> Formentera",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Formentera",
+      "longitude": 1.49,
+      "latitude": 38.68
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "Long open-water passage through the Ibiza/Formentera channel system"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Long crossing from Mallorca to Formentera; exposed channel conditions can dominate the comfort read.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Balearic crossing",
+        "longitude": 2.0,
+        "latitude": 39.05
+      },
+      {
+        "name": "Formentera approach",
+        "longitude": 1.42,
+        "latitude": 38.74
+      }
+    ]
+  },
+  "cabrera_ibiza": {
+    "id": "cabrera_ibiza",
+    "name": "Ibiza -> Cabrera",
+    "origin": {
+      "name": "Ibiza",
+      "longitude": 1.435,
+      "latitude": 38.9089
+    },
+    "destination": {
+      "name": "Cabrera",
+      "longitude": 2.932,
+      "latitude": 39.151
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "Channel-to-south Mallorca crossing with exposed open-water segment"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Direct Ibiza to Cabrera crossing with open-water exposure and coastal shelter only near the endpoints.",
+    "sample_points": [
+      {
+        "name": "Ibiza south approach",
+        "longitude": 1.43,
+        "latitude": 38.9
+      },
+      {
+        "name": "Open-water mid-leg",
+        "longitude": 2.18,
+        "latitude": 39.02
+      },
+      {
+        "name": "Cabrera approach",
+        "longitude": 2.91,
+        "latitude": 39.16
+      }
+    ]
+  },
+  "andratx_ibiza": {
+    "id": "andratx_ibiza",
+    "name": "Ibiza -> Andratx",
+    "origin": {
+      "name": "Ibiza",
+      "longitude": 1.435,
+      "latitude": 38.9089
+    },
+    "destination": {
+      "name": "Port d'Andratx",
+      "longitude": 2.385,
+      "latitude": 39.544
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "Southwest Mallorca arrival leg from Ibiza"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Ibiza to southwest Mallorca crossing; keep an eye on the exposed western approach into Andratx.",
+    "sample_points": [
+      {
+        "name": "Ibiza west approach",
+        "longitude": 1.3,
+        "latitude": 38.92
+      },
+      {
+        "name": "Open-water mid-leg",
+        "longitude": 1.85,
+        "latitude": 39.22
+      },
+      {
+        "name": "Andratx approach",
+        "longitude": 2.34,
+        "latitude": 39.53
+      }
+    ]
+  },
+  "ibiza_soller": {
+    "id": "ibiza_soller",
+    "name": "Ibiza -> Soller",
+    "origin": {
+      "name": "Ibiza",
+      "longitude": 1.435,
+      "latitude": 38.9089
+    },
+    "destination": {
+      "name": "Soller",
+      "longitude": 2.74,
+      "latitude": 39.81
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Forecast-only coastal transit until a trusted local validation source is configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Ibiza to north Mallorca crossing; the route is exposed and should be read with a fresh forecast window.",
+    "sample_points": [
+      {
+        "name": "Ibiza north-west approach",
+        "longitude": 1.5,
+        "latitude": 38.98
+      },
+      {
+        "name": "Mid Balearic crossing",
+        "longitude": 2.05,
+        "latitude": 39.38
+      },
+      {
+        "name": "Soller approach",
+        "longitude": 2.72,
+        "latitude": 39.8
+      }
+    ]
+  },
+  "ibiza_san_antonio": {
+    "id": "ibiza_san_antonio",
+    "name": "Ibiza -> Sant Antoni de Portmany",
+    "origin": {
+      "name": "Ibiza",
+      "longitude": 1.435,
+      "latitude": 38.9089
+    },
+    "destination": {
+      "name": "Sant Antoni de Portmany",
+      "longitude": 1.303,
+      "latitude": 38.981
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "West Ibiza coastal leg with San Antonio bay context"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "Short west Ibiza coastal leg into San Antonio; still useful to read local swell and current.",
+    "sample_points": [
+      {
+        "name": "Ibiza west approach",
+        "longitude": 1.38,
+        "latitude": 38.93
+      },
+      {
+        "name": "West Ibiza mid-leg",
+        "longitude": 1.33,
+        "latitude": 38.96
+      },
+      {
+        "name": "Sant Antoni approach",
+        "longitude": 1.3,
+        "latitude": 38.98
+      }
+    ]
+  },
+  "andratx_san_antonio": {
+    "id": "andratx_san_antonio",
+    "name": "Sant Antoni de Portmany -> Port d'Andratx",
+    "origin": {
+      "name": "Sant Antoni de Portmany",
+      "longitude": 1.303,
+      "latitude": 38.981
+    },
+    "destination": {
+      "name": "Port d'Andratx",
+      "longitude": 2.385,
+      "latitude": 39.544
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "West Ibiza to southwest Mallorca crossing"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific SOCIB current observation configured"
+    },
+    "route_note": "West Ibiza to Andratx crossing; exposed open water and the Mallorca southwest approach both matter.",
+    "sample_points": [
+      {
+        "name": "Sant Antoni departure",
+        "longitude": 1.3,
+        "latitude": 38.98
+      },
+      {
+        "name": "Open-water mid-leg",
+        "longitude": 1.82,
+        "latitude": 39.24
+      },
+      {
+        "name": "Andratx approach",
+        "longitude": 2.36,
+        "latitude": 39.53
+      }
+    ]
+  },
+  "addaia_mahon": {
+    "id": "addaia_mahon",
+    "name": "Mahon -> Port d'Addaia",
+    "origin": {
+      "name": "Mahon",
+      "longitude": 4.266,
+      "latitude": 39.889
+    },
+    "destination": {
+      "name": "Port d'Addaia",
+      "longitude": 4.201,
+      "latitude": 39.991
+    },
+    "validation": {
+      "truth_source": "mahon",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Menorca east coast nearshore connection from Mahon"
+    },
+    "current_validation": {
+      "truth_source": "mahon",
+      "suitability": "Mahon observation context for the north-east Menorca approach"
+    },
+    "route_note": "Mahon to Addaia coastal leg with east Menorca exposure and a sheltered end point near Addaia.",
+    "sample_points": [
+      {
+        "name": "Mahon harbour approach",
+        "longitude": 4.26,
+        "latitude": 39.89
+      },
+      {
+        "name": "East Menorca coast",
+        "longitude": 4.23,
+        "latitude": 39.95
+      },
+      {
+        "name": "Addaia approach",
+        "longitude": 4.2,
+        "latitude": 39.99
+      }
+    ]
+  },
+  "fornells_mahon": {
+    "id": "fornells_mahon",
+    "name": "Mahon -> Cala Fornells",
+    "origin": {
+      "name": "Mahon",
+      "longitude": 4.266,
+      "latitude": 39.889
+    },
+    "destination": {
+      "name": "Cala Fornells",
+      "longitude": 4.131,
+      "latitude": 39.937
+    },
+    "validation": {
+      "truth_source": "mahon",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Menorca north-east coastal leg between Mahon and Fornells"
+    },
+    "current_validation": {
+      "truth_source": "mahon",
+      "suitability": "Mahon observation context for the north-east Menorca corridor"
+    },
+    "route_note": "Mahon to Cala Fornells coastal transit; the north-east Menorca shoreline still deserves a fresh look.",
+    "sample_points": [
+      {
+        "name": "Mahon departure",
+        "longitude": 4.26,
+        "latitude": 39.89
+      },
+      {
+        "name": "North-east Menorca mid-leg",
+        "longitude": 4.19,
+        "latitude": 39.93
+      },
+      {
+        "name": "Fornells approach",
+        "longitude": 4.13,
+        "latitude": 39.94
+      }
+    ]
+  },
+  "addaia_fornells": {
+    "id": "addaia_fornells",
+    "name": "Port d'Addaia -> Cala Fornells",
+    "origin": {
+      "name": "Port d'Addaia",
+      "longitude": 4.201,
+      "latitude": 39.991
+    },
+    "destination": {
+      "name": "Cala Fornells",
+      "longitude": 4.131,
+      "latitude": 39.937
+    },
+    "validation": {
+      "truth_source": "mahon",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Short north-east Menorca coastal connection"
+    },
+    "current_validation": {
+      "truth_source": "mahon",
+      "suitability": "Mahon observation context for the north-east Menorca coastline"
+    },
+    "route_note": "Short Addaia to Fornells coastal connection; close-to-shore and dependent on local sea state.",
+    "sample_points": [
+      {
+        "name": "Addaia departure",
+        "longitude": 4.2,
+        "latitude": 39.99
+      },
+      {
+        "name": "North-east coast mid-leg",
+        "longitude": 4.16,
+        "latitude": 39.96
+      },
+      {
+        "name": "Fornells approach",
+        "longitude": 4.13,
+        "latitude": 39.94
+      }
+    ]
+  },
+  "ciutadella_fornells": {
+    "id": "ciutadella_fornells",
+    "name": "Ciutadella -> Cala Fornells",
+    "origin": {
+      "name": "Ciutadella",
+      "longitude": 3.835,
+      "latitude": 40.0
+    },
+    "destination": {
+      "name": "Cala Fornells",
+      "longitude": 4.131,
+      "latitude": 39.937
+    },
+    "validation": {
+      "truth_source": "ciutadella",
+      "socib_platform_id": 254,
+      "socib_instrument_id": 34,
+      "socib_variable_id": 90776,
+      "socib_direction_variable_id": 90763,
+      "suitability": "Menorca north coast cruising link from Ciutadella"
+    },
+    "current_validation": {
+      "truth_source": "ciutadella",
+      "suitability": "Ciutadella current observations for the north Menorca coast"
+    },
+    "route_note": "Ciutadella to Fornells coastal leg with the north coast open to local swell and short fetch.",
+    "sample_points": [
+      {
+        "name": "Ciutadella departure",
+        "longitude": 3.84,
+        "latitude": 40.0
+      },
+      {
+        "name": "North Menorca mid-leg",
+        "longitude": 4.0,
+        "latitude": 39.97
+      },
+      {
+        "name": "Fornells approach",
+        "longitude": 4.13,
+        "latitude": 39.94
+      }
+    ]
+  },
+  "alcudia_fornells": {
+    "id": "alcudia_fornells",
+    "name": "Alcudia -> Cala Fornells",
+    "origin": {
+      "name": "Alcudia",
+      "longitude": 3.14,
+      "latitude": 39.84
+    },
+    "destination": {
+      "name": "Cala Fornells",
+      "longitude": 4.131,
+      "latitude": 39.937
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Forecast-only Menorca transfer until a trusted validation source is chosen"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Alcudia to Fornells crossing; exposed enough to warrant a fresh forecast read on the day of sailing.",
+    "sample_points": [
+      {
+        "name": "Alcudia departure",
+        "longitude": 3.14,
+        "latitude": 39.84
+      },
+      {
+        "name": "Mid Menorca Channel",
+        "longitude": 3.63,
+        "latitude": 39.93
+      },
+      {
+        "name": "Fornells approach",
+        "longitude": 4.13,
+        "latitude": 39.94
+      }
+    ]
+  },
+  "barcelona_tarragona": {
+    "id": "barcelona_tarragona",
+    "name": "Barcelona -> Tarragona",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Tarragona",
+      "longitude": 1.25,
+      "latitude": 41.105
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Mainland coastal transit lane"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Barcelona to Tarragona mainland coastal transit with gradual exposure changes and busy coastal traffic.",
+    "sample_points": [
+      {
+        "name": "Barcelona departure",
+        "longitude": 2.17,
+        "latitude": 41.38
+      },
+      {
+        "name": "Mid Catalonia coast",
+        "longitude": 1.75,
+        "latitude": 41.24
+      },
+      {
+        "name": "Tarragona approach",
+        "longitude": 1.25,
+        "latitude": 41.1
+      }
+    ]
+  },
+  "tarragona_valencia": {
+    "id": "tarragona_valencia",
+    "name": "Tarragona -> Valencia",
+    "origin": {
+      "name": "Tarragona",
+      "longitude": 1.25,
+      "latitude": 41.105
+    },
+    "destination": {
+      "name": "Valencia",
+      "longitude": -0.3763,
+      "latitude": 39.4699
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Forecast-only mainland transit lane"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Tarragona to Valencia mainland coastal transit; useful for long planning windows and route comparison.",
+    "sample_points": [
+      {
+        "name": "Tarragona departure",
+        "longitude": 1.25,
+        "latitude": 41.1
+      },
+      {
+        "name": "Mid mainland transit",
+        "longitude": 0.45,
+        "latitude": 40.29
+      },
+      {
+        "name": "Valencia approach",
+        "longitude": -0.38,
+        "latitude": 39.47
+      }
+    ]
+  },
+  "barcelona_palamos": {
+    "id": "barcelona_palamos",
+    "name": "Barcelona -> Palamos",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Palamos",
+      "longitude": 3.125,
+      "latitude": 41.847
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "Forecast-only Catalan coast transit lane"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Barcelona to Palamos coastal transit with Catalan shoreline exposure and frequent local gradients.",
+    "sample_points": [
+      {
+        "name": "Barcelona departure",
+        "longitude": 2.17,
+        "latitude": 41.38
+      },
+      {
+        "name": "Mid Catalan coast",
+        "longitude": 2.7,
+        "latitude": 41.6
+      },
+      {
+        "name": "Palamos approach",
+        "longitude": 3.13,
+        "latitude": 41.85
+      }
     ]
   }
 }
