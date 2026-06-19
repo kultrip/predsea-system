@@ -359,9 +359,11 @@ def infer_network_from_record(record):
     network = str(record.get("network") or "").lower()
     if network:
         return network
-    if source_label in {"REDEXT", "REDCOS", "REDMAR", "HF_RADAR"}:
+    if source_label in {"REDEXT", "REDCOS", "REDMAR", "HF_RADAR", "EMODNET_PHYSICS"}:
         return source_label.lower()
     source_system = str(record.get("source_system") or record.get("provider") or "").lower()
+    if "emodnet" in source_system:
+        return "emodnet_physics"
     if "socib" in source_system:
         return "socib"
     return None
@@ -375,6 +377,8 @@ def infer_station_kind(record):
         return "buoy"
     if network == "hfradar":
         return "radar"
+    if network == "emodnet_physics":
+        return "platform"
     if network == "socib":
         return "platform"
     return record.get("station_kind")

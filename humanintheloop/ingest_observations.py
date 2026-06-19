@@ -1,17 +1,18 @@
 """Multi-source observation ingestion orchestrator.
 
-Builds the canonical ground-truth observation layer from Puertos del Estado
-and optional Portus observations. SOCIB is intentionally excluded from the
-active ETL path so observation ingestion remains Puertos-first and resilient.
+Builds the canonical ground-truth observation layer from Puertos del Estado,
+EMODnet Physics, and optional Portus observations. SOCIB is intentionally
+excluded from the active ETL path so observation ingestion remains resilient.
 """
 
 import os
 
+import fetch_emodnet
 import fetch_portus
 import validation_archive
 
 
-def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=False):
+def fetch_all_observations(include_puertos=True, include_emodnet=True, include_portus=False, dry_run=False):
     """Fetch observations from all configured sources.
 
     Returns a merged dict of observations and a lineage record
@@ -39,6 +40,22 @@ def fetch_all_observations(include_puertos=True, include_portus=False, dry_run=F
                 errors["puertos_del_estado"] = puertos_result["errors"]
         except Exception as error:
             errors["puertos_del_estado"] = str(error)
+
+    # EMODnet Physics observations
+    if include_emodnet and _emodnet_enabled():
+        try:
+            emodnet_result = fetch_emodnet.fetch_emodnet_bundle(dry_run=dry_run)
+            emodnet_obs = emodnet_result.get("observations", {})
+            for key, value in emodnet_obs.items():
+                prefixed_key = key if key.startswith("emodnet_") else f"emodnet_{key}"
+                all_observations[prefixed_key] = value
+            if emodnet_obs:
+                lineage_sources.append("emodnet_physics")
+            station_metadata_candidates.extend(emodnet_result.get("stations") or [])
+            if emodnet_result.get("errors"):
+                errors["emodnet_physics"] = emodnet_result["errors"]
+        except Exception as error:
+            errors["emodnet_physics"] = str(error)
 
     # Portus JSON observations and prediction/model metadata
     if include_portus and _portus_enabled():
@@ -90,6 +107,11 @@ def _portus_enabled():
     return os.environ.get("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "1") == "1"
 
 
+def _emodnet_enabled():
+    """Check if EMODnet Physics ingestion is enabled."""
+    return os.environ.get("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "1") == "1"
+
+
 def _build_ground_truth_lineage(observations, sources, errors):
     """Build a ground-truth validation lineage record."""
     if not observations:
@@ -100,13 +122,33 @@ def _build_ground_truth_lineage(observations, sources, errors):
         }
 
     # Determine primary source based on availability
+    emodnet_present = "emodnet_physics" in sources
     portus_present = "puertos_portus" in sources
     puertos_present = "puertos_del_estado" in sources
-    if puertos_present and portus_present:
+    present_sources = []
+    if puertos_present:
+        present_sources.append("puertos_del_estado")
+    if emodnet_present:
+        present_sources.append("emodnet_physics")
+    if portus_present:
+        present_sources.append("puertos_portus")
+    if puertos_present and emodnet_present and portus_present:
+        source = "puertos_del_estado_and_emodnet_physics_and_puertos_portus"
+        status = "matched_successfully"
+    elif puertos_present and emodnet_present:
+        source = "puertos_del_estado_and_emodnet_physics"
+        status = "matched_successfully"
+    elif puertos_present and portus_present:
         source = "puertos_del_estado_and_puertos_portus"
         status = "matched_successfully"
     elif puertos_present:
         source = "puertos_del_estado"
+        status = "matched_successfully"
+    elif emodnet_present and portus_present:
+        source = "emodnet_physics_and_puertos_portus"
+        status = "matched_successfully"
+    elif emodnet_present:
+        source = "emodnet_physics"
         status = "matched_successfully"
     elif portus_present:
         source = "puertos_portus"
@@ -118,6 +160,6 @@ def _build_ground_truth_lineage(observations, sources, errors):
     return {
         "source": source,
         "status": status,
-        "providers": sources,
+        "providers": present_sources or sources,
         "station_count": len(observations),
     }

@@ -8,6 +8,7 @@ import ingest_observations
 
 def test_fetch_all_observations_returns_puertos_first_bundle(monkeypatch):
     monkeypatch.delenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", raising=False)
+    monkeypatch.delenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", raising=False)
     monkeypatch.delenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", raising=False)
 
     puertos_result = {
@@ -31,6 +32,11 @@ def test_fetch_all_observations_returns_puertos_first_bundle(monkeypatch):
         ingest_observations.fetch_portus,
         "fetch_portus_bundle",
         lambda dry_run=False: portus_result,
+    )
+    monkeypatch.setattr(
+        ingest_observations.fetch_emodnet,
+        "fetch_emodnet_bundle",
+        lambda dry_run=False: {"observations": {}, "stations": [], "errors": {}},
     )
 
     result = ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
@@ -59,6 +65,71 @@ def test_puertos_can_be_disabled_explicitly(monkeypatch):
 def test_portus_enabled_by_default(monkeypatch):
     monkeypatch.delenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", raising=False)
     assert ingest_observations._portus_enabled()
+
+
+def test_emodnet_enabled_by_default(monkeypatch):
+    monkeypatch.delenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", raising=False)
+    assert ingest_observations._emodnet_enabled()
+
+
+def test_fetch_all_observations_merges_emodnet_bundle(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "1")
+    monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "0")
+
+    emodnet_result = {
+        "observations": {
+            "emodnet_bilbao": {
+                "provider": "emodnet_physics",
+                "source_system": "emodnet_physics",
+                "source_label": "EMODNET_PHYSICS",
+                "station_id": "emodnet_bilbao",
+                "station_name": "Bilbao",
+                "network": "emodnet_physics",
+                "station_kind": "platform",
+                "latitude": 43.4,
+                "longitude": -3.0,
+                "measurements": [
+                    {
+                        "raw_key": "wave_height_m",
+                        "source_field": "VTDH",
+                        "variable": "wave_height",
+                        "value": 1.2,
+                        "units": "m",
+                        "observed_at_utc": "2026-06-18T12:00:00Z",
+                        "sample_time_utc": "2026-06-18T12:00:00Z",
+                        "source_time_coordinate_utc": "2026-06-18T12:00:00Z",
+                    }
+                ],
+            }
+        },
+        "stations": [{"station_id": "emodnet_bilbao", "station_name": "Bilbao"}],
+        "errors": {},
+    }
+
+    monkeypatch.setattr(
+        ingest_observations.fetch_emodnet,
+        "fetch_emodnet_bundle",
+        lambda dry_run=False: emodnet_result,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "fetch_puertos_estado",
+        types.SimpleNamespace(
+            fetch_balearic_observations=lambda dry_run=False: {
+                "observations": {},
+                "measurements": {},
+                "errors": {},
+                "catalog_stations": [],
+            }
+        ),
+    )
+
+    result = ingest_observations.fetch_all_observations(include_puertos=True, include_emodnet=True, include_portus=False)
+    assert "emodnet_bilbao" in result["observations"]
+    assert result["ground_truth_lineage"]["source"] == "emodnet_physics"
+    assert result["ground_truth_lineage"]["status"] == "matched_successfully"
+    assert result["station_metadata"][0]["station_id"] == "emodnet_bilbao"
 
 
 def test_ground_truth_lineage_with_both_sources():
