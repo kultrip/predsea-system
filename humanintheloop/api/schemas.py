@@ -189,6 +189,7 @@ class PlaceSummary(BaseModel):
     children: List[str] = Field(default_factory=list)
     aliases: List[str] = Field(default_factory=list)
     observation_candidates: List[str] = Field(default_factory=list)
+    observation_sources: List[str] = Field(default_factory=list)
 
 
 class PlacesResponse(BaseModel):

@@ -262,6 +262,7 @@ def write_place_weather(root, date_text="2026-05-31", run_id="2026-05-31T1230Z",
         "observation": {
             "station_id": "canal_de_ibiza",
             "station_name": "Buoy Canal de Ibiza",
+            "source_label": "REDEXT",
             "observed_at_utc": "2026-05-31 07:30 UTC",
             "wave_height_m": 0.4,
         },
@@ -316,6 +317,7 @@ def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
 
 
 def test_places_endpoint_lists_canonical_places(tmp_path):
+    write_place_weather(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.get("/places")
@@ -328,6 +330,8 @@ def test_places_endpoint_lists_canonical_places(tmp_path):
     palma = next(place for place in payload["places"] if place["place_id"] == "palma")
     assert palma["place_name"] == "Palma"
     assert "port_de_palma" in palma["children"]
+    ibiza = next(place for place in payload["places"] if place["place_id"] == "ibiza")
+    assert ibiza["observation_sources"] == ["REDEXT"]
 
 
 def test_local_store_uses_latest_run_folder_when_available(tmp_path):

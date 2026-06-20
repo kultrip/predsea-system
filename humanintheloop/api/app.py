@@ -131,6 +131,27 @@ def load_place_weather_response(
     return response
 
 
+def place_observation_sources(store, place_id):
+    try:
+        latest_date = store.latest_date()
+        latest_run = store.latest_run(latest_date)
+        payload = store.load_place_weather(place_id, latest_date, latest_run)
+    except Exception:
+        return []
+    sources = []
+    observation = payload.get("observation") if isinstance(payload, dict) else None
+    if isinstance(observation, dict):
+        for key in ("source_label", "network"):
+            value = observation.get(key)
+            if value and value not in sources:
+                sources.append(value)
+    for key in ("source_label", "network"):
+        value = payload.get(key) if isinstance(payload, dict) else None
+        if value and value not in sources:
+            sources.append(value)
+    return sources
+
+
 def parse_departure_datetime(run_date, departure_time):
     if not run_date:
         return None
@@ -646,6 +667,7 @@ def create_app(evidence_store=None, route_store=None):
                     "children": list(place.get("children") or ()),
                     "aliases": list(place.get("aliases") or ()),
                     "observation_candidates": list(place.get("observation_candidates") or ()),
+                    "observation_sources": place_observation_sources(store, place_id),
                 }
             )
         return {"places": summaries}
