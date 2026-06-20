@@ -236,11 +236,15 @@ def _single_model_variance(store, route_id, run_date, run_id, snapshot):
     current_metric = _snapshot_consistency_metric(snapshot)
     if current_metric is None:
         return None
-    previous_run_id = _previous_run_id(store, run_date, run_id)
-    if previous_run_id is None:
+    previous_ref = _previous_route_snapshot_ref(store, route_id, run_date, run_id)
+    if previous_ref is None:
         return None
     try:
-        previous_snapshot = store.load_snapshot(route_id, run_date, previous_run_id)
+        previous_snapshot = store.load_snapshot(
+            route_id,
+            previous_ref["run_date"],
+            previous_ref["run_id"],
+        )
     except Exception:
         return None
     previous_metric = _snapshot_consistency_metric(previous_snapshot)
@@ -250,18 +254,23 @@ def _single_model_variance(store, route_id, run_date, run_id, snapshot):
 
 
 def _single_model_detail(store, route_id, run_date, run_id, snapshot, variance_pct):
-    previous_run_id = _previous_run_id(store, run_date, run_id)
+    previous_ref = _previous_route_snapshot_ref(store, route_id, run_date, run_id)
     current_metric = _snapshot_consistency_metric(snapshot)
     previous_metric = None
-    if previous_run_id is not None:
+    if previous_ref is not None:
         try:
-            previous_snapshot = store.load_snapshot(route_id, run_date, previous_run_id)
+            previous_snapshot = store.load_snapshot(
+                route_id,
+                previous_ref["run_date"],
+                previous_ref["run_id"],
+            )
             previous_metric = _snapshot_consistency_metric(previous_snapshot)
         except Exception:
             previous_snapshot = None
     return {
         "current_run_id": run_id,
-        "previous_run_id": previous_run_id,
+        "previous_run_id": previous_ref["run_id"] if previous_ref else None,
+        "previous_run_date": previous_ref["run_date"] if previous_ref else None,
         "current_metric": current_metric,
         "previous_metric": previous_metric,
         "comparison_kind": "snapshot_scalar",
@@ -292,8 +301,14 @@ def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_sco
         else:
             reasons.append(f"Evidence is old at about {age_minutes} minutes.")
     if variance_score == "Low":
-        if comparison_detail.get("previous_run_id") is None and comparison_detail.get("comparison_kind") == "snapshot_scalar":
+        previous_run_id = comparison_detail.get("previous_run_id")
+        previous_run_date = comparison_detail.get("previous_run_date")
+        if previous_run_id is None and comparison_detail.get("comparison_kind") == "snapshot_scalar":
             reasons.append("Previous route snapshot is missing, so the run-over-run comparison is conservative.")
+        elif previous_run_id is not None:
+            reasons.append(
+                f"Compared against the previous forecast snapshot from {previous_run_date} {previous_run_id}."
+            )
         elif variance_pct is None:
             reasons.append("The route comparison signal is too weak to measure reliably.")
         else:
@@ -332,11 +347,40 @@ def _snapshot_consistency_metric(snapshot):
     return None
 
 
-def _previous_run_id(store, run_date, run_id):
+def _previous_route_snapshot_ref(store, route_id, run_date, run_id):
+    dates = _sorted_available_dates(store)
+    if not dates:
+        return None
+    if run_date not in dates:
+        dates = sorted(dates + [run_date])
+    current_index = dates.index(run_date)
+    current_run_ids = _run_ids_for_date(store, run_date)
+    current_prior = _prior_run_id(current_run_ids, run_id)
+    if current_prior is not None:
+        return {"run_date": run_date, "run_id": current_prior}
+    for previous_date in reversed(dates[:current_index]):
+        prior_run_ids = _run_ids_for_date(store, previous_date)
+        if prior_run_ids:
+            return {"run_date": previous_date, "run_id": prior_run_ids[-1]}
+    return None
+
+
+def _sorted_available_dates(store):
+    try:
+        dates = list(store.available_dates())
+    except Exception:
+        return []
+    return sorted(date for date in dates if isinstance(date, str))
+
+
+def _run_ids_for_date(store, run_date):
     runs_dir = _runs_dir_for(store, run_date)
     if runs_dir is None or not runs_dir.exists():
-        return None
-    run_ids = sorted(path.name for path in runs_dir.iterdir() if path.is_dir())
+        return []
+    return sorted(path.name for path in runs_dir.iterdir() if path.is_dir())
+
+
+def _prior_run_id(run_ids, run_id):
     if not run_ids:
         return None
     if run_id in run_ids:
