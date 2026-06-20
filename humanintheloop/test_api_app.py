@@ -1470,7 +1470,7 @@ def test_route_question_includes_reliability_block(tmp_path):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["reliability"]["evaluation_method"] == "multi_model_consensus"
+    assert payload["reliability"]["evaluation_method"] == "single_model_consistency"
     assert payload["reliability"]["confidence_score"] in {"High", "Medium", "Low"}
     assert isinstance(payload["reliability"]["age_minutes"], int)
 

@@ -25,11 +25,11 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
     evidence_timestamp = _oldest_timestamp([snapshot_timestamp, *_record_timestamps(current_records)])
     age_minutes = _age_minutes(evidence_timestamp)
 
-    method = _evaluation_method(current_records)
+    method = _evaluation_method(snapshot, current_records)
     if method == "multi_model_consensus":
         variance_pct = _multi_model_variance(snapshot, current_records)
     else:
-        variance_pct = _single_model_variance(store, run_date, run_id, origin_place_id, destination_place_id)
+        variance_pct = _single_model_variance(store, route_id, run_date, run_id, snapshot)
 
     freshness_score = _score_from_age(age_minutes)
     variance_score = _score_from_variance(variance_pct, method)
@@ -118,15 +118,27 @@ def _age_minutes(timestamp):
     return max(0, int(round(delta.total_seconds() / 60.0)))
 
 
-def _evaluation_method(records):
-    labels = {
-        _source_identity(record)
-        for record in records
-        if _source_identity(record)
-    }
-    if len(labels) >= 2 and len(_numeric_values(records)) >= 2:
+def _evaluation_method(snapshot, records):
+    forecast_sources = _forecast_sources(snapshot)
+    if len(forecast_sources) >= 2 and len(_numeric_values(records)) >= 2:
         return "multi_model_consensus"
     return "single_model_consistency"
+
+
+def _forecast_sources(snapshot):
+    if not isinstance(snapshot, dict):
+        return set()
+    forecast = snapshot.get("forecast") or {}
+    sources = forecast.get("forecast_sources") or snapshot.get("forecast_sources") or []
+    normalized = set()
+    for source in sources:
+        if isinstance(source, dict):
+            source_id = source.get("id") or source.get("label") or source.get("name")
+        else:
+            source_id = source
+        if source_id:
+            normalized.add(str(source_id).strip().lower())
+    return normalized
 
 
 def _source_identity(record):
@@ -199,24 +211,44 @@ def _multi_model_variance(snapshot, records):
     return _variance_pct(forecast_metric, baseline_metric)
 
 
-def _single_model_variance(store, run_date, run_id, origin_place_id, destination_place_id):
-    current_records = _current_place_weather_records(store, run_date, run_id, [origin_place_id, destination_place_id])
-    if not current_records:
-        return None
-    current_metric = _primary_metric(current_records[0])
+def _single_model_variance(store, route_id, run_date, run_id, snapshot):
+    current_metric = _snapshot_consistency_metric(snapshot)
     if current_metric is None:
         return None
     previous_run_id = _previous_run_id(store, run_date, run_id)
     if previous_run_id is None:
         return None
-    previous_place_ids = [current_records[0].get("place_id")]
-    previous_records = _current_place_weather_records(store, run_date, previous_run_id, previous_place_ids)
-    if not previous_records:
+    try:
+        previous_snapshot = store.load_snapshot(route_id, run_date, previous_run_id)
+    except Exception:
         return None
-    previous_metric = _primary_metric(previous_records[0])
+    previous_metric = _snapshot_consistency_metric(previous_snapshot)
     if previous_metric is None:
         return None
     return _variance_pct(current_metric, previous_metric)
+
+
+def _snapshot_consistency_metric(snapshot):
+    if not isinstance(snapshot, dict):
+        return None
+    forecast = snapshot.get("forecast") or {}
+    passage = forecast.get("passage_evidence") or {}
+    worst = passage.get("worst_segment") or {}
+    for key in ("wave_m", "current_kn"):
+        value = worst.get(key)
+        if isinstance(value, (int, float)):
+            return float(value)
+    for key in ("wave_max_m", "current_max_kn", "wave_min_m"):
+        value = forecast.get(key)
+        if isinstance(value, (int, float)):
+            return float(value)
+    observations = snapshot.get("observations") or {}
+    for record in observations.values():
+        if isinstance(record, dict):
+            value = _primary_metric(record)
+            if value is not None:
+                return value
+    return None
 
 
 def _previous_run_id(store, run_date, run_id):
