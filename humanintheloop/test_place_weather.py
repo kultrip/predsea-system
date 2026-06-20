@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from place_registry import default_place_id_for_query, place_pair_metrics, station_candidates_for_place
 from place_weather import (
     available_place_ids,
@@ -79,6 +81,34 @@ def test_build_place_weather_record_uses_place_weather_fields():
     assert record["freshness_state"] == "LIVE"
     assert record["observation"]["station_name"] == "Buoy Canal de Ibiza"
     assert record["hourly"][0]["time"] == "08:00"
+
+
+def test_build_place_weather_record_converts_wind_speed_mps_to_knots():
+    forecast = {
+        "wave_min_m": 0.2,
+        "wave_max_m": 0.4,
+        "wave_peak_time": "08:00",
+        "wave_peak_direction_deg": 40.0,
+        "current_max_kn": 0.1,
+        "hourly": [],
+    }
+    observation = {
+        "station_id": "alcudia",
+        "station_name": "Alcudia",
+        "observed_at_utc": "2026-06-12 07:30 UTC",
+        "wind_speed_mps": 5.0,
+        "wind_direction_deg": 110.0,
+    }
+    record = build_place_weather_record(
+        "alcudia",
+        forecast,
+        observation=observation,
+        generated_at_utc="2026-06-12 08:00 UTC",
+        run_date="2026-06-12",
+        run_id="2026-06-12T0750Z",
+    )
+    assert record["wind_direction_deg"] == 110.0
+    assert record["wind_kn"] == pytest.approx(5.0 * 1.94384)
 
 
 def test_available_place_ids_include_new_locations():

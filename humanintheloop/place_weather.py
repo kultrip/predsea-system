@@ -24,6 +24,7 @@ except Exception:  # pragma: no cover - import-time fallback
 
 
 LOCAL_TIMEZONE = "Europe/Madrid"
+MPS_TO_KNOTS = 1.94384
 
 
 def available_place_ids():
@@ -452,6 +453,19 @@ def normalize_observation(record, station_id=None, generated_at_utc=None):
         normalized["station_id"] = station_id
     if "station_name" not in normalized and normalized.get("name"):
         normalized["station_name"] = normalized.get("name")
+    if normalized.get("wind_kn") is None:
+        wind_speed = normalized.get("wind_speed_kn")
+        if wind_speed is None:
+            wind_speed = normalized.get("wind_speed")
+        if wind_speed is None:
+            wind_speed = normalized.get("wind_speed_mps")
+            if wind_speed is not None:
+                try:
+                    wind_speed = float(wind_speed) * MPS_TO_KNOTS
+                except (TypeError, ValueError):
+                    wind_speed = None
+        if wind_speed is not None:
+            normalized["wind_kn"] = wind_speed
     if generated_at_utc is not None:
         generated_at = parse_utc_timestamp(generated_at_utc)
         observed_at = parse_utc_timestamp(normalized.get("last_sample_utc") or normalized.get("observed_at_utc"))
