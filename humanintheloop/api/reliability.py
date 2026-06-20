@@ -28,17 +28,38 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
     method = _evaluation_method(snapshot, current_records)
     if method == "multi_model_consensus":
         variance_pct = _multi_model_variance(snapshot, current_records)
+        comparison = "multi_model_consensus"
+        comparison_detail = _multi_model_detail(snapshot, current_records, variance_pct)
     else:
         variance_pct = _single_model_variance(store, route_id, run_date, run_id, snapshot)
+        comparison = "current_vs_previous_route_snapshot"
+        comparison_detail = _single_model_detail(
+            store,
+            route_id,
+            run_date,
+            run_id,
+            snapshot,
+            variance_pct,
+        )
 
     freshness_score = _score_from_age(age_minutes)
     variance_score = _score_from_variance(variance_pct, method)
     confidence_score = _lower_score(freshness_score, variance_score)
+    reason = _reliability_reason(age_minutes, freshness_score, variance_pct, variance_score, comparison_detail)
 
     return {
         "confidence_score": confidence_score,
         "evaluation_method": method,
         "age_minutes": age_minutes,
+        "reason": reason,
+        "details": {
+            "comparison": comparison,
+            "freshness_score": freshness_score,
+            "variance_score": variance_score,
+            "variance_pct": variance_pct,
+            "freshness_age_minutes": age_minutes,
+            **comparison_detail,
+        },
     }
 
 
@@ -226,6 +247,66 @@ def _single_model_variance(store, route_id, run_date, run_id, snapshot):
     if previous_metric is None:
         return None
     return _variance_pct(current_metric, previous_metric)
+
+
+def _single_model_detail(store, route_id, run_date, run_id, snapshot, variance_pct):
+    previous_run_id = _previous_run_id(store, run_date, run_id)
+    current_metric = _snapshot_consistency_metric(snapshot)
+    previous_metric = None
+    if previous_run_id is not None:
+        try:
+            previous_snapshot = store.load_snapshot(route_id, run_date, previous_run_id)
+            previous_metric = _snapshot_consistency_metric(previous_snapshot)
+        except Exception:
+            previous_snapshot = None
+    return {
+        "current_run_id": run_id,
+        "previous_run_id": previous_run_id,
+        "current_metric": current_metric,
+        "previous_metric": previous_metric,
+        "comparison_kind": "snapshot_scalar",
+        "threshold_pct": 10 if _score_from_variance(variance_pct, "single_model_consistency") == "High" else 25,
+    }
+
+
+def _multi_model_detail(snapshot, records, variance_pct):
+    values = _numeric_values(records)
+    current_metric = _route_forecast_metric(snapshot)
+    baseline_metric = None
+    if len(values) >= 2:
+        baseline_metric = sum(value for _, value in values) / float(len(values))
+    return {
+        "current_metric": current_metric,
+        "baseline_metric": baseline_metric,
+        "comparison_kind": "forecast_sources",
+        "source_count": len(_forecast_sources(snapshot)),
+        "threshold_pct": 15 if _score_from_variance(variance_pct, "multi_model_consensus") == "High" else 30,
+    }
+
+
+def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_score, comparison_detail):
+    reasons = []
+    if freshness_score == "Low":
+        if age_minutes is None or age_minutes >= 999:
+            reasons.append("Evidence timestamp is unavailable, so confidence stays conservative.")
+        else:
+            reasons.append(f"Evidence is old at about {age_minutes} minutes.")
+    if variance_score == "Low":
+        if comparison_detail.get("previous_run_id") is None and comparison_detail.get("comparison_kind") == "snapshot_scalar":
+            reasons.append("Previous route snapshot is missing, so the run-over-run comparison is conservative.")
+        elif variance_pct is None:
+            reasons.append("The route comparison signal is too weak to measure reliably.")
+        else:
+            threshold = comparison_detail.get("threshold_pct")
+            reasons.append(
+                f"The route comparison changed by about {variance_pct:.1f}% which is above the safe threshold of {threshold}%."
+            )
+    if not reasons:
+        if variance_score == "Medium" or freshness_score == "Medium":
+            reasons.append("The route looks usable, but one of the checks is only moderate.")
+        else:
+            reasons.append("Freshness and run-over-run consistency both look acceptable.")
+    return " ".join(reasons)
 
 
 def _snapshot_consistency_metric(snapshot):
