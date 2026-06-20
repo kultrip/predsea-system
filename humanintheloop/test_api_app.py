@@ -1577,6 +1577,71 @@ def test_route_question_uses_previous_day_snapshot_when_same_day_previous_run_mi
     assert "Compared against the previous forecast snapshot" in reliability["reason"]
 
 
+def test_route_question_penalizes_missing_route_source(tmp_path):
+    current_date = "2026-06-20"
+    previous_date = "2026-06-19"
+    current_run_id = "2026-06-20T0630Z"
+    previous_run_id = "2026-06-19T2030Z"
+
+    current_snapshot = write_snapshot(
+        tmp_path,
+        date_text=current_date,
+        route_id="palma_ibiza",
+        run_id=current_run_id,
+    )
+    previous_snapshot = write_snapshot(
+        tmp_path,
+        date_text=previous_date,
+        route_id="palma_ibiza",
+        run_id=previous_run_id,
+    )
+    current_snapshot["created_at_utc"] = utc_text(10)
+    previous_snapshot["created_at_utc"] = utc_text(25)
+    current_dir = Path(tmp_path) / current_date / "runs" / current_run_id / "palma_ibiza"
+    previous_dir = Path(tmp_path) / previous_date / "runs" / previous_run_id / "palma_ibiza"
+    (current_dir / "daily_snapshot.json").write_text(json.dumps(current_snapshot), encoding="utf-8")
+    (previous_dir / "daily_snapshot.json").write_text(json.dumps(previous_snapshot), encoding="utf-8")
+
+    write_place_weather(
+        tmp_path,
+        current_date,
+        current_run_id,
+        "palma",
+        source_label="REDMAR",
+        wave_height_m=0.8,
+        observed_at_utc=utc_text(30),
+    )
+
+    (Path(tmp_path) / current_date / "latest_run.json").write_text(
+        json.dumps({"run_id": current_run_id, "path": f"runs/{current_run_id}"}),
+        encoding="utf-8",
+    )
+    (Path(tmp_path) / previous_date / "latest_run.json").write_text(
+        json.dumps({"run_id": previous_run_id, "path": f"runs/{previous_run_id}"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": current_date,
+            "run": "latest",
+            "question": "Is it good to go from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "current_date": current_date,
+            "current_time": "09:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    reliability = payload["reliability"]
+    assert reliability["confidence_score"] == "Medium"
+    assert reliability["details"]["offline_sources"] == ["ibiza"]
+    assert "offline" in reliability["reason"].lower()
+
+
 def test_route_question_uses_graph_fallback_for_uncatalogued_pair(tmp_path, monkeypatch):
     dummy_resolver = DummyDistanceResolver()
     monkeypatch.setattr(place_registry, "PLACE_DISTANCE_RESOLVER", dummy_resolver)

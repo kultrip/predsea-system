@@ -15,7 +15,7 @@ CONFIDENCE_ORDER = {"Low": 0, "Medium": 1, "High": 2}
 def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
     route = _safe_load_route(route_id)
     origin_place_id, destination_place_id = _route_place_ids(route)
-    current_records = _current_place_weather_records(
+    current_records, offline_sources = _current_place_weather_records(
         store,
         run_date=run_date,
         run_id=run_id,
@@ -45,7 +45,15 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
     freshness_score = _score_from_age(age_minutes)
     variance_score = _score_from_variance(variance_pct, method)
     confidence_score = _lower_score(freshness_score, variance_score)
-    reason = _reliability_reason(age_minutes, freshness_score, variance_pct, variance_score, comparison_detail)
+    confidence_score = _apply_offline_penalty(confidence_score, offline_sources)
+    reason = _reliability_reason(
+        age_minutes,
+        freshness_score,
+        variance_pct,
+        variance_score,
+        comparison_detail,
+        offline_sources,
+    )
 
     return {
         "confidence_score": confidence_score,
@@ -58,6 +66,8 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
             "variance_score": variance_score,
             "variance_pct": variance_pct,
             "freshness_age_minutes": age_minutes,
+            "offline_sources": offline_sources,
+            "offline_source_count": len(offline_sources),
             **comparison_detail,
         },
     }
@@ -84,18 +94,22 @@ def _route_place_ids(route):
 
 def _current_place_weather_records(store, run_date, run_id, place_ids):
     records = []
+    offline_sources = []
     for place_id in place_ids:
         if not place_id:
             continue
         try:
             payload = store.load_place_weather(place_id, run_date, run_id)
         except Exception:
+            offline_sources.append(place_id)
             continue
         if isinstance(payload, dict):
             payload = dict(payload)
             payload["place_id"] = payload.get("place_id") or place_id
             records.append(payload)
-    return records
+        else:
+            offline_sources.append(place_id)
+    return records, sorted(set(offline_sources))
 
 
 def _timestamp_from_snapshot(snapshot):
@@ -293,18 +307,27 @@ def _multi_model_detail(snapshot, records, variance_pct):
     }
 
 
-def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_score, comparison_detail):
+def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_score, comparison_detail, offline_sources=None):
     reasons = []
+    offline_sources = offline_sources or []
     if freshness_score == "Low":
         if age_minutes is None or age_minutes >= 999:
             reasons.append("Evidence timestamp is unavailable, so confidence stays conservative.")
         else:
             reasons.append(f"Evidence is old at about {age_minutes} minutes.")
+    if offline_sources:
+        names = ", ".join(offline_sources)
+        reasons.append(f"One or more route sources were offline or unavailable: {names}.")
     if variance_score == "Low":
         previous_run_id = comparison_detail.get("previous_run_id")
         previous_run_date = comparison_detail.get("previous_run_date")
         if previous_run_id is None and comparison_detail.get("comparison_kind") == "snapshot_scalar":
-            reasons.append("Previous route snapshot is missing, so the run-over-run comparison is conservative.")
+            if previous_run_date:
+                reasons.append(
+                    f"Compared against the previous forecast snapshot from {previous_run_date} {previous_run_id}."
+                )
+            else:
+                reasons.append("Previous route snapshot is missing, so the run-over-run comparison is conservative.")
         elif previous_run_id is not None:
             reasons.append(
                 f"Compared against the previous forecast snapshot from {previous_run_date} {previous_run_id}."
@@ -322,6 +345,16 @@ def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_sco
         else:
             reasons.append("Freshness and run-over-run consistency both look acceptable.")
     return " ".join(reasons)
+
+
+def _apply_offline_penalty(confidence_score, offline_sources):
+    if not offline_sources or confidence_score == "Low":
+        return confidence_score
+    if confidence_score == "High":
+        return "Medium"
+    if confidence_score == "Medium":
+        return "Low"
+    return confidence_score
 
 
 def _snapshot_consistency_metric(snapshot):
