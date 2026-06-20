@@ -22,6 +22,7 @@ from api.schemas import (
     QuestionResponse,
     RouteWaypointsResponse,
 )
+from api.reliability import compute_route_reliability
 from api.services import answer_question, evidence_used, render_briefing
 import place_registry
 from place_registry import default_place_id_for_query
@@ -1331,6 +1332,7 @@ def create_app(evidence_store=None, route_store=None):
             run_id = store.resolve_run(run_date, request.run)
             snapshot = store.load_snapshot(route_id, run_date, run_id)
             decision, adjusted, freshness = answer_question(snapshot, request)
+            reliability = compute_route_reliability(store, route_id, run_date, run_id, adjusted)
             answer_text = decision.get("answer", "")
             question_lower = (request.question or "").lower()
             forecast = adjusted.get("forecast") or {}
@@ -1361,6 +1363,7 @@ def create_app(evidence_store=None, route_store=None):
                 "freshness_warning": freshness["freshness_warning"],
                 "captain_knowledge": decision.get("captain_knowledge", []),
                 "operational_stance": decision.get("operational_stance", {}),
+                "reliability": reliability,
                 "evidence_used": evidence_used(adjusted, forecast_override=decision.get("forecast_context")),
             }
         except EvidenceNotFoundError as error:

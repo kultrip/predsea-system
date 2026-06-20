@@ -58,6 +58,7 @@ class QuestionResponse(BaseModel):
     freshness_warning: Optional[str] = None
     captain_knowledge: List[Dict[str, Any]] = Field(default_factory=list)
     operational_stance: Dict[str, Any] = Field(default_factory=dict)
+    reliability: Dict[str, Any] = Field(default_factory=dict)
     evidence_used: Dict[str, Any]
 
     @model_validator(mode="after")

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -79,8 +80,11 @@ class DummyDistanceResolver:
         }
 
 
-def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
-    route_dir = Path(root) / date_text / route_id
+def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza", run_id=None):
+    if run_id:
+        route_dir = Path(root) / date_text / "runs" / run_id / route_id
+    else:
+        route_dir = Path(root) / date_text / route_id
     route_dir.mkdir(parents=True)
     snapshot = {
         "route": "Palma -> Ibiza",
@@ -116,6 +120,40 @@ def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza"):
     }
     (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
     return snapshot
+
+
+def utc_text(minutes_ago=0):
+    return (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def write_place_weather(root, date_text, run_id, place_id, *, source_label, wave_height_m, observed_at_utc, network=None):
+    place_dir = Path(root) / date_text / "runs" / run_id / "places" / place_id
+    place_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "place_id": place_id,
+        "place_name": place_id.replace("_", " ").title(),
+        "source_label": source_label,
+        "network": network or source_label,
+        "observed_at_utc": observed_at_utc,
+        "source_time_coordinate_utc": observed_at_utc,
+        "freshness_status": "fresh",
+        "freshness_state": "LIVE",
+        "freshness_warning": None,
+        "wave_height_m": wave_height_m,
+        "wind_kn": 12.0,
+        "wind_direction_deg": 90.0,
+        "current_kn": 0.4,
+        "hourly": [
+            {
+                "time": "08:00",
+                "time_utc": observed_at_utc,
+                "wave_m": wave_height_m,
+                "current_kn": 0.4,
+            }
+        ],
+    }
+    (place_dir / "weather.json").write_text(json.dumps(payload), encoding="utf-8")
+    return payload
 
 
 def write_run_snapshot(
@@ -226,7 +264,16 @@ def write_regional_evidence(root, date_text="2026-05-31", run_id="2026-05-31T123
     return regional
 
 
-def write_place_weather(root, date_text="2026-05-31", run_id="2026-05-31T1230Z", place_id="ibiza"):
+def write_place_weather(
+    root,
+    date_text="2026-05-31",
+    run_id="2026-05-31T1230Z",
+    place_id="ibiza",
+    source_label="REDEXT",
+    wave_height_m=0.8,
+    observed_at_utc="2026-05-31 08:00 UTC",
+    network=None,
+):
     place_dir = Path(root) / date_text / "runs" / run_id / "places" / place_id
     place_dir.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -235,9 +282,9 @@ def write_place_weather(root, date_text="2026-05-31", run_id="2026-05-31T1230Z",
         "date": date_text,
         "run": run_id,
         "timezone": "Europe/Madrid",
-        "time_utc": "2026-05-31 08:00 UTC",
+        "time_utc": observed_at_utc,
         "time_local": "2026-05-31 10:00 LT",
-        "wave_height_m": 0.8,
+        "wave_height_m": wave_height_m,
         "wave_direction_deg": 72.0,
         "swell_1_height_m": 0.5,
         "swell_1_direction_deg": 68.0,
@@ -247,13 +294,15 @@ def write_place_weather(root, date_text="2026-05-31", run_id="2026-05-31T1230Z",
         "current_direction_deg": 90.0,
         "source": "copernicus_med",
         "source_system": "place_weather",
+        "source_label": source_label,
+        "network": network or source_label,
         "freshness_status": "fresh",
         "freshness_warning": None,
         "hourly": [
             {
                 "time": "10:00",
-                "time_utc": "2026-05-31 08:00 UTC",
-                "wave_m": 0.8,
+                "time_utc": observed_at_utc,
+                "wave_m": wave_height_m,
                 "wave_direction_deg": 72.0,
                 "wave_sea_state": "beam sea",
                 "current_kn": 0.4,
@@ -262,9 +311,9 @@ def write_place_weather(root, date_text="2026-05-31", run_id="2026-05-31T1230Z",
         "observation": {
             "station_id": "canal_de_ibiza",
             "station_name": "Buoy Canal de Ibiza",
-            "source_label": "REDEXT",
-            "observed_at_utc": "2026-05-31 07:30 UTC",
-            "wave_height_m": 0.4,
+            "source_label": source_label,
+            "observed_at_utc": observed_at_utc,
+            "wave_height_m": wave_height_m,
         },
     }
     (place_dir / "weather.json").write_text(json.dumps(payload), encoding="utf-8")
@@ -1377,6 +1426,101 @@ def test_route_question_includes_route_connection_metrics(tmp_path):
     assert "PASSAGE:" in payload["answer"]
     assert payload["evidence_used"]["route_connection"]["distance_nm"] == 100.0
     assert payload["evidence_used"]["route_connection"]["typical_travel_time_minutes"] > 0
+
+
+def test_route_question_includes_reliability_block(tmp_path):
+    run_date = "2026-06-20"
+    run_id = "2026-06-20T0630Z"
+    write_snapshot(tmp_path, date_text=run_date, route_id="palma_ibiza", run_id=run_id)
+    write_place_weather(
+        tmp_path,
+        run_date,
+        run_id,
+        "palma",
+        source_label="REDEXT",
+        wave_height_m=0.5,
+        observed_at_utc=utc_text(20),
+    )
+    write_place_weather(
+        tmp_path,
+        run_date,
+        run_id,
+        "ibiza",
+        source_label="REDCOS",
+        wave_height_m=0.55,
+        observed_at_utc=utc_text(25),
+    )
+    (Path(tmp_path) / run_date / "latest_run.json").write_text(
+        json.dumps({"run_id": run_id, "path": f"runs/{run_id}"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": run_date,
+            "run": "latest",
+            "question": "Is it good to go from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "current_date": run_date,
+            "current_time": "09:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["reliability"]["evaluation_method"] == "multi_model_consensus"
+    assert payload["reliability"]["confidence_score"] in {"High", "Medium", "Low"}
+    assert isinstance(payload["reliability"]["age_minutes"], int)
+
+
+def test_route_question_uses_single_model_consistency_when_only_one_place_source(tmp_path):
+    run_date = "2026-06-20"
+    current_run_id = "2026-06-20T0630Z"
+    previous_run_id = "2026-06-20T0530Z"
+    write_snapshot(tmp_path, date_text=run_date, route_id="palma_ibiza", run_id=current_run_id)
+    write_place_weather(
+        tmp_path,
+        run_date,
+        current_run_id,
+        "palma",
+        source_label="REDMAR",
+        wave_height_m=0.8,
+        observed_at_utc=utc_text(30),
+    )
+    write_place_weather(
+        tmp_path,
+        run_date,
+        previous_run_id,
+        "palma",
+        source_label="REDMAR",
+        wave_height_m=0.84,
+        observed_at_utc=utc_text(90),
+    )
+    (Path(tmp_path) / run_date / "latest_run.json").write_text(
+        json.dumps({"run_id": current_run_id, "path": f"runs/{current_run_id}"}),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": run_date,
+            "run": "latest",
+            "question": "Is it good to go from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "current_date": run_date,
+            "current_time": "09:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["reliability"]["evaluation_method"] == "single_model_consistency"
+    assert payload["reliability"]["confidence_score"] in {"High", "Medium", "Low"}
+    assert isinstance(payload["reliability"]["age_minutes"], int)
 
 
 def test_route_question_uses_graph_fallback_for_uncatalogued_pair(tmp_path, monkeypatch):
