@@ -172,17 +172,30 @@ class MapGeneratorTests(unittest.TestCase):
                 },
             }
 
+            called = {"route": False}
+            original_draw_route = map_generator.draw_route
+
+            def wrapped_draw_route(*args, **kwargs):
+                called["route"] = True
+                return original_draw_route(*args, **kwargs)
+
+            map_generator.draw_route = wrapped_draw_route
+
             output = root / "route_decision_map.png"
-            result = map_generator.generate_route_decision_map(
-                waves_path,
-                currents_path,
-                route,
-                snapshot,
-                output,
-            )
+            try:
+                result = map_generator.generate_route_decision_map(
+                    waves_path,
+                    currents_path,
+                    route,
+                    snapshot,
+                    output,
+                )
+            finally:
+                map_generator.draw_route = original_draw_route
 
             self.assertEqual(result, output)
             self.assertTrue(output.exists())
+            self.assertTrue(called["route"])
             with Image.open(output) as image:
                 self.assertEqual(image.size, (1440, 1800))
 

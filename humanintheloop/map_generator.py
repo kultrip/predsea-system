@@ -54,6 +54,15 @@ def generate_route_decision_map(waves_path, currents_path, route, snapshot, outp
         bounds = forecast_region_bounds(wave)
         draw_oceanographic_map_base(image, draw, wave, map_box, bounds)
         draw_current_arrows(draw, current_u, current_v, map_box, bounds)
+        route_wave_values = route_sample_wave_values(wave, route)
+        draw_route(draw, route, map_box, bounds, snapshot, route_values=route_wave_values)
+        draw_current_context(
+            draw,
+            route,
+            route_sample_current_values(current_u, current_v, route),
+            map_box,
+            bounds,
+        )
         draw_legend(draw, map_box, fonts)
         draw_decision_panel(draw, fonts, snapshot)
 
