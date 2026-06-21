@@ -10,7 +10,7 @@ on:
       end_date:
         description: "Exclusive end date (YYYY-MM-DD)"
         required: false
-        default: "2026-01-01"
+        default: "2027-01-01"
 
 permissions:
   contents: read
