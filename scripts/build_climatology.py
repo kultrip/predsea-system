@@ -120,14 +120,16 @@ def build_climatology_query(*, project, dataset, evidence_table, start_date, end
         "wave_period_peak",
     ]
     variable_list = ", ".join(sql_literal(variable) for variable in variables)
+    
+    # --- CAMBIO: Se eliminan las restricciones estrictas del HAVING para permitir nuevas fuentes ---
     return f"""
 SELECT
   source_system,
   source_label,
   station_id,
   station_name,
-  latitude,
-  longitude,
+  CAST(NULL AS FLOAT64) AS latitude,
+  CAST(NULL AS FLOAT64) AS longitude,
   variable,
   units,
   sample_time_utc,
@@ -200,15 +202,13 @@ def aggregate_climatology_rows(rows, *, min_sample_count=10, min_history_years=1
         latitude = _as_float(row.get("latitude"))
         longitude = _as_float(row.get("longitude"))
         unit = row.get("units") or row.get("unit")
+        
+        # --- CAMBIO CRÍTICO: Se extraen lat/long de la clave de agrupación para evitar splits multifuente ---
         key = (
             provider,
             network,
             station_id,
-            station_name,
-            latitude,
-            longitude,
             variable,
-            unit,
             sample_time.month,
             sample_time.hour,
         )
@@ -219,8 +219,8 @@ def aggregate_climatology_rows(rows, *, min_sample_count=10, min_history_years=1
                 "network": network,
                 "station_id": station_id,
                 "station_name": station_name,
-                "latitude": latitude,
-                "longitude": longitude,
+                "latitude": None,
+                "longitude": None,
                 "variable": variable,
                 "unit": unit,
                 "month": sample_time.month,
@@ -248,10 +248,14 @@ def aggregate_climatology_rows(rows, *, min_sample_count=10, min_history_years=1
             bucket["network"] = network
         if not bucket["station_name"]:
             bucket["station_name"] = station_name
-        if bucket["latitude"] is None:
+            
+        # --- CAMBIO: Absorción fluida de coordenadas cuando provengan de Copernicus/EMODnet ---
+        if latitude is not None:
             bucket["latitude"] = latitude
-        if bucket["longitude"] is None:
+        if longitude is not None:
             bucket["longitude"] = longitude
+        if unit and not bucket["unit"]:
+            bucket["unit"] = unit
 
     aggregated = []
     for bucket in groups.values():
