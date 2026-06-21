@@ -92,8 +92,8 @@ def build_climatology_query(*, project, dataset, evidence_table, start_date, end
     variable_list = ", ".join(sql_literal(variable) for variable in variables)
     return f"""
 SELECT
-  ANY_VALUE(provider) AS provider,
-  ANY_VALUE(network) AS network,
+  ANY_VALUE(source_system) AS provider,
+  ANY_VALUE(source_label) AS network,
   station_id,
   ANY_VALUE(station_name) AS station_name,
   ANY_VALUE(latitude) AS latitude,
