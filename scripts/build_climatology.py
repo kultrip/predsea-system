@@ -179,7 +179,8 @@ def process_and_deduplicate_rows(rows):
             continue
             
         value = _as_float(row.get("value"))
-        if value is None:
+        # --- FIX CRÍTICO: Si el valor numérico crudo es NaN o Inf, lo ignoramos para no romper el JSON ---
+        if value is None or math.isnan(value) or math.isinf(value):
             continue
             
         station_id = row.get("station_id")
@@ -194,14 +195,17 @@ def process_and_deduplicate_rows(rows):
         longitude = _as_float(row.get("longitude"))
         unit = row.get("unit") or row.get("units")
 
+        # Limpieza secundaria de coordenadas corruptas por si acaso
+        if latitude is not None and (math.isnan(latitude) or math.isinf(latitude)):
+            latitude = None
+        if longitude is not None and (math.isnan(longitude) or math.isinf(longitude)):
+            longitude = None
+
         time_str = format_timestamp(sample_time)
-        
-        # Clave única para evitar duplicar el mismo punto de medición exacta
         unique_key = (station_id, variable, time_str)
         
         existing = deduplicated.get(unique_key)
         if existing:
-            # Si el registro existente no tiene coordenadas y este sí, las añade
             if existing["latitude"] is None and latitude is not None:
                 existing["latitude"] = latitude
             if existing["longitude"] is None and longitude is not None:
@@ -225,7 +229,6 @@ def process_and_deduplicate_rows(rows):
         }
         
     return sorted(deduplicated.values(), key=lambda x: (x["station_id"], x["variable"], x["sample_time_utc"]))
-
 
 def bigquery_session():
     try:
