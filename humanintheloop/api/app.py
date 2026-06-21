@@ -705,7 +705,17 @@ def create_app(evidence_store=None, route_store=None):
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             snapshot = store.load_snapshot(route_id, run_date, run_id)
-            briefing, adjusted = render_briefing(snapshot, vessel_class, format)
+            reliability = compute_route_reliability(store, route_id, run_date, run_id, snapshot)
+            adjusted_snapshot = dict(snapshot)
+            adjusted_snapshot["recommendation"] = {
+                **(snapshot.get("recommendation") or {}),
+                "confidence": reliability.get("confidence_score", (snapshot.get("recommendation") or {}).get("confidence")),
+            }
+            if reliability.get("details", {}).get("source_summary"):
+                adjusted_snapshot["source_summary"] = reliability["details"]["source_summary"]
+                adjusted_snapshot.setdefault("data_lineage", {})
+                adjusted_snapshot["data_lineage"]["source_summary"] = reliability["details"]["source_summary"]
+            briefing, adjusted = render_briefing(adjusted_snapshot, vessel_class, format)
             return {
                 "route_id": route_id,
                 "route": adjusted.get("route", route_id),
