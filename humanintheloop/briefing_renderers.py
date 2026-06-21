@@ -1,3 +1,8 @@
+import re
+
+import source_lineage
+
+
 def _canal(snapshot):
     return snapshot.get("observations", {}).get("canal_de_ibiza", {})
 
@@ -16,6 +21,10 @@ def _confidence_label(value):
     return str(value).strip().capitalize()
 
 
+def _source_text(snapshot):
+    return source_lineage.summarize_sources(snapshot=snapshot).get("text")
+
+
 def _soften_clock_times(text, replacement="the relevant window"):
     if not text:
         return text
@@ -27,12 +36,17 @@ def render_linkedin(snapshot):
     forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
     briefing = snapshot.get("daily_briefing") or {}
-    return "\n".join(
+    source_text = _source_text(snapshot)
+    lines = [
+        f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
+        "",
+        f"Current: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
+        f"Trend: {briefing.get('wave_trend', 'steady')} seas, with swell direction {briefing.get('swell_direction', 'N/A')}.",
+    ]
+    if source_text:
+        lines.append(source_text)
+    lines.extend(
         [
-            f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
-            "",
-            f"Current: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
-            f"Trend: {briefing.get('wave_trend', 'steady')} seas, with swell direction {briefing.get('swell_direction', 'N/A')}.",
             f"Best window: {rec.get('best_window', 'check manually')}.",
             f"Windows: best crossing window is {rec.get('best_window', 'check manually')}.",
             f"Watch out: {_soften_clock_times(rec.get('watch_out', 'conditions require manual review'))}.",
@@ -42,6 +56,7 @@ def render_linkedin(snapshot):
             "Illustrative route intelligence example, based on public marine data.",
         ]
     )
+    return "\n".join(lines)
 
 
 def render_whatsapp(snapshot):
@@ -49,12 +64,17 @@ def render_whatsapp(snapshot):
     forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
     briefing = snapshot.get("daily_briefing") or {}
-    return "\n".join(
+    source_text = _source_text(snapshot)
+    lines = [
+        "PredSea Captain's Briefing",
+        f"Route: {snapshot['route']}",
+        f"Current: {canal.get('wave_height_m', 'N/A')} m waves, water {canal.get('water_temp_c', 'N/A')} C.",
+        f"Trend: {briefing.get('wave_trend', 'steady')} seas; swell direction {briefing.get('swell_direction', 'N/A')}.",
+    ]
+    if source_text:
+        lines.append(source_text)
+    lines.extend(
         [
-            "PredSea Captain's Briefing",
-            f"Route: {snapshot['route']}",
-            f"Current: {canal.get('wave_height_m', 'N/A')} m waves, water {canal.get('water_temp_c', 'N/A')} C.",
-            f"Trend: {briefing.get('wave_trend', 'steady')} seas; swell direction {briefing.get('swell_direction', 'N/A')}.",
             f"Best window: {rec.get('best_window', 'check manually')}.",
             f"Windows: {rec.get('best_window', 'check manually')}.",
             f"Watch out: {_soften_clock_times(rec.get('watch_out', 'conditions require manual review'))}.",
@@ -62,12 +82,14 @@ def render_whatsapp(snapshot):
             f"Next 24h: peak near {forecast.get('wave_max_m', 'N/A')} m during the {peak_period_label(forecast.get('wave_peak_time'))} period.",
         ]
     )
+    return "\n".join(lines)
 
 
 def render_whatsapp_screenshot_script(snapshot):
     forecast = _forecast(snapshot)
     rec = _recommendation(snapshot)
     vessel_label = snapshot.get("vessel_profile", {}).get("label", "the selected vessel class")
+    source_text = _source_text(snapshot)
     wave_max = forecast.get("wave_max_m")
     peak_time = forecast.get("wave_peak_time")
     if wave_max is not None and peak_time and peak_time != "N/A":
@@ -80,19 +102,26 @@ def render_whatsapp_screenshot_script(snapshot):
     if wave_max is not None and wave_max <= 1.0:
         route_is_calm_now = "The route looks manageable today, but exposed sections still deserve attention."
     confidence = _confidence_label(rec.get("confidence")) or "Low"
-    return "\n".join(
+    lines = [
+        "Illustrative WhatsApp screenshot script",
+        "Captain: [Shared live location]",
+        f"Captain: {snapshot['route']} today. Best time to leave?",
+        f"PredSea: Go earlier. {route_is_calm_now}",
+        f"PredSea: {peak_text}",
+    ]
+    if source_text:
+        lines.append(f"PredSea: {source_text}.")
+    else:
+        lines.append("PredSea: Sources used are shown in the briefing.")
+    lines.extend(
         [
-            "Illustrative WhatsApp screenshot script",
-            "Captain: [Shared live location]",
-            f"Captain: {snapshot['route']} today. Best time to leave?",
-            f"PredSea: Go earlier. {route_is_calm_now}",
-            f"PredSea: {peak_text}",
             f"PredSea: Operational read: {rec.get('vessel_advice', f'check manually for vessels {vessel_label}')}.",
             f"PredSea: Watch out: {_soften_clock_times(rec.get('watch_out', 'conditions require manual review'))}.",
             f"PredSea: Confidence: {confidence}.",
             "Caption note: illustrative product example based on public marine data.",
         ]
     )
+    return "\n".join(lines)
 
 
 def peak_period_label(time_text):
@@ -111,4 +140,3 @@ def peak_period_label(time_text):
     if hour < 22:
         return "this evening"
     return "overnight"
-import re

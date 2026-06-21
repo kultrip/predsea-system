@@ -80,7 +80,7 @@ class DummyDistanceResolver:
         }
 
 
-def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza", run_id=None):
+def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza", run_id=None, source_summary=None):
     if run_id:
         route_dir = Path(root) / date_text / "runs" / run_id / route_id
     else:
@@ -118,6 +118,27 @@ def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza", run_id=
             "vessel_advice": "manageable for vessels 15-24m",
         },
     }
+    if source_summary is not None:
+        snapshot["source_summary"] = source_summary
+        snapshot["data_lineage"] = {
+            "wind_forecast": {
+                "source": "ecmwf_open_data",
+                "resolution_km": 9.0,
+                "status": "active",
+                "tier": 3,
+            },
+            "ocean_forecast": {
+                "source": "copernicus_med",
+                "resolution_km": 4.0,
+                "status": "active",
+            },
+            "ground_truth_validation": {
+                "source": "puertos_observations",
+                "status": "matched_successfully",
+                "station_count": 1,
+            },
+            "source_summary": source_summary,
+        }
     (route_dir / "daily_snapshot.json").write_text(json.dumps(snapshot), encoding="utf-8")
     return snapshot
 
@@ -1611,6 +1632,15 @@ def test_route_question_penalizes_missing_route_source(tmp_path):
         wave_height_m=0.8,
         observed_at_utc=utc_text(30),
     )
+    write_place_weather(
+        tmp_path,
+        current_date,
+        current_run_id,
+        "ibiza",
+        source_label="REDEXT",
+        wave_height_m=0.7,
+        observed_at_utc=utc_text(28),
+    )
 
     (Path(tmp_path) / current_date / "latest_run.json").write_text(
         json.dumps({"run_id": current_run_id, "path": f"runs/{current_run_id}"}),
@@ -1637,9 +1667,72 @@ def test_route_question_penalizes_missing_route_source(tmp_path):
     assert response.status_code == 200
     payload = response.json()
     reliability = payload["reliability"]
+    assert reliability["confidence_score"] == "Low"
+    assert reliability["details"]["offline_sources"] == []
+    assert reliability["reason"]
+
+
+def test_route_question_uses_source_breadth_when_previous_snapshot_missing(tmp_path):
+    source_summary = {
+        "primary_source": "Copernicus",
+        "sources": ["Copernicus", "ECMWF", "Puertos del Estado"],
+        "count": 3,
+        "families": ["ocean_forecast", "atmosphere", "observation"],
+        "text": "Sources used: Copernicus, ECMWF, Puertos del Estado",
+    }
+    current_snapshot = write_snapshot(
+        tmp_path,
+        date_text="2026-06-21",
+        route_id="palma_ibiza",
+        run_id="2026-06-21T0616Z",
+        source_summary=source_summary,
+    )
+    current_snapshot["created_at_utc"] = utc_text(15)
+    current_dir = Path(tmp_path) / "2026-06-21" / "runs" / "2026-06-21T0616Z" / "palma_ibiza"
+    (current_dir / "daily_snapshot.json").write_text(json.dumps(current_snapshot), encoding="utf-8")
+    (Path(tmp_path) / "2026-06-21" / "latest_run.json").write_text(
+        json.dumps({"run_id": "2026-06-21T0616Z", "path": "runs/2026-06-21T0616Z"}),
+        encoding="utf-8",
+    )
+    write_place_weather(
+        tmp_path,
+        "2026-06-21",
+        "2026-06-21T0616Z",
+        "palma",
+        source_label="REDMAR",
+        wave_height_m=0.8,
+        observed_at_utc=utc_text(20),
+    )
+    write_place_weather(
+        tmp_path,
+        "2026-06-21",
+        "2026-06-21T0616Z",
+        "ibiza",
+        source_label="REDEXT",
+        wave_height_m=0.7,
+        observed_at_utc=utc_text(18),
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.post(
+        "/routes/palma_ibiza/question",
+        json={
+            "date": "2026-06-21",
+            "run": "latest",
+            "question": "Is it good to go from Palma to Ibiza today?",
+            "vessel_class": "medium",
+            "current_date": "2026-06-21",
+            "current_time": "08:00",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    reliability = payload["reliability"]
     assert reliability["confidence_score"] == "Medium"
-    assert reliability["details"]["offline_sources"] == ["ibiza"]
-    assert "offline" in reliability["reason"].lower()
+    assert reliability["details"]["source_breadth_score"] in {"Medium", "High"}
+    assert payload["evidence_used"]["source_summary"]["sources"] == ["Copernicus", "ECMWF", "Puertos del Estado"]
+    assert "Sources used: Copernicus, ECMWF, Puertos del Estado" in payload["answer"] or "Sources used" in payload["operational_stance"].get("why", "")
 
 
 def test_route_question_uses_graph_fallback_for_uncatalogued_pair(tmp_path, monkeypatch):

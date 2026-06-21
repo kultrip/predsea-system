@@ -393,6 +393,7 @@ def test_daily_generator_writes_place_weather_outputs(tmp_path, monkeypatch):
         skip_figures,
         skip_maps,
         atmospheric_context=None,
+        source_inventory=None,
     ):
         generated = {}
         for route_id in selected_route_ids:

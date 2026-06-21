@@ -503,6 +503,13 @@ class BriefingRendererTests(unittest.TestCase):
         snapshot = {
             "route": "Mallorca -> Ibiza",
             "created_at_utc": "2026-05-09 07:30 UTC",
+            "source_summary": {
+                "primary_source": "Copernicus",
+                "sources": ["Copernicus", "ECMWF", "Puertos del Estado"],
+                "count": 3,
+                "families": ["ocean_forecast", "atmosphere", "observation"],
+                "text": "Sources used: Copernicus, ECMWF, Puertos del Estado",
+            },
             "observations": {
                 "canal_de_ibiza": {
                     "name": "Buoy Canal de Ibiza",
@@ -526,6 +533,9 @@ class BriefingRendererTests(unittest.TestCase):
         self.assertIn("Mallorca -> Ibiza", linkedin)
         self.assertIn("before midday", whatsapp)
         self.assertIn("Confidence: Medium", screenshot)
+        self.assertIn("Sources used: Copernicus, ECMWF, Puertos del Estado", linkedin)
+        self.assertIn("Sources used: Copernicus, ECMWF, Puertos del Estado", whatsapp)
+        self.assertIn("Sources used: Copernicus, ECMWF, Puertos del Estado", screenshot)
         self.assertIn("Captain:", screenshot)
         self.assertIn("PredSea:", screenshot)
         self.assertIn("Captain: [Shared live location]", screenshot)

@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import briefing_renderers
 import decision_engine
 import route_analysis
+import source_lineage
 
 
 def snapshot_for_vessel_class(snapshot, vessel_class, departure_time=None, priority="comfort", current_position=None):
@@ -135,6 +136,7 @@ def normalize_visible_answer(decision, forecast, question_text=""):
 def evidence_used(snapshot, forecast_override=None):
     forecast = forecast_override or snapshot.get("forecast", {})
     observations = snapshot.get("observations", {})
+    source_summary = source_lineage.summarize_sources(snapshot=snapshot, observations=observations)
     available_observations = [
         key for key, value in observations.items()
         if isinstance(value, dict) and value.get("last_sample_utc")
@@ -156,6 +158,7 @@ def evidence_used(snapshot, forecast_override=None):
         "observations": available_observations,
         "observation_networks": observation_networks,
         "source_snapshot_created_at_utc": snapshot.get("created_at_utc"),
+        "source_summary": source_summary,
         "sea_state": sea_state_evidence(forecast, observations),
         "observation_alignment": snapshot.get("observation_alignment") or {},
         "forecast_sanity": snapshot.get("forecast_sanity") or {},

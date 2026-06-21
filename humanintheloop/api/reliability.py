@@ -7,6 +7,7 @@ from typing import Any, Iterable
 import place_weather
 import route_analysis
 from place_registry import default_place_id_for_query
+import source_lineage
 
 
 CONFIDENCE_ORDER = {"Low": 0, "Medium": 1, "High": 2}
@@ -24,6 +25,8 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
     snapshot_timestamp = _timestamp_from_snapshot(snapshot)
     evidence_timestamp = _oldest_timestamp([snapshot_timestamp, *_record_timestamps(current_records)])
     age_minutes = _age_minutes(evidence_timestamp)
+    source_summary = source_lineage.summarize_sources(snapshot=snapshot, observations=None)
+    source_breadth_score = source_lineage.source_breadth_score(source_summary)
 
     method = _evaluation_method(snapshot, current_records)
     if method == "multi_model_consensus":
@@ -44,7 +47,10 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
 
     freshness_score = _score_from_age(age_minutes)
     variance_score = _score_from_variance(variance_pct, method)
+    if method == "single_model_consistency" and variance_pct is None:
+        variance_score = "Medium" if source_breadth_score in {"Medium", "High"} else "Low"
     confidence_score = _lower_score(freshness_score, variance_score)
+    confidence_score = _lower_score(confidence_score, source_breadth_score)
     confidence_score = _apply_offline_penalty(confidence_score, offline_sources)
     reason = _reliability_reason(
         age_minutes,
@@ -53,6 +59,7 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
         variance_score,
         comparison_detail,
         offline_sources,
+        source_summary,
     )
 
     return {
@@ -64,10 +71,12 @@ def compute_route_reliability(store, route_id, run_date, run_id, snapshot):
             "comparison": comparison,
             "freshness_score": freshness_score,
             "variance_score": variance_score,
+            "source_breadth_score": source_breadth_score,
             "variance_pct": variance_pct,
             "freshness_age_minutes": age_minutes,
             "offline_sources": offline_sources,
             "offline_source_count": len(offline_sources),
+            "source_summary": source_summary,
             **comparison_detail,
         },
     }
@@ -307,9 +316,18 @@ def _multi_model_detail(snapshot, records, variance_pct):
     }
 
 
-def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_score, comparison_detail, offline_sources=None):
+def _reliability_reason(
+    age_minutes,
+    freshness_score,
+    variance_pct,
+    variance_score,
+    comparison_detail,
+    offline_sources=None,
+    source_summary=None,
+):
     reasons = []
     offline_sources = offline_sources or []
+    source_summary = source_lineage.normalize_source_summary(source_summary or {})
     if freshness_score == "Low":
         if age_minutes is None or age_minutes >= 999:
             reasons.append("Evidence timestamp is unavailable, so confidence stays conservative.")
@@ -327,7 +345,12 @@ def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_sco
                     f"Compared against the previous forecast snapshot from {previous_run_date} {previous_run_id}."
                 )
             else:
-                reasons.append("Previous route snapshot is missing, so the run-over-run comparison is conservative.")
+                if source_summary.get("count", 0) > 1:
+                    reasons.append(
+                        "Previous route snapshot is missing, so the score leans on current freshness and source breadth."
+                    )
+                else:
+                    reasons.append("Previous route snapshot is missing, so the run-over-run comparison is conservative.")
         elif previous_run_id is not None:
             reasons.append(
                 f"Compared against the previous forecast snapshot from {previous_run_date} {previous_run_id}."
@@ -339,6 +362,10 @@ def _reliability_reason(age_minutes, freshness_score, variance_pct, variance_sco
             reasons.append(
                 f"The route comparison changed by about {variance_pct:.1f}% which is above the safe threshold of {threshold}%."
             )
+    if source_summary.get("count", 0) > 1:
+        reasons.append(f"Multiple active source families are available: {source_summary.get('text').removeprefix('Sources used: ') if source_summary.get('text') else ', '.join(source_summary.get('sources') or [])}.")
+    elif source_summary.get("count", 0) == 1:
+        reasons.append(f"Only one active source family is available: {', '.join(source_summary.get('sources') or [])}.")
     if not reasons:
         if variance_score == "Medium" or freshness_score == "Medium":
             reasons.append("The route looks usable, but one of the checks is only moderate.")

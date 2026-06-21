@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import source_lineage
+
 
 SCHEMA_VERSION = "predsea.evidence.v1"
 
@@ -126,9 +128,16 @@ def compact_timestamp(value):
 
 def data_lineage(snapshot, observations):
     if snapshot.get("data_lineage"):
-        return snapshot["data_lineage"]
+        lineage = dict(snapshot["data_lineage"])
+        if (
+            snapshot.get("source_summary")
+            or snapshot.get("source_inventory")
+            or lineage.get("source_summary")
+        ):
+            lineage.setdefault("source_summary", source_lineage.summarize_sources(snapshot=snapshot, observations=observations))
+        return lineage
 
-    return {
+    lineage = {
         "wind_forecast": {
             "source": None,
             "resolution_km": None,
@@ -144,6 +153,9 @@ def data_lineage(snapshot, observations):
             "status": "matched_successfully" if observations else "unavailable",
         },
     }
+    if snapshot.get("source_summary") or snapshot.get("source_inventory"):
+        lineage["source_summary"] = source_lineage.summarize_sources(snapshot=snapshot, observations=observations)
+    return lineage
 
 
 def wave_component_forecast(forecast, component_name):

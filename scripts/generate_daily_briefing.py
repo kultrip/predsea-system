@@ -44,6 +44,8 @@ REGIONAL_LIMITATIONS = (
     "No nearby shelter search",
 )
 
+import source_lineage
+
 
 @contextmanager
 def pushd(path):
@@ -86,6 +88,7 @@ def load_mvp_modules():
     import map_generator
     import place_weather
     import route_analysis
+    import source_lineage as source_lineage_module
     import validation_archive
 
     return SimpleNamespace(
@@ -99,6 +102,7 @@ def load_mvp_modules():
         map_generator=map_generator,
         place_weather=place_weather,
         route_analysis=route_analysis,
+        source_lineage=source_lineage_module,
         validation_archive=validation_archive,
     )
 
@@ -862,6 +866,20 @@ def annotate_snapshot_with_lineage(snapshot, source, atmospheric_context, observ
     return snapshot
 
 
+def annotate_snapshot_with_source_summary(snapshot, source_inventory, observations):
+    summary = source_lineage.summarize_sources(
+        snapshot=snapshot,
+        observations=observations,
+        source_inventory=source_inventory,
+        data_lineage=snapshot.get("data_lineage"),
+    )
+    snapshot["source_summary"] = summary
+    snapshot.setdefault("data_lineage", {})
+    snapshot["data_lineage"]["source_summary"] = summary
+    snapshot["data_lineage"]["source_inventory"] = source_inventory
+    return snapshot
+
+
 def resolution_label_for(source):
     source_id = source.get("id")
     if source_id == "socib":
@@ -890,6 +908,7 @@ def generate_route_artifacts_for_source(
     skip_figures,
     skip_maps,
     atmospheric_context=None,
+    source_inventory=None,
 ):
     waves_path = Path(source["waves_path"])
     currents_path = Path(source["currents_path"])
@@ -912,6 +931,7 @@ def generate_route_artifacts_for_source(
         )
         annotate_snapshot_with_source(snapshot, source)
         annotate_snapshot_with_lineage(snapshot, source, atmospheric_context or {}, observations)
+        annotate_snapshot_with_source_summary(snapshot, source_inventory or [], observations)
         route_dir = source_root_dir / route_id
         modules.briefing.write_outputs(
             snapshot,
@@ -989,6 +1009,8 @@ def generate_daily_briefings(
                 )
             sources.append(preferred_source)
         atmospheric_context = fetch_atmospheric_context(modules, run_dir)
+        forecast_source_entries = source_manifest_entries(modules, sources)
+        source_inventory = forecast_source_entries + atmospheric_context.get("atmospheric_sources", [])
 
         for source in available_forecast_sources(sources):
             source_root_dir = run_dir / "sources" / source["id"]
@@ -1007,6 +1029,7 @@ def generate_daily_briefings(
                 skip_figures,
                 skip_maps,
                 atmospheric_context=atmospheric_context,
+                source_inventory=source_inventory,
             )
             if source["id"] == preferred_source["id"]:
                 maybe_generate_leaflet_overlays(run_dir, Path(source["waves_path"]), Path(source["currents_path"]), skip_maps=skip_maps)
@@ -1027,7 +1050,6 @@ def generate_daily_briefings(
                 time_text=current_time,
             )
 
-    forecast_source_entries = source_manifest_entries(modules, sources)
     if atmospheric_context.get("enabled") or atmospheric_context.get("wind_lineage", {}).get("status") != "not_configured":
         forecast_source_entries.append(
             {

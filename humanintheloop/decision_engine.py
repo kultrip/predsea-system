@@ -7,6 +7,7 @@ import captain_knowledge
 import forecast_sanity
 import observation_alignment
 import recommendation_state
+import source_lineage
 
 
 def classify_question(question):
@@ -684,6 +685,8 @@ def render_lineage_guidance(data_lineage):
     source = wind.get("source")
     status = wind.get("status")
     resolution = wind.get("resolution_km")
+    source_summary = source_lineage.summarize_sources(data_lineage=data_lineage)
+    source_text = source_summary.get("text")
 
     if source == "meteo_france_arome" and status in ("active", "blended"):
         resolution_text = f"{resolution:g} km" if isinstance(resolution, (int, float)) else "high-resolution"
@@ -700,7 +703,9 @@ def render_lineage_guidance(data_lineage):
         return (
             "Wind context: winds are grounded in global structural models; "
             "localized coastal land breezes may vary near channel boundaries."
-        )
+        ) + (f" {source_text}." if source_text else "")
+    if source_text:
+        return source_text
     return None
 
 

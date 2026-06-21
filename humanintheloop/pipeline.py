@@ -21,6 +21,7 @@ from pathlib import Path
 import ingest_atmosphere
 import ingest_observations
 import evidence_package
+import source_lineage
 
 
 def run_pipeline(
@@ -325,6 +326,43 @@ def _step_build_snapshot(route, vessel_class, ocean_result, obs_result, atmo_res
             {"source": None, "status": "unavailable"},
         )
         snapshot["portus"] = portus_result
+
+    source_inventory = []
+    if ocean_result.get("lineage"):
+        source_inventory.append(
+            {
+                "id": ocean_result["lineage"].get("source"),
+                "label": ocean_result["lineage"].get("source"),
+                "available": ocean_result.get("available", False),
+                "source_family": "ocean_forecast",
+            }
+        )
+    if atmo_result.get("wind_result", {}).get("source"):
+        source_inventory.append(
+            {
+                "id": atmo_result["wind_result"].get("source"),
+                "label": atmo_result["wind_result"].get("label") or atmo_result["wind_result"].get("source"),
+                "available": atmo_result["wind_result"].get("available", False),
+                "source_family": "atmosphere",
+            }
+        )
+    if portus_result:
+        source_inventory.append(
+            {
+                "id": "puertos_portus",
+                "label": "Portus",
+                "available": bool(portus_result.get("observations")),
+                "source_family": "observation",
+            }
+        )
+    snapshot["source_summary"] = source_lineage.summarize_sources(
+        snapshot=snapshot,
+        observations=observations,
+        source_inventory=source_inventory,
+        data_lineage=snapshot.get("data_lineage"),
+    )
+    snapshot["data_lineage"]["source_summary"] = snapshot["source_summary"]
+    snapshot["data_lineage"]["source_inventory"] = source_inventory
 
     return snapshot
 

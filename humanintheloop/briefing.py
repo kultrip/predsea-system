@@ -12,6 +12,7 @@ import evidence_package
 import ingest_observations
 import fetch_data
 import route_analysis
+import source_lineage
 
 
 OUTPUT_DIR = Path("mvp_data")
@@ -41,6 +42,7 @@ def route_output_dir(root, route):
 def write_outputs(snapshot, output_dir=OUTPUT_DIR, question=None, location_label="Palma Marina", current_time=None, route=None):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    snapshot = _attach_source_summary(snapshot)
     briefing = build_daily_briefing_summary(snapshot)
     snapshot = copy.deepcopy(snapshot)
     snapshot["daily_briefing"] = briefing
@@ -63,6 +65,20 @@ def write_outputs(snapshot, output_dir=OUTPUT_DIR, question=None, location_label
         (output_path / "decision_answer.txt").write_text(decision["answer"], encoding="utf-8")
         screenshot_script = decision_engine.render_decision_screenshot_script(decision)
     (output_path / "briefing_whatsapp_screenshot_script.txt").write_text(screenshot_script, encoding="utf-8")
+
+
+def _attach_source_summary(snapshot):
+    enriched = copy.deepcopy(snapshot)
+    summary = source_lineage.summarize_sources(
+        snapshot=enriched,
+        observations=enriched.get("observations"),
+        source_inventory=enriched.get("source_inventory"),
+        data_lineage=enriched.get("data_lineage"),
+    )
+    enriched["source_summary"] = summary
+    enriched.setdefault("data_lineage", {})
+    enriched["data_lineage"]["source_summary"] = summary
+    return enriched
 
 
 def build_daily_briefing_summary(snapshot):
