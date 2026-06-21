@@ -23,11 +23,12 @@ from api.schemas import (
     RouteWaypointsResponse,
 )
 from api.reliability import compute_route_reliability
-from api.services import answer_question, evidence_used, render_briefing
+from api.services import answer_question, evidence_used, snapshot_for_vessel_class
 import place_registry
 from place_registry import default_place_id_for_query
 import place_weather
 import route_analysis
+import briefing_renderers
 from route_store import RouteStore
 
 
@@ -705,17 +706,22 @@ def create_app(evidence_store=None, route_store=None):
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             snapshot = store.load_snapshot(route_id, run_date, run_id)
-            reliability = compute_route_reliability(store, route_id, run_date, run_id, snapshot)
-            adjusted_snapshot = dict(snapshot)
-            adjusted_snapshot["recommendation"] = {
-                **(snapshot.get("recommendation") or {}),
-                "confidence": reliability.get("confidence_score", (snapshot.get("recommendation") or {}).get("confidence")),
-            }
+            adjusted = snapshot_for_vessel_class(snapshot, vessel_class)
+            reliability = compute_route_reliability(store, route_id, run_date, run_id, adjusted)
+            adjusted.setdefault("recommendation", {})
+            adjusted["recommendation"]["confidence"] = reliability.get(
+                "confidence_score",
+                (adjusted.get("recommendation") or {}).get("confidence"),
+            )
             if reliability.get("details", {}).get("source_summary"):
-                adjusted_snapshot["source_summary"] = reliability["details"]["source_summary"]
-                adjusted_snapshot.setdefault("data_lineage", {})
-                adjusted_snapshot["data_lineage"]["source_summary"] = reliability["details"]["source_summary"]
-            briefing, adjusted = render_briefing(adjusted_snapshot, vessel_class, format)
+                adjusted["source_summary"] = reliability["details"]["source_summary"]
+                adjusted.setdefault("data_lineage", {})
+                adjusted["data_lineage"]["source_summary"] = reliability["details"]["source_summary"]
+            briefing = (
+                briefing_renderers.render_linkedin(adjusted)
+                if format == "linkedin"
+                else briefing_renderers.render_whatsapp(adjusted)
+            )
             return {
                 "route_id": route_id,
                 "route": adjusted.get("route", route_id),
