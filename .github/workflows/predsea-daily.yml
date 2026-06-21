@@ -46,7 +46,7 @@ jobs:
           PREDSEA_BIGQUERY_PROJECT: predsea-api
           PREDSEA_BIGQUERY_DATASET: predsea_validation
           PREDSEA_BIGQUERY_TABLE: evidence_rows
-          PREDSEA_BIGQUERY_LOCATION: europe-west1
+          PREDSEA_BIGQUERY_LOCATION: EU
           PREDSEA_ENABLE_PUERTOS_OBSERVATIONS: "1"
           PREDSEA_ENABLE_PORTUS_OBSERVATIONS: "1"
           SOCIB_API_KEY: ${{ secrets.SOCIB_API_KEY }}

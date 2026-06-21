@@ -211,7 +211,7 @@ def compute_rolling_anomaly_warnings(
     project_id = resolve_env(*BIGQUERY_PROJECT_ENV_VARS)
     dataset_id = resolve_env(*BIGQUERY_DATASET_ENV_VARS, default="predsea_validation")
     table_id = resolve_env(*BIGQUERY_EVIDENCE_TABLE_ENV_VARS, default="evidence_rows")
-    location = resolve_env(*BIGQUERY_LOCATION_ENV_VARS, default="europe-west1")
+    location = resolve_env(*BIGQUERY_LOCATION_ENV_VARS, default="EU")
     if not project_id or not dataset_id or not table_id:
         return [], False
     station_clause = build_station_clause(scope_terms)
@@ -276,7 +276,7 @@ def compute_climatological_anomaly_warnings(
     dataset_id = resolve_env(*BIGQUERY_DATASET_ENV_VARS, default="predsea_validation")
     table_id = resolve_env(*BIGQUERY_EVIDENCE_TABLE_ENV_VARS, default="evidence_rows")
     clim_table = resolve_env(*BIGQUERY_CLIMATOLOGY_TABLE_ENV_VARS, default="climatology_baseline")
-    location = resolve_env(*BIGQUERY_LOCATION_ENV_VARS, default="europe-west1")
+    location = resolve_env(*BIGQUERY_LOCATION_ENV_VARS, default="EU")
     if not project_id or not dataset_id or not table_id:
         return [], False
     station_clause = build_station_clause(scope_terms)

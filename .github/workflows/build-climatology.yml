@@ -53,7 +53,7 @@ jobs:
           PREDSEA_BIGQUERY_DATASET: predsea_validation
           PREDSEA_BIGQUERY_EVIDENCE_TABLE: evidence_rows
           PREDSEA_BIGQUERY_CLIMATOLOGY_TABLE: climatology_baseline
-          PREDSEA_BIGQUERY_LOCATION: europe-west1
+          PREDSEA_BIGQUERY_LOCATION: EU
           START_DATE: ${{ inputs.start_date }}
           END_DATE: ${{ inputs.end_date }}
         run: |
@@ -62,6 +62,6 @@ jobs:
             --dataset predsea_validation \
             --evidence-table evidence_rows \
             --climatology-table climatology_baseline \
-            --location europe-west1 \
+            --location EU \
             --start-date "$START_DATE" \
             --end-date "$END_DATE"
