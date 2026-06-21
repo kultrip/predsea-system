@@ -219,7 +219,7 @@ def compute_rolling_anomaly_warnings(
     sql = f"""
 WITH window_stats AS (
   SELECT
-    variable, station_id, station_name, latitude, longitude,
+    variable, station_id, station_name,
     AVG(value) AS window_mean,
     STDDEV(value) AS window_stddev,
     COUNT(*) AS sample_count,
@@ -232,13 +232,13 @@ WITH window_stats AS (
     AND ingested_at_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {int(lookback_hours)} HOUR)
     AND value IS NOT NULL
     {station_clause}
-  GROUP BY variable, station_id, station_name, latitude, longitude
+  GROUP BY variable, station_id, station_name
   HAVING COUNT(*) >= {int(min_sample_count)}
      AND TIMESTAMP_DIFF(MAX(sample_time_utc), MIN(sample_time_utc), HOUR) >= {int(min_window_hours)}
 ),
 latest_obs AS (
   SELECT
-    e.variable, e.station_id, e.station_name, e.latitude, e.longitude,
+    e.variable, e.station_id, e.station_name,
     e.value AS current_value, e.units,
     e.sample_time_utc, e.observed_at_utc, e.freshness_status,
     w.window_mean, w.window_stddev, w.sample_count, w.window_hours_actual,
@@ -256,7 +256,7 @@ ORDER BY ABS(z_score) DESC
 LIMIT 200
 """
     try:
-        rows = run_bigquery_query(sql, project_id=project_id, location=location)
+        rows = query_bigquery(sql, project_id=project_id, location=location)
     except Exception as error:
         logger.warning("Rolling anomaly query failed: %s", error)
         return [], False
@@ -284,7 +284,7 @@ def compute_climatological_anomaly_warnings(
     sql = f"""
 WITH latest_obs AS (
   SELECT
-    variable, station_id, station_name, latitude, longitude,
+    variable, station_id, station_name,
     value AS current_value, units,
     sample_time_utc, observed_at_utc, freshness_status,
     EXTRACT(MONTH FROM sample_time_utc) AS obs_month,
@@ -324,12 +324,31 @@ ORDER BY ABS(z_score) DESC
 LIMIT 200
 """
     try:
-        rows = run_bigquery_query(sql, project_id=project_id, location=location)
+        rows = query_bigquery(sql, project_id=project_id, location=location)
     except Exception as error:
         logger.warning("Climatological anomaly query failed: %s", error)
         return [], False
     warnings = [climatological_warning_from_row(row, generated_at_utc=generated_at_utc, route=route, place=place) for row in rows]
     return [warning for warning in warnings if warning], True
+
+
+def fetch_warnings_by_type(*, generated_at_utc, route=None, place=None):
+    api_key = os.environ.get("AEMET_API_KEY")
+    if not api_key:
+        return [], False
+    warnings = []
+    source_available = False
+    for area_code in aemet_warning_area_codes():
+        area_warnings, area_available = fetch_aemet_warnings_for_area(
+            area_code=area_code,
+            generated_at_utc=generated_at_utc,
+            route=route,
+            place=place,
+            api_key=api_key,
+        )
+        warnings.extend(area_warnings)
+        source_available = source_available or area_available
+    return warnings, source_available
 
 
 def fetch_aemet_warnings(*, generated_at_utc, route=None, place=None):
@@ -547,8 +566,8 @@ def rolling_warning_from_row(row, *, generated_at_utc, route=None, place=None):
         "baseline_type": "rolling",
         "station_id": row.get("station_id"),
         "station_name": station_name,
-        "latitude": as_float(row.get("latitude")),
-        "longitude": as_float(row.get("longitude")),
+        "latitude": None,
+        "longitude": None,
         "issued_at_utc": generated_at_utc,
         "valid_from_utc": row.get("sample_time_utc"),
         "valid_to_utc": None,
@@ -597,8 +616,8 @@ def climatological_warning_from_row(row, *, generated_at_utc, route=None, place=
         "baseline_type": "climatological",
         "station_id": row.get("station_id"),
         "station_name": station_name,
-        "latitude": as_float(row.get("latitude")),
-        "longitude": as_float(row.get("longitude")),
+        "latitude": None,
+        "longitude": None,
         "issued_at_utc": generated_at_utc,
         "valid_from_utc": row.get("sample_time_utc"),
         "valid_to_utc": None,
@@ -761,16 +780,10 @@ def query_bigquery(sql, *, project_id, location=None):
         
     response = session.post(query_url, json=payload)
     
-    # --- ADD THIS TEMPORARY DIAGNOSTIC BLOCK ---
     if response.status_code == 400:
-        print("❌ GOOGLE BIGQUERY REJECTED THE SQL STRINGS:")
-        try:
-            print(response.json()["error"]["message"])
-        except Exception:
-            print(response.text)
-        print("🚨 ATTEMPTED SQL STATEMENT RUN WAS:")
-        print(sql)
-    # -------------------------------------------
+        error_details = response.json().get("error", {}).get("message", response.text)
+        logger.error("BigQuery SQL Compilation Error: %s", error_details)
+        raise ValueError(f"BigQuery SQL Compilation Error: {error_details}")
 
     response.raise_for_status()
     body = response.json()
