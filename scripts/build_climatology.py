@@ -96,8 +96,6 @@ SELECT
   ANY_VALUE(source_label) AS network,
   station_id,
   ANY_VALUE(station_name) AS station_name,
-  ANY_VALUE(latitude) AS latitude,
-  ANY_VALUE(longitude) AS longitude,
   variable,
   ANY_VALUE(units) AS unit,
   EXTRACT(MONTH FROM sample_time_utc) AS month,
