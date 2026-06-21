@@ -1062,6 +1062,7 @@ def generate_daily_briefings(
             observations,
             output_root,
             station_metadata=station_metadata,
+            source_inventory=forecast_source_entries + atmospheric_context.get("atmospheric_sources", []),
         )
     if hasattr(modules, "bigquery_export"):
         print("Exporting validation archive to BigQuery...", flush=True)

@@ -156,11 +156,38 @@ def run_atmospheric_ingestion(output_dir=None, dry_run=False):
     This is the main entry point for pipeline integration.
     """
     fetchers = build_fetchers(output_dir=output_dir, dry_run=dry_run)
+    atmospheric_sources = []
+    for provider in ATMOSPHERIC_PROVIDERS:
+        fetcher = fetchers.get(provider["id"])
+        if fetcher is None:
+            atmospheric_sources.append({
+                **provider,
+                "available": False,
+                "source_family": "atmosphere",
+                "error": "fetcher not configured",
+            })
+            continue
+        try:
+            result = fetcher(provider)
+        except Exception as error:
+            atmospheric_sources.append({
+                **provider,
+                "available": False,
+                "source_family": "atmosphere",
+                "error": str(error),
+            })
+            continue
+        atmospheric_sources.append({
+            **provider,
+            **result,
+            "source_family": "atmosphere",
+        })
     wind_result = select_wind_forecast(fetchers)
     wind_lineage = lineage_for_wind_result(wind_result)
 
     return {
         "wind_result": wind_result,
         "wind_lineage": wind_lineage,
+        "atmospheric_sources": atmospheric_sources,
         "fetchers_configured": list(fetchers.keys()),
     }

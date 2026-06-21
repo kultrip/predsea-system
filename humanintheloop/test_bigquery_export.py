@@ -74,12 +74,14 @@ def test_build_normalized_rows_combines_forecast_and_observation(tmp_path):
 
     assert observation["reference_station_id"] == "canal_de_ibiza"
     assert observation["sample_time_utc"] == "2026-06-10T06:00:00Z"
+    assert observation["source_family"] == "observation"
     assert observation["row_hash"]
     assert forecast["route_id"] == "palma_ibiza"
     assert forecast["reference_station_id"] == "canal_de_ibiza"
     assert forecast["sample_time_utc"] == "2026-06-10T16:00:00Z"
     assert forecast["lead_time_hours"] == 10.0
     assert forecast["resolution_km"] == 4.0
+    assert forecast["source_family"] == "ocean_forecast"
     assert forecast["row_hash"]
 
 
@@ -107,6 +109,7 @@ def test_normalize_observation_row_filters_unknown_fields():
     assert normalized["row_hash"]
     assert normalized["provider"] == "puertos_del_estado"
     assert normalized["nearest_routes"] == ["alcudia_ciutadella", "palma_barcelona"]
+    assert normalized["source_family"] == "observation"
 
 
 def test_normalize_rows_sanitize_non_finite_floats():
@@ -184,6 +187,32 @@ def test_build_normalized_rows_supports_portus_observation_aliases():
     assert wave_row["row_hash"]
 
 
+def test_build_normalized_rows_supports_source_inventory_rows():
+    rows = bigquery_export.build_normalized_rows(
+        [],
+        [],
+        [
+            {
+                "id": "ecmwf_open_data",
+                "label": "ECMWF Open Data",
+                "available": True,
+                "source_family": "atmosphere",
+                "source_system": "ecmwf_open_data",
+                "source_label": "ECMWF Open Data",
+                "observed_at_utc": "2026-06-11T17:00:00Z",
+            }
+        ],
+    )
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["record_type"] == "source_inventory"
+    assert row["source_family"] == "atmosphere"
+    assert row["variable"] == "source_status"
+    assert row["value"] == 1.0
+    assert row["row_hash"]
+
+
 def test_normalize_station_metadata_row_filters_unknown_fields():
     row = {
         "provider": "puertos_del_estado",
@@ -208,6 +237,7 @@ def test_normalize_station_metadata_row_filters_unknown_fields():
     assert normalized["row_hash"]
     assert normalized["provider"] == "puertos_del_estado"
     assert normalized["variables_supported"] == ["wave_height", "wind_speed"]
+    assert normalized["source_family"] == "observation"
 
 
 def test_ensure_station_metadata_table_patches_missing_schema_fields():

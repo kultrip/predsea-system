@@ -48,6 +48,20 @@ def sanitize_float(value):
     return value
 
 
+def _forecast_source_family(row):
+    source_id = str(
+        row.get("forecast_source_id")
+        or row.get("ocean_source")
+        or row.get("source_system")
+        or ""
+    ).lower()
+    if source_id in {"meteo_france_arome", "aemet_harmonie_arome", "ecmwf_open_data"}:
+        return "atmosphere"
+    if source_id:
+        return "ocean_forecast"
+    return "forecast"
+
+
 def resolve_config(
     project_id: str | None = None,
     dataset_id: str | None = None,
@@ -91,7 +105,8 @@ def export_validation_archive_to_bigquery(
 
     observation_rows = validation_archive.read_jsonl(validation_dir / "observation_samples.jsonl")
     forecast_rows = validation_archive.read_jsonl(validation_dir / "forecast_index.jsonl")
-    rows = build_normalized_rows(observation_rows, forecast_rows)
+    source_inventory_rows = validation_archive.read_jsonl(validation_dir / "source_inventory.jsonl")
+    rows = build_normalized_rows(observation_rows, forecast_rows, source_inventory_rows)
     config = resolve_config(project_id=project_id, dataset_id=dataset_id, table_id=table_id, location=location)
 
     if not rows:
@@ -240,6 +255,7 @@ def export_station_metadata_to_bigquery(
 def export_validation_rows_to_bigquery(
     observation_rows,
     forecast_rows,
+    source_inventory_rows=None,
     project_id: str | None = None,
     dataset_id: str | None = None,
     table_id: str | None = None,
@@ -255,7 +271,7 @@ def export_validation_rows_to_bigquery(
     helper and for future provenance tracking, but the normalized rows already
     carry the values that BigQuery needs.
     """
-    rows = build_normalized_rows(observation_rows, forecast_rows)
+    rows = build_normalized_rows(observation_rows, forecast_rows, source_inventory_rows)
     config = resolve_config(project_id=project_id, dataset_id=dataset_id, table_id=table_id, location=location)
 
     if not rows:
@@ -321,13 +337,15 @@ def export_validation_rows_to_bigquery(
         }
 
 
-def build_normalized_rows(observation_rows, forecast_rows):
+def build_normalized_rows(observation_rows, forecast_rows, source_inventory_rows=None):
     ingested_at_utc = current_timestamp_utc()
     rows = []
     for row in observation_rows or []:
         rows.append(normalize_observation_row(row, ingested_at_utc=ingested_at_utc))
     for row in forecast_rows or []:
         rows.append(normalize_forecast_row(row, ingested_at_utc=ingested_at_utc))
+    for row in source_inventory_rows or []:
+        rows.append(normalize_source_inventory_row(row, ingested_at_utc=ingested_at_utc))
     return sorted(
         rows,
         key=lambda row: (
@@ -364,6 +382,7 @@ def normalize_observation_row(row, ingested_at_utc):
     normalized = {
         "schema_version": SCHEMA_VERSION,
         "record_type": "observation",
+        "source_family": row.get("source_family") or "observation",
         "run_date": row.get("run_date"),
         "run_id": row.get("run_id"),
         "ingested_at_utc": ingested_at_utc,
@@ -430,6 +449,7 @@ def normalize_forecast_row(row, ingested_at_utc):
     normalized = {
         "schema_version": SCHEMA_VERSION,
         "record_type": "forecast",
+        "source_family": row.get("source_family") or _forecast_source_family(row),
         "run_date": row.get("run_date"),
         "run_id": row.get("run_id"),
         "ingested_at_utc": ingested_at_utc,
@@ -480,6 +500,7 @@ def normalize_station_metadata_row(row, ingested_at_utc):
         "schema_version": row.get("schema_version") or SCHEMA_VERSION,
         "row_hash": None,
         "record_type": "station_metadata",
+        "source_family": row.get("source_family") or "observation",
         "run_date": row.get("run_date"),
         "run_id": row.get("run_id"),
         "ingested_at_utc": ingested_at_utc,
@@ -537,6 +558,80 @@ def normalize_station_metadata_row(row, ingested_at_utc):
     return filtered_normalized
 
 
+def normalize_source_inventory_row(row, ingested_at_utc):
+    sample_time_utc = bigquery_timestamp(row.get("sample_time_utc") or row.get("observed_at_utc"))
+    observed_at_utc = bigquery_timestamp(row.get("observed_at_utc") or row.get("sample_time_utc"))
+    available = row.get("available")
+    if row.get("value") is not None:
+        value = numeric_value(row.get("value"))
+    elif available is None:
+        value = None
+    else:
+        value = 1.0 if available else 0.0
+    normalized = {
+        "schema_version": SCHEMA_VERSION,
+        "record_type": "source_inventory",
+        "source_family": row.get("source_family") or "unknown",
+        "run_date": row.get("run_date"),
+        "run_id": row.get("run_id"),
+        "ingested_at_utc": ingested_at_utc,
+        "source_system": row.get("source_system") or row.get("provider"),
+        "source_label": row.get("source_label") or row.get("station_name"),
+        "route_id": None,
+        "route_name": None,
+        "station_id": row.get("station_id"),
+        "station_name": row.get("station_name"),
+        "reference_station_id": None,
+        "reference_station_name": None,
+        "variable": row.get("variable") or "source_status",
+        "value": value,
+        "units": row.get("units"),
+        "sample_time_utc": sample_time_utc,
+        "observed_at_utc": observed_at_utc,
+        "forecast_created_at_utc": None,
+        "target_time_utc": None,
+        "target_local_time": None,
+        "lead_time_hours": None,
+        "resolution_km": numeric_value(row.get("resolution_km")),
+        "forecast_source_id": None,
+        "forecast_source_label": None,
+        "ocean_source": None,
+        "truth_station_id": None,
+        "truth_station_name": None,
+        "source_field": row.get("source_field") or "available",
+        "dataset_url": row.get("dataset_url"),
+        "provider": row.get("provider"),
+        "network": row.get("network"),
+        "station_kind": row.get("station_kind"),
+        "priority": row.get("priority"),
+        "latitude": numeric_value(row.get("latitude")),
+        "longitude": numeric_value(row.get("longitude")),
+        "depth_m": numeric_value(row.get("depth_m")),
+        "source_time_coordinate_utc": bigquery_timestamp(row.get("source_time_coordinate_utc") or row.get("observed_at_utc")),
+        "qc_flag": row.get("qc_flag"),
+        "freshness_status": row.get("freshness_status") or row.get("freshness_state"),
+        "freshness_state": row.get("freshness_state") or (row.get("freshness_status") or "").upper(),
+        "quality_score": numeric_value(row.get("quality_score")),
+        "is_future": row.get("is_future"),
+        "is_future_timestamp": row.get("is_future_timestamp") or row.get("is_future"),
+        "is_qc_good": row.get("is_qc_good"),
+        "variables_supported": row.get("variables_supported") or [],
+        "nearest_routes": row.get("nearest_routes") or [],
+        "distance_to_route_nm": numeric_value(row.get("distance_to_route_nm")),
+        "distance_to_palma": numeric_value(row.get("distance_to_palma")),
+        "distance_to_ibiza": numeric_value(row.get("distance_to_ibiza")),
+        "distance_to_menorca": numeric_value(row.get("distance_to_menorca")),
+    }
+    allowed_fields = {field["name"] for field in bigquery_schema()}
+    filtered_normalized = {
+        key: sanitize_float(value)
+        for key, value in normalized.items()
+        if key in allowed_fields
+    }
+    filtered_normalized["row_hash"] = stable_row_hash(filtered_normalized)
+    return filtered_normalized
+
+
 def stable_row_hash(row):
     payload = {key: row.get(key) for key in sorted(row) if key != "ingested_at_utc"}
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
@@ -548,6 +643,7 @@ def bigquery_schema():
         {"name": "schema_version", "type": "STRING", "mode": "REQUIRED"},
         {"name": "row_hash", "type": "STRING", "mode": "REQUIRED"},
         {"name": "record_type", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "source_family", "type": "STRING", "mode": "NULLABLE"},
         {"name": "run_date", "type": "DATE", "mode": "REQUIRED"},
         {"name": "run_id", "type": "STRING", "mode": "REQUIRED"},
         {"name": "ingested_at_utc", "type": "TIMESTAMP", "mode": "REQUIRED"},
@@ -605,6 +701,7 @@ def station_metadata_schema():
         {"name": "schema_version", "type": "STRING", "mode": "REQUIRED"},
         {"name": "row_hash", "type": "STRING", "mode": "REQUIRED"},
         {"name": "record_type", "type": "STRING", "mode": "REQUIRED"},
+        {"name": "source_family", "type": "STRING", "mode": "NULLABLE"},
         {"name": "run_date", "type": "DATE", "mode": "REQUIRED"},
         {"name": "run_id", "type": "STRING", "mode": "REQUIRED"},
         {"name": "ingested_at_utc", "type": "TIMESTAMP", "mode": "REQUIRED"},

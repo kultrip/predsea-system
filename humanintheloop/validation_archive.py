@@ -81,6 +81,7 @@ def write_validation_archive(
     observations,
     output_root,
     station_metadata=None,
+    source_inventory=None,
 ):
     validation_dir = Path(run_dir) / "validation"
     validation_dir.mkdir(parents=True, exist_ok=True)
@@ -93,6 +94,7 @@ def write_validation_archive(
         run_id=run_id,
         station_metadata=station_metadata,
     )
+    source_inventory_rows = build_source_inventory_rows(source_inventory, run_date, run_id)
     historical_forecast_rows = load_historical_forecast_rows(output_root)
     matched_rows = match_observations_to_forecasts(
         observation_rows,
@@ -105,12 +107,14 @@ def write_validation_archive(
         forecast_rows,
         matched_rows,
         station_metadata_rows=station_metadata_rows,
+        source_inventory_rows=source_inventory_rows,
     )
 
     write_jsonl(validation_dir / "observation_samples.jsonl", observation_rows)
     write_jsonl(validation_dir / "forecast_index.jsonl", forecast_rows)
     write_jsonl(validation_dir / "matched_validation.jsonl", matched_rows)
     write_jsonl(validation_dir / "station_metadata.jsonl", station_metadata_rows)
+    write_jsonl(validation_dir / "source_inventory.jsonl", source_inventory_rows)
     (validation_dir / "validation_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary
 
@@ -153,6 +157,7 @@ def build_observation_rows(observations, run_date, run_id):
                     {
                         "schema_version": SCHEMA_VERSION,
                         "record_type": "observation",
+                        "source_family": source_family_for_record(measurement, record, default="observation"),
                         "run_date": run_date,
                         "run_id": run_id,
                         "provider": measurement.get("provider") or record.get("provider") or record.get("source") or "socib",
@@ -214,6 +219,7 @@ def build_observation_rows(observations, run_date, run_id):
                 {
                     "schema_version": SCHEMA_VERSION,
                     "record_type": "observation",
+                    "source_family": source_family_for_record(record, record, default="observation"),
                     "run_date": run_date,
                     "run_id": run_id,
                     "provider": record.get("provider") or record.get("source") or "socib",
@@ -263,6 +269,7 @@ def build_station_metadata_rows(observations, run_date=None, run_id=None, statio
             continue
         existing = rows_by_station.get(station_id, {})
         merged = {**existing, **candidate}
+        merged.setdefault("source_family", source_family_for_record(candidate, existing, default="observation"))
         merged.setdefault("provider", candidate.get("provider") or existing.get("provider"))
         merged.setdefault("network", candidate.get("network") or existing.get("network"))
         merged.setdefault("station_name", candidate.get("station_name") or existing.get("station_name"))
@@ -285,6 +292,56 @@ def build_station_metadata_rows(observations, run_date=None, run_id=None, statio
             row.get("provider") or "",
             row.get("network") or "",
             row.get("station_name") or "",
+            row.get("station_id") or "",
+        ),
+    )
+
+
+def build_source_inventory_rows(source_inventory, run_date=None, run_id=None):
+    rows = []
+    for entry in source_inventory or []:
+        if not isinstance(entry, dict):
+            continue
+        source_status = entry.get("status") or ("active" if entry.get("available") else "unavailable")
+        rows.append(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "record_type": "source_inventory",
+                "source_family": entry.get("source_family") or source_family_for_record(entry, default="unknown"),
+                "run_date": run_date,
+                "run_id": run_id,
+                "provider": entry.get("provider") or entry.get("id") or entry.get("source_system"),
+                "source_system": entry.get("id") or entry.get("source_system") or entry.get("provider"),
+                "source_label": entry.get("label") or entry.get("source_label"),
+                "station_id": entry.get("station_id") or entry.get("id"),
+                "station_name": entry.get("station_name") or entry.get("label") or entry.get("id"),
+                "sample_time_utc": normalize_timestamp(entry.get("observed_at_utc") or entry.get("generated_at_utc")),
+                "observed_at_utc": normalize_timestamp(entry.get("observed_at_utc") or entry.get("generated_at_utc")),
+                "source_time_coordinate_utc": normalize_timestamp(entry.get("observed_at_utc") or entry.get("generated_at_utc")),
+                "variable": "source_status",
+                "source_field": "available",
+                "value": 1.0 if entry.get("available") else 0.0,
+                "units": "bool",
+                "qc_flag": None,
+                "freshness_status": source_status,
+                "freshness_state": str(source_status).upper(),
+                "quality_score": None,
+                "is_future": False,
+                "is_future_timestamp": False,
+                "is_qc_good": entry.get("available"),
+                "dataset_url": entry.get("dataset_url"),
+                "source_family": entry.get("source_family") or source_family_for_record(entry, default="unknown"),
+                "nearest_routes": [],
+                "distance_to_route_nm": None,
+                "provider_kind": entry.get("kind"),
+                "resolution_km": entry.get("resolution_km"),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            row.get("source_system") or "",
+            row.get("source_label") or "",
             row.get("station_id") or "",
         ),
     )
@@ -316,6 +373,7 @@ def station_metadata_row_from_record(station_id, record, run_date=None, run_id=N
     return {
         "schema_version": SCHEMA_VERSION,
         "record_type": "station_metadata",
+        "source_family": source_family_for_record(record, record, default="observation"),
         "run_date": run_date,
         "run_id": run_id,
         "provider": record.get("provider") or record.get("source") or "socib",
@@ -453,6 +511,7 @@ def build_forecast_rows(snapshots_by_route, routes, run_date, run_id):
                     {
                         "schema_version": SCHEMA_VERSION,
                         "record_type": "forecast",
+                        "source_family": source_family_for_forecast(snapshot, forecast_source),
                         "run_date": run_date,
                         "run_id": run_id,
                         "route_id": route_id,
@@ -542,7 +601,7 @@ def match_observations_to_forecasts(observation_rows, forecast_rows):
     return sorted(matches, key=lambda row: (row.get("target_time_utc") or "", row.get("route_id") or "", row.get("variable") or ""))
 
 
-def build_validation_summary(run_date, run_id, observation_rows, forecast_rows, matched_rows, station_metadata_rows=None):
+def build_validation_summary(run_date, run_id, observation_rows, forecast_rows, matched_rows, station_metadata_rows=None, source_inventory_rows=None):
     variable_counts = {}
     for row in matched_rows:
         variable_counts[row["variable"]] = variable_counts.get(row["variable"], 0) + 1
@@ -555,6 +614,7 @@ def build_validation_summary(run_date, run_id, observation_rows, forecast_rows, 
         "forecast_rows": len(forecast_rows),
         "matched_rows": len(matched_rows),
         "station_metadata_rows": len(station_metadata_rows or []),
+        "source_inventory_rows": len(source_inventory_rows or []),
         "matched_variables": variable_counts,
         "metrics": metrics_by_variable(matched_rows),
         "notes": [
@@ -628,6 +688,62 @@ def normalize_timestamp(value):
         except ValueError:
             pass
     return text
+
+
+def source_family_for_record(primary, fallback=None, default="unknown"):
+    record = primary if isinstance(primary, dict) else {}
+    fallback = fallback if isinstance(fallback, dict) else {}
+    source_system = str(
+        record.get("source_system")
+        or record.get("provider")
+        or fallback.get("source_system")
+        or fallback.get("provider")
+        or ""
+    ).lower()
+    source_label = str(
+        record.get("source_label")
+        or fallback.get("source_label")
+        or ""
+    ).upper()
+    network = str(
+        record.get("network")
+        or fallback.get("network")
+        or ""
+    ).lower()
+    if "emodnet" in source_system or source_label == "EMODNET_PHYSICS":
+        return "observation"
+    if "portus" in source_system:
+        return "observation"
+    if source_label in {"REDMAR", "REDCOS", "REDEXT", "HF_RADAR"}:
+        return "observation"
+    if network in {"redmar", "redcos", "redext", "hfradar"}:
+        return "observation"
+    if "atmospheric" in source_system or "wind" in source_system and "forecast" in source_system:
+        return "atmosphere"
+    if "atmospheric" in source_label.lower() or "wind forecast" in source_label.lower():
+        return "atmosphere"
+    if "copernicus" in source_system:
+        return "ocean_forecast"
+    if source_system in {"meteo_france_arome", "aemet_harmonie_arome", "ecmwf_open_data"}:
+        return "atmosphere"
+    return default
+
+
+def source_family_for_forecast(snapshot, forecast_source=None):
+    source = forecast_source if isinstance(forecast_source, dict) else {}
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
+    source_id = str(
+        source.get("id")
+        or source.get("source")
+        or snapshot.get("forecast_source", {}).get("id")
+        or snapshot.get("data_lineage", {}).get("ocean_forecast", {}).get("source")
+        or ""
+    ).lower()
+    if source_id in {"meteo_france_arome", "aemet_harmonie_arome", "ecmwf_open_data"}:
+        return "atmosphere"
+    if "copernicus" in source_id or source_id == "copernicus_med":
+        return "ocean_forecast"
+    return "forecast"
 
 
 def lead_time_hours(created_at, target_time):
