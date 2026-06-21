@@ -44,6 +44,10 @@ REGIONAL_LIMITATIONS = (
     "No nearby shelter search",
 )
 
+human_path = str(HUMANINTHELOOP_DIR)
+if human_path not in sys.path:
+    sys.path.insert(0, human_path)
+
 import source_lineage
 
 
