@@ -94,6 +94,19 @@ The endpoint returns:
 - `warnings`
 - `sources_available`
 
+## Climatology baseline
+
+The climatology baseline is built by a separate GitHub Actions workflow, not
+by the hourly ETL:
+
+- workflow: `.github/workflows/build-climatology.yml`
+- script: `scripts/build_climatology.py`
+- output table: `predsea_validation.climatology_baseline`
+
+The workflow queries `predsea_validation.evidence_rows`, computes the monthly
+and hourly baseline buckets, truncates the target table, and reloads it.
+There is no corresponding GCS artifact for this baseline today.
+
 ## API endpoints
 
 ### Health and metadata
