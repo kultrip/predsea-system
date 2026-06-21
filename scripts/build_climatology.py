@@ -121,7 +121,6 @@ def build_climatology_query(*, project, dataset, evidence_table, start_date, end
     ]
     variable_list = ", ".join(sql_literal(variable) for variable in variables)
     
-    # --- CAMBIO: Se eliminan las restricciones estrictas del HAVING para permitir nuevas fuentes ---
     return f"""
 SELECT
   source_system,
@@ -159,13 +158,18 @@ def load_gcs_observation_rows(*, bucket_name, prefix, start_date=None, end_date=
     end_key = _date_key(end_date)
 
     for blob in client.list_blobs(bucket, prefix=root_prefix):
-        if not blob.name.endswith("/validation/observation_samples.jsonl"):
+        # --- FIX 1: Buscamos cualquier JSONL de EMODnet/Copernicus sin forzar carpeta 'validation' ---
+        if not blob.name.endswith(".jsonl"):
             continue
+            
         run_date = _run_date_from_blob_name(blob.name, prefix)
-        if start_key and run_date and run_date < start_key:
-            continue
-        if end_key and run_date and run_date >= end_key:
-            continue
+        # Solo aplicamos los filtros de fecha si el script consigue extraer una fecha de la estructura
+        if run_date:
+            if start_key and run_date < start_key:
+                continue
+            if end_key and run_date >= end_key:
+                continue
+                
         text = blob.download_as_text(encoding="utf-8")
         for line in text.splitlines():
             line = line.strip()
@@ -203,7 +207,6 @@ def aggregate_climatology_rows(rows, *, min_sample_count=10, min_history_years=1
         longitude = _as_float(row.get("longitude"))
         unit = row.get("units") or row.get("unit")
         
-        # --- CAMBIO CRÍTICO: Se extraen lat/long de la clave de agrupación para evitar splits multifuente ---
         key = (
             provider,
             network,
@@ -249,7 +252,6 @@ def aggregate_climatology_rows(rows, *, min_sample_count=10, min_history_years=1
         if not bucket["station_name"]:
             bucket["station_name"] = station_name
             
-        # --- CAMBIO: Absorción fluida de coordenadas cuando provengan de Copernicus/EMODnet ---
         if latitude is not None:
             bucket["latitude"] = latitude
         if longitude is not None:
@@ -268,6 +270,14 @@ def aggregate_climatology_rows(rows, *, min_sample_count=10, min_history_years=1
         if sample_count > 1:
             variance = (bucket["sumsq"] - (bucket["sum"] ** 2) / sample_count) / (sample_count - 1)
             stddev = math.sqrt(max(variance, 0.0))
+            
+        # --- FIX 2: CONTROL ANTI-CRASH PARA VALORES FUERA DE RANGO JSON (NaN / INF) ---
+        if mean is not None and (math.isnan(mean) or math.isinf(mean)):
+            mean = None
+        if stddev is not None and (math.isnan(stddev) or math.isinf(stddev)):
+            stddev = None
+        # -----------------------------------------------------------------------------
+
         aggregated.append(
             {
                 "provider": bucket["provider"],
