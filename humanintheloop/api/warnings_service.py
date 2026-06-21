@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import io
 import logging
 import os
 import time
+import tarfile
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
+import xml.etree.ElementTree as ET
 
 import requests
 
@@ -23,6 +26,14 @@ BIGQUERY_EVIDENCE_TABLE_ENV_VARS = ("PREDSEA_BIGQUERY_EVIDENCE_TABLE", "BQ_TABLE
 BIGQUERY_CLIMATOLOGY_TABLE_ENV_VARS = ("PREDSEA_BIGQUERY_CLIMATOLOGY_TABLE", "BQ_TABLE_CLIMATOLOGY")
 BIGQUERY_LOCATION_ENV_VARS = ("PREDSEA_BIGQUERY_LOCATION", "BQ_LOCATION")
 AEMET_TIMEOUT_SECONDS = int(os.environ.get("PREDSEA_AEMET_TIMEOUT_SECONDS", "30"))
+AEMET_WARNING_AREA_CODES = tuple(
+    code.strip()
+    for code in os.environ.get("PREDSEA_AEMET_WARNING_AREA_CODES", "esp").split(",")
+    if code.strip()
+)
+AEMET_CAP_LANGUAGE = "es-ES"
+AEMET_CAP_ZONE_VALUE_NAME = "AEMET-Meteoalerta zona"
+AEMET_CAP_BALEARIC_ZONE_PREFIX = "73"
 
 BALEARIC_ZONE_IDS = {
     "07",
@@ -325,43 +336,156 @@ def fetch_aemet_warnings(*, generated_at_utc, route=None, place=None):
     api_key = os.environ.get("AEMET_API_KEY")
     if not api_key:
         return [], False
-    headers = {"api_key": api_key, "Accept": "application/json"}
-    base_url = "https://opendata.aemet.es/opendata/api/avisos_cap/ultimoelaborado/area/esp"
+    warnings = []
+    source_available = False
+    for area_code in aemet_warning_area_codes():
+        area_warnings, area_available = fetch_aemet_warnings_for_area(
+            area_code=area_code,
+            generated_at_utc=generated_at_utc,
+            route=route,
+            place=place,
+            api_key=api_key,
+        )
+        warnings.extend(area_warnings)
+        source_available = source_available or area_available
+    return warnings, source_available
+
+
+def fetch_aemet_warnings_for_area(*, area_code, generated_at_utc, route=None, place=None, api_key=None):
+    headers = {"api_key": api_key, "Accept": "application/json"} if api_key else {"Accept": "application/json"}
+    base_url = f"https://opendata.aemet.es/opendata/api/avisos_cap/ultimoelaborado/area/{area_code}"
     try:
         response = requests.get(base_url, headers=headers, timeout=AEMET_TIMEOUT_SECONDS)
         response.raise_for_status()
-        first = response.json()
-        data_url = first.get("datos")
+        metadata = response.json()
+        if not isinstance(metadata, dict):
+            raise RuntimeError("AEMET metadata response was not a JSON object")
+        estado = str(metadata.get("estado") or "").strip()
+        if estado and estado not in {"200", "OK"}:
+            raise RuntimeError(metadata.get("descripcion") or metadata.get("mensaje") or f"AEMET returned estado={estado}")
+        data_url = metadata.get("datos")
         if not data_url:
             raise RuntimeError("AEMET response missing 'datos' URL")
-        response = requests.get(data_url, headers=headers, timeout=AEMET_TIMEOUT_SECONDS)
-        response.raise_for_status()
-        payload = response.json()
+        archive_response = requests.get(data_url, timeout=AEMET_TIMEOUT_SECONDS)
+        archive_response.raise_for_status()
+        warnings = parse_aemet_cap_archive(
+            archive_response.content,
+            generated_at_utc=generated_at_utc,
+            route=route,
+            place=place,
+            source_name=data_url,
+        )
+        return warnings, True
     except Exception as error:
-        logger.warning("AEMET warnings fetch failed: %s", error)
+        logger.warning("AEMET warnings fetch failed for area %s: %s", area_code, error)
         return [], False
 
-    alerts = flatten_aemet_payload(payload)
+
+def parse_aemet_cap_archive(archive_bytes, *, generated_at_utc, route=None, place=None, source_name=None):
     warnings = []
-    for alert in alerts:
-        alert_warnings = aemet_warning_from_alert(alert, generated_at_utc=generated_at_utc, route=route, place=place)
-        if alert_warnings:
-            warnings.extend(alert_warnings)
-    return warnings, True
+    for member_name, xml_bytes in iter_aemet_cap_xml_documents(archive_bytes):
+        warnings.extend(
+            parse_aemet_cap_xml(
+                xml_bytes,
+                generated_at_utc=generated_at_utc,
+                route=route,
+                place=place,
+                source_name=member_name or source_name,
+            )
+        )
+    return warnings
 
 
-def flatten_aemet_payload(payload):
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        for key in ("avisos", "warnings", "data", "items"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                return value
-        info = payload.get("info")
-        if isinstance(info, list):
-            return [payload]
-    return []
+def iter_aemet_cap_xml_documents(archive_bytes):
+    try:
+        with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:*") as archive:
+            for member in archive.getmembers():
+                if not member.isfile() or not member.name.lower().endswith(".xml"):
+                    continue
+                extracted = archive.extractfile(member)
+                if extracted is None:
+                    continue
+                yield member.name, extracted.read()
+        return
+    except tarfile.TarError as error:
+        stripped = archive_bytes.lstrip()
+        if stripped.startswith(b"<"):
+            yield "aemet_cap.xml", archive_bytes
+            return
+        raise RuntimeError(f"AEMET CAP archive could not be read: {error}") from error
+
+
+def parse_aemet_cap_xml(xml_bytes, *, generated_at_utc, route=None, place=None, source_name=None):
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError as error:
+        raise RuntimeError(f"Invalid AEMET CAP XML in {source_name or 'archive'}: {error}") from error
+    warnings = []
+    for info in iter_local_name_elements(root, "info"):
+        warning = aemet_warning_from_info(
+            info,
+            generated_at_utc=generated_at_utc,
+            route=route,
+            place=place,
+            source_name=source_name,
+        )
+        if warning:
+            warnings.append(warning)
+    return warnings
+
+
+def aemet_warning_from_info(info, *, generated_at_utc, route=None, place=None, source_name=None):
+    if local_name(info.tag) != "info":
+        return None
+    language = normalized_text(first_text_by_local_name(info, "language"))
+    if language != AEMET_CAP_LANGUAGE:
+        return None
+    zone_codes = extract_aemet_zone_codes(info)
+    if not zone_codes:
+        return None
+    now = parse_utc_timestamp(generated_at_utc) or datetime.now(timezone.utc)
+    expires = parse_utc_timestamp(
+        first_text_by_local_name(info, "expires")
+        or first_text_by_local_name(info, "effective")
+        or first_text_by_local_name(info, "end")
+    )
+    if expires and expires <= now:
+        return None
+    event = first_text_by_local_name(info, "event") or first_text_by_local_name(info, "headline") or "AEMET warning"
+    severity_raw = first_text_by_local_name(info, "severity")
+    area_desc = first_text_by_local_name(info, "areaDesc") or ", ".join(zone_codes)
+    description = first_text_by_local_name(info, "description") or first_text_by_local_name(info, "headline") or event
+    warning = {
+        "source": "aemet_official",
+        "severity": aemet_severity_to_predsea(severity_raw),
+        "variable": aemet_event_to_variable(event),
+        "label": first_text_by_local_name(info, "headline") or event,
+        "description": description,
+        "value": None,
+        "unit": None,
+        "z_score": None,
+        "baseline_type": None,
+        "station_id": None,
+        "station_name": None,
+        "latitude": None,
+        "longitude": None,
+        "issued_at_utc": generated_at_utc,
+        "valid_from_utc": first_text_by_local_name(info, "onset") or first_text_by_local_name(info, "effective"),
+        "valid_to_utc": first_text_by_local_name(info, "expires"),
+        "route": route,
+        "aemet_event": event,
+        "aemet_area": area_desc,
+        "extra": {
+            "severity_raw": severity_raw,
+            "headline": first_text_by_local_name(info, "headline"),
+            "description": first_text_by_local_name(info, "description"),
+            "language": language,
+            "zone_codes": zone_codes,
+            "zone_value_name": AEMET_CAP_ZONE_VALUE_NAME,
+            "source_name": source_name,
+        },
+    }
+    return warning
 
 
 def aemet_warning_from_alert(alert, *, generated_at_utc, route=None, place=None):
@@ -371,47 +495,12 @@ def aemet_warning_from_alert(alert, *, generated_at_utc, route=None, place=None)
     if not isinstance(infos, list):
         infos = [infos]
     warnings = []
-    now = parse_utc_timestamp(generated_at_utc) or datetime.now(timezone.utc)
     for info in infos:
         if not isinstance(info, dict):
             continue
-        area_desc = area_description(info)
-        if not area_matches_balearics(area_desc):
-            continue
-        expires = parse_utc_timestamp(info.get("expires") or info.get("effective") or info.get("end"))
-        if expires and expires <= now:
-            continue
-        severity = aemet_severity_to_predsea(info.get("severity") or alert.get("severity"))
-        event = info.get("event") or info.get("headline") or "AEMET warning"
-        variable = aemet_event_to_variable(event)
-        warnings.append(
-            {
-                "source": "aemet_official",
-                "severity": severity,
-                "variable": variable,
-                "label": info.get("headline") or event,
-                "description": info.get("description") or info.get("headline") or event,
-                "value": None,
-                "unit": None,
-                "z_score": None,
-                "baseline_type": None,
-                "station_id": None,
-                "station_name": None,
-                "latitude": None,
-                "longitude": None,
-                "issued_at_utc": generated_at_utc,
-                "valid_from_utc": info.get("onset") or alert.get("sent"),
-                "valid_to_utc": info.get("expires"),
-                "route": route,
-                "aemet_event": event,
-                "aemet_area": area_desc,
-                "extra": {
-                    "severity_raw": info.get("severity") or alert.get("severity"),
-                    "headline": info.get("headline"),
-                    "description": info.get("description"),
-                },
-            }
-        )
+        warning = aemet_warning_from_info(info, generated_at_utc=generated_at_utc, route=route, place=place)
+        if warning:
+            warnings.append(warning)
     return warnings
 
 
@@ -615,6 +704,10 @@ def area_matches_balearics(area_desc):
     return any(zone in text for zone in BALEARIC_ZONE_IDS)
 
 
+def parse_utc_timestamp(value):
+    return place_weather.parse_utc_timestamp(value)
+
+
 def build_station_clause(scope_terms):
     if not scope_terms:
         return ""
@@ -754,3 +847,55 @@ def _unique_warning_variables(warnings, severity):
         seen.add(variable)
         variables.append(variable)
     return variables[:5]
+
+
+def normalized_text(value):
+    return str(value or "").strip()
+
+
+def local_name(tag):
+    if not isinstance(tag, str):
+        return ""
+    if "}" in tag:
+        return tag.rsplit("}", 1)[-1]
+    return tag
+
+
+def iter_local_name_elements(root, tag_name):
+    for element in root.iter():
+        if local_name(element.tag) == tag_name:
+            yield element
+
+
+def first_text_by_local_name(root, tag_name):
+    for element in iter_local_name_elements(root, tag_name):
+        text = normalized_text(element.text)
+        if text:
+            return text
+    return None
+
+
+def aemet_warning_area_codes():
+    configured = os.environ.get("PREDSEA_AEMET_WARNING_AREA_CODES")
+    if configured:
+        codes = [code.strip() for code in configured.split(",") if code.strip()]
+        if codes:
+            return tuple(codes)
+    return AEMET_WARNING_AREA_CODES
+
+
+def extract_aemet_zone_codes(info):
+    zone_codes = []
+    seen = set()
+    for geocode in iter_local_name_elements(info, "geocode"):
+        value_name = normalized_text(first_text_by_local_name(geocode, "valueName"))
+        value = normalized_text(first_text_by_local_name(geocode, "value"))
+        if value_name != AEMET_CAP_ZONE_VALUE_NAME:
+            continue
+        if not value or not value.startswith(AEMET_CAP_BALEARIC_ZONE_PREFIX):
+            continue
+        if value in seen:
+            continue
+        seen.add(value)
+        zone_codes.append(value)
+    return zone_codes

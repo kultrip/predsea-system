@@ -2127,7 +2127,7 @@ def test_warnings_endpoint_merges_sorts_and_counts_sources(tmp_path, monkeypatch
     )
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/warnings?route=palma_ibiza")
+    response = client.get("/warnings/active?route=palma_ibiza")
 
     assert response.status_code == 200
     payload = response.json()
@@ -2164,13 +2164,116 @@ def test_warnings_endpoint_remains_200_when_all_sources_fail(tmp_path, monkeypat
     )
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/warnings?place=palma")
+    response = client.get("/warnings/active?place=palma")
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["summary"]["total"] == 0
     assert payload["sources_available"] == []
     assert payload["operational_stance"] == "Warning sources temporarily unavailable. Check conditions manually."
+
+
+def test_aemet_cap_tar_parser_keeps_only_es_balearic_xml(monkeypatch):
+    import io
+    import tarfile
+
+    monkeypatch.setenv("AEMET_API_KEY", "test-key")
+    monkeypatch.setenv("PREDSEA_AEMET_WARNING_AREA_CODES", "esp")
+
+    es_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<alert>
+  <info>
+    <language>es-ES</language>
+    <event>Aviso de fenómenos costeros</event>
+    <severity>Severe</severity>
+    <headline>Aviso de fenómenos costeros</headline>
+    <description>Viento del noreste fuerza 7 y olas de 3 metros.</description>
+    <area>
+      <areaDesc>Ibiza y Formentera</areaDesc>
+      <geocode>
+        <valueName>AEMET-Meteoalerta zona</valueName>
+        <value>733104</value>
+      </geocode>
+    </area>
+    <onset>2026-06-21T10:00:00Z</onset>
+    <expires>2026-06-21T22:00:00Z</expires>
+  </info>
+  <info>
+    <language>en-GB</language>
+    <event>Coastal phenomena warning</event>
+    <severity>Severe</severity>
+    <headline>Coastal phenomena warning</headline>
+    <description>Wind and waves.</description>
+    <area>
+      <areaDesc>Ibiza and Formentera</areaDesc>
+      <geocode>
+        <valueName>AEMET-Meteoalerta zona</valueName>
+        <value>733104</value>
+      </geocode>
+    </area>
+  </info>
+</alert>
+"""
+    non_balearic_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<alert>
+  <info>
+    <language>es-ES</language>
+    <event>Aviso de viento</event>
+    <severity>Moderate</severity>
+    <headline>Aviso de viento</headline>
+    <description>Viento fuerte en Navarra.</description>
+    <area>
+      <areaDesc>Navarra</areaDesc>
+      <geocode>
+        <valueName>AEMET-Meteoalerta zona</valueName>
+        <value>741001</value>
+      </geocode>
+    </area>
+  </info>
+</alert>
+"""
+
+    archive_buffer = io.BytesIO()
+    with tarfile.open(fileobj=archive_buffer, mode="w") as archive:
+        for name, content in {
+            "alerts/balearic.xml": es_xml,
+            "alerts/navarra.xml": non_balearic_xml,
+        }.items():
+            encoded = content.encode("utf-8")
+            member = tarfile.TarInfo(name)
+            member.size = len(encoded)
+            archive.addfile(member, io.BytesIO(encoded))
+    archive_bytes = archive_buffer.getvalue()
+
+    class FakeResponse:
+        def __init__(self, payload=None, content=b""):
+            self._payload = payload
+            self.content = content
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, headers=None, timeout=None):
+        if "avisos_cap/ultimoelaborado/area/esp" in url:
+            return FakeResponse({"estado": 200, "datos": "https://aemet.example/downloads/cap.tar"})
+        if url == "https://aemet.example/downloads/cap.tar":
+            return FakeResponse(content=archive_bytes)
+        raise AssertionError(f"Unexpected AEMET URL: {url}")
+
+    monkeypatch.setattr(warnings_service.requests, "get", fake_get)
+
+    warnings, available = warnings_service.fetch_aemet_warnings(generated_at_utc="2026-06-21T12:00:00+00:00")
+
+    assert available is True
+    assert len(warnings) == 1
+    warning = warnings[0]
+    assert warning["source"] == "aemet_official"
+    assert warning["severity"] == "severe"
+    assert warning["aemet_area"] == "Ibiza y Formentera"
+    assert warning["extra"]["zone_codes"] == ["733104"]
 
 
 def test_briefing_summary_ignores_non_finite_observation_values():
