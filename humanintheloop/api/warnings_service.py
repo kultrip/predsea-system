@@ -758,7 +758,20 @@ def query_bigquery(sql, *, project_id, location=None):
     }
     if location:
         payload["location"] = location
+        
     response = session.post(query_url, json=payload)
+    
+    # --- ADD THIS TEMPORARY DIAGNOSTIC BLOCK ---
+    if response.status_code == 400:
+        print("❌ GOOGLE BIGQUERY REJECTED THE SQL STRINGS:")
+        try:
+            print(response.json()["error"]["message"])
+        except Exception:
+            print(response.text)
+        print("🚨 ATTEMPTED SQL STATEMENT RUN WAS:")
+        print(sql)
+    # -------------------------------------------
+
     response.raise_for_status()
     body = response.json()
     if not body.get("jobComplete", True):
