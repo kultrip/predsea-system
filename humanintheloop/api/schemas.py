@@ -277,3 +277,55 @@ class HealthResponse(BaseModel):
     latest_date: Optional[str]
     latest_run: Optional[str] = None
     storage_backend: str
+
+
+class WarningItem(BaseModel):
+    source: str
+    severity: Literal["severe", "moderate", "info"]
+    variable: Optional[str] = None
+    label: str
+    description: str
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    z_score: Optional[float] = None
+    baseline_type: Optional[str] = None
+    station_id: Optional[str] = None
+    station_name: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    issued_at_utc: str
+    valid_from_utc: Optional[str] = None
+    valid_to_utc: Optional[str] = None
+    route: Optional[str] = None
+    aemet_event: Optional[str] = None
+    aemet_area: Optional[str] = None
+    extra: Dict[str, Any] = Field(default_factory=dict)
+
+
+class WarningsContext(BaseModel):
+    route: Optional[str] = None
+    place: Optional[str] = None
+    date: Optional[str] = None
+    lookback_hours: int = 240
+    min_window_hours: int = 240
+    min_sample_count: int = 10
+    z_threshold: float = 1.5
+
+
+class WarningsSummary(BaseModel):
+    total: int = 0
+    severe: int = 0
+    moderate: int = 0
+    info: int = 0
+    aemet_official: int = 0
+    predsea_anomaly: int = 0
+    sources_available: List[str] = Field(default_factory=list)
+
+
+class WarningsResponse(BaseModel):
+    generated_at_utc: str
+    context: WarningsContext
+    summary: WarningsSummary
+    operational_stance: str
+    warnings: List[WarningItem] = Field(default_factory=list)
+    sources_available: List[str] = Field(default_factory=list)

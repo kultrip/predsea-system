@@ -38,6 +38,7 @@ PredSea’s public API is organized around a few operational families:
   - forecast and observation-backed weather responses
   - freshness metadata for source timing
   - route evidence bundles for captain questions
+  - operational warnings from AEMET and PredSea anomaly detection
 
 - **Operations**
   - health checks
@@ -71,6 +72,7 @@ curl http://127.0.0.1:8000/routes
 curl "http://127.0.0.1:8000/routes/palma_ibiza/evidence?date=2026-05-31&run=latest"
 curl "http://127.0.0.1:8000/routes/palma_ibiza/briefing?date=2026-05-31&run=latest&vessel_class=medium&format=whatsapp"
 curl "http://127.0.0.1:8000/places/ibiza/weather?date=2026-06-12&run=latest"
+curl "http://127.0.0.1:8000/warnings?route=palma_ibiza"
 ```
 
 Current route IDs:
@@ -382,6 +384,13 @@ Route questions also carry passage distance/time in the response JSON, so a
 question like "Is it good to go from Palma to Ibiza today?" can include the
 route’s static distance and typical duration alongside the weather answer. If
 the pair is not in the curated table, the same graph-based fallback is used.
+
+Warnings are also available as a separate endpoint:
+
+```bash
+curl "http://127.0.0.1:8000/warnings?route=palma_ibiza"
+curl "http://127.0.0.1:8000/warnings?place=palma&include_aemet=true&include_anomaly=true"
+```
 
 Current public media artifacts are:
 

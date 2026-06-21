@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from api.app import create_app
 from api.evidence_store import EvidenceStore, GcsEvidenceStore
+import api.warnings_service as warnings_service
 import place_registry
 
 
@@ -2028,3 +2029,145 @@ def test_health_reports_gcs_backend_when_gcs_store_is_injected():
         "latest_run": None,
         "storage_backend": "gcs",
     }
+
+
+def test_warnings_endpoint_merges_sorts_and_counts_sources(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        warnings_service,
+        "compute_rolling_anomaly_warnings",
+        lambda *args, **kwargs: (
+            [
+                {
+                    "source": "predsea_anomaly",
+                    "severity": "severe",
+                    "variable": "wave_height",
+                    "label": "Wave height anomaly",
+                    "description": "High wave height at Ibiza Channel",
+                    "value": 3.5,
+                    "unit": "m",
+                    "z_score": 2.9,
+                    "baseline_type": "rolling",
+                    "station_id": "canal_de_ibiza",
+                    "station_name": "Canal de Ibiza",
+                    "latitude": 38.9,
+                    "longitude": 1.4,
+                    "issued_at_utc": "2026-06-21T08:00:00+00:00",
+                    "valid_from_utc": "2026-06-21T08:00:00Z",
+                    "valid_to_utc": None,
+                    "route": "palma_ibiza",
+                    "aemet_event": None,
+                    "aemet_area": None,
+                    "extra": {},
+                }
+            ],
+            True,
+        ),
+    )
+    monkeypatch.setattr(
+        warnings_service,
+        "compute_climatological_anomaly_warnings",
+        lambda *args, **kwargs: (
+            [
+                {
+                    "source": "predsea_anomaly",
+                    "severity": "moderate",
+                    "variable": "air_temperature",
+                    "label": "Air temperature anomaly",
+                    "description": "Warmer than climatology",
+                    "value": 27.2,
+                    "unit": "C",
+                    "z_score": 1.7,
+                    "baseline_type": "climatological",
+                    "station_id": "palma",
+                    "station_name": "Palma",
+                    "latitude": 39.56,
+                    "longitude": 2.65,
+                    "issued_at_utc": "2026-06-21T08:00:00+00:00",
+                    "valid_from_utc": "2026-06-21T08:00:00Z",
+                    "valid_to_utc": None,
+                    "route": "palma_ibiza",
+                    "aemet_event": None,
+                    "aemet_area": None,
+                    "extra": {},
+                }
+            ],
+            True,
+        ),
+    )
+    monkeypatch.setattr(
+        warnings_service,
+        "fetch_aemet_warnings",
+        lambda *args, **kwargs: (
+            [
+                {
+                    "source": "aemet_official",
+                    "severity": "severe",
+                    "variable": "wind_speed",
+                    "label": "Aviso rojo por viento costero",
+                    "description": "Strong coastal wind expected",
+                    "value": None,
+                    "unit": None,
+                    "z_score": None,
+                    "baseline_type": None,
+                    "station_id": None,
+                    "station_name": None,
+                    "latitude": None,
+                    "longitude": None,
+                    "issued_at_utc": "2026-06-21T08:00:00+00:00",
+                    "valid_from_utc": "2026-06-21T10:00:00+00:00",
+                    "valid_to_utc": "2026-06-21T22:00:00+00:00",
+                    "route": "palma_ibiza",
+                    "aemet_event": "Viento costero",
+                    "aemet_area": "Baleares - Costa Norte",
+                    "extra": {},
+                }
+            ],
+            True,
+        ),
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/warnings?route=palma_ibiza")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"] == {
+        "total": 3,
+        "severe": 2,
+        "moderate": 1,
+        "info": 0,
+        "aemet_official": 1,
+        "predsea_anomaly": 2,
+        "sources_available": ["predsea_anomaly", "aemet_official"],
+    }
+    assert payload["operational_stance"].startswith("SEVERE conditions detected")
+    assert payload["warnings"][0]["source"] == "aemet_official"
+    assert payload["warnings"][1]["severity"] == "severe"
+    assert payload["warnings"][2]["severity"] == "moderate"
+
+
+def test_warnings_endpoint_remains_200_when_all_sources_fail(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        warnings_service,
+        "compute_rolling_anomaly_warnings",
+        lambda *args, **kwargs: ([], False),
+    )
+    monkeypatch.setattr(
+        warnings_service,
+        "compute_climatological_anomaly_warnings",
+        lambda *args, **kwargs: ([], False),
+    )
+    monkeypatch.setattr(
+        warnings_service,
+        "fetch_aemet_warnings",
+        lambda *args, **kwargs: ([], False),
+    )
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/warnings?place=palma")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["total"] == 0
+    assert payload["sources_available"] == []
+    assert payload["operational_stance"] == "Warning sources temporarily unavailable. Check conditions manually."

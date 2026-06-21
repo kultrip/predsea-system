@@ -24,6 +24,7 @@ from api.schemas import (
 )
 from api.reliability import compute_route_reliability
 from api.services import answer_question, evidence_used, snapshot_for_vessel_class
+from api.routers.warnings_endpoint import router as warnings_router
 import place_registry
 from place_registry import default_place_id_for_query
 import place_weather
@@ -607,6 +608,7 @@ def create_app(evidence_store=None, route_store=None):
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type"],
     )
+    app.include_router(warnings_router)
     store = evidence_store or create_evidence_store_from_env()
     if route_store is None:
         route_store = RouteStore()
