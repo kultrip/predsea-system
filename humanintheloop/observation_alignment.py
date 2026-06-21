@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 import re
 
@@ -15,10 +16,13 @@ def compute_observation_alignment(snapshot):
     forecast = snapshot.get("forecast") or {}
     observation = latest_wave_observation(observations)
 
-    if observation["wave_height_m"] is None or forecast.get("wave_max_m") is None:
+    observed_wave = finite_float(observation.get("wave_height_m"))
+    forecast_wave = finite_float(forecast.get("wave_max_m"))
+
+    if observed_wave is None or forecast_wave is None:
         return {
             "forecast_wave_m": forecast.get("wave_max_m"),
-            "observed_wave_m": observation["wave_height_m"],
+            "observed_wave_m": observation.get("wave_height_m"),
             "difference_pct": None,
             "agreement": "unavailable",
             "observation_age_minutes": observation["observation_age_minutes"],
@@ -27,9 +31,18 @@ def compute_observation_alignment(snapshot):
             "warning": None,
         }
 
-    forecast_wave = float(forecast["wave_max_m"])
-    observed_wave = float(observation["wave_height_m"])
     difference_pct = abs(forecast_wave - observed_wave) / forecast_wave * 100.0 if forecast_wave else 0.0
+    if not math.isfinite(difference_pct):
+        return {
+            "forecast_wave_m": round(forecast_wave, 2),
+            "observed_wave_m": round(observed_wave, 2),
+            "difference_pct": None,
+            "agreement": "unavailable",
+            "observation_age_minutes": observation["observation_age_minutes"],
+            "freshness": observation["freshness"],
+            "freshness_status": observation["freshness"],
+            "warning": None,
+        }
 
     if difference_pct < 15:
         agreement = "excellent"
@@ -60,13 +73,25 @@ def compute_observation_alignment(snapshot):
     }
 
 
+def finite_float(value):
+    try:
+        if value is None:
+            return None
+        result = float(value)
+        if math.isnan(result) or math.isinf(result):
+            return None
+        return result
+    except (TypeError, ValueError):
+        return None
+
+
 def latest_wave_observation(observations):
     candidates = []
     now = datetime.now(timezone.utc)
     for station_id, record in (observations or {}).items():
         if not isinstance(record, dict):
             continue
-        wave_height = record.get("wave_height_m")
+        wave_height = finite_float(record.get("wave_height_m"))
         if wave_height is None:
             continue
         sample_time = record.get("last_sample_utc") or record.get("observed_at_utc")

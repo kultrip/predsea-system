@@ -2171,3 +2171,24 @@ def test_warnings_endpoint_remains_200_when_all_sources_fail(tmp_path, monkeypat
     assert payload["summary"]["total"] == 0
     assert payload["sources_available"] == []
     assert payload["operational_stance"] == "Warning sources temporarily unavailable. Check conditions manually."
+
+
+def test_briefing_summary_ignores_non_finite_observation_values():
+    from briefing import build_daily_briefing_summary
+
+    snapshot = {
+        "created_at_utc": "2026-06-21 08:00 UTC",
+        "forecast": {"wave_max_m": 1.2, "current_max_kn": 0.4, "hourly": []},
+        "observations": {
+            "canal_de_ibiza": {
+                "wave_height_m": float("nan"),
+                "last_sample_utc": "2026-06-21 07:30 UTC",
+            }
+        },
+        "recommendation": {"confidence": "low"},
+    }
+
+    summary = build_daily_briefing_summary(snapshot)
+
+    assert summary["observation_alignment"]["agreement"] == "unavailable"
+    assert summary["observation_alignment"]["difference_pct"] is None
