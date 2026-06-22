@@ -180,12 +180,26 @@ def process_and_deduplicate_rows(rows):
             continue
             
         value = _as_float(row.get("value"))
-        # --- FIX CRÍTICO: Si el valor numérico crudo es NaN o Inf, lo ignoramos para no romper el JSON ---
         if value is None or math.isnan(value) or math.isinf(value):
             continue
             
-        station_id = row.get("station_id")
-        variable = row.get("variable")
+# --- MAPEO DE ALIAS PARA RECONOCER FUENTES EXTERNAS ---
+        station_id = (
+            row.get("station_id") 
+            or row.get("station") 
+            or row.get("platform_code") 
+            or row.get("platform_id")
+            or row.get("EDMO_code")
+        )
+        
+        variable = (
+            row.get("variable") 
+            or row.get("variable_name") 
+            or row.get("parameter")
+            or row.get("VARIABLE")
+        )
+        # ------------------------------------------------------
+        
         if not station_id or not variable:
             continue
             
@@ -196,7 +210,6 @@ def process_and_deduplicate_rows(rows):
         longitude = _as_float(row.get("longitude"))
         unit = row.get("unit") or row.get("units")
 
-        # Limpieza secundaria de coordenadas corruptas por si acaso
         if latitude is not None and (math.isnan(latitude) or math.isinf(latitude)):
             latitude = None
         if longitude is not None and (math.isnan(longitude) or math.isinf(longitude)):
