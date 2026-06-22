@@ -50,9 +50,12 @@ docker pull "${DOCKER_IMAGE}"
 mkdir -p /workspace/inputs
 mkdir -p /workspace/outputs
 
-# Download ECMWF boundary forcing files from a coordinated GCS path
-echo "Downloading boundary conditions from GCS..."
+# Download ECMWF and CMEMS boundary forcing files from GCS paths
+echo "Downloading atmospheric boundary conditions from GCS..."
 gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/ecmwf/${RUN_DATE}/" /workspace/inputs/
+
+echo "Downloading oceanic boundary conditions from GCS..."
+gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/cmems/${RUN_DATE}/" /workspace/inputs/
 
 # 6. Run the simulation pipeline container
 # Mounts inputs/outputs and runs the WRF/ROMS simulation

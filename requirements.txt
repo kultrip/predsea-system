@@ -18,3 +18,4 @@ searoute>=1.6.0
 tenacity>=8.2
 uvicorn>=0.30
 xarray>=2025.1
+ecmwf-opendata>=0.3.30

@@ -30,11 +30,11 @@
 
 &ungrib
  out_format = 'WPS',
- prefix = 'GFS',
+ prefix = 'ECMWF',
 /
 
 &metgrid
- fg_name = 'GFS',
+ fg_name = 'ECMWF',
  io_form_metgrid = 2,
  opt_output_from_metgrid_path = './met_em',
 /

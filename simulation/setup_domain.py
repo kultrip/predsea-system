@@ -25,6 +25,7 @@ class BalearicDomain:
     d02_j_parent_start: int = 61
     d03_i_parent_start: int = 34
     d03_j_parent_start: int = 35
+    forcing_prefix: str = "ECMWF"
 
 
 def render_namelist(domain: BalearicDomain) -> str:
@@ -60,11 +61,11 @@ def render_namelist(domain: BalearicDomain) -> str:
 
 &ungrib
  out_format = 'WPS',
- prefix = 'GFS',
+ prefix = '{domain.forcing_prefix}',
 /
 
 &metgrid
- fg_name = 'GFS',
+ fg_name = '{domain.forcing_prefix}',
  io_form_metgrid = 2,
  opt_output_from_metgrid_path = './met_em',
 /
@@ -83,6 +84,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-date", default=BalearicDomain.start_date)
     parser.add_argument("--end-date", default=BalearicDomain.end_date)
     parser.add_argument("--geog-data-path", default=BalearicDomain.geog_data_path)
+    parser.add_argument("--forcing-prefix", default=BalearicDomain.forcing_prefix)
     return parser.parse_args()
 
 
@@ -92,6 +94,7 @@ def main() -> None:
         start_date=args.start_date,
         end_date=args.end_date,
         geog_data_path=args.geog_data_path,
+        forcing_prefix=args.forcing_prefix,
     )
     output = write_namelist(args.output, domain)
     print(output)

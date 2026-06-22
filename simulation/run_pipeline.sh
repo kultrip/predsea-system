@@ -4,10 +4,10 @@ set -euo pipefail
 WPS_DIR="${WPS_DIR:-/opt/WPS}"
 WRF_DIR="${WRF_DIR:-/opt/WRF}"
 PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"
-GRIB_DIR="${GRIB_DIR:-/data/gfs}"
+GRIB_DIR="${GRIB_DIR:-/data}"
 RUN_DIR="${RUN_DIR:-/workspace/run}"
 NAMELIST_WPS="${NAMELIST_WPS:-/workspace/namelist.wps}"
-Vtable="${Vtable:-${WPS_DIR}/ungrib/Variable_Tables/Vtable.GFS}"
+Vtable="${Vtable:-${WPS_DIR}/ungrib/Variable_Tables/Vtable.ECMWF}"
 MPI_PROCS="${MPI_PROCS:-4}"
 
 mkdir -p "${RUN_DIR}"
