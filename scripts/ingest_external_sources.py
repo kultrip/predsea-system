@@ -115,49 +115,68 @@ def download_copernicus_data(args):
 
 
 def download_emodnet_data(args):
-    print("📡 Querying EMODnet Physics Open API (ERDDAP)...")
-    base_url = "https://erddap.emodnet-physics.eu/erddap/tabledap/EP_ERD_INT_RV_NRT.csv"
+    print("📡 Querying EMODnet Physics Open API (ERDDAP) for Moorings Stations...")
+    # CAMBIADO: Usamos el dataset oficial de estaciones fijas (Moorings)
+    base_url = "https://erddap.emodnet-physics.eu/erddap/tabledap/EP_ERD_INT_MO_NRT.csv"
     
     start_year = int(args.start_date.split("-")[0])
     end_year = int(args.end_date.split("-")[0])
     
+    # Delimitamos geográficamente la consulta a la zona del MVP de PredSea para evitar errores 400
+    # Longitudes: 0.5 a 4.5 E | Latitudes: 38.0 a 41.5 N
+    geo_filter = "&latitude>=38.0&latitude<=41.5&longitude>=0.5&longitude<=4.5"
+    
     for year in range(start_year, end_year):
-        print(f"⏳ Querying year: {year}...")
+        print(f"⏳ Querying Mooring records for year: {year}...")
+        
+        # Estructuramos la URL pidiendo solo lo necesario del recuadro Balear
         query_url = (
-            f"{base_url}?platform_code,time,sea_water_temperature"
+            f"{base_url}?platform_code,time,latitude,longitude,sea_water_temperature"
             f"&time>={year}-01-01T00:00:00Z"
             f"&time<={year}-12-31T23:59:59Z"
+            f"{geo_filter}"
         )
         
         try:
-            # CORRECCIÓN: Hacemos el request con requests para usar timeout sin romper pandas
-            response = requests.get(query_url, timeout=30)
+            # Hacemos la petición con un timeout prudencial
+            response = requests.get(query_url, timeout=45)
+            
+            # Si el servidor responde 404 o no hay datos en ese año/zona, pasamos al siguiente de forma segura
+            if response.status_code == 404:
+                print(f"ℹ️ No Mooring records found for year {year} in the Balearic box.")
+                continue
+                
             response.raise_for_status()
             
-            # Pasamos el texto plano descargado a StringIO para que Pandas lo parsee de forma segura
             from io import StringIO
             csv_data = StringIO(response.text)
             
+            # Saltamos la segunda fila que ERDDAP usa para las unidades de texto
             df = pd.read_csv(csv_data, skiprows=[1])
+            
             rows_to_insert = []
             for _, row in df.dropna(subset=["sea_water_temperature"]).iterrows():
                 rows_to_insert.append({
                     "record_type": "observation",
                     "source_system": "emodnet",
-                    "source_label": "emodnet_physics",
-                    "station_id": str(row["platform_code"]),
-                    "station_name": f"EMODnet Station {row['platform_code']}",
+                    "source_label": "emodnet_mooring",
+                    "station_id": f"emod_{str(row['platform_code'])}",
+                    "station_name": f"EMODnet Mooring Bouy {row['platform_code']}",
                     "variable": "water_temperature",
                     "units": "degrees_C",
                     "sample_time_utc": pd.to_datetime(row["time"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "latitude": float(row["latitude"]) if pd.notna(row.get("latitude")) else None,
+                    "longitude": float(row["longitude"]) if pd.notna(row.get("longitude")) else None,
                     "value": float(row["sea_water_temperature"]),
                     "status": "validated"
                 })
 
             if rows_to_insert:
                 upload_to_evidence_rows(args, rows_to_insert)
+                print(f"✅ Successfully ingested {len(rows_to_insert)} entries for year {year}.")
+                
         except Exception as chunk_error:
-            print(f"⚠️ Chunk {year} omitted: {chunk_error}")
+            print(f"⚠️ Chunk {year} omitted due to API connection issue: {chunk_error}")
             continue
 
 
