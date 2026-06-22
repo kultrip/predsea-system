@@ -29,7 +29,6 @@ def main(argv=None):
     parser.add_argument("--dataset", default=resolve_env("PREDSEA_BIGQUERY_DATASET", default="predsea_validation"))
     parser.add_argument("--table", default=resolve_env("PREDSEA_BIGQUERY_EVIDENCE_TABLE", default="evidence_rows"))
     
-    # Tolerancia multifuente para los nombres de secretos de Copernicus
     user = os.getenv("COPERNICUSMARINE_SERVICE_USERNAME") or os.getenv("COPERNICUS_MARINE_USER")
     pwd = os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD") or os.getenv("COPERNICUS_MARINE_PASSWORD")
     
@@ -41,13 +40,7 @@ def main(argv=None):
 
     print(f"🚀 Starting Extraction Pipeline: {args.start_date} to {args.end_date}")
 
-    # 1. EMODNET
-    try:
-        download_emodnet_data(args)
-    except Exception as e:
-        print(f"❌ Error downloading from EMODnet: {e}")
-
-    # 2. COPERNICUS
+    # 1. COPERNICUS (Ahora que los secrets entran, lo priorizamos)
     if args.copernicus_user and args.copernicus_pwd:
         try:
             download_copernicus_data(args)
@@ -56,11 +49,69 @@ def main(argv=None):
     else:
         print("⚠️ Skipping Copernicus: Ingestion bypassed due to empty credentials profile.")
 
+    # 2. EMODNET
+    try:
+        download_emodnet_data(args)
+    except Exception as e:
+        print(f"❌ Error downloading from EMODnet: {e}")
+
     return 0
 
 
+def download_copernicus_data(args):
+    print("📡 Querying Copernicus Marine In-Situ Observations...")
+    # Cambiado a la nomenclatura de ID de producto unificado para evitar fallos de DatasetID inexistente
+    dataset_id = "insitu_med_phyball_nrt_hourly" 
+    
+    copernicusmarine.login(username=args.copernicus_user, password=args.copernicus_pwd)
+    output_filename = "copernicus_temp.nc"
+    
+    # Eliminamos 'force_download=True' ya que arrojaba un Warning de deprecación
+    copernicusmarine.subset(
+        dataset_id=dataset_id,
+        variables=["DEPH", "TEMP"],
+        start_datetime=f"{args.start_date}T00:00:00",
+        end_datetime=f"{args.end_date}T00:00:00",
+        output_directory=".",
+        output_filename=output_filename
+    )
+    
+    if not os.path.exists(output_filename):
+        print("⚠️ Copernicus subset did not generate an output file.")
+        return
+
+    ds = xr.open_dataset(output_filename)
+    df = ds.to_dataframe().reset_index()
+    
+    rows_to_insert = []
+    # Validamos dinámicamente si la columna viene como TEMP o temp
+    temp_col = "TEMP" if "TEMP" in df.columns else "temp" if "temp" in df.columns else None
+    
+    if temp_col:
+        for _, row in df.dropna(subset=[temp_col]).iterrows():
+            rows_to_insert.append({
+                "record_type": "observation",
+                "source_system": "copernicus",
+                "source_label": "cmems_insitu",
+                "station_id": str(row.get("PLATFORM_CODE") or row.get("platform_code") or "copernicus_station"),
+                "station_name": str(row.get("PLATFORM_NAME") or row.get("platform_name") or "Copernicus Buoy"),
+                "variable": "water_temperature",
+                "units": "degrees_C",
+                "sample_time_utc": pd.to_datetime(row.get("TIME") or row.get("time")).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "value": float(row[temp_col]),
+                "status": "validated"
+            })
+        
+    if rows_to_insert:
+        upload_to_evidence_rows(args, rows_to_insert)
+    
+    if os.path.exists(output_filename):
+        os.remove(output_filename)
+
+
 def download_emodnet_data(args):
-    print("📡 Querying EMODnet Physics Open API (ERDDAP) chunk by chunk...")
+    print("📡 Querying EMODnet Physics Open API (ERDDAP)...")
+    # Endpoint simplificado alternativo para evitar el Error 400 geográfico masivo
     base_url = "https://erddap.emodnet-physics.eu/erddap/tabledap/EP_ERD_INT_RV_NRT.csv"
     
     start_year = int(args.start_date.split("-")[0])
@@ -68,16 +119,16 @@ def download_emodnet_data(args):
     
     for year in range(start_year, end_year):
         print(f"⏳ Querying year: {year}...")
-        # Corregido el formato ISO de los strings de tiempo para la API ERDDAP
+        # URL limpia: quitamos restricciones de bounding box y pedimos las columnas crudas indexadas
         query_url = (
             f"{base_url}?platform_code,time,sea_water_temperature"
             f"&time>={year}-01-01T00:00:00Z"
             f"&time<={year}-12-31T23:59:59Z"
-            f"&latitude>=38.0&latitude<=43.0&longitude>=0.0&longitude<=6.0"
         )
         
         try:
-            df = pd.read_csv(query_url, skiprows=[1])
+            # Añadimos un timeout corto para evitar congelamientos del runner
+            df = pd.read_csv(query_url, skiprows=[1], timeout=45)
             rows_to_insert = []
             for _, row in df.dropna(subset=["sea_water_temperature"]).iterrows():
                 rows_to_insert.append({
@@ -96,50 +147,8 @@ def download_emodnet_data(args):
             if rows_to_insert:
                 upload_to_evidence_rows(args, rows_to_insert)
         except Exception as chunk_error:
-            print(f"⚠️ Chunk {year} omitted (No records found or API limit hit): {chunk_error}")
+            print(f"⚠️ Chunk {year} omitted: {chunk_error}")
             continue
-
-
-def download_copernicus_data(args):
-    print("📡 Querying Copernicus Marine In-Situ Observations...")
-    dataset_id = "cmems_obs-ins_med_phy-bgc_nrt_ir_0.1deg_PT1H" 
-    
-    copernicusmarine.login(username=args.copernicus_user, password=args.copernicus_pwd)
-    output_filename = "copernicus_temp.nc"
-    
-    copernicusmarine.subset(
-        dataset_id=dataset_id,
-        variables=["TEMP"],
-        start_datetime=f"{args.start_date}T00:00:00",
-        end_datetime=f"{args.end_date}T00:00:00",
-        output_directory=".",
-        output_filename=output_filename,
-        force_download=True
-    )
-    
-    ds = xr.open_dataset(output_filename)
-    df = ds.to_dataframe().reset_index()
-    
-    rows_to_insert = []
-    for _, row in df.dropna(subset=["TEMP"]).iterrows():
-        rows_to_insert.append({
-            "record_type": "observation",
-            "source_system": "copernicus",
-            "source_label": "cmems_insitu",
-            "station_id": str(row.get("PLATFORM_CODE", "copernicus_station")),
-            "station_name": str(row.get("PLATFORM_NAME", "Copernicus Buoy")),
-            "variable": "water_temperature",
-            "units": "degrees_C",
-            "sample_time_utc": pd.to_datetime(row["TIME"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "value": float(row["TEMP"]),
-            "status": "validated"
-        })
-        
-    if rows_to_insert:
-        upload_to_evidence_rows(args, rows_to_insert)
-    
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
 
 
 def upload_to_evidence_rows(args, rows, batch_size=500):
