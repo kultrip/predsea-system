@@ -22,7 +22,6 @@ ENV DIR=/opt \
     WRFIO_NCD_LARGE_FILE_SUPPORT=1 \
     NETCDF=/usr \
     NETCDF_classic=1 \
-    PNETCDF_QUILT=0 \
     WRF_EM_CORE=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -54,6 +53,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN ln -sf /usr/lib/x86_64-linux-gnu/libnetcdf* /usr/lib/
+
 WORKDIR /opt
 
 # Change "$(nproc)" to 1 to prevent QEMU segmentation faults on Mac
@@ -68,15 +69,15 @@ RUN wget -q https://github.com/jasper-software/jasper/archive/refs/tags/version-
     && cmake --install jasper-build \
     && rm -rf jasper.tar.gz jasper-version-${JASPER_VERSION} jasper-build
 
-RUN wget -q https://github.com/wrf-model/WRF/archive/refs/tags/v${WRF_VERSION}.tar.gz -O wrf.tar.gz \
-    && tar -xzf wrf.tar.gz \
-    && mv WRF-${WRF_VERSION} WRF \
-    && rm wrf.tar.gz
+RUN git clone --branch v${WRF_VERSION} --depth 1 https://github.com/wrf-model/WRF.git WRF \
+    && cd WRF \
+    && git submodule update --init --recursive
+
 
 WORKDIR /opt/WRF
 
 RUN printf "%s\n1\n" "${WRF_CONFIGURE_OPTION}" | ./configure \
-    && ./compile -j "$(nproc)" em_real \
+    && ./compile -j 2 em_real \
     && test -x run/real.exe \
     && test -x run/wrf.exe
 
