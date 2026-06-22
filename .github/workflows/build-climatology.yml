@@ -61,7 +61,7 @@ jobs:
             --project predsea-api \
             --dataset predsea_validation \
             --evidence-table evidence_rows \
-            --climatology-table climatology_baseline \
+            --climatology-table universal_telemetry_baseline \
             --location EU \
             --start-date "$START_DATE" \
             --end-date "$END_DATE"
