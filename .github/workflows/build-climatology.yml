@@ -46,6 +46,21 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      # --- NUEVO PASO INTEGRADO: Descarga externa directa ---
+      - name: Ingest Historical Data from Copernicus and EMODnet Web Pages
+        env:
+          GOOGLE_CLOUD_PROJECT: predsea-api
+          COPERNICUS_MARINE_USER: ${{ secrets.COPERNICUS_USER }}
+          COPERNICUS_MARINE_PASSWORD: ${{ secrets.COPERNICUS_PASSWORD }}
+          START_DATE: ${{ inputs.start_date }}
+          END_DATE: ${{ inputs.end_date }}
+        run: |
+          python scripts/ingest_external_sources.py \
+            --project predsea-api \
+            --dataset predsea_validation \
+            --table evidence_rows
+
+      # --- PASO FINAL: Consolidación en la base unificada ---
       - name: Build climatology baseline
         env:
           GOOGLE_CLOUD_PROJECT: predsea-api
