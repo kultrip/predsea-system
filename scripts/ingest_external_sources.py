@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
+import requests  # <-- Añadido para manejar el timeout correctamente
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
@@ -40,7 +41,7 @@ def main(argv=None):
 
     print(f"🚀 Starting Extraction Pipeline: {args.start_date} to {args.end_date}")
 
-    # 1. COPERNICUS (Ahora que los secrets entran, lo priorizamos)
+    # 1. COPERNICUS (Sincronizado con tus archivos de origen)
     if args.copernicus_user and args.copernicus_pwd:
         try:
             download_copernicus_data(args)
@@ -60,20 +61,26 @@ def main(argv=None):
 
 def download_copernicus_data(args):
     print("📡 Querying Copernicus Marine In-Situ Observations...")
-    # Cambiado a la nomenclatura de ID de producto unificado para evitar fallos de DatasetID inexistente
-    dataset_id = "insitu_med_phyball_nrt_hourly" 
+    # Sincronizado con WAV_ID de tus fuentes oficiales fijadas en forecast_sources.py
+    dataset_id = "cmems_mod_med_wav_anfc_4.2km_PT1H-i" 
     
     copernicusmarine.login(username=args.copernicus_user, password=args.copernicus_pwd)
     output_filename = "copernicus_temp.nc"
     
-    # Eliminamos 'force_download=True' ya que arrojaba un Warning de deprecación
+    # Bounding box extraído de tus configuraciones del MVP
     copernicusmarine.subset(
         dataset_id=dataset_id,
-        variables=["DEPH", "TEMP"],
+        variables=["VHM0"],
+        minimum_longitude=0.5,
+        maximum_longitude=4.5,
+        minimum_latitude=38.0,
+        maximum_latitude=41.5,
         start_datetime=f"{args.start_date}T00:00:00",
         end_datetime=f"{args.end_date}T00:00:00",
         output_directory=".",
-        output_filename=output_filename
+        output_filename=output_filename,
+        file_format="netcdf",
+        overwrite=True
     )
     
     if not os.path.exists(output_filename):
@@ -84,21 +91,19 @@ def download_copernicus_data(args):
     df = ds.to_dataframe().reset_index()
     
     rows_to_insert = []
-    # Validamos dinámicamente si la columna viene como TEMP o temp
-    temp_col = "TEMP" if "TEMP" in df.columns else "temp" if "temp" in df.columns else None
-    
-    if temp_col:
-        for _, row in df.dropna(subset=[temp_col]).iterrows():
+    # Usamos VHM0 (Significant wave height) tal cual está configurado en tu Readme
+    if "VHM0" in df.columns:
+        for _, row in df.dropna(subset=["VHM0"]).iterrows():
             rows_to_insert.append({
                 "record_type": "observation",
                 "source_system": "copernicus",
-                "source_label": "cmems_insitu",
-                "station_id": str(row.get("PLATFORM_CODE") or row.get("platform_code") or "copernicus_station"),
-                "station_name": str(row.get("PLATFORM_NAME") or row.get("platform_name") or "Copernicus Buoy"),
-                "variable": "water_temperature",
-                "units": "degrees_C",
-                "sample_time_utc": pd.to_datetime(row.get("TIME") or row.get("time")).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "value": float(row[temp_col]),
+                "source_label": "cmems_mod_med_wav",
+                "station_id": f"grid_{row.get('latitude', 0)}_{row.get('longitude', 0)}",
+                "station_name": "Copernicus Mediterranean Grid Point",
+                "variable": "wave_height",
+                "units": "m",
+                "sample_time_utc": pd.to_datetime(row.get("time") or row.get("TIME")).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "value": float(row["VHM0"]),
                 "status": "validated"
             })
         
@@ -111,7 +116,6 @@ def download_copernicus_data(args):
 
 def download_emodnet_data(args):
     print("📡 Querying EMODnet Physics Open API (ERDDAP)...")
-    # Endpoint simplificado alternativo para evitar el Error 400 geográfico masivo
     base_url = "https://erddap.emodnet-physics.eu/erddap/tabledap/EP_ERD_INT_RV_NRT.csv"
     
     start_year = int(args.start_date.split("-")[0])
@@ -119,7 +123,6 @@ def download_emodnet_data(args):
     
     for year in range(start_year, end_year):
         print(f"⏳ Querying year: {year}...")
-        # URL limpia: quitamos restricciones de bounding box y pedimos las columnas crudas indexadas
         query_url = (
             f"{base_url}?platform_code,time,sea_water_temperature"
             f"&time>={year}-01-01T00:00:00Z"
@@ -127,8 +130,15 @@ def download_emodnet_data(args):
         )
         
         try:
-            # Añadimos un timeout corto para evitar congelamientos del runner
-            df = pd.read_csv(query_url, skiprows=[1], timeout=45)
+            # CORRECCIÓN: Hacemos el request con requests para usar timeout sin romper pandas
+            response = requests.get(query_url, timeout=30)
+            response.raise_for_status()
+            
+            # Pasamos el texto plano descargado a StringIO para que Pandas lo parsee de forma segura
+            from io import StringIO
+            csv_data = StringIO(response.text)
+            
+            df = pd.read_csv(csv_data, skiprows=[1])
             rows_to_insert = []
             for _, row in df.dropna(subset=["sea_water_temperature"]).iterrows():
                 rows_to_insert.append({
