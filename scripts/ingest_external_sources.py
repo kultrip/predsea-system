@@ -67,58 +67,79 @@ def main(argv=None):
 
     return 0
 
-
 def download_copernicus_data(args) -> list:
-    print("📡 Querying Copernicus Marine In-Situ Observations...")
+    print("📡 Querying Copernicus Marine In-Situ Observations chunk by chunk...")
     dataset_id = "cmems_mod_med_wav_anfc_4.2km_PT1H-i" 
     
     copernicusmarine.login(username=args.copernicus_user, password=args.copernicus_pwd)
     output_filename = "copernicus_temp.nc"
     
-    copernicusmarine.subset(
-        dataset_id=dataset_id,
-        variables=["VHM0"],
-        minimum_longitude=0.5,
-        maximum_longitude=4.5,
-        minimum_latitude=38.0,
-        maximum_latitude=41.5,
-        start_datetime=f"{args.start_date}T00:00:00",
-        end_datetime=f"{args.end_date}T00:00:00",
-        output_directory=".",
-        output_filename=output_filename,
-        file_format="netcdf",
-        overwrite=True
-    )
+    start_dt = pd.to_datetime(args.start_date)
+    end_dt = pd.to_datetime(args.end_date)
     
-    if not os.path.exists(output_filename):
-        return []
+    # Generamos cortes mensuales dinámicos para no saturar la RAM del runner
+    date_range = pd.date_range(start=start_dt, end=end_dt, freq="MS")
+    
+    total_inserted_rows = []
+    
+    for i in range(len(date_range) - 1):
+        chunk_start = date_range[i].strftime("%Y-%m-%dT%H:%M:%S")
+        chunk_end = date_range[i+1].strftime("%Y-%m-%dT%H:%M:%S")
+        
+        print(f"⏳ Downloading Copernicus chunk: {date_range[i].strftime('%Y-%m')}...")
+        
+        try:
+            copernicusmarine.subset(
+                dataset_id=dataset_id,
+                variables=["VHM0"],
+                minimum_longitude=0.5,
+                maximum_longitude=4.5,
+                minimum_latitude=38.0,
+                maximum_latitude=41.5,
+                start_datetime=chunk_start,
+                end_datetime=chunk_end,
+                output_directory=".",
+                output_filename=output_filename,
+                file_format="netcdf",
+                overwrite=True
+            )
+            
+            if not os.path.exists(output_filename):
+                continue
 
-    ds = xr.open_dataset(output_filename)
-    df = ds.to_dataframe().reset_index()
-    
-    rows_to_insert = []
-    if "VHM0" in df.columns:
-        for _, row in df.dropna(subset=["VHM0"]).iterrows():
-            rows_to_insert.append({
-                "record_type": "observation",
-                "source_system": "copernicus",
-                "source_label": "cmems_mod_med_wav",
-                "station_id": f"grid_{row.get('latitude', 0)}_{row.get('longitude', 0)}",
-                "station_name": "Copernicus Mediterranean Grid Point",
-                "variable": "wave_height",
-                "units": "m",
-                "sample_time_utc": pd.to_datetime(row.get("time")).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "value": float(row["VHM0"]),
-                "status": "validated"
-            })
-        
-    if rows_to_insert:
-        upload_to_bigquery(args, rows_to_insert)
-    
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
-        
-    return rows_to_insert
+            # Abrimos el NetCDF de forma perezosa (lazy load) con chunks en xarray
+            with xr.open_dataset(output_filename, chunks={"time": 100}) as ds:
+                df = ds.to_dataframe().reset_index()
+            
+            rows_to_insert = []
+            if "VHM0" in df.columns:
+                for _, row in df.dropna(subset=["VHM0"]).iterrows():
+                    rows_to_insert.append({
+                        "record_type": "observation",
+                        "source_system": "copernicus",
+                        "source_label": "cmems_mod_med_wav",
+                        "station_id": f"grid_{row.get('latitude', 0)}_{row.get('longitude', 0)}",
+                        "station_name": "Copernicus Mediterranean Grid Point",
+                        "variable": "wave_height",
+                        "units": "m",
+                        "sample_time_utc": pd.to_datetime(row.get("time")).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "value": float(row["VHM0"]),
+                        "status": "validated"
+                    })
+                
+            if rows_to_insert:
+                upload_to_bigquery(args, rows_to_insert)
+                total_inserted_rows.extend(rows_to_insert)
+                print(f"✅ Ingested {len(rows_to_insert)} Copernicus rows for this slice.")
+                
+        except Exception as chunk_error:
+            print(f"⚠️ Copernicus chunk failed or timed out, skipping to next slot: {chunk_error}")
+            continue
+        finally:
+            if os.path.exists(output_filename):
+                os.remove(output_filename)
+                
+    return total_inserted_rows
 
 
 def download_emodnet_data(args) -> list:
