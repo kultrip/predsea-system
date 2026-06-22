@@ -62,36 +62,44 @@ def main(argv=None):
 
 
 def download_emodnet_data(args):
-    print("📡 Querying EMODnet Physics Open API (ERDDAP)...")
+    print("📡 Querying EMODnet Physics Open API (ERDDAP) chunk by chunk...")
     base_url = "https://erddap.emodnet-physics.eu/erddap/tabledap/EP_ERD_INT_RV_NRT.csv"
     
-    query_url = (
-        f"{base_url}?platform_code,time,sea_water_temperature"
-        f"&time>={args.start_date}T00:00:00Z"
-        f"&time<={args.end_date}T00:00:00Z"
-        f"&latitude>=38.0&latitude<=43.0&longitude>=0.0&longitude<=6.0"
-    )
+    start_year = int(args.start_date.split("-")[0])
+    end_year = int(args.end_date.split("-")[0])
     
-    print(f"Fetching CSV chunk via pandas from: {query_url}")
-    df = pd.read_csv(query_url, skiprows=[1])
-    
-    rows_to_insert = []
-    for _, row in df.dropna(subset=["sea_water_temperature"]).iterrows():
-        rows_to_insert.append({
-            "record_type": "observation",
-            "source_system": "emodnet",
-            "source_label": "emodnet_physics",
-            "station_id": str(row["platform_code"]),
-            "station_name": f"EMODnet Station {row['platform_code']}",
-            "variable": "water_temperature",
-            "units": "degrees_C",
-            "sample_time_utc": pd.to_datetime(row["time"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "value": float(row["sea_water_temperature"]),
-            "status": "validated"
-        })
+    # Iteramos año por año para no saturar el servidor ERDDAP
+    for year in range(start_year, end_year):
+        print(f"⏳ Downloading EMODnet records for year: {year}...")
+        query_url = (
+            f"{base_url}?platform_code,time,sea_water_temperature"
+            f"&time>={year}-01-01T00:00:00Z"
+            f"&time<={year}-12-31T23:59:59Z"
+            f"&latitude>=38.0&latitude<=43.0&longitude>=0.0&longitude<=6.0"
+        )
+        
+        try:
+            df = pd.read_csv(query_url, skiprows=[1])
+            rows_to_insert = []
+            for _, row in df.dropna(subset=["sea_water_temperature"]).iterrows():
+                rows_to_insert.append({
+                    "record_type": "observation",
+                    "source_system": "emodnet",
+                    "source_label": "emodnet_physics",
+                    "station_id": str(row["platform_code"]),
+                    "station_name": f"EMODnet Station {row['platform_code']}",
+                    "variable": "water_temperature",
+                    "units": "degrees_C",
+                    "sample_time_utc": pd.to_datetime(row["time"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "value": float(row["sea_water_temperature"]),
+                    "status": "validated"
+                })
 
-    if rows_to_insert:
-        upload_to_evidence_rows(args, rows_to_insert)
+            if rows_to_insert:
+                upload_to_evidence_rows(args, rows_to_insert)
+        except Exception as chunk_error:
+            print(f"⚠️ Year {year} chunk not available or refused: {chunk_error}")
+            continue
 
 
 def download_copernicus_data(args):
