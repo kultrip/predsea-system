@@ -8,7 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
-import requests  # <-- Añadido para manejar el timeout correctamente
+import requests
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
@@ -29,6 +29,7 @@ def main(argv=None):
     parser.add_argument("--project", default=resolve_env("PREDSEA_BIGQUERY_PROJECT", "GOOGLE_CLOUD_PROJECT"))
     parser.add_argument("--dataset", default=resolve_env("PREDSEA_BIGQUERY_DATASET", default="predsea_validation"))
     parser.add_argument("--table", default=resolve_env("PREDSEA_BIGQUERY_EVIDENCE_TABLE", default="evidence_rows"))
+    parser.add_argument("--gcs-bucket", default="predsea-daily-outputs")
     
     user = os.getenv("COPERNICUSMARINE_SERVICE_USERNAME") or os.getenv("COPERNICUS_MARINE_USER")
     pwd = os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD") or os.getenv("COPERNICUS_MARINE_PASSWORD")
@@ -41,10 +42,13 @@ def main(argv=None):
 
     print(f"🚀 Starting Extraction Pipeline: {args.start_date} to {args.end_date}")
 
-    # 1. COPERNICUS (Sincronizado con tus archivos de origen)
+    all_ingested_rows = []
+
+    # 1. COPERNICUS (Sincronizado con tu WAV_ID de olas)
     if args.copernicus_user and args.copernicus_pwd:
         try:
-            download_copernicus_data(args)
+            cop_rows = download_copernicus_data(args)
+            all_ingested_rows.extend(cop_rows)
         except Exception as e:
             print(f"❌ Error downloading from Copernicus: {e}")
     else:
@@ -52,22 +56,25 @@ def main(argv=None):
 
     # 2. EMODNET
     try:
-        download_emodnet_data(args)
+        emod_rows = download_emodnet_data(args)
+        all_ingested_rows.extend(emod_rows)
     except Exception as e:
         print(f"❌ Error downloading from EMODnet: {e}")
+
+    # 3. SUBIR RESPALDO JSONL A GCS (Para que build_climatology lo vea en la ruta de tu URL)
+    if all_ingested_rows:
+        upload_jsonl_to_gcs(args, all_ingested_rows)
 
     return 0
 
 
-def download_copernicus_data(args):
+def download_copernicus_data(args) -> list:
     print("📡 Querying Copernicus Marine In-Situ Observations...")
-    # Sincronizado con WAV_ID de tus fuentes oficiales fijadas en forecast_sources.py
     dataset_id = "cmems_mod_med_wav_anfc_4.2km_PT1H-i" 
     
     copernicusmarine.login(username=args.copernicus_user, password=args.copernicus_pwd)
     output_filename = "copernicus_temp.nc"
     
-    # Bounding box extraído de tus configuraciones del MVP
     copernicusmarine.subset(
         dataset_id=dataset_id,
         variables=["VHM0"],
@@ -84,14 +91,12 @@ def download_copernicus_data(args):
     )
     
     if not os.path.exists(output_filename):
-        print("⚠️ Copernicus subset did not generate an output file.")
-        return
+        return []
 
     ds = xr.open_dataset(output_filename)
     df = ds.to_dataframe().reset_index()
     
     rows_to_insert = []
-    # Usamos VHM0 (Significant wave height) tal cual está configurado en tu Readme
     if "VHM0" in df.columns:
         for _, row in df.dropna(subset=["VHM0"]).iterrows():
             rows_to_insert.append({
@@ -102,86 +107,104 @@ def download_copernicus_data(args):
                 "station_name": "Copernicus Mediterranean Grid Point",
                 "variable": "wave_height",
                 "units": "m",
-                "sample_time_utc": pd.to_datetime(row.get("time") or row.get("TIME")).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "sample_time_utc": pd.to_datetime(row.get("time")).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "value": float(row["VHM0"]),
                 "status": "validated"
             })
         
     if rows_to_insert:
-        upload_to_evidence_rows(args, rows_to_insert)
+        upload_to_bigquery(args, rows_to_insert)
     
     if os.path.exists(output_filename):
         os.remove(output_filename)
+        
+    return rows_to_insert
 
 
-def download_emodnet_data(args):
-    print("📡 Querying EMODnet Physics Open API (ERDDAP) for Moorings Stations...")
-    # CAMBIADO: Usamos el dataset oficial de estaciones fijas (Moorings)
+def download_emodnet_data(args) -> list:
+    print("📡 Querying EMODnet Physics Open API (ERDDAP) for Historical Moorings...")
+    # Dataset maestro unificado para series históricas de boyas fijas
     base_url = "https://erddap.emodnet-physics.eu/erddap/tabledap/EP_ERD_INT_MO_NRT.csv"
     
     start_year = int(args.start_date.split("-")[0])
     end_year = int(args.end_date.split("-")[0])
     
-    # Delimitamos geográficamente la consulta a la zona del MVP de PredSea para evitar errores 400
-    # Longitudes: 0.5 a 4.5 E | Latitudes: 38.0 a 41.5 N
-    geo_filter = "&latitude>=38.0&latitude<=41.5&longitude>=0.5&longitude<=4.5"
+    # Bounding box del Mar Balear expandido tolerante
+    geo_filter = "&latitude>=37.5&latitude<=42.5&longitude>=0.0&longitude<=5.0"
     
-    for year in range(start_year, end_year):
-        print(f"⏳ Querying Mooring records for year: {year}...")
+    total_rows = []
+    # Usamos end_year + 1 para que el bucle sea totalmente inclusivo con el año en curso
+    for year in range(start_year, end_year + 1):
+        print(f"⏳ Querying Consolidated Mooring records for year: {year}...")
         
-        # Estructuramos la URL pidiendo solo lo necesario del recuadro Balear
+        # Solicitamos tanto temperatura como altura de ola (variables nativas de ERDDAP)
         query_url = (
-            f"{base_url}?platform_code,time,latitude,longitude,sea_water_temperature"
+            f"{base_url}?platform_code,time,latitude,longitude,sea_water_temperature,sea_surface_wave_significant_height"
             f"&time>={year}-01-01T00:00:00Z"
             f"&time<={year}-12-31T23:59:59Z"
             f"{geo_filter}"
         )
         
         try:
-            # Hacemos la petición con un timeout prudencial
             response = requests.get(query_url, timeout=45)
-            
-            # Si el servidor responde 404 o no hay datos en ese año/zona, pasamos al siguiente de forma segura
             if response.status_code == 404:
-                print(f"ℹ️ No Mooring records found for year {year} in the Balearic box.")
+                print(f"ℹ️ No Mooring archives found for year {year} in this bounding box.")
                 continue
                 
             response.raise_for_status()
             
             from io import StringIO
             csv_data = StringIO(response.text)
-            
-            # Saltamos la segunda fila que ERDDAP usa para las unidades de texto
             df = pd.read_csv(csv_data, skiprows=[1])
             
             rows_to_insert = []
-            for _, row in df.dropna(subset=["sea_water_temperature"]).iterrows():
-                rows_to_insert.append({
-                    "record_type": "observation",
-                    "source_system": "emodnet",
-                    "source_label": "emodnet_mooring",
-                    "station_id": f"emod_{str(row['platform_code'])}",
-                    "station_name": f"EMODnet Mooring Bouy {row['platform_code']}",
-                    "variable": "water_temperature",
-                    "units": "degrees_C",
-                    "sample_time_utc": pd.to_datetime(row["time"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "latitude": float(row["latitude"]) if pd.notna(row.get("latitude")) else None,
-                    "longitude": float(row["longitude"]) if pd.notna(row.get("longitude")) else None,
-                    "value": float(row["sea_water_temperature"]),
-                    "status": "validated"
-                })
+            for _, row in df.iterrows():
+                # Extracción e identificación de Temperatura del Agua
+                if pd.notna(row.get("sea_water_temperature")):
+                    rows_to_insert.append({
+                        "record_type": "observation",
+                        "source_system": "emodnet",
+                        "source_label": "emodnet_mooring",
+                        "station_id": f"emod_{str(row['platform_code'])}",
+                        "station_name": f"EMODnet Mooring Bouy {row['platform_code']}",
+                        "variable": "water_temperature",
+                        "units": "degrees_C",
+                        "sample_time_utc": pd.to_datetime(row["time"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "latitude": float(row["latitude"]) if pd.notna(row.get("latitude")) else None,
+                        "longitude": float(row["longitude"]) if pd.notna(row.get("longitude")) else None,
+                        "value": float(row["sea_water_temperature"]),
+                        "status": "validated"
+                    })
+                
+                # Extracción e identificación de Altura de Ola (Mapeado a wave_height de tu MVP)
+                if pd.notna(row.get("sea_surface_wave_significant_height")):
+                    rows_to_insert.append({
+                        "record_type": "observation",
+                        "source_system": "emodnet",
+                        "source_label": "emodnet_mooring",
+                        "station_id": f"emod_{str(row['platform_code'])}",
+                        "station_name": f"EMODnet Mooring Bouy {row['platform_code']}",
+                        "variable": "wave_height",
+                        "units": "m",
+                        "sample_time_utc": pd.to_datetime(row["time"]).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "latitude": float(row["latitude"]) if pd.notna(row.get("latitude")) else None,
+                        "longitude": float(row["longitude"]) if pd.notna(row.get("longitude")) else None,
+                        "value": float(row["sea_surface_wave_significant_height"]),
+                        "status": "validated"
+                    })
 
             if rows_to_insert:
-                upload_to_evidence_rows(args, rows_to_insert)
-                print(f"✅ Successfully ingested {len(rows_to_insert)} entries for year {year}.")
-                
+                upload_to_bigquery(args, rows_to_insert)
+                total_rows.extend(rows_to_insert)
+                print(f"✅ Ingested {len(rows_to_insert)} records for year {year}.")
         except Exception as chunk_error:
-            print(f"⚠️ Chunk {year} omitted due to API connection issue: {chunk_error}")
+            print(f"⚠️ Chunk {year} omitted: {chunk_error}")
             continue
+            
+    return total_rows
 
 
-def upload_to_evidence_rows(args, rows, batch_size=500):
-    print(f"📥 Streaming {len(rows)} raw entries to BigQuery...")
+def upload_to_bigquery(args, rows, batch_size=500):
     try:
         import google.auth
         from google.auth.transport.requests import AuthorizedSession
@@ -201,7 +224,38 @@ def upload_to_evidence_rows(args, rows, batch_size=500):
         }
         response = session.post(url, json=payload)
         response.raise_for_status()
-    print("✅ Ingestion batch uploaded successfully.")
+
+
+def upload_jsonl_to_gcs(args, rows):
+    # --- NUEVA LÓGICA: Sube el JSONL exactamente a la estructura dinámica que compartiste ---
+    try:
+        from google.cloud import storage
+    except ImportError:
+        print("GCS library missing. Skipping artifact storage mirror.")
+        return
+
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Emulamos el ID de ejecución con la estampa de tiempo actual del runner
+    run_timestamp = datetime.now(timezone.utc).strftime("%H%MZ")
+    
+    gcs_target_path = f"predictions/{today_str}/runs/{today_str}T{run_timestamp}/validation/observation_samples.jsonl"
+    
+    local_file = "observation_samples.jsonl"
+    with open(local_file, "w", encoding="utf-8") as f:
+        for row in rows:
+            f.write(json.dumps(row) + "\n")
+            
+    try:
+        client = storage.Client()
+        bucket = client.bucket(args.gcs_bucket)
+        blob = bucket.blob(gcs_target_path)
+        blob.upload_from_filename(local_file)
+        print(f"✨ Canonical artifact mirrored safely to GCS at: gs://{args.gcs_bucket}/{gcs_target_path}")
+    except Exception as e:
+        print(f"⚠️ GCS upload warning: {e}")
+    finally:
+        if os.path.exists(local_file):
+            os.remove(local_file)
 
 
 if __name__ == "__main__":
