@@ -1014,5 +1014,357 @@
         "latitude": 41.85
       }
     ]
+  },
+  "palma_alcudia": {
+    "id": "palma_alcudia",
+    "name": "Palma -> Alcudia",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Alcudia",
+      "longitude": 3.135,
+      "latitude": 39.842
+    },
+    "validation": {
+      "truth_source": "bahia_de_palma",
+      "socib_platform_id": 143,
+      "socib_instrument_id": 983,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "closest public SOCIB wave buoy to Palma departure waters"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Transit around the east of Mallorca (Cabo de Salinas) or west (Sa Dragonera); watch local coastal wind-wave growth and currents.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Cabo de Salinas",
+        "longitude": 3.05,
+        "latitude": 39.24
+      },
+      {
+        "name": "Alcudia Bay approach",
+        "longitude": 3.2,
+        "latitude": 39.85
+      }
+    ]
+  },
+  "alcudia_palma": {
+    "id": "alcudia_palma",
+    "name": "Alcudia -> Palma",
+    "origin": {
+      "name": "Alcudia",
+      "longitude": 3.135,
+      "latitude": 39.842
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": "bahia_de_palma",
+      "socib_platform_id": 143,
+      "socib_instrument_id": 983,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "closest public SOCIB wave buoy to Palma departure waters"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Transit around the east of Mallorca (Cabo de Salinas) or west (Sa Dragonera); watch local coastal wind-wave growth and currents.",
+    "sample_points": [
+      {
+        "name": "Alcudia Bay offshore",
+        "longitude": 3.2,
+        "latitude": 39.85
+      },
+      {
+        "name": "Cabo de Salinas",
+        "longitude": 3.05,
+        "latitude": 39.24
+      },
+      {
+        "name": "Palma Bay approach",
+        "longitude": 2.55,
+        "latitude": 39.45
+      }
+    ]
+  },
+  "palma_soller": {
+    "id": "palma_soller",
+    "name": "Palma -> Soller",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Soller",
+      "longitude": 2.74,
+      "latitude": 39.81
+    },
+    "validation": {
+      "truth_source": "bahia_de_palma",
+      "socib_platform_id": 143,
+      "socib_instrument_id": 983,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "closest public SOCIB wave buoy to Palma departure waters"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Scenic coastal transit along the rugged Serra de Tramuntana (Northwest Mallorca); watch for strong wind funneling and high northwest swell.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Sa Dragonera Channel",
+        "longitude": 2.31,
+        "latitude": 39.58
+      },
+      {
+        "name": "Soller approach",
+        "longitude": 2.7,
+        "latitude": 39.8
+      }
+    ]
+  },
+  "soller_palma": {
+    "id": "soller_palma",
+    "name": "Soller -> Palma",
+    "origin": {
+      "name": "Soller",
+      "longitude": 2.74,
+      "latitude": 39.81
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": "bahia_de_palma",
+      "socib_platform_id": 143,
+      "socib_instrument_id": 983,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "closest public SOCIB wave buoy to Palma departure waters"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Scenic coastal transit along the rugged Serra de Tramuntana (Northwest Mallorca); watch for strong wind funneling and high northwest swell.",
+    "sample_points": [
+      {
+        "name": "Soller departure",
+        "longitude": 2.7,
+        "latitude": 39.8
+      },
+      {
+        "name": "Sa Dragonera Channel",
+        "longitude": 2.31,
+        "latitude": 39.58
+      },
+      {
+        "name": "Palma Bay approach",
+        "longitude": 2.55,
+        "latitude": 39.45
+      }
+    ]
+  },
+  "palma_san_antonio": {
+    "id": "palma_san_antonio",
+    "name": "Palma -> Sant Antoni",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Sant Antoni",
+      "longitude": 1.303,
+      "latitude": 38.981
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "representative for Ibiza Channel wave exposure"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Crossing between Southwest Mallorca and Sant Antoni de Portmany in Northwest Ibiza; exposed to full West/Northwest wave fetches.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid crossing",
+        "longitude": 1.9,
+        "latitude": 39.15
+      },
+      {
+        "name": "San Antonio approach",
+        "longitude": 1.28,
+        "latitude": 38.98
+      }
+    ]
+  },
+  "san_antonio_palma": {
+    "id": "san_antonio_palma",
+    "name": "Sant Antoni -> Palma",
+    "origin": {
+      "name": "Sant Antoni",
+      "longitude": 1.303,
+      "latitude": 38.981
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": "canal_de_ibiza",
+      "socib_platform_id": 146,
+      "socib_instrument_id": 1059,
+      "socib_variable_id": 91321,
+      "socib_direction_variable_id": 91337,
+      "suitability": "representative for Ibiza Channel wave exposure"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Crossing between Southwest Mallorca and Sant Antoni de Portmany in Northwest Ibiza; exposed to full West/Northwest wave fetches.",
+    "sample_points": [
+      {
+        "name": "San Antonio departure",
+        "longitude": 1.28,
+        "latitude": 38.98
+      },
+      {
+        "name": "Mid crossing",
+        "longitude": 1.9,
+        "latitude": 39.15
+      },
+      {
+        "name": "Palma Bay approach",
+        "longitude": 2.55,
+        "latitude": 39.45
+      }
+    ]
+  },
+  "palma_tarragona": {
+    "id": "palma_tarragona",
+    "name": "Palma -> Tarragona",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Tarragona",
+      "longitude": 1.25,
+      "latitude": 41.105
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only mainland transit lane until a trusted validation source is added"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Mainland transit crossing between Palma and Tarragona; open sea conditions with frequent North/Northwest wind acceleration off the Ebro delta.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid crossing",
+        "longitude": 1.95,
+        "latitude": 40.35
+      },
+      {
+        "name": "Tarragona approach",
+        "longitude": 1.25,
+        "latitude": 41.05
+      }
+    ]
+  },
+  "tarragona_palma": {
+    "id": "tarragona_palma",
+    "name": "Tarragona -> Palma",
+    "origin": {
+      "name": "Tarragona",
+      "longitude": 1.25,
+      "latitude": 41.105
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only mainland transit lane until a trusted validation source is added"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Mainland transit crossing between Palma and Tarragona; open sea conditions with frequent North/Northwest wind acceleration off the Ebro delta.",
+    "sample_points": [
+      {
+        "name": "Tarragona departure",
+        "longitude": 1.25,
+        "latitude": 41.05
+      },
+      {
+        "name": "Mid crossing",
+        "longitude": 1.95,
+        "latitude": 40.35
+      },
+      {
+        "name": "Palma Bay approach",
+        "longitude": 2.55,
+        "latitude": 39.45
+      }
+    ]
   }
 }

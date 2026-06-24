@@ -133,21 +133,27 @@ def parse_args() -> argparse.Namespace:
         help="Local output directory",
     )
     parser.add_argument(
-        "--lon-min", type=float, default=0.5, help="Minimum longitude"
+        "--lon-min", type=float, default=-1.5, help="Minimum longitude"
     )
     parser.add_argument(
-        "--lon-max", type=float, default=4.5, help="Maximum longitude"
+        "--lon-max", type=float, default=5.0, help="Maximum longitude"
     )
     parser.add_argument(
-        "--lat-min", type=float, default=38.0, help="Minimum latitude"
+        "--lat-min", type=float, default=37.5, help="Minimum latitude"
     )
     parser.add_argument(
-        "--lat-max", type=float, default=41.5, help="Maximum latitude"
+        "--lat-max", type=float, default=42.5, help="Maximum latitude"
     )
     parser.add_argument(
         "--run-date",
         default=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
         help="Target date YYYY-MM-DD",
+    )
+    parser.add_argument(
+        "--lead-hours",
+        type=int,
+        default=120,
+        help="Forecast lead time in hours (default 120)",
     )
     parser.add_argument(
         "--gcs-bucket",
@@ -165,7 +171,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    # Define time window for forcing (24-hour window from the target date)
+    # Define time window for forcing
     try:
         base_date = datetime.datetime.strptime(args.run_date, "%Y-%m-%d")
     except ValueError:
@@ -173,7 +179,7 @@ def main() -> None:
         sys.exit(1)
 
     start_time = base_date.replace(hour=0, minute=0, second=0)
-    end_time = start_time + datetime.timedelta(days=1)
+    end_time = start_time + datetime.timedelta(hours=args.lead_hours)
 
     try:
         path = download_cmems_forcing(

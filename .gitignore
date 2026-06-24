@@ -13,6 +13,11 @@ observations/
 humanintheloop/artifacts/
 humanintheloop/mvp_data/
 predictions/
+simulation/inputs/
+outputs/
+scratch/
+.emergent/
+
 
 # Large downloaded model files. Keep tiny committed fixtures explicit.
 processing/fixtures/gfs_*.nc

@@ -66,7 +66,7 @@ def test_fetch_source_via_subprocess_reads_metadata_from_successful_source(tmp_p
 def test_fetch_available_forecasts_runs_sources_independently(tmp_path, monkeypatch, capsys):
     calls = []
 
-    def fake_fetch(source_id, output_dir, timeout_seconds, dry_run=False):
+    def fake_fetch(source_id, output_dir, timeout_seconds, dry_run=False, **kwargs):
         calls.append((source_id, Path(output_dir), timeout_seconds, dry_run))
         return {
             "id": source_id,
@@ -77,6 +77,7 @@ def test_fetch_available_forecasts_runs_sources_independently(tmp_path, monkeypa
         }
 
     monkeypatch.setattr(forecast_sources, "fetch_source_via_subprocess", fake_fetch)
+    monkeypatch.setattr(forecast_sources, "configured_source_ids", lambda: ["copernicus", "socib"])
     monkeypatch.setenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "77")
 
     class FetchData:
@@ -98,7 +99,7 @@ def test_fetch_available_forecasts_runs_sources_independently(tmp_path, monkeypa
 def test_fetch_source_with_attempts_retries_transient_failure(tmp_path, monkeypatch, capsys):
     calls = []
 
-    def fake_fetch(source_id, output_dir, timeout_seconds, dry_run=False):
+    def fake_fetch(source_id, output_dir, timeout_seconds, dry_run=False, **kwargs):
         calls.append(source_id)
         if len(calls) == 1:
             return {"id": source_id, "available": False, "error": "temporary timeout"}

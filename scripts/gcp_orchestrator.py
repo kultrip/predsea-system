@@ -23,11 +23,33 @@ def run_command(cmd: list[str]) -> str:
 
 
 def get_gcp_project() -> str:
+    import os
+    # 1. Try environment variables (standard in Google Cloud Run/Build)
+    project = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
+    if project:
+        return project
+
+    # 2. Try GCP Metadata Server (standard for resources running on GCP)
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "http://metadata.google.internal/computeMetadata/v1/project/project-id",
+            headers={"Metadata-Flavor": "Google"}
+        )
+        with urllib.request.urlopen(req, timeout=2) as response:
+            project_id = response.read().decode("utf-8").strip()
+            if project_id:
+                return project_id
+    except Exception:
+        pass
+
+    # 3. Fall back to gcloud config (local development)
     try:
         return run_command(["gcloud", "config", "get-value", "project"])
     except Exception:
         print("❌ Error: Unable to determine active GCP project. Please run 'gcloud config set project [PROJECT]' first.")
         sys.exit(1)
+
 
 
 def launch_spot_vm(args):
@@ -41,7 +63,7 @@ def launch_spot_vm(args):
     run_id = args.run_id or now.strftime("%Y-%m-%dT%H%MZ")
 
     # Instance naming convention
-    instance_name = f"predsea-sim-{run_date}-{now.strftime('%H%M%S')}"
+    instance_name = args.instance_name or f"predsea-sim-{run_date}-{now.strftime('%H%M%S')}"
 
     print("=============================================")
     # Format absolute path to startup script
@@ -65,7 +87,7 @@ def launch_spot_vm(args):
         f"--zone={zone}",
         f"--machine-type={args.machine_type}",
         "--provisioning-model=SPOT",
-        "--instance-termination-action=TERMINATE",
+        "--instance-termination-action=DELETE",
         "--scopes=https://www.googleapis.com/auth/cloud-platform",
         f"--metadata-from-file=startup-script={startup_script}",
         f"--metadata=gcs-bucket={gcs_bucket},run-date={run_date},run-id={run_id},image-tag={image_tag}",
@@ -93,6 +115,7 @@ def main():
     parser.add_argument("--run-date", help="ISO run date YYYY-MM-DD (defaults to today)")
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
+    parser.add_argument("--instance-name", help="GCE Instance name (defaults to auto-generated)")
 
     args = parser.parse_args()
     launch_spot_vm(args)

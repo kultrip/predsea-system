@@ -674,6 +674,15 @@ def normalize_timestamp(value):
     if not value:
         return None
     text = str(value).strip()
+    
+    # Try parsing as a Unix epoch float (BigQuery TIMESTAMP REST representation)
+    try:
+        val_float = float(text)
+        if 0.0 <= val_float <= 4102444800.0:  # range 1970 to 2100
+            return datetime.fromtimestamp(val_float, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (ValueError, TypeError):
+        pass
+        
     if text.endswith(" UTC"):
         text = text[:-4] + "Z"
     if text.endswith("Z") and "T" not in text:

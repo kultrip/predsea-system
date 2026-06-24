@@ -11,8 +11,8 @@ class BalearicDomain:
     end_date: str = "2026-05-05_00:00:00"
     interval_seconds: int = 10800
     geog_data_path: str = "/opt/WPS_GEOG"
-    ref_lat: float = 39.2
-    ref_lon: float = 2.7
+    ref_lat: float = 40.0
+    ref_lon: float = 1.5
     d01_dx_m: int = 9000
     d01_dy_m: int = 9000
     d01_e_we: int = 120

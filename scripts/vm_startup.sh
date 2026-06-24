@@ -3,14 +3,23 @@
 # Configured to run on standard Debian/Ubuntu GCE instances.
 set -euo pipefail
 
-echo "============================================="
-echo "🚀 PredSea VM Startup Script Initialized"
-echo "============================================="
-
 # 1. Variables (injected via metadata at creation)
 PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/project/project-id)
 ZONE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/zone | awk -F/ '{print $4}')
 NAME=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/name)
+
+# Safety Control: Ensure the instance is deleted on both success and failure
+cleanup() {
+  echo "============================================="
+  echo "⚠️ Cleanup Triggered: Ensuring Spot VM self-deletion..."
+  echo "============================================="
+  gcloud compute instances delete "${NAME}" --zone="${ZONE}" --quiet || true
+}
+trap cleanup EXIT
+
+echo "============================================="
+echo "🚀 PredSea VM Startup Script Initialized"
+echo "============================================="
 
 GCS_BUCKET=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-bucket || echo "predsea-daily-outputs")
 RUN_DATE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/run-date || date -u +"%Y-%m-%d")
@@ -49,6 +58,8 @@ docker pull "${DOCKER_IMAGE}"
 # In production, these scripts will pull the required boundary conditions from GCS or APIs
 mkdir -p /workspace/inputs
 mkdir -p /workspace/outputs
+mkdir -p /workspace/inputs/static
+mkdir -p /workspace/bin
 
 # Download ECMWF and CMEMS boundary forcing files from GCS paths
 echo "Downloading atmospheric boundary conditions from GCS..."
@@ -57,12 +68,22 @@ gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/ecmwf/${RUN_DATE}/" /workspace/in
 echo "Downloading oceanic boundary conditions from GCS..."
 gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/cmems/${RUN_DATE}/" /workspace/inputs/
 
+echo "Downloading compiled NEMO and SWAN binaries from GCS..."
+gsutil cp "gs://${GCS_BUCKET}/binaries/nemo.exe" /workspace/bin/nemo.exe
+gsutil cp "gs://${GCS_BUCKET}/binaries/swan.exe" /workspace/bin/swan.exe
+chmod +x /workspace/bin/nemo.exe /workspace/bin/swan.exe
+
+echo "Downloading static bathymetry grids from GCS..."
+gsutil cp "gs://${GCS_BUCKET}/static/bathymetry/balearic_bathymetry_nemo.nc" /workspace/inputs/static/balearic_bathymetry_nemo.nc
+gsutil cp "gs://${GCS_BUCKET}/static/bathymetry/balearic_bathymetry_swan.nc" /workspace/inputs/static/balearic_bathymetry_swan.nc
+
 # 6. Run the simulation pipeline container
-# Mounts inputs/outputs and runs the WRF/ROMS simulation
+# Mounts inputs/outputs/bin and runs the WRF/ROMS simulation
 echo "Executing model simulation..."
 docker run --rm \
   -v /workspace/inputs:/data \
   -v /workspace/outputs:/workspace/run \
+  -v /workspace/bin:/bin_mount \
   "${DOCKER_IMAGE}" \
   /opt/predsea/run_pipeline.sh
 
@@ -73,7 +94,3 @@ gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DAT
 echo "============================================="
 echo "🎉 Simulation pipeline complete!"
 echo "============================================="
-
-# 8. Self-terminate (delete instance) to save costs
-echo "Triggering self-deletion..."
-gcloud compute instances delete "${NAME}" --zone="${ZONE}" --quiet

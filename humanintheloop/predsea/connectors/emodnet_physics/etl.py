@@ -339,6 +339,23 @@ def parse_dataset_frame(dataset_id, frame, *, query_url):
             "stations": [],
         }
 
+    # Filter by Mediterranean coordinate bounding region (Spain, France, Italy, Greece)
+    # Latitude: 30.0 to 46.0, Longitude: -10.0 to 30.0
+    if "latitude" in frame.columns and "longitude" in frame.columns:
+        lat_col = pd.to_numeric(frame["latitude"], errors="coerce")
+        lon_col = pd.to_numeric(frame["longitude"], errors="coerce")
+        frame = frame[
+            (lat_col >= 30.0) & (lat_col <= 46.0) &
+            (lon_col >= -10.0) & (lon_col <= 30.0)
+        ]
+
+    if frame.empty:
+        return {
+            "observations": {},
+            "measurements": {},
+            "stations": [],
+        }
+
     spec = next(item for item in DATASET_SPECS if item["dataset_id"] == dataset_id)
     observations = {}
     measurements = {}

@@ -5,6 +5,7 @@ import json
 import math  
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,24 +19,25 @@ import validation_archive
 from api.warnings_service import BIGQUERY_SCOPE, query_bigquery, resolve_env, sql_literal  # noqa: E402
 
 
-# --- NUEVO ESQUEMA: Puntos de datos exactos e individuales ---
-TELEMETRY_SCHEMA = [
+# --- CLIMATOLOGY AGGREGATED BASELINE SCHEMA ---
+CLIMATOLOGY_SCHEMA = [
     {"name": "provider", "type": "STRING", "mode": "NULLABLE"},
     {"name": "network", "type": "STRING", "mode": "NULLABLE"},
     {"name": "station_id", "type": "STRING", "mode": "REQUIRED"},
     {"name": "station_name", "type": "STRING", "mode": "NULLABLE"},
-    {"name": "latitude", "type": "FLOAT", "mode": "NULLABLE"},
-    {"name": "longitude", "type": "FLOAT", "mode": "NULLABLE"},
     {"name": "variable", "type": "STRING", "mode": "REQUIRED"},
-    {"name": "unit", "type": "STRING", "mode": "NULLABLE"},
-    {"name": "sample_time_utc", "type": "TIMESTAMP", "mode": "REQUIRED"},
-    {"name": "value", "type": "FLOAT", "mode": "REQUIRED"},
+    {"name": "month", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "hour_utc", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "clim_mean", "type": "FLOAT", "mode": "REQUIRED"},
+    {"name": "clim_stddev", "type": "FLOAT", "mode": "REQUIRED"},
+    {"name": "sample_count", "type": "INTEGER", "mode": "REQUIRED"},
+    {"name": "history_years", "type": "INTEGER", "mode": "REQUIRED"},
     {"name": "ingested_at_utc", "type": "TIMESTAMP", "mode": "NULLABLE"},
 ]
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Consolidate raw exact telemetry data points from BigQuery and GCS.")
+    parser = argparse.ArgumentParser(description="Construct climatological baseline aggregated metrics from BigQuery and GCS observations.")
     parser.add_argument("--project", default=resolve_env("PREDSEA_BIGQUERY_PROJECT", "GOOGLE_CLOUD_PROJECT"))
     parser.add_argument("--dataset", default=resolve_env("PREDSEA_BIGQUERY_DATASET", "BQ_DATASET", default="predsea_validation"))
     parser.add_argument("--evidence-table", default=resolve_env("PREDSEA_BIGQUERY_EVIDENCE_TABLE", "BQ_TABLE_EVIDENCE", default="evidence_rows"))
@@ -45,6 +47,9 @@ def main(argv=None):
     parser.add_argument("--gcs-prefix", default=resolve_env("PREDSEA_CLIMATOLOGY_GCS_PREFIX", default="predictions"))
     parser.add_argument("--start-date", default="2019-01-01")
     parser.add_argument("--end-date", default="2025-01-01")
+    parser.add_argument("--min-sample-count", type=int, default=30, help="Minimum sample count per cell")
+    parser.add_argument("--min-history-years", type=int, default=3, help="Minimum number of unique years in history")
+    parser.add_argument("--no-gcs", action="store_true", help="Skip retrieving observations from Google Cloud Storage")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -52,29 +57,66 @@ def main(argv=None):
         raise SystemExit("Missing BigQuery project. Set PREDSEA_BIGQUERY_PROJECT or GOOGLE_CLOUD_PROJECT.")
 
     # 1. Recuperar puntos exactos de BigQuery
-    query = build_raw_telemetry_query(
+    query = build_climatology_query(
         project=args.project,
         dataset=args.dataset,
         evidence_table=args.evidence_table,
         start_date=args.start_date,
         end_date=args.end_date,
     )
-    bigquery_rows = query_bigquery(query, project_id=args.project, location=args.location)
+    try:
+        bigquery_rows = query_bigquery(query, project_id=args.project, location=args.location)
+    except Exception as error:
+        if args.dry_run:
+            print(f"Warning: BigQuery query failed ({error}). Using mock data for dry-run.")
+            bigquery_rows = []
+            for year in [2022, 2023, 2024]:
+                for day in range(1, 15):
+                    bigquery_rows.append({
+                        "provider": "puertos_del_estado",
+                        "network": "redmar",
+                        "station_id": "palma",
+                        "station_name": "Palma",
+                        "latitude": 39.57,
+                        "longitude": 2.64,
+                        "variable": "air_temperature",
+                        "unit": "C",
+                        "sample_time_utc": f"{year}-06-{day:02d}T08:00:00Z",
+                        "value": 24.0 + (day % 3) * 0.5,
+                    })
+        else:
+            raise
     
     # 2. Recuperar puntos exactos de GCS (Copernicus / EMODnet)
-    gcs_rows = load_gcs_observation_rows(
-        bucket_name=args.gcs_bucket,
-        prefix=args.gcs_prefix,
-        start_date=args.start_date,
-        end_date=args.end_date,
+    if args.no_gcs:
+        print("ℹ️ Skipping GCS observation retrieval (--no-gcs specified).")
+        gcs_rows = []
+    else:
+        try:
+            gcs_rows = load_gcs_observation_rows(
+                bucket_name=args.gcs_bucket,
+                prefix=args.gcs_prefix,
+                start_date=args.start_date,
+                end_date=args.end_date,
+            )
+        except Exception as error:
+            if args.dry_run:
+                print(f"Warning: GCS listing failed ({error}). Continuing dry-run.")
+                gcs_rows = []
+            else:
+                raise
+    
+    # 3. Combinar y agregar registros para generar el baseline climatológico
+    all_raw_rows = [*bigquery_rows, *gcs_rows]
+    aggregated_rows = aggregate_climatology_rows(
+        all_raw_rows,
+        min_sample_count=args.min_sample_count,
+        min_history_years=args.min_history_years,
     )
     
-    # 3. Combinar y deduplicar registros exactos
-    consolidated_rows = process_and_deduplicate_rows([*bigquery_rows, *gcs_rows])
-    
     print(
-        f"Consolidated {len(consolidated_rows)} exact data points "
-        f"(BigQuery: {len(bigquery_rows)}, GCS archives: {len(gcs_rows)})."
+        f"Consolidated {len(all_raw_rows)} raw observations. "
+        f"Aggregated into {len(aggregated_rows)} baseline climatology cells (sample_count >= {args.min_sample_count}, history_years >= {args.min_history_years})."
     )
 
     if args.dry_run:
@@ -84,26 +126,18 @@ def main(argv=None):
     ensure_dataset(session, args.project, args.dataset, args.location)
     ensure_table(session, args.project, args.dataset, args.climatology_table, args.location)
     clear_table(session, args.project, args.dataset, args.climatology_table)
-    insert_rows(session, args.project, args.dataset, args.climatology_table, consolidated_rows)
-    print("Exact data points unmapped and uploaded to baseline layer.")
+    insert_rows(session, args.project, args.dataset, args.climatology_table, aggregated_rows)
+    print("Baseline climatology cells computed and uploaded to baseline layer.")
     return 0
 
 
-def build_raw_telemetry_query(*, project, dataset, evidence_table, start_date, end_date):
+def build_climatology_query(*, project, dataset, evidence_table, start_date, end_date):
     variables = [
         "air_temperature",
         "water_temperature",
         "sea_level",
         "salinity",
         "sea_level_pressure",
-        "wave_height",
-        "wave_height_max",
-        "swell_1_height",
-        "wind_speed",
-        "current_speed",
-        "current_u",
-        "current_v",
-        "wave_period_peak",
     ]
     variable_list = ", ".join(sql_literal(variable) for variable in variables)
     
@@ -143,7 +177,14 @@ def load_gcs_observation_rows(*, bucket_name, prefix, start_date=None, end_date=
     start_key = _date_key(start_date)
     end_key = _date_key(end_date)
 
-    for blob in client.list_blobs(bucket, prefix=root_prefix):
+    try:
+        blobs = list(client.list_blobs(bucket, prefix=root_prefix))
+    except Exception as error:
+        # Graceful fallback for dry-runs / permission errors
+        print(f"Warning listing blobs on bucket {bucket_name}: {error}")
+        return []
+
+    for blob in blobs:
         if not blob.name.endswith(".jsonl"):
             continue
             
@@ -154,15 +195,22 @@ def load_gcs_observation_rows(*, bucket_name, prefix, start_date=None, end_date=
             if end_key and run_date >= end_key:
                 continue
                 
-        text = blob.download_as_text(encoding="utf-8")
-        for line in text.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rows.append(json.loads(line))
-            except Exception:
-                continue
+        # Enforce rate limiting (30 requests/minute, meaning 2 seconds between external/network operations)
+        time.sleep(2)
+        try:
+            text = blob.download_as_text(encoding="utf-8")
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except Exception:
+                    continue
+        except Exception as error:
+            print(f"Warning downloading blob {blob.name}: {error}")
+            continue
+            
     return rows
 
 
@@ -183,7 +231,7 @@ def process_and_deduplicate_rows(rows):
         if value is None or math.isnan(value) or math.isinf(value):
             continue
             
-# --- MAPEO DE ALIAS PARA RECONOCER FUENTES EXTERNAS ---
+        # MAPEO DE ALIAS PARA RECONOCER FUENTES EXTERNAS
         station_id = (
             row.get("station_id") 
             or row.get("station") 
@@ -198,7 +246,6 @@ def process_and_deduplicate_rows(rows):
             or row.get("parameter")
             or row.get("VARIABLE")
         )
-        # ------------------------------------------------------
         
         if not station_id or not variable:
             continue
@@ -244,6 +291,131 @@ def process_and_deduplicate_rows(rows):
         
     return sorted(deduplicated.values(), key=lambda x: (x["station_id"], x["variable"], x["sample_time_utc"]))
 
+
+def aggregate_climatology_rows(rows, min_sample_count=30, min_history_years=3):
+    import collections
+    normalized_rows = process_and_deduplicate_rows(rows)
+    
+    # 1. Group by hourly first
+    hourly_groups = collections.defaultdict(list)
+    for r in normalized_rows:
+        try:
+            dt = datetime.strptime(r["sample_time_utc"], "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            dt = validation_archive.parse_timestamp(r["sample_time_utc"])
+        
+        if dt is None:
+            continue
+            
+        month = dt.month
+        hour_utc = dt.hour
+        year = dt.year
+        
+        group_key = (r["station_id"], r["variable"], month, hour_utc)
+        hourly_groups[group_key].append((r, year, r["value"]))
+        
+    aggregated = []
+    ingested_at = current_timestamp_utc()
+    successful_keys = set()
+    
+    for (station_id, variable, month, hour_utc), items in hourly_groups.items():
+        sample_count = len(items)
+        if sample_count < min_sample_count:
+            continue
+            
+        years = {year for _, year, _ in items}
+        history_years = len(years)
+        if history_years < min_history_years:
+            continue
+            
+        values = [val for _, _, val in items]
+        mean_val = sum(values) / sample_count
+        
+        if sample_count > 1:
+            variance = sum((x - mean_val) ** 2 for x in values) / (sample_count - 1)
+            stddev_val = math.sqrt(variance)
+        else:
+            stddev_val = 0.0
+            
+        first_r, _, _ = items[0]
+        
+        aggregated.append({
+            "provider": first_r["provider"],
+            "network": first_r["network"],
+            "station_id": station_id,
+            "station_name": first_r["station_name"],
+            "variable": variable,
+            "month": month,
+            "hour_utc": hour_utc,
+            "clim_mean": mean_val,
+            "clim_stddev": stddev_val,
+            "sample_count": sample_count,
+            "history_years": history_years,
+            "ingested_at_utc": ingested_at,
+        })
+        successful_keys.add((station_id, variable, month))
+        
+    # 2. For any (station_id, variable, month) that has NO successful hourly baselines,
+    # try monthly-level aggregation and distribute across 24 hours.
+    monthly_groups = collections.defaultdict(list)
+    for r in normalized_rows:
+        try:
+            dt = datetime.strptime(r["sample_time_utc"], "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            dt = validation_archive.parse_timestamp(r["sample_time_utc"])
+        
+        if dt is None:
+            continue
+            
+        month = dt.month
+        year = dt.year
+        
+        monthly_groups[(r["station_id"], r["variable"], month)].append((r, year, r["value"]))
+        
+    for (station_id, variable, month), items in monthly_groups.items():
+        if (station_id, variable, month) in successful_keys:
+            continue
+            
+        sample_count = len(items)
+        if sample_count < min_sample_count:
+            continue
+            
+        years = {year for _, year, _ in items}
+        history_years = len(years)
+        if history_years < min_history_years:
+            continue
+            
+        values = [val for _, _, val in items]
+        mean_val = sum(values) / sample_count
+        
+        if sample_count > 1:
+            variance = sum((x - mean_val) ** 2 for x in values) / (sample_count - 1)
+            stddev_val = math.sqrt(variance)
+        else:
+            stddev_val = 0.0
+            
+        first_r, _, _ = items[0]
+        
+        # Distribute monthly aggregate to all 24 hours
+        for hour_utc in range(24):
+            aggregated.append({
+                "provider": first_r["provider"],
+                "network": first_r["network"],
+                "station_id": station_id,
+                "station_name": first_r["station_name"],
+                "variable": variable,
+                "month": month,
+                "hour_utc": hour_utc,
+                "clim_mean": mean_val,
+                "clim_stddev": stddev_val,
+                "sample_count": sample_count,
+                "history_years": history_years,
+                "ingested_at_utc": ingested_at,
+            })
+            
+    return sorted(aggregated, key=lambda x: (x["station_id"], x["variable"], x["month"], x["hour_utc"]))
+
+
 def bigquery_session():
     try:
         import google.auth
@@ -273,20 +445,20 @@ def ensure_dataset(session, project, dataset, location):
 
 
 def ensure_table(session, project, dataset, table, location):
-    url = f"https://bigquery.googleapis.com/projects/{project}/datasets/{dataset}/tables/{table}"
+    url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{project}/datasets/{dataset}/tables/{table}"
     response = session.get(url)
     if response.status_code == 200:
-        # Si la tabla ya existe con el esquema estadístico viejo, la borramos para evitar conflictos de tipos
+        # If the table already exists with the exact telemetry/non-aggregated schema, delete it so we can create the statistical schema table.
         existing_schema = response.json().get("schema", {}).get("fields", [])
-        if any(f["name"] == "clim_mean" for f in existing_schema):
-            print("Detected old aggregation schema table. Recreating for exact points storage...")
+        if not any(f["name"] == "clim_mean" for f in existing_schema):
+            print("Detected old telemetry/exact schema table. Recreating for climatology baseline aggregated storage...")
             session.delete(url).raise_for_status()
         else:
             return response.json()
             
     payload = {
         "tableReference": {"projectId": project, "datasetId": dataset, "tableId": table},
-        "schema": {"fields": TELEMETRY_SCHEMA},
+        "schema": {"fields": CLIMATOLOGY_SCHEMA},
         "clustering": {"fields": ["station_id", "variable"]},
     }
     response = session.post(f"https://bigquery.googleapis.com/bigquery/v2/projects/{project}/datasets/{dataset}/tables", json=payload)
@@ -312,7 +484,7 @@ def insert_rows(session, project, dataset, table, rows, batch_size=500):
         payload = {
             "skipInvalidRows": False,
             "ignoreUnknownValues": False,
-            "rows": [{"insertId": f"{row['station_id']}:{row['variable']}:{row['sample_time_utc']}", "json": row} for row in batch],
+            "rows": [{"insertId": f"{row['station_id']}:{row['variable']}:{row['month']}:{row['hour_utc']}", "json": row} for row in batch],
         }
         response = session.post(url, json=payload)
         response.raise_for_status()

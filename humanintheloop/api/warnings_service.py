@@ -775,7 +775,7 @@ def query_bigquery(sql, *, project_id, location=None):
         "query": sql,
         "useLegacySql": False,
         "timeoutMs": 30000,
-        "maxResults": 200,
+        "maxResults": 10000,
     }
     if location:
         payload["location"] = location
@@ -789,8 +789,9 @@ def query_bigquery(sql, *, project_id, location=None):
 
     response.raise_for_status()
     body = response.json()
+    job_id = (body.get("jobReference") or {}).get("jobId")
+    
     if not body.get("jobComplete", True):
-        job_id = (body.get("jobReference") or {}).get("jobId")
         if not job_id:
             return []
         get_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{project}/queries/{job_id}"
@@ -801,9 +802,27 @@ def query_bigquery(sql, *, project_id, location=None):
             body = response.json()
             if body.get("jobComplete", True):
                 break
+                
     if body.get("errors"):
         raise RuntimeError(body["errors"][0].get("message") or "BigQuery query failed")
-    return bigquery_rows(body)
+        
+    # Standard rows list
+    all_rows = bigquery_rows(body)
+    
+    # Retrieve paginated results if pageToken is present
+    page_token = body.get("pageToken")
+    while page_token and job_id:
+        get_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{project}/queries/{job_id}"
+        params = {"pageToken": page_token, "maxResults": 10000}
+        if location:
+            params["location"] = location
+        response = session.get(get_url, params=params)
+        response.raise_for_status()
+        body = response.json()
+        all_rows.extend(bigquery_rows(body))
+        page_token = body.get("pageToken")
+        
+    return all_rows
 
 
 def bigquery_rows(body):

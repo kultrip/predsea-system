@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""
+Tests for PredSea WRF Forecast Ingestor.
+"""
+from __future__ import annotations
+
+import datetime
+import os
+import sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+import xarray as xr
+
+# Add scripts directory to path
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+import wrf_forecast_ingestor
+
+
+@pytest.fixture
+def mock_wrf_file(tmp_path):
+    wrf_path = tmp_path / "wrf_sample.nc"
+    # Dimensions: Time, south_north, west_east
+    dataset = xr.Dataset(
+        data_vars={
+            "U10": (("Time", "south_north", "west_east"), np.array([[[-5.0, 5.0], [-2.0, 2.0]]])),
+            "V10": (("Time", "south_north", "west_east"), np.array([[[5.0, -5.0], [2.0, -2.0]]])),
+            "T2": (("Time", "south_north", "west_east"), np.array([[[295.0, 296.0], [294.0, 295.0]]])),
+            "PSFC": (("Time", "south_north", "west_east"), np.array([[[101200.0, 101300.0], [101100.0, 101200.0]]])),
+            "XLAT": (("Time", "south_north", "west_east"), np.array([[[39.0, 39.0], [40.0, 40.0]]])),
+            "XLONG": (("Time", "south_north", "west_east"), np.array([[[2.0, 3.0], [2.0, 3.0]]])),
+            "SWDOWN": (("Time", "south_north", "west_east"), np.array([[[200.0, 300.0], [100.0, 0.0]]])),
+        },
+        coords={
+            "Time": np.array([0]),
+        },
+    )
+    dataset.to_netcdf(wrf_path)
+    return wrf_path
+
+
+def test_utc_to_local_str():
+    dt = datetime.datetime(2026, 6, 24, 12, 0, tzinfo=datetime.timezone.utc)
+    local_str = wrf_forecast_ingestor.utc_to_local_str(dt)
+    # Europe/Madrid is UTC+2 in June (daylight saving time)
+    assert local_str == "14:00"
+
+
+def test_get_nearest_grid_indices():
+    lats = xr.DataArray(np.array([[39.0, 39.0], [40.0, 40.0]]))
+    lons = xr.DataArray(np.array([[2.0, 3.0], [2.0, 3.0]]))
+    
+    j, i = wrf_forecast_ingestor.get_nearest_grid_indices(lats, lons, 39.1, 2.1)
+    assert j == 0
+    assert i == 0
+    
+    j, i = wrf_forecast_ingestor.get_nearest_grid_indices(lats, lons, 39.9, 2.9)
+    assert j == 1
+    assert i == 1
+
+
+def test_process_wrf_forecast(mock_wrf_file):
+    rows = wrf_forecast_ingestor.process_wrf_forecast(
+        str(mock_wrf_file), run_date="2026-06-24", run_id="run-123"
+    )
+    
+    assert len(rows) > 0
+    
+    # Check that keys are conformant
+    first_row = rows[0]
+    assert first_row["schema_version"] == "predsea.validation.v1"
+    assert first_row["record_type"] == "forecast"
+    assert first_row["source_family"] == "atmosphere"
+    assert first_row["forecast_source_id"] == "predsea_wrf"
+    assert first_row["resolution_km"] == 1.0
+    
+    # Check specific variable types are present
+    variables = {r["variable"] for r in rows}
+    assert "wind_speed" in variables
+    assert "wind_direction" in variables
+    assert "air_temperature" in variables
+    assert "sea_level_pressure" in variables
+    assert "solar_radiation" in variables
+    
+    # Find wind speed for a specific coordinate
+    # The nearest grid point to Palmer (lat=39.55, lon=2.63 - approx in Palma region)
+    # is checked. Let's check some values.
+    temp_rows = [r for r in rows if r["variable"] == "air_temperature"]
+    assert len(temp_rows) > 0
+    for r in temp_rows:
+        # T2 values are either 294, 295, 296 Kelvin -> converted to Celsius
+        # 294K = 20.85C, 295K = 21.85C, 296K = 22.85C
+        assert 20.0 < r["value"] < 24.0
+
+
+def test_main_dry_run(mock_wrf_file):
+    args = [
+        "--local-file", str(mock_wrf_file),
+        "--run-date", "2026-06-24",
+        "--run-id", "test-run-123",
+        "--dry-run"
+    ]
+    ret = wrf_forecast_ingestor.main(args)
+    assert ret == 0
+
+
+def test_download_wrf_file_from_gcs_not_found(monkeypatch):
+    class MockStorageBlob:
+        def __init__(self, name):
+            self.name = name
+
+    class MockStorageBucket:
+        def list_blobs(self, prefix=""):
+            return []
+
+    class MockStorageClient:
+        def bucket(self, name):
+            return MockStorageBucket()
+
+    monkeypatch.setattr(wrf_forecast_ingestor.storage, "Client", MockStorageClient)
+    
+    success = wrf_forecast_ingestor.download_wrf_file_from_gcs(
+        "bucket", "2026-06-24", "run-123", "local_file.nc"
+    )
+    assert success is False

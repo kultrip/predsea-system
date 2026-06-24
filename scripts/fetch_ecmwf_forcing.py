@@ -43,8 +43,13 @@ def get_latest_run_time() -> int:
 
 
 def get_forecast_steps(lead_hours: int) -> list[int]:
-    """Generate forecast steps up to lead_hours (step = 3 hours)."""
-    return list(range(0, lead_hours + 1, 3))
+    """Generate forecast steps up to lead_hours.
+    Hourly/3-hourly up to 120 hours, then 6-hourly from 120 to lead_hours.
+    """
+    steps = list(range(0, min(120, lead_hours) + 1, 3))
+    if lead_hours > 120:
+        steps.extend(range(126, lead_hours + 1, 6))
+    return steps
 
 
 def upload_to_gcs(bucket_name: str, local_path: Path, gcs_blob_path: str) -> None:
@@ -144,8 +149,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--lead-hours",
         type=int,
-        default=24,
-        help="Forecast lead time in hours (default 24)",
+        default=120,
+        help="Forecast lead time in hours (default 120)",
     )
     parser.add_argument(
         "--output-dir",
