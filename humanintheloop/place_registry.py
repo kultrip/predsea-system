@@ -157,7 +157,54 @@ def _normalize_route_waypoints(route):
         waypoints.extend(list(iter_points(candidate)))
         if waypoints:
             break
+
+    # Apply Douglas-Peucker simplification to smooth out intermediate open-ocean grid jogs
+    if len(waypoints) > 2:
+        waypoints = _simplify_waypoints(waypoints, epsilon=0.015)
+
     return waypoints
+
+
+def _simplify_waypoints(points: list[dict], epsilon: float = 0.015) -> list[dict]:
+    """
+    Simplifies a 2D line of lat/lng points using the Douglas-Peucker algorithm.
+    epsilon: Tolerance in degrees (default 0.015 degrees is approx. 0.9 nautical miles).
+    """
+    if len(points) < 3:
+        return points
+
+    import math
+
+    def perpendicular_distance(p, p1, p2):
+        x, y = p["lng"], p["lat"]
+        x1, y1 = p1["lng"], p1["lat"]
+        x2, y2 = p2["lng"], p2["lat"]
+        
+        dx = x2 - x1
+        dy = y2 - y1
+        if dx == 0.0 and dy == 0.0:
+            return math.sqrt((x - x1)**2 + (y - y1)**2)
+            
+        numerator = abs(dy * x - dx * y + x2 * y1 - y2 * x1)
+        denominator = math.sqrt(dx**2 + dy**2)
+        return numerator / denominator
+
+    dmax = 0.0
+    index = 0
+    end = len(points) - 1
+
+    for i in range(1, end):
+        d = perpendicular_distance(points[i], points[0], points[end])
+        if d > dmax:
+            index = i
+            dmax = d
+
+    if dmax > epsilon:
+        results1 = _simplify_waypoints(points[:index+1], epsilon)
+        results2 = _simplify_waypoints(points[index:], epsilon)
+        return results1[:-1] + results2
+    else:
+        return [points[0], points[end]]
 
 
 def _searoute_metrics(
