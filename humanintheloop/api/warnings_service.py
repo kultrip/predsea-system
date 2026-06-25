@@ -253,8 +253,8 @@ latest_obs AS (
 )
 SELECT *, 'rolling' AS baseline_type
 FROM latest_obs
-WHERE ABS(z_score) >= {float(z_threshold)}
-ORDER BY ABS(z_score) DESC
+WHERE z_score >= {float(z_threshold)}
+ORDER BY z_score DESC
 LIMIT 200
 """
     try:
@@ -321,8 +321,8 @@ scored AS (
 )
 SELECT *, 'climatological' AS baseline_type
 FROM scored
-WHERE ABS(z_score) >= {float(z_threshold)}
-ORDER BY ABS(z_score) DESC
+WHERE z_score >= {float(z_threshold)}
+ORDER BY z_score DESC
 LIMIT 200
 """
     try:
@@ -537,9 +537,9 @@ def rolling_warning_from_row(row, *, generated_at_utc, route=None, place=None):
     severe_abs = meta.get("severe_abs")
     if severe_abs is not None and abs(value) >= severe_abs:
         severity = "severe"
-    elif abs(z_score) >= 2.5:
+    elif z_score >= 2.5:
         severity = "severe"
-    elif abs(z_score) >= 1.5:
+    elif z_score >= 1.5:
         severity = "moderate"
     else:
         severity = "info"
@@ -599,7 +599,7 @@ def climatological_warning_from_row(row, *, generated_at_utc, route=None, place=
     z_score = as_float(row.get("z_score"))
     if value is None or z_score is None:
         return None
-    severity = "severe" if abs(z_score) >= 2.5 else "moderate" if abs(z_score) >= 1.5 else "info"
+    severity = "severe" if z_score >= 2.5 else "moderate" if z_score >= 1.5 else "info"
     station_name = row.get("station_name")
     direction = "above" if z_score >= 0 else "below"
     description = (

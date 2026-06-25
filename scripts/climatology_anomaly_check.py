@@ -163,8 +163,8 @@ scored AS (
 )
 SELECT *, 'climatological' AS baseline_type
 FROM scored
-WHERE ABS(z_score) >= {z_threshold}
-ORDER BY ABS(z_score) DESC
+WHERE z_score >= {z_threshold}
+ORDER BY z_score DESC
 LIMIT 200
 """
     return query
@@ -183,7 +183,7 @@ def generate_warnings(rows: list[dict], generated_at_utc: str) -> list[dict]:
         if value is None or z_score is None:
             continue
             
-        severity = "severe" if abs(z_score) >= 2.5 else "moderate" if abs(z_score) >= 1.5 else "info"
+        severity = "severe" if z_score >= 2.5 else "moderate" if z_score >= 1.5 else "info"
         station_name = row.get("station_name") or row.get("station_id")
         direction = "above" if z_score >= 0 else "below"
         
