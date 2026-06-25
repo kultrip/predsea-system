@@ -1366,5 +1366,186 @@
         "latitude": 39.45
       }
     ]
+  },
+  "palma_cagliari": {
+    "id": "palma_cagliari",
+    "name": "Palma -> Cagliari",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Open sea crossing from the Balearics to Sardinia; subject to long westerly and northwesterly swells building across the Algerian Basin.",
+    "sample_points": [
+      {
+        "name": "Palma Bay offshore",
+        "longitude": 2.55,
+        "latitude": 39.45
+      },
+      {
+        "name": "Mid Balearic-Sardinian passage",
+        "longitude": 5.80,
+        "latitude": 39.30
+      },
+      {
+        "name": "Southwest Sardinia approach",
+        "longitude": 8.50,
+        "latitude": 39.10
+      }
+    ]
+  },
+  "ibiza_cagliari": {
+    "id": "ibiza_cagliari",
+    "name": "Ibiza -> Cagliari",
+    "origin": {
+      "name": "Ibiza",
+      "longitude": 1.435,
+      "latitude": 38.9089
+    },
+    "destination": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long open sea crossing from Ibiza to southern Sardinia; fully exposed to southern and westerly basins.",
+    "sample_points": [
+      {
+        "name": "Ibiza offshore",
+        "longitude": 1.60,
+        "latitude": 38.90
+      },
+      {
+        "name": "South of Mallorca",
+        "longitude": 3.10,
+        "latitude": 38.80
+      },
+      {
+        "name": "Mid passage",
+        "longitude": 6.00,
+        "latitude": 39.00
+      },
+      {
+        "name": "Southwest Sardinia approach",
+        "longitude": 8.50,
+        "latitude": 39.10
+      }
+    ]
+  },
+  "genoa_cagliari": {
+    "id": "genoa_cagliari",
+    "name": "Genoa -> Cagliari",
+    "origin": {
+      "name": "Genoa",
+      "longitude": 8.93,
+      "latitude": 44.41
+    },
+    "destination": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Classic North-South Italian mainland transit down the Tyrrhenian Sea; sheltered on the west by Corsica and Sardinia, but exposed to strong North/Northeast flows.",
+    "sample_points": [
+      {
+        "name": "Ligurian Sea",
+        "longitude": 9.00,
+        "latitude": 43.80
+      },
+      {
+        "name": "Corsica Channel",
+        "longitude": 9.70,
+        "latitude": 41.80
+      },
+      {
+        "name": "East Sardinia approach",
+        "longitude": 9.90,
+        "latitude": 40.10
+      }
+    ]
+  },
+  "marseille_cagliari": {
+    "id": "marseille_cagliari",
+    "name": "Marseille -> Cagliari",
+    "origin": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "destination": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Major French-to-Sardinia transit corridor passing west of Corsica; watch out for Mistral wind-wave acceleration in the Gulf of Lion.",
+    "sample_points": [
+      {
+        "name": "Marseille approach",
+        "longitude": 5.50,
+        "latitude": 43.10
+      },
+      {
+        "name": "Western Corsica transit",
+        "longitude": 7.30,
+        "latitude": 41.20
+      },
+      {
+        "name": "Northwest Sardinia crossing",
+        "longitude": 8.20,
+        "latitude": 40.00
+      }
+    ]
   }
 }

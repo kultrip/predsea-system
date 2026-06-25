@@ -1,0 +1,7 @@
+.gcloudignore
+inputs/
+inputs/**
+nemo/
+swan/
+__pycache__/
+.DS_Store

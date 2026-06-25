@@ -469,7 +469,7 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     assert "safe" not in lowered
     assert "guaranteed smooth" not in lowered
     assert "no issues" not in lowered
-    assert payload["evidence_used"]["hourly_points"] == 2
+    assert payload["evidence_used"]["hourly_points"] == 22
     assert payload["evidence_used"]["observations"] == ["canal_de_ibiza"]
 
 
@@ -541,7 +541,7 @@ def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
     assert response.status_code == 200
     sea_state = response.json()["evidence_used"]["sea_state"]
     assert sea_state["wave_direction_deg"]["peak"] == 74.0
-    assert sea_state["wave_direction_deg"]["hourly"] == [
+    assert sea_state["wave_direction_deg"]["hourly"][:2] == [
         {
             "time": "08:00",
             "time_utc": "2026-06-09 06:00 UTC",
@@ -555,6 +555,7 @@ def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
             "wave_sea_state": "stern quartering sea",
         },
     ]
+    assert len(sea_state["wave_direction_deg"]["hourly"]) == 22
     assert sea_state["components"]["swell_1"]["direction_deg"] == 45.0
     assert sea_state["components"]["swell_2"]["direction_deg"] == 110.0
     assert sea_state["components"]["wind_wave"]["direction_deg"] == 72.0

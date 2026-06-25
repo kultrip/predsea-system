@@ -178,6 +178,7 @@ def _searoute_metrics(
         [float(destination_longitude), float(destination_latitude)],
         units="naut",
         speed_knot=float(speed_kn or DEFAULT_TRAVEL_SPEED_KN),
+        include_ports=True,
     )
     properties = route.get("properties") if isinstance(route, dict) else getattr(route, "properties", None)
     if not isinstance(properties, dict):
@@ -444,6 +445,7 @@ class PlaceDistanceResolver:
             [float(destination["longitude"]), float(destination["latitude"])],
             units="naut",
             speed_knot=GRAPH_FALLBACK_SPEED_KN,
+            include_ports=True,
         )
         properties = route.get("properties") or {}
         length_nm = properties.get("length")

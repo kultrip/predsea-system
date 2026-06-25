@@ -133,16 +133,16 @@ def parse_args() -> argparse.Namespace:
         help="Local output directory",
     )
     parser.add_argument(
-        "--lon-min", type=float, default=-1.5, help="Minimum longitude"
+        "--lon-min", type=float, default=-3.0, help="Minimum longitude"
     )
     parser.add_argument(
-        "--lon-max", type=float, default=5.0, help="Maximum longitude"
+        "--lon-max", type=float, default=11.0, help="Maximum longitude"
     )
     parser.add_argument(
-        "--lat-min", type=float, default=37.5, help="Minimum latitude"
+        "--lat-min", type=float, default=35.0, help="Minimum latitude"
     )
     parser.add_argument(
-        "--lat-max", type=float, default=42.5, help="Maximum latitude"
+        "--lat-max", type=float, default=45.0, help="Maximum latitude"
     )
     parser.add_argument(
         "--run-date",

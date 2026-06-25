@@ -11,14 +11,15 @@ def test_render_namelist_defines_one_km_balearic_nested_domain():
     assert "parent_grid_ratio = 1, 3, 3" in namelist
     assert "dx = 9000" in namelist
     assert "dy = 9000" in namelist
-    assert "ref_lat = 39.2000" in namelist
-    assert "ref_lon = 2.7000" in namelist
-    assert "stand_lon = 2.7000" in namelist
+    assert "ref_lat = 40.0000" in namelist
+    assert "ref_lon = 5.0000" in namelist
+    assert "stand_lon = 5.0000" in namelist
     assert "geog_data_res = 'default', 'default', 'default'" in namelist
-    assert "i_parent_start = 1, 86, 34" in namelist
-    assert "j_parent_start = 1, 61, 35" in namelist
-    assert "e_we = 120, 121, 151" in namelist
-    assert "e_sn = 110, 121, 151" in namelist
+    assert "i_parent_start = 1, 40, 34" in namelist
+    assert "j_parent_start = 1, 20, 35" in namelist
+    assert "e_we = 160, 277, 151" in namelist
+    assert "e_sn = 120, 271, 151" in namelist
+
 
 
 def test_render_namelist_allows_dates_and_geog_path_override():

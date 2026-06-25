@@ -110,7 +110,7 @@ def main():
     parser = argparse.ArgumentParser(description="Launch ephemeral Spot VMs for high-resolution WRF/ROMS runs.")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
-    parser.add_argument("--machine-type", default="c2d-standard-8", help="GCP Machine Type (e.g. c2d-standard-8, e2-standard-8)")
+    parser.add_argument("--machine-type", default="c2d-standard-16", help="GCP Machine Type (e.g. c2d-standard-16, c2d-standard-8)")
     parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="Cloud Storage Bucket name")
     parser.add_argument("--run-date", help="ISO run date YYYY-MM-DD (defaults to today)")
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")

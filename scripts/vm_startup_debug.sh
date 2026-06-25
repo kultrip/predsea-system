@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PredSea Spot VM Startup Script
+# PredSea Spot VM Startup Script (DEBUG MODE - NO SELF-DELETION)
 # Configured to run on standard Debian/Ubuntu GCE instances.
 set -euo pipefail
 
@@ -8,22 +8,20 @@ PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.interna
 ZONE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/zone | awk -F/ '{print $4}')
 NAME=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/name)
 
-# Safety Control: Ensure the instance is deleted on both success and failure
 cleanup() {
   echo "============================================="
-  echo "⚠️ Cleanup Triggered: Ensuring Spot VM self-deletion..."
+  echo "⚠️ Cleanup Triggered (Debug Mode: keeping VM alive for inspection)"
   echo "============================================="
-  # Ensure all workspace outputs/logs are uploaded to GCS before self-deletion
+  # Ensure all workspace outputs/logs are uploaded to GCS before ending startup script
   if [ -d /workspace/outputs ] && [ -n "${GCS_BUCKET:-}" ] && [ -n "${RUN_DATE:-}" ] && [ -n "${RUN_ID:-}" ]; then
     echo "Syncing final /workspace/outputs/ to GCS..."
     gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/" || true
   fi
-  gcloud compute instances delete "${NAME}" --zone="${ZONE}" --quiet || true
 }
 trap cleanup EXIT
 
 echo "============================================="
-echo "🚀 PredSea VM Startup Script Initialized"
+echo "🚀 PredSea VM Startup Script Initialized (DEBUG MODE)"
 echo "============================================="
 
 GCS_BUCKET=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-bucket || echo "predsea-daily-outputs")
@@ -60,7 +58,6 @@ echo "Pulling model container image..."
 docker pull "${DOCKER_IMAGE}"
 
 # 5. Create workspaces and download forcing data (e.g. ECMWF and CMEMS inputs)
-# In production, these scripts will pull the required boundary conditions from GCS or APIs
 mkdir -p /workspace/inputs
 mkdir -p /workspace/outputs
 mkdir -p /workspace/inputs/static
@@ -86,7 +83,6 @@ gsutil cp "gs://${GCS_BUCKET}/static/bathymetry/balearic_bathymetry_nemo.nc" /wo
 gsutil cp "gs://${GCS_BUCKET}/static/bathymetry/balearic_bathymetry_swan.nc" /workspace/inputs/static/balearic_bathymetry_swan.nc || echo "⚠️ Warning: balearic_bathymetry_swan.nc not found in GCS. Skipping."
 
 # 6. Run the simulation pipeline container
-# Mounts inputs/outputs/bin and runs the WRF/ROMS simulation
 echo "Executing model simulation..."
 
 # Run docker, teeing output to both console and a log file

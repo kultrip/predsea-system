@@ -438,5 +438,71 @@
       "barcelona",
       "puertos_barcelona"
     ]
+  },
+  {
+    "id": "cagliari",
+    "name": "Cagliari",
+    "type": "main_port",
+    "latitude": 39.21,
+    "longitude": 9.11,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "cagliari",
+      "cagliari port"
+    ],
+    "observation_candidates": [
+      "emodnet_cagliari",
+      "cagliari"
+    ]
+  },
+  {
+    "id": "genoa",
+    "name": "Genoa",
+    "type": "main_port",
+    "latitude": 44.41,
+    "longitude": 8.93,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "genoa",
+      "genova",
+      "genoa port"
+    ],
+    "observation_candidates": [
+      "emodnet_genoa"
+    ]
+  },
+  {
+    "id": "marseille",
+    "name": "Marseille",
+    "type": "main_port",
+    "latitude": 43.30,
+    "longitude": 5.37,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "marseille",
+      "marseille port"
+    ],
+    "observation_candidates": [
+      "emodnet_marseille"
+    ]
+  },
+  {
+    "id": "toulon",
+    "name": "Toulon",
+    "type": "main_port",
+    "latitude": 43.12,
+    "longitude": 5.93,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "toulon",
+      "toulon port"
+    ],
+    "observation_candidates": [
+      "emodnet_toulon"
+    ]
   }
 ]
