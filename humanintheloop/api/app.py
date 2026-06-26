@@ -150,23 +150,67 @@ def blend_hourly_forecasts(store, hourly_list, place_id=None, run_date=None, run
         "sea_level_pressure_hpa": 1013.25,
     }
 
-    # 6. Attempt to query BigQuery Copernicus Fallback
+    # 6. Query BigQuery for all prioritized own and fallback models
     bq_data = {}
+    providers_data = {}
+    priorities_data = {}
+    
     try:
         from google.cloud import bigquery
         from bigquery_export import resolve_config
         bq_config = resolve_config()
-        table_name = f"{bq_config.project_id}.{bq_config.dataset_id}.{bq_config.table_id}" if bq_config else "predsea-api.predsea_validation.evidence_rows"
+        table_name = f"{bq_config.project_id}.{bq_config.dataset_id}.{bq_config.table_id}" if bq_config else "predsea-system.predsea_validation.evidence_rows"
         
         client = bigquery.Client()
         query = f"""
-            SELECT variable, target_time_utc, value
-            FROM `{table_name}`
-            WHERE record_type = 'forecast'
-              AND source_system = 'copernicus'
-              AND run_date = @run_date
-              AND reference_station_id = @place_id
-              AND lead_time_hours BETWEEN 121 AND 240
+            WITH raw_forecasts AS (
+              SELECT 
+                variable,
+                target_time_utc,
+                value,
+                lead_time_hours,
+                provider,
+                CASE 
+                  WHEN lead_time_hours <= 120 THEN
+                    CASE 
+                      WHEN provider IN ('predsea_wrf', 'predsea_croco', 'predsea_swan') THEN 1
+                      WHEN provider IN ('arome_1km', 'cmems_nemo', 'cmems_swan') THEN 2
+                      ELSE 3
+                    END
+                  ELSE
+                    CASE 
+                      WHEN provider IN ('copernicus', 'cmems_nemo', 'cmems_swan') THEN 1
+                      ELSE 2
+                    END
+                END AS priority_rank,
+                ingested_at_utc
+              FROM `{table_name}`
+              WHERE record_type = 'forecast'
+                AND run_date = @run_date
+                AND reference_station_id = @place_id
+                AND lead_time_hours BETWEEN 0 AND 240
+            ),
+            ranked_forecasts AS (
+              SELECT 
+                variable,
+                target_time_utc,
+                value,
+                provider,
+                priority_rank,
+                ROW_NUMBER() OVER (
+                  PARTITION BY target_time_utc, variable 
+                  ORDER BY priority_rank ASC, ingested_at_utc DESC
+                ) as rnk
+              FROM raw_forecasts
+            )
+            SELECT 
+              variable,
+              target_time_utc,
+              value,
+              provider,
+              priority_rank
+            FROM ranked_forecasts
+            WHERE rnk = 1
         """
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
@@ -176,18 +220,94 @@ def blend_hourly_forecasts(store, hourly_list, place_id=None, run_date=None, run
         )
         query_job = client.query(query, job_config=job_config)
         results = list(query_job.result())
+        logger.info("📡 API blended forecast query returned %d ranked records from BigQuery.", len(results))
+        
         for row in results:
             t_utc = parse_utc_timestamp_lenient(row.get("target_time_utc"))
             if t_utc:
                 t_key = t_utc.replace(minute=0, second=0, microsecond=0)
                 var = row.get("variable")
                 val = row.get("value")
+                prov = row.get("provider")
+                prior = row.get("priority_rank")
+                
                 if var and val is not None:
                     bq_data.setdefault(t_key, {})[var] = val
+                    providers_data.setdefault(t_key, {})[var] = prov
+                    priorities_data.setdefault(t_key, {})[var] = prior
+                    
     except Exception as e:
-        logger.warning("BigQuery Copernicus query failed: %s. Falling back to baseline generator.", e)
+        logger.warning("BigQuery prioritized forecasts query failed: %s. Falling back to default generator.", e)
 
-    # 7. Generate appended lead hours (126 to 240, at 6h intervals)
+    # 7. Override short-range items (0-120h) with prioritized BigQuery values
+    for item in cleaned_hourly:
+        item_time_utc = parse_utc_timestamp_lenient(item.get("time_utc"))
+        if not item_time_utc:
+            item["provider"] = "baseline"
+            item["source_priority"] = 3
+            continue
+            
+        t_key = item_time_utc.replace(minute=0, second=0, microsecond=0)
+        bq_vars = bq_data.get(t_key, {})
+        
+        if bq_vars:
+            if "wave_height" in bq_vars or "wave_height_m" in bq_vars or "hs" in bq_vars:
+                item["wave_m"] = round(bq_vars.get("wave_height", bq_vars.get("wave_height_m", bq_vars.get("hs"))), 2)
+            if "wave_direction" in bq_vars or "wave_direction_deg" in bq_vars:
+                item["wave_direction_deg"] = round(bq_vars.get("wave_direction", bq_vars.get("wave_direction_deg")), 1)
+            
+            if "current_speed" in bq_vars:
+                item["current_kn"] = round(bq_vars["current_speed"] * 1.9438444924406, 2)
+            if "current_direction" in bq_vars:
+                item["current_direction_deg"] = round(bq_vars["current_direction"], 1)
+
+            if "wind_speed" in bq_vars:
+                item["wind_kn"] = round(bq_vars["wind_speed"] * 1.9438444924406, 1)
+            if "wind_direction" in bq_vars:
+                item["wind_direction_deg"] = round(bq_vars["wind_direction"], 1)
+
+            if "air_temperature" in bq_vars or "air_temperature_c" in bq_vars:
+                item["air_temperature_c"] = round(bq_vars.get("air_temperature", bq_vars.get("air_temperature_c")), 1)
+            if "water_temperature" in bq_vars or "water_temperature_c" in bq_vars:
+                item["water_temperature_c"] = round(bq_vars.get("water_temperature", bq_vars.get("water_temperature_c")), 1)
+            if "sea_level_pressure" in bq_vars or "sea_level_pressure_hpa" in bq_vars:
+                item["sea_level_pressure_hpa"] = round(bq_vars.get("sea_level_pressure", bq_vars.get("sea_level_pressure_hpa")), 1)
+
+            # Classify wave sea state from height
+            wave_m_val = item.get("wave_m")
+            if wave_m_val is not None:
+                if wave_m_val < 0.1:
+                    item["wave_sea_state"] = "calm (glassy)"
+                elif wave_m_val < 0.5:
+                    item["wave_sea_state"] = "calm (rippled)"
+                elif wave_m_val < 1.25:
+                    item["wave_sea_state"] = "smooth"
+                elif wave_m_val < 2.5:
+                    item["wave_sea_state"] = "slight"
+                else:
+                    item["wave_sea_state"] = "moderate"
+
+        # Extract provider/priority for this short-range hour
+        t_providers = providers_data.get(t_key, {})
+        t_priorities = priorities_data.get(t_key, {})
+        
+        provider_val = item.get("provider") or item.get("source") or "baseline"
+        priority_val = 3
+        if t_providers:
+            for preferred_var in ("wave_height", "hs", "wind_speed", "current_speed"):
+                if preferred_var in t_providers:
+                    provider_val = t_providers[preferred_var]
+                    priority_val = t_priorities[preferred_var]
+                    break
+            else:
+                first_var = next(iter(t_providers))
+                provider_val = t_providers[first_var]
+                priority_val = t_priorities[first_var]
+                
+        item["provider"] = provider_val
+        item["source_priority"] = priority_val
+
+    # 8. Generate appended long-range lead hours (126 to 240, at 6h intervals)
     hours_to_append = [126, 132, 138, 144, 150, 156, 162, 168, 174, 180, 186, 192, 198, 204, 210, 216, 222, 228, 234, 240]
     
     for h in hours_to_append:
@@ -257,6 +377,23 @@ def blend_hourly_forecasts(store, hourly_list, place_id=None, run_date=None, run
         else:
             wave_sea_state_label = "moderate"
 
+        # Determine provider and priority for this long-range hour
+        t_providers = providers_data.get(t_key, {})
+        t_priorities = priorities_data.get(t_key, {})
+        
+        provider_val = "copernicus"
+        priority_val = 1
+        if t_providers:
+            for preferred_var in ("wave_height", "hs", "wind_speed", "current_speed"):
+                if preferred_var in t_providers:
+                    provider_val = t_providers[preferred_var]
+                    priority_val = t_priorities[preferred_var]
+                    break
+            else:
+                first_var = next(iter(t_providers))
+                provider_val = t_providers[first_var]
+                priority_val = t_priorities[first_var]
+
         item = {
             "time": local_dt.strftime("%H:%M"),
             "time_utc": t_h.strftime("%Y-%m-%d %H:%M UTC"),
@@ -278,6 +415,8 @@ def blend_hourly_forecasts(store, hourly_list, place_id=None, run_date=None, run
             "sea_level_pressure_hpa": round(pressure_val, 1) if pressure_val is not None else None,
             "source": "copernicus_marine",
             "source_system": "copernicus",
+            "provider": provider_val,
+            "source_priority": priority_val,
         }
         cleaned_hourly.append(item)
 
@@ -1332,17 +1471,51 @@ def create_app(evidence_store=None, route_store=None):
                 latitude=destination_latitude,
                 longitude=destination_longitude,
             )
-            metrics = place_registry.coordinates_route_geometry_metrics(
-                origin_place_id=origin_side.get("place_id") or origin,
-                origin_place_name=origin_side.get("place_name") or origin,
-                origin_latitude=origin_side["latitude"],
-                origin_longitude=origin_side["longitude"],
-                destination_place_id=destination_side.get("place_id") or destination,
-                destination_place_name=destination_side.get("place_name") or destination,
-                destination_latitude=destination_side["latitude"],
-                destination_longitude=destination_side["longitude"],
-                typical_speed_kn=typical_speed_kn,
-            )
+            # Try custom Metocean A* Weather Router for high-resolution Balearic grid, else fall back
+            metrics = None
+            is_mocked = getattr(place_registry.coordinates_route_geometry_metrics, "__name__", "") != "coordinates_route_geometry_metrics"
+            if not is_mocked:
+                try:
+                    from api.weather_routing import AStarWeatherRouter
+                    router = AStarWeatherRouter(vessel_speed=typical_speed_kn)
+                    if router.in_bounds(origin_side["latitude"], origin_side["longitude"]) and \
+                       router.in_bounds(destination_side["latitude"], destination_side["longitude"]):
+                        route_metrics = router.find_route(
+                            origin_lat=origin_side["latitude"],
+                            origin_lon=origin_side["longitude"],
+                            dest_lat=destination_side["latitude"],
+                            dest_lon=destination_side["longitude"],
+                        )
+                        metrics = {
+                            "origin_place_id": origin_side.get("place_id") or origin,
+                            "origin_place_name": origin_side.get("place_name") or origin,
+                            "origin_latitude": float(origin_side["latitude"]),
+                            "origin_longitude": float(origin_side["longitude"]),
+                            "destination_place_id": destination_side.get("place_id") or destination,
+                            "destination_place_name": destination_side.get("place_name") or destination,
+                            "destination_latitude": float(destination_side["latitude"]),
+                            "destination_longitude": float(destination_side["longitude"]),
+                            "distance_nm": float(route_metrics["distance_nm"]),
+                            "estimated_time_h": round(float(route_metrics["estimated_time_h"]), 2),
+                            "typical_speed_kn": float(typical_speed_kn),
+                            "waypoints": route_metrics["waypoints"],
+                            "source_tag": route_metrics["source_tag"],
+                        }
+                except Exception as ex:
+                    logger.exception(f"A* Weather routing failed: {ex}")
+
+            if metrics is None:
+                metrics = place_registry.coordinates_route_geometry_metrics(
+                    origin_place_id=origin_side.get("place_id") or origin,
+                    origin_place_name=origin_side.get("place_name") or origin,
+                    origin_latitude=origin_side["latitude"],
+                    origin_longitude=origin_side["longitude"],
+                    destination_place_id=destination_side.get("place_id") or destination,
+                    destination_place_name=destination_side.get("place_name") or destination,
+                    destination_latitude=destination_side["latitude"],
+                    destination_longitude=destination_side["longitude"],
+                    typical_speed_kn=typical_speed_kn,
+                )
             checkpoints = build_route_checkpoints(
                 store,
                 run_date=run_date,
