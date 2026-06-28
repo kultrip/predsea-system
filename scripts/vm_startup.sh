@@ -8,7 +8,15 @@ PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.interna
 ZONE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/zone | awk -F/ '{print $4}')
 NAME=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/name)
 
-# Safety Control: Ensure the instance is deleted on both success and failure
+GCS_BUCKET=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-bucket || echo "predsea-daily-outputs")
+RUN_DATE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/run-date || date -u +"%Y-%m-%d")
+RUN_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/run-id || date -u +"%Y-%m-%dT%H%MZ")
+IMAGE_TAG=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/image-tag || echo "latest")
+EXECUTION_MODE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/execution-mode || echo "container")
+
+DOCKER_IMAGE="europe-west1-docker.pkg.dev/${PROJECT_ID}/predsea-simulations/wrf:${IMAGE_TAG}"
+
+# Safety Control: Ensure the instance is deleted on both success and failure (unless in debug mode)
 cleanup() {
   echo "============================================="
   echo "⚠️ Cleanup Triggered: Ensuring Spot VM self-deletion..."
@@ -18,102 +26,180 @@ cleanup() {
     echo "Syncing final /workspace/outputs/ to GCS..."
     gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/" || true
   fi
-  gcloud compute instances delete "${NAME}" --zone="${ZONE}" --quiet || true
+
+  if [[ "${NAME}" == *debug* ]]; then
+    echo "ℹ️ Debug instance detected. Bypassing VM self-deletion to allow inspection."
+  else
+    gcloud compute instances delete "${NAME}" --zone="${ZONE}" --quiet || true
+  fi
 }
 trap cleanup EXIT
 
 echo "============================================="
 echo "🚀 PredSea VM Startup Script Initialized"
-echo "============================================="
-
-GCS_BUCKET=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/gcs-bucket || echo "predsea-daily-outputs")
-RUN_DATE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/run-date || date -u +"%Y-%m-%d")
-RUN_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/run-id || date -u +"%Y-%m-%dT%H%MZ")
-IMAGE_TAG=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/image-tag || echo "latest")
-
-DOCKER_IMAGE="europe-west1-docker.pkg.dev/${PROJECT_ID}/predsea-simulations/wrf:${IMAGE_TAG}"
-
 echo "Project ID: ${PROJECT_ID}"
 echo "Instance: ${NAME} in zone ${ZONE}"
+echo "Execution Mode: ${EXECUTION_MODE}"
 echo "Target Date/Run: ${RUN_DATE} / ${RUN_ID}"
-echo "Docker Image: ${DOCKER_IMAGE}"
 echo "============================================="
 
-# 2. Install Docker if not already installed
-if ! command -v docker &> /dev/null; then
-  echo "Installing Docker..."
-  apt-get update
-  apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-  mkdir -p /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-  apt-get update
-  apt-get install -y docker-ce docker-ce-cli containerd.io
-fi
-
-# 3. Configure Docker credential helper for Artifact Registry
-echo "Configuring docker credentials..."
-gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
-
-# 4. Pull WRF/ROMS model image
-echo "Pulling model container image..."
-docker pull "${DOCKER_IMAGE}"
-
-# 5. Create workspaces and download forcing data (e.g. ECMWF and CMEMS inputs)
-# In production, these scripts will pull the required boundary conditions from GCS or APIs
+# 2. Setup folders
 mkdir -p /workspace/inputs
 mkdir -p /workspace/outputs
 mkdir -p /workspace/inputs/static
 mkdir -p /workspace/bin
+mkdir -p /workspace/outputs/wrf
+mkdir -p /workspace/outputs/roms
+mkdir -p /workspace/outputs/swan
 
-# Download ECMWF and CMEMS boundary forcing files from GCS paths
+# Download forcing data if available
 echo "Downloading atmospheric boundary conditions from GCS..."
-gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/ecmwf/${RUN_DATE}/" /workspace/inputs/
+gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/ecmwf/${RUN_DATE}/" /workspace/inputs/ || echo "⚠️ Warning: Atmospheric boundary forcing not found."
 
 echo "Downloading oceanic boundary conditions from GCS..."
-gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/cmems/${RUN_DATE}/" /workspace/inputs/
+gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/cmems/${RUN_DATE}/" /workspace/inputs/ || echo "⚠️ Warning: Oceanic boundary forcing not found."
 
-echo "Downloading compiled NEMO and SWAN binaries from GCS..."
-gsutil cp "gs://${GCS_BUCKET}/binaries/nemo.exe" /workspace/bin/nemo.exe || echo "⚠️ Warning: nemo.exe not found in GCS. Skipping."
-gsutil cp "gs://${GCS_BUCKET}/binaries/swan.exe" /workspace/bin/swan.exe || echo "⚠️ Warning: swan.exe not found in GCS. Skipping."
+# 3. Branch based on execution-mode
+if [ "${EXECUTION_MODE}" = "container" ]; then
+  # --------------------------------------------------
+  # CONTAINER-BASED WORKFLOW (Docker)
+  # --------------------------------------------------
+  echo "🏃 Running Container-based execution flow..."
 
-if [ -f /workspace/bin/nemo.exe ] || [ -f /workspace/bin/swan.exe ]; then
-  chmod +x /workspace/bin/nemo.exe /workspace/bin/swan.exe || true
+  # Install Docker if not already installed
+  if ! command -v docker &> /dev/null; then
+    echo "Installing Docker..."
+    apt-get update
+    apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+  fi
+
+  # Configure Docker credential helper for Artifact Registry
+  echo "Configuring docker credentials..."
+  gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
+  # Pull WRF/ROMS model image
+  echo "Pulling model container image: ${DOCKER_IMAGE}"
+  docker pull "${DOCKER_IMAGE}"
+
+  # Download WPS_GEOG static geography dataset from high-performance computing bucket
+  echo "Downloading WPS_GEOG static geography dataset..."
+  mkdir -p /workspace/WPS_GEOG
+  gsutil -m rsync -r gs://predsea-hpc-outputs/WPS_GEOG/ /workspace/WPS_GEOG/
+
+  # Run model simulation inside the container
+  echo "Executing model simulation in container..."
+  set +e
+  docker run --rm \
+    -v /workspace/inputs:/data \
+    -v /workspace/outputs:/workspace/run \
+    -v /workspace/WPS_GEOG:/opt/WPS_GEOG \
+    -e START_DATE="${RUN_DATE}_00:00:00" \
+    -e END_DATE="$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)_00:00:00" \
+    "${DOCKER_IMAGE}" \
+    /opt/predsea/run_pipeline.sh 2>&1 | tee /workspace/outputs/docker_run.log
+  DOCKER_EXIT_CODE=${PIPESTATUS[0]}
+  set -e
+
+  if [ $DOCKER_EXIT_CODE -ne 0 ]; then
+    echo "❌ Error: Docker container failed with exit code $DOCKER_EXIT_CODE."
+    exit $DOCKER_EXIT_CODE
+  fi
+
+else
+  # --------------------------------------------------
+  # BARE-METAL WORKFLOW (Native Parallel Executables)
+  # --------------------------------------------------
+  echo "🏃 Running Bare-metal parallel execution flow..."
+
+  # Install MPI, NetCDF runtime and build dependencies
+  echo "Installing MPI and NetCDF dependencies..."
+  apt-get update
+  apt-get install -y mpich libopenmpi-dev libnetcdf-dev libnetcdff-dev python3 python3-netcdf4 python3-pip
+
+  # Download compiled binaries from GCS
+  echo "Downloading compiled binaries from GCS..."
+  gsutil cp "gs://predsea-hpc-outputs/binaries/wrf.exe" /workspace/bin/wrf.exe || echo "⚠️ Warning: wrf.exe not found in GCS."
+  gsutil cp "gs://predsea-hpc-outputs/binaries/real.exe" /workspace/bin/real.exe || echo "⚠️ Warning: real.exe not found in GCS."
+  gsutil cp "gs://predsea-hpc-outputs/binaries/croco.exe" /workspace/bin/croco.exe || echo "⚠️ Warning: croco.exe not found in GCS."
+  gsutil cp "gs://predsea-hpc-outputs/binaries/swan.exe" /workspace/bin/swan.exe || echo "⚠️ Warning: swan.exe not found in GCS."
+  gsutil cp "gs://predsea-hpc-outputs/binaries/setup_domain.py" /workspace/bin/setup_domain.py || echo "⚠️ Warning: setup_domain.py not found in GCS."
+
+  if [ -f /workspace/bin/wrf.exe ] || [ -f /workspace/bin/real.exe ] || [ -f /workspace/bin/croco.exe ] || [ -f /workspace/bin/swan.exe ]; then
+    chmod +x /workspace/bin/*.exe || true
+  fi
+
+  echo "Downloading static files from GCS..."
+  gsutil -m rsync -r "gs://predsea-hpc-outputs/static/" /workspace/inputs/static/ || echo "⚠️ Warning: Static files not found in GCS."
+
+  # Copy static tables and configuration to run directories
+  cp /workspace/inputs/static/* /workspace/outputs/wrf/ || true
+  cp /workspace/inputs/static/namelist.input /workspace/outputs/wrf/namelist.input || echo "⚠️ namelist.input template copy failed"
+
+  # Patch namelist.input dates
+  if [ -f /workspace/outputs/wrf/namelist.input ] && [ -f /workspace/bin/setup_domain.py ]; then
+    echo "Patching namelist.input dates..."
+    NEXT_DATE=$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)
+    python3 /workspace/bin/setup_domain.py \
+      --start-date "${RUN_DATE}_00:00:00" \
+      --end-date "${NEXT_DATE}_00:00:00" \
+      --patch-namelist-input /workspace/outputs/wrf/namelist.input || true
+  fi
+
+  # Step A: WRF (32-core parallel)
+  echo "============================================="
+  echo "🏃 Running Step A: WRF (32-core parallel)"
+  echo "============================================="
+  cd /workspace/outputs/wrf
+  if [ -f /workspace/bin/real.exe ]; then
+    echo "Running real.exe..."
+    mpirun -np 32 /workspace/bin/real.exe 2>&1 | tee real.log || true
+  fi
+  if [ -f /workspace/bin/wrf.exe ]; then
+    echo "Running wrf.exe..."
+    mpirun -np 32 /workspace/bin/wrf.exe 2>&1 | tee wrf.log || true
+  fi
+
+  # Step B: CROCO/ROMS (16-core parallel)
+  echo "============================================="
+  echo "🏃 Running Step B: CROCO/ROMS (16-core parallel)"
+  echo "============================================="
+  cd /workspace/outputs/roms
+  if [ -f /workspace/bin/croco.exe ]; then
+    echo "Running croco.exe..."
+    mpirun -np 16 /workspace/bin/croco.exe 2>&1 | tee croco.log || true
+  fi
+
+  # Step C: SWAN (8-core parallel)
+  echo "============================================="
+  echo "🏃 Running Step C: SWAN (8-core parallel)"
+  echo "============================================="
+  cd /workspace/outputs/swan
+  if [ -f /workspace/bin/swan.exe ]; then
+    echo "Running swan.exe..."
+    mpirun -np 8 /workspace/bin/swan.exe 2>&1 | tee swan.log || true
+  fi
 fi
 
-echo "Downloading static bathymetry grids from GCS..."
-gsutil cp "gs://${GCS_BUCKET}/static/bathymetry/balearic_bathymetry_nemo.nc" /workspace/inputs/static/balearic_bathymetry_nemo.nc || echo "⚠️ Warning: balearic_bathymetry_nemo.nc not found in GCS. Skipping."
-gsutil cp "gs://${GCS_BUCKET}/static/bathymetry/balearic_bathymetry_swan.nc" /workspace/inputs/static/balearic_bathymetry_swan.nc || echo "⚠️ Warning: balearic_bathymetry_swan.nc not found in GCS. Skipping."
-
-# 6. Run the simulation pipeline container
-# Mounts inputs/outputs/bin and runs the WRF/ROMS simulation
-echo "Executing model simulation..."
-
-# Run docker, teeing output to both console and a log file
-set +e
-docker run --rm \
-  -v /workspace/inputs:/data \
-  -v /workspace/outputs:/workspace/run \
-  -v /workspace/bin:/bin_mount \
-  "${DOCKER_IMAGE}" \
-  /opt/predsea/run_pipeline.sh 2>&1 | tee /workspace/outputs/docker_run.log
-DOCKER_EXIT_CODE=${PIPESTATUS[0]}
-set -e
-
-if [ $DOCKER_EXIT_CODE -ne 0 ]; then
-  echo "❌ Error: Docker container failed with exit code $DOCKER_EXIT_CODE."
-  echo "=================== DOCKER RUN FAILURE LOG DUMP ==================="
-  cat /workspace/outputs/docker_run.log || true
-  echo "==================================================================="
-  # Upload logs before exiting so they are archived even on failure
-  echo "Uploading failure logs and outputs to GCS..."
-  gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/" || true
-  exit $DOCKER_EXIT_CODE
+# 4. Sync the results directly to GCS predictions bucket
+echo "Syncing model outputs directly to GCS..."
+if [ -d /workspace/outputs/wrf ]; then
+  gsutil -m rsync -r /workspace/outputs/wrf/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/wrf/" || true
+fi
+if [ -d /workspace/outputs/roms ]; then
+  gsutil -m rsync -r /workspace/outputs/roms/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/roms/" || true
+fi
+if [ -d /workspace/outputs/swan ]; then
+  gsutil -m rsync -r /workspace/outputs/swan/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/swan/" || true
 fi
 
-# 7. Upload outputs back to GCS
-echo "Uploading outputs to GCS..."
-gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/"
+# 5. Upload standard outputs back to GCS (for compatibility/logging)
+echo "Uploading generic outputs and logs to GCS..."
+gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/" || true
 
 echo "============================================="
 echo "🎉 Simulation pipeline complete!"

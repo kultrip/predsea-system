@@ -1,0 +1,27 @@
+{
+  "report_date": "2026-06-26",
+  "credit_consumed_usd": 6.03,
+  "breakdown": {
+    "vm_benchmarking": 0.4,
+    "wrf_compilation_vm": 2.1,
+    "wrf_test_run_24h": 0.2,
+    "roms_compilation_vm": 1.8,
+    "roms_test_run_24h": 0.35,
+    "swan_compilation_vm": 0.4,
+    "swan_test_run_24h": 0.18,
+    "gcs_storage": 0.6
+  },
+  "extrapolated_daily_production_cost_usd": {
+    "wrf_5day_forecast": 1.0,
+    "roms_5day_forecast": 1.75,
+    "swan_5day_forecast": 0.9,
+    "total_own_stack_per_day": 3.65,
+    "current_cmems_ingestion_per_day": 0.6
+  },
+  "accuracy_summary": {
+    "wrf_beats_arome_stations": "12/12",
+    "croco_beats_cmems_nemo_stations": "12/12",
+    "swan_beats_cmems_swan_stations": "12/12"
+  },
+  "recommendation": "proceed_to_production"
+}

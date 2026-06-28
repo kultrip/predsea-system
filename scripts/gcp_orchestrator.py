@@ -90,7 +90,7 @@ def launch_spot_vm(args):
         "--instance-termination-action=DELETE",
         "--scopes=https://www.googleapis.com/auth/cloud-platform",
         f"--metadata-from-file=startup-script={startup_script}",
-        f"--metadata=gcs-bucket={gcs_bucket},run-date={run_date},run-id={run_id},image-tag={image_tag}",
+        f"--metadata=gcs-bucket={gcs_bucket},run-date={run_date},run-id={run_id},image-tag={image_tag},execution-mode={args.execution_mode}",
         "--quiet"
     ]
 
@@ -110,12 +110,13 @@ def main():
     parser = argparse.ArgumentParser(description="Launch ephemeral Spot VMs for high-resolution WRF/ROMS runs.")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
-    parser.add_argument("--machine-type", default="c2d-standard-16", help="GCP Machine Type (e.g. c2d-standard-16, c2d-standard-8)")
+    parser.add_argument("--machine-type", default="c2d-standard-32", help="GCP Machine Type (e.g. c2d-standard-32, c2d-standard-16)")
     parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="Cloud Storage Bucket name")
     parser.add_argument("--run-date", help="ISO run date YYYY-MM-DD (defaults to today)")
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
     parser.add_argument("--instance-name", help="GCE Instance name (defaults to auto-generated)")
+    parser.add_argument("--execution-mode", choices=["container", "bare-metal"], default="container", help="Model execution mode on GCE VM")
 
     args = parser.parse_args()
     launch_spot_vm(args)

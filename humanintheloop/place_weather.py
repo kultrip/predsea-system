@@ -531,7 +531,9 @@ def freshness_from_age(age_minutes, observation=None):
 def in_supported_domain(latitude, longitude):
     if ingest_atmosphere is None:
         return True
-    bbox = getattr(ingest_atmosphere, "BALEARIC_BBOX", {"south": 38.0, "north": 41.5, "west": 0.5, "east": 4.5})
+    bbox = getattr(ingest_atmosphere, "WESTMED_BBOX", None)
+    if bbox is None:
+        bbox = getattr(ingest_atmosphere, "BALEARIC_BBOX", {"south": 38.0, "north": 41.5, "west": 0.5, "east": 4.5})
     return bbox["south"] <= latitude <= bbox["north"] and bbox["west"] <= longitude <= bbox["east"]
 
 

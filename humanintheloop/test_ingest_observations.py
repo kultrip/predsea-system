@@ -10,6 +10,7 @@ def test_fetch_all_observations_returns_puertos_first_bundle(monkeypatch):
     monkeypatch.delenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", raising=False)
     monkeypatch.delenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", raising=False)
     monkeypatch.delenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", raising=False)
+    monkeypatch.delenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", raising=False)
 
     puertos_result = {
         "observations": {"puertos_mallorca": {"wave_height_m": 0.8}},
@@ -37,6 +38,11 @@ def test_fetch_all_observations_returns_puertos_first_bundle(monkeypatch):
         ingest_observations.fetch_emodnet,
         "fetch_emodnet_bundle",
         lambda dry_run=False: {"observations": {}, "stations": [], "errors": {}},
+    )
+    monkeypatch.setattr(
+        ingest_observations.socib_public,
+        "fetch_public_observations",
+        lambda *args, **kwargs: {},
     )
 
     result = ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
@@ -76,6 +82,7 @@ def test_fetch_all_observations_merges_emodnet_bundle(monkeypatch):
     monkeypatch.setenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "1")
     monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0")
     monkeypatch.setenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "0")
 
     emodnet_result = {
         "observations": {
@@ -158,3 +165,78 @@ def test_ground_truth_lineage_empty():
     lineage = ingest_observations._build_ground_truth_lineage({}, [], {})
     assert lineage["source"] is None
     assert lineage["status"] == "unavailable"
+
+
+def test_socib_enabled_by_default(monkeypatch):
+    monkeypatch.delenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", raising=False)
+    assert ingest_observations._socib_enabled()
+
+
+def test_socib_enabled_by_env_var(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "1")
+    assert ingest_observations._socib_enabled()
+
+
+def test_socib_can_be_disabled_explicitly(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "0")
+    assert not ingest_observations._socib_enabled()
+
+
+def test_fetch_all_observations_merges_socib(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "1")
+    monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "0")
+
+    mock_socib_data = {
+        "canal_de_ibiza": {
+            "name": "Canal de Ibiza Buoy",
+            "last_sample_utc": "2026-06-27 10:00 UTC",
+            "wave_height_m": 0.34,
+            "water_temp_c": 25.14,
+        }
+    }
+    monkeypatch.setattr(
+        ingest_observations.socib_public,
+        "fetch_public_observations",
+        lambda *args, **kwargs: mock_socib_data,
+    )
+
+    result = ingest_observations.fetch_all_observations(
+        include_puertos=False,
+        include_emodnet=False,
+        include_portus=False,
+        include_socib=True,
+    )
+    assert "canal_de_ibiza" in result["observations"]
+    assert result["observations"]["canal_de_ibiza"]["wave_height_m"] == 0.34
+    assert result["ground_truth_lineage"]["source"] == "socib_public"
+    assert result["ground_truth_lineage"]["status"] == "matched_successfully"
+
+
+def test_fetch_all_observations_handles_socib_failure_gracefully(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "1")
+    monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "0")
+
+    def raise_error(*args, **kwargs):
+        raise ValueError("API error simulator")
+
+    monkeypatch.setattr(
+        ingest_observations.socib_public,
+        "fetch_public_observations",
+        raise_error,
+    )
+
+    result = ingest_observations.fetch_all_observations(
+        include_puertos=False,
+        include_emodnet=False,
+        include_portus=False,
+        include_socib=True,
+    )
+    assert "socib_public" in result["errors"]
+    assert "API error simulator" in result["errors"]["socib_public"]
+    assert result["ground_truth_lineage"]["source"] is None
+    assert result["ground_truth_lineage"]["status"] == "unavailable"
+

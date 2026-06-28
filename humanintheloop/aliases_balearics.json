@@ -61,5 +61,13 @@
   "toulon port": "toulon",
   "valencia": "valencia",
   "west ibiza": "west_ibiza",
-  "west_ibiza": "west_ibiza"
+  "west_ibiza": "west_ibiza",
+  "naples": "naples",
+  "naples port": "naples",
+  "napoli": "naples",
+  "palermo": "palermo",
+  "palermo port": "palermo",
+  "messina": "messina",
+  "messina port": "messina"
 }
+

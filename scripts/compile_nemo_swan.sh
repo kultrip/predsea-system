@@ -50,8 +50,11 @@ sudo apt-get update && sudo apt-get install -y \
 echo "👉 [STEP 2/5] Downloading and compiling XIOS (Parallel IO Server)..."
 cd "$BUILD_DIR"
 if [ ! -d "xios" ]; then
-    echo "📥 Checking out XIOS v2.5 from SVN..."
-    svn co "$XIOS_SVN_URL" xios
+    echo "📥 Cloning XIOS from GitLab mirror..."
+    git clone --branch xios-2.5 --depth 1 "https://gitlab.in2p3.fr/ipsl/projets/xios-projects/xios.git" xios || {
+        echo "⚠️ Failed cloning xios-2.5 branch. Trying default branch..."
+        git clone --depth 1 "https://gitlab.in2p3.fr/ipsl/projets/xios-projects/xios.git" xios
+    }
 else
     echo "ℹ️ XIOS source directory already exists. Skipping download."
 fi
@@ -155,9 +158,13 @@ echo "👉 [STEP 5/5] Archiving binaries to Google Cloud Storage..."
 cd "$BIN_DIR"
 
 if command -v gcloud &> /dev/null; then
-    gcloud storage cp nemo.exe "gs://$GCS_BUCKET/binaries/nemo.exe"
-    gcloud storage cp swan.exe "gs://$GCS_BUCKET/binaries/swan.exe"
-    echo "🎉 Compilation Suite complete. Executables archived successfully at gs://$GCS_BUCKET/binaries/!"
+    echo "Uploading to gs://predsea-daily-outputs/binaries/ ..."
+    gcloud storage cp nemo.exe "gs://predsea-daily-outputs/binaries/nemo.exe" || true
+    gcloud storage cp swan.exe "gs://predsea-daily-outputs/binaries/swan.exe" || true
+    echo "Uploading to gs://predsea-hpc-outputs/binaries/ ..."
+    gcloud storage cp nemo.exe "gs://predsea-hpc-outputs/binaries/nemo.exe" || true
+    gcloud storage cp swan.exe "gs://predsea-hpc-outputs/binaries/swan.exe" || true
+    echo "🎉 Compilation Suite complete. Executables archived successfully in both GCS buckets!"
 else
     echo "⚠️ Warning: 'gcloud' command line tool not found. Compiled executables remain stored at $BIN_DIR."
 fi

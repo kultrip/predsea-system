@@ -36,6 +36,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Pre-download Cartopy offline shapefiles to prevent dynamic runtime network dependencies
+RUN mkdir -p /app/assets/cartopy_data && \
+    cartopy_feature_download physical --output /app/assets/cartopy_data
+
 # Copy application source code
 COPY . .
 

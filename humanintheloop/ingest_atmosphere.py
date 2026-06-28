@@ -25,6 +25,13 @@ BALEARIC_BBOX = {
     "east": 4.5,
 }
 
+WESTMED_BBOX = {
+    "south": 35.0,
+    "north": 44.5,
+    "west": -1.0,
+    "east": 16.5,
+}
+
 
 ATMOSPHERIC_PROVIDERS = [
     {
@@ -182,7 +189,7 @@ def run_atmospheric_ingestion(output_dir=None, dry_run=False):
             **result,
             "source_family": "atmosphere",
         })
-    wind_result = select_wind_forecast(fetchers)
+    wind_result = select_wind_forecast(fetchers, bbox=WESTMED_BBOX)
     wind_lineage = lineage_for_wind_result(wind_result)
 
     return {

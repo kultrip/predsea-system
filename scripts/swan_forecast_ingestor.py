@@ -44,6 +44,41 @@ SWAN_HS_NAMES = ("hs", "hsign", "significant_wave_height", "swh", "hsig", "Hsign
 SWAN_TP_NAMES = ("tps", "tp", "peak_wave_period", "tpp", "tpppeak", "RTpeak")
 SWAN_DIR_NAMES = ("dir", "mwd", "pwd", "wave_direction", "theta0", "mwd_wave", "deg")
 
+PROVIDER = "predsea_swan"
+NETWORK = "SWAN_1km"
+
+
+def load_bias_corrections(project_id: str | None, dataset: str, provider: str) -> dict[tuple[str, str, int, int], float]:
+    """
+    Load all mean bias records from predsea_validation.model_bias for a given provider.
+    Returns a dictionary mapping (station_id, variable, month, hour) -> mean_bias.
+    """
+    from google.cloud import bigquery
+    client = bigquery.Client(project=project_id)
+    bias_map = {}
+    try:
+        table_ref = f"{project_id or client.project}.{dataset}.model_bias"
+        query = f"""
+            SELECT station_id, variable, month, hour, mean_bias
+            FROM `{table_ref}`
+            WHERE provider = @provider
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("provider", "STRING", provider)
+            ]
+        )
+        print(f"🔍 Fetching bias corrections for provider '{provider}' from BigQuery table `{table_ref}`...")
+        query_job = client.query(query, job_config=job_config)
+        for row in query_job:
+            key = (row.station_id, row.variable, row.month, row.hour)
+            bias_map[key] = float(row.mean_bias)
+        print(f"✅ Loaded {len(bias_map)} bias correction rules.")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not load bias corrections (table may not exist yet or no connection): {e}")
+    return bias_map
+
+
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Ingest SWAN daily forecasts into BigQuery evidence_rows.")
@@ -148,6 +183,7 @@ def process_swan_forecast(
     swan_path: str,
     run_date: str,
     run_id: str,
+    bias_map: dict | None = None,
 ) -> list[dict]:
     """Parse SWAN NetCDF and sample canonical locations and offshore routes."""
     print(f"📖 Opening SWAN dataset: {swan_path}")
@@ -263,6 +299,16 @@ def process_swan_forecast(
                     variables.append(("wave_direction", dir_val, "degree", dir_name))
                     
                 for var_name, var_val, var_units, src_field in variables:
+                    # Apply real-time bias correction if available
+                    corrected_val = var_val
+                    if bias_map:
+                        bias_key = (target["id"], var_name, target_dt.month, target_dt.hour)
+                        if bias_key in bias_map:
+                            mean_bias = bias_map[bias_key]
+                            corrected_val = var_val - mean_bias
+                            if len(forecast_rows) % 1000 == 0:
+                                print(f"🔧 Correcting SWAN {var_name} at {target['name']}: {var_val:.2f} -> {corrected_val:.2f} (bias: {mean_bias:.2f})")
+
                     forecast_rows.append({
                         "schema_version": "predsea.validation.v1",
                         "record_type": "forecast",
@@ -270,9 +316,11 @@ def process_swan_forecast(
                         "run_date": run_date,
                         "run_id": run_id,
                         "forecast_created_at_utc": run_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        "forecast_source_id": "predsea_swan",
+                        "forecast_source_id": PROVIDER,
                         "forecast_source_label": "PredSea SWAN 1km",
-                        "ocean_source": "predsea_swan", # use ocean_source for waves as well to be fully API aligned
+                        "ocean_source": PROVIDER, # use ocean_source for waves as well to be fully API aligned
+                        "provider": PROVIDER,
+                        "network": NETWORK,
                         "route_id": target["route_id"],
                         "route_name": target["route_name"],
                         "truth_station_id": target["id"],
@@ -281,7 +329,7 @@ def process_swan_forecast(
                         "target_local_time": target_local,
                         "variable": var_name,
                         "source_field": src_field,
-                        "value": var_val,
+                        "value": corrected_val,
                         "units": var_units,
                         "lead_time_hours": float(lead_hours),
                         "resolution_km": 1.0,
@@ -337,8 +385,13 @@ def main(argv=None) -> int:
             return 1
             
     try:
+        # Load bias map if available
+        bias_map = {}
+        if not args.dry_run:
+            bias_map = load_bias_corrections(args.project, args.dataset, PROVIDER)
+
         # Extract and format forecast rows
-        raw_rows = process_swan_forecast(nc_path, run_date, run_id)
+        raw_rows = process_swan_forecast(nc_path, run_date, run_id, bias_map=bias_map)
         
         # Build normalized BigQuery rows using standard helper
         normalized_rows = build_normalized_rows(observation_rows=[], forecast_rows=raw_rows)

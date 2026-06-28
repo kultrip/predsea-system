@@ -504,5 +504,55 @@
     "observation_candidates": [
       "emodnet_toulon"
     ]
+  },
+  {
+    "id": "naples",
+    "name": "Naples",
+    "type": "main_port",
+    "latitude": 40.84,
+    "longitude": 14.25,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "naples",
+      "naples port",
+      "napoli"
+    ],
+    "observation_candidates": [
+      "emodnet_naples"
+    ]
+  },
+  {
+    "id": "palermo",
+    "name": "Palermo",
+    "type": "main_port",
+    "latitude": 38.12,
+    "longitude": 13.36,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "palermo",
+      "palermo port"
+    ],
+    "observation_candidates": [
+      "emodnet_palermo"
+    ]
+  },
+  {
+    "id": "messina",
+    "name": "Messina",
+    "type": "main_port",
+    "latitude": 38.19,
+    "longitude": 15.55,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "messina",
+      "messina port"
+    ],
+    "observation_candidates": [
+      "emodnet_messina"
+    ]
   }
 ]
+

@@ -75,6 +75,9 @@ def run_pipeline(
     # Step 4: Observation ingestion
     obs_result = _step_observations(dry_run, skip_puertos)
 
+    # Step 4b: GMDSS warnings ingestion
+    gmdss_result = _step_gmdss_warnings(output_dir, dry_run)
+
     # Step 5: Build route snapshot with lineage
     snapshot = _step_build_snapshot(
         route, vessel_class, ocean_result, obs_result, atmo_result, blend_result,
@@ -93,6 +96,7 @@ def run_pipeline(
         "ocean": ocean_result,
         "blend": blend_result,
         "observations": obs_result,
+        "gmdss": gmdss_result,
     }
 
 
@@ -274,6 +278,20 @@ def _step_observations(dry_run, skip_puertos):
             },
             "errors": {"all": str(error)},
         }
+
+
+def _step_gmdss_warnings(output_dir, dry_run=False):
+    """Step 4b: GMDSS warnings ingestion."""
+    print("Step 4b: GMDSS warnings ingestion...", flush=True)
+    try:
+        import gmdss_aggregator
+        alerts = gmdss_aggregator.MOCK_WARNINGS_DATABASE
+        gmdss_file = Path(output_dir) / "active_gmdss_warnings.json"
+        gmdss_aggregator.save_warnings_to_file(alerts, filepath=gmdss_file)
+        return {"available": True, "path": str(gmdss_file), "count": len(alerts)}
+    except Exception as error:
+        print(f"  GMDSS warnings ingestion failed: {error}", flush=True)
+        return {"available": False, "error": str(error)}
 
 
 def _step_build_snapshot(route, vessel_class, ocean_result, obs_result, atmo_result, blend_result):

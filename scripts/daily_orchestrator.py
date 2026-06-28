@@ -107,7 +107,7 @@ def main():
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
     parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="Cloud Storage Bucket name")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
-    parser.add_argument("--machine-type", default="c2d-standard-16", help="GCP Machine Type for Spot VM")
+    parser.add_argument("--machine-type", default="c2d-standard-32", help="GCP Machine Type for Spot VM")
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
     parser.add_argument("--api-url", default=os.getenv("PREDSEA_API_URL", "http://localhost:8000"), help="Base URL of the FastAPI application")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
@@ -240,20 +240,20 @@ def main():
         print("❌ Error: WRF forecast ingestion failed. Exiting.")
         sys.exit(1)
         
-    roms_cmd = [
-        python_bin, str(SCRIPTS_DIR / "roms_forecast_ingestor.py"),
+    croco_cmd = [
+        python_bin, str(SCRIPTS_DIR / "croco_forecast_ingestor.py"),
         f"--run-date={run_date}",
         f"--run-id={run_id}",
         f"--gcs-bucket={args.gcs_bucket}",
     ]
     if args.project:
-        roms_cmd.append(f"--project={args.project}")
+        croco_cmd.append(f"--project={args.project}")
     if args.dry_run:
-        roms_cmd.append("--dry-run")
+        croco_cmd.append("--dry-run")
         
-    roms_rc = run_subprocess(roms_cmd)
-    if roms_rc != 0:
-        print("❌ Error: ROMS forecast ingestion failed. Exiting.")
+    croco_rc = run_subprocess(croco_cmd)
+    if croco_rc != 0:
+        print("❌ Error: CROCO forecast ingestion failed. Exiting.")
         sys.exit(1)
 
     nemo_cmd = [
@@ -298,7 +298,6 @@ def main():
         f"--date={run_date}",
         f"--run-id={run_id}",
         "--skip-figures",  # Lighten execution in orchestrator runs
-        "--skip-maps",
     ]
     
     briefing_rc = run_subprocess(briefing_cmd, dry_run=args.dry_run)

@@ -9,10 +9,11 @@ import os
 
 import fetch_emodnet
 import fetch_portus
+import socib_public
 import validation_archive
 
 
-def fetch_all_observations(include_puertos=True, include_emodnet=True, include_portus=False, dry_run=False):
+def fetch_all_observations(include_puertos=True, include_emodnet=True, include_portus=False, include_socib=True, dry_run=False):
     """Fetch observations from all configured sources.
 
     Returns a merged dict of observations and a lineage record
@@ -73,6 +74,18 @@ def fetch_all_observations(include_puertos=True, include_emodnet=True, include_p
         except Exception as error:
             errors["puertos_portus"] = str(error)
 
+    # SOCIB public observations (restored Balearic buoy live observations)
+    if include_socib and _socib_enabled():
+        try:
+            socib_obs = socib_public.fetch_public_observations()
+            # Merge directly without prefixing, as expected downstream
+            for key, value in socib_obs.items():
+                all_observations[key] = value
+            if socib_obs:
+                lineage_sources.append("socib_public")
+        except Exception as error:
+            errors["socib_public"] = str(error)
+
     station_metadata = validation_archive.build_station_metadata_rows(
         all_observations,
         station_metadata=station_metadata_candidates,
@@ -112,6 +125,11 @@ def _emodnet_enabled():
     return os.environ.get("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "1") == "1"
 
 
+def _socib_enabled():
+    """Check if SOCIB public ingestion is enabled."""
+    return os.environ.get("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "1") == "1"
+
+
 def _build_ground_truth_lineage(observations, sources, errors):
     """Build a ground-truth validation lineage record."""
     if not observations:
@@ -125,6 +143,7 @@ def _build_ground_truth_lineage(observations, sources, errors):
     emodnet_present = "emodnet_physics" in sources
     portus_present = "puertos_portus" in sources
     puertos_present = "puertos_del_estado" in sources
+    socib_present = "socib_public" in sources
     present_sources = []
     if puertos_present:
         present_sources.append("puertos_del_estado")
@@ -132,26 +151,11 @@ def _build_ground_truth_lineage(observations, sources, errors):
         present_sources.append("emodnet_physics")
     if portus_present:
         present_sources.append("puertos_portus")
-    if puertos_present and emodnet_present and portus_present:
-        source = "puertos_del_estado_and_emodnet_physics_and_puertos_portus"
-        status = "matched_successfully"
-    elif puertos_present and emodnet_present:
-        source = "puertos_del_estado_and_emodnet_physics"
-        status = "matched_successfully"
-    elif puertos_present and portus_present:
-        source = "puertos_del_estado_and_puertos_portus"
-        status = "matched_successfully"
-    elif puertos_present:
-        source = "puertos_del_estado"
-        status = "matched_successfully"
-    elif emodnet_present and portus_present:
-        source = "emodnet_physics_and_puertos_portus"
-        status = "matched_successfully"
-    elif emodnet_present:
-        source = "emodnet_physics"
-        status = "matched_successfully"
-    elif portus_present:
-        source = "puertos_portus"
+    if socib_present:
+        present_sources.append("socib_public")
+
+    if present_sources:
+        source = "_and_".join(present_sources)
         status = "matched_successfully"
     else:
         source = "puertos_observations"

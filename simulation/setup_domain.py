@@ -78,6 +78,51 @@ def write_namelist(path: Path, domain: BalearicDomain) -> Path:
     return path
 
 
+def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str) -> None:
+    try:
+        parts_start = start_date_str.split("_")
+        date_start = parts_start[0].split("-")
+        time_start = parts_start[1].split(":")
+        
+        parts_end = end_date_str.split("_")
+        date_end = parts_end[0].split("-")
+        time_end = parts_end[1].split(":")
+        
+        s_yr, s_mo, s_dy = date_start[0], date_start[1], date_start[2]
+        s_hr = time_start[0]
+        
+        e_yr, e_mo, e_dy = date_end[0], date_end[1], date_end[2]
+        e_hr = time_end[0]
+    except Exception as e:
+        print(f"Error parsing dates for namelist.input patch: {e}")
+        return
+
+    if not path.exists():
+        print(f"Warning: {path} does not exist. Cannot patch.")
+        return
+        
+    content = path.read_text()
+    
+    import re
+    replacements = {
+        r"(\bstart_year\s*=)[^,/;\n]+": f"\\1 {s_yr}, {s_yr}, {s_yr}",
+        r"(\bstart_month\s*=)[^,/;\n]+": f"\\1 {s_mo}, {s_mo}, {s_mo}",
+        r"(\bstart_day\s*=)[^,/;\n]+": f"\\1 {s_dy}, {s_dy}, {s_dy}",
+        r"(\bstart_hour\s*=)[^,/;\n]+": f"\\1 {s_hr}, {s_hr}, {s_hr}",
+        r"(\bend_year\s*=)[^,/;\n]+": f"\\1 {e_yr}, {e_yr}, {e_yr}",
+        r"(\bend_month\s*=)[^,/;\n]+": f"\\1 {e_mo}, {e_mo}, {e_mo}",
+        r"(\bend_day\s*=)[^,/;\n]+": f"\\1 {e_dy}, {e_dy}, {e_dy}",
+        r"(\bend_hour\s*=)[^,/;\n]+": f"\\1 {e_hr}, {e_hr}, {e_hr}",
+    }
+    
+    new_content = content
+    for pattern, replacement in replacements.items():
+        new_content = re.sub(pattern, replacement, new_content, flags=re.IGNORECASE)
+        
+    path.write_text(new_content)
+    print(f"Successfully patched {path} with start_date={start_date_str} and end_date={end_date_str}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate a WPS namelist for the Balearic Sea nest.")
     parser.add_argument("--output", type=Path, default=Path("simulation/namelist.wps"))
@@ -85,6 +130,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end-date", default=BalearicDomain.end_date)
     parser.add_argument("--geog-data-path", default=BalearicDomain.geog_data_path)
     parser.add_argument("--forcing-prefix", default=BalearicDomain.forcing_prefix)
+    parser.add_argument("--patch-namelist-input", type=Path, help="Path to namelist.input to dynamically patch run dates.")
     return parser.parse_args()
 
 
@@ -98,6 +144,8 @@ def main() -> None:
     )
     output = write_namelist(args.output, domain)
     print(output)
+    if args.patch_namelist_input:
+        patch_namelist_input(args.patch_namelist_input, args.start_date, args.end_date)
 
 
 if __name__ == "__main__":

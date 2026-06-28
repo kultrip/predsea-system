@@ -1,0 +1,613 @@
+{
+  "evaluation_date": "2026-06-26",
+  "variables": {
+    "wind_speed": {
+      "own_model_provider": "wrf_d03",
+      "cmems_equivalent": "arome_1km",
+      "units": "m/s",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.4874,
+            "bias": 0.1042,
+            "correlation": 0.9718,
+            "mae": 0.4166
+          },
+          "metrics_cmems": {
+            "rmse": 0.6937,
+            "bias": -0.0104,
+            "correlation": 0.9423,
+            "mae": 0.554
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.5849,
+            "bias": -0.0002,
+            "correlation": 0.9537,
+            "mae": 0.5027
+          },
+          "metrics_cmems": {
+            "rmse": 0.7699,
+            "bias": 0.2404,
+            "correlation": 0.9429,
+            "mae": 0.545
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.6283,
+            "bias": 0.2274,
+            "correlation": 0.9463,
+            "mae": 0.4779
+          },
+          "metrics_cmems": {
+            "rmse": 0.7597,
+            "bias": 0.2235,
+            "correlation": 0.9374,
+            "mae": 0.5708
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.5961,
+            "bias": 0.0518,
+            "correlation": 0.9623,
+            "mae": 0.478
+          },
+          "metrics_cmems": {
+            "rmse": 0.9402,
+            "bias": 0.1101,
+            "correlation": 0.9223,
+            "mae": 0.7515
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "wind_direction": {
+      "own_model_provider": "wrf_d03",
+      "cmems_equivalent": "arome_1km",
+      "units": "deg",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.3853,
+            "bias": -0.0787,
+            "correlation": 0.9605,
+            "mae": 0.3099
+          },
+          "metrics_cmems": {
+            "rmse": 0.7487,
+            "bias": 0.3932,
+            "correlation": 0.9102,
+            "mae": 0.6214
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.6603,
+            "bias": 0.1623,
+            "correlation": 0.9557,
+            "mae": 0.5771
+          },
+          "metrics_cmems": {
+            "rmse": 0.8309,
+            "bias": 0.2128,
+            "correlation": 0.9228,
+            "mae": 0.676
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.5963,
+            "bias": -0.0097,
+            "correlation": 0.9514,
+            "mae": 0.5121
+          },
+          "metrics_cmems": {
+            "rmse": 0.9657,
+            "bias": 0.277,
+            "correlation": 0.8984,
+            "mae": 0.706
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.591,
+            "bias": 0.0327,
+            "correlation": 0.9263,
+            "mae": 0.458
+          },
+          "metrics_cmems": {
+            "rmse": 0.7067,
+            "bias": 0.0039,
+            "correlation": 0.9363,
+            "mae": 0.5707
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "air_temperature": {
+      "own_model_provider": "wrf_d03",
+      "cmems_equivalent": "arome_1km",
+      "units": "C",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1523,
+            "bias": 0.0052,
+            "correlation": 0.9602,
+            "mae": 0.116
+          },
+          "metrics_cmems": {
+            "rmse": 0.3457,
+            "bias": 0.2735,
+            "correlation": 0.8676,
+            "mae": 0.2927
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1424,
+            "bias": 0.0398,
+            "correlation": 0.9718,
+            "mae": 0.1156
+          },
+          "metrics_cmems": {
+            "rmse": 0.2666,
+            "bias": 0.2013,
+            "correlation": 0.9607,
+            "mae": 0.2171
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1363,
+            "bias": 0.0689,
+            "correlation": 0.9735,
+            "mae": 0.1195
+          },
+          "metrics_cmems": {
+            "rmse": 0.3069,
+            "bias": 0.2117,
+            "correlation": 0.9048,
+            "mae": 0.2243
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1548,
+            "bias": 0.0739,
+            "correlation": 0.9413,
+            "mae": 0.1206
+          },
+          "metrics_cmems": {
+            "rmse": 0.3047,
+            "bias": 0.2332,
+            "correlation": 0.9104,
+            "mae": 0.239
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "current_speed": {
+      "own_model_provider": "croco_1km",
+      "cmems_equivalent": "cmems_nemo",
+      "units": "m/s",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0553,
+            "bias": 0.0506,
+            "correlation": 0.9615,
+            "mae": 0.0506
+          },
+          "metrics_cmems": {
+            "rmse": 0.2164,
+            "bias": 0.2151,
+            "correlation": 0.9639,
+            "mae": 0.2151
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0571,
+            "bias": 0.0535,
+            "correlation": 0.9636,
+            "mae": 0.0535
+          },
+          "metrics_cmems": {
+            "rmse": 0.1998,
+            "bias": 0.1969,
+            "correlation": 0.8984,
+            "mae": 0.1969
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.053,
+            "bias": 0.0472,
+            "correlation": 0.9622,
+            "mae": 0.0484
+          },
+          "metrics_cmems": {
+            "rmse": 0.2087,
+            "bias": 0.2066,
+            "correlation": 0.9289,
+            "mae": 0.2066
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0553,
+            "bias": 0.051,
+            "correlation": 0.9689,
+            "mae": 0.051
+          },
+          "metrics_cmems": {
+            "rmse": 0.2132,
+            "bias": 0.211,
+            "correlation": 0.9407,
+            "mae": 0.211
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "water_temperature": {
+      "own_model_provider": "croco_1km",
+      "cmems_equivalent": "cmems_nemo",
+      "units": "C",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1347,
+            "bias": 0.0483,
+            "correlation": 0.9869,
+            "mae": 0.1064
+          },
+          "metrics_cmems": {
+            "rmse": 0.2426,
+            "bias": 0.1568,
+            "correlation": 0.9663,
+            "mae": 0.1951
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1636,
+            "bias": 0.0569,
+            "correlation": 0.9623,
+            "mae": 0.1288
+          },
+          "metrics_cmems": {
+            "rmse": 0.2748,
+            "bias": 0.198,
+            "correlation": 0.9442,
+            "mae": 0.2343
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1485,
+            "bias": -0.0098,
+            "correlation": 0.9346,
+            "mae": 0.125
+          },
+          "metrics_cmems": {
+            "rmse": 0.2691,
+            "bias": 0.2158,
+            "correlation": 0.8908,
+            "mae": 0.2355
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1485,
+            "bias": 0.0752,
+            "correlation": 0.9706,
+            "mae": 0.119
+          },
+          "metrics_cmems": {
+            "rmse": 0.3232,
+            "bias": 0.251,
+            "correlation": 0.9369,
+            "mae": 0.2646
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "sea_level": {
+      "own_model_provider": "croco_1km",
+      "cmems_equivalent": "cmems_nemo",
+      "units": "m",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0528,
+            "bias": 0.0524,
+            "correlation": 0.9545,
+            "mae": 0.0524
+          },
+          "metrics_cmems": {
+            "rmse": 0.2002,
+            "bias": 0.2001,
+            "correlation": 0.9467,
+            "mae": 0.2001
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0489,
+            "bias": 0.0486,
+            "correlation": 0.9738,
+            "mae": 0.0486
+          },
+          "metrics_cmems": {
+            "rmse": 0.2,
+            "bias": 0.1998,
+            "correlation": 0.9366,
+            "mae": 0.1998
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0518,
+            "bias": 0.0516,
+            "correlation": 0.9792,
+            "mae": 0.0516
+          },
+          "metrics_cmems": {
+            "rmse": 0.202,
+            "bias": 0.2019,
+            "correlation": 0.929,
+            "mae": 0.2019
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.051,
+            "bias": 0.0508,
+            "correlation": 0.971,
+            "mae": 0.0508
+          },
+          "metrics_cmems": {
+            "rmse": 0.2011,
+            "bias": 0.201,
+            "correlation": 0.9568,
+            "mae": 0.201
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "wave_height": {
+      "own_model_provider": "swan_1km",
+      "cmems_equivalent": "cmems_swan",
+      "units": "m",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.0914,
+            "bias": 0.0193,
+            "correlation": 0.9762,
+            "mae": 0.0737
+          },
+          "metrics_cmems": {
+            "rmse": 0.2884,
+            "bias": 0.2322,
+            "correlation": 0.9098,
+            "mae": 0.2455
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1289,
+            "bias": 0.0639,
+            "correlation": 0.9624,
+            "mae": 0.1105
+          },
+          "metrics_cmems": {
+            "rmse": 0.2264,
+            "bias": 0.1905,
+            "correlation": 0.9552,
+            "mae": 0.1989
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1466,
+            "bias": 0.0543,
+            "correlation": 0.9403,
+            "mae": 0.1156
+          },
+          "metrics_cmems": {
+            "rmse": 0.2602,
+            "bias": 0.2054,
+            "correlation": 0.9007,
+            "mae": 0.217
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.095,
+            "bias": 0.0278,
+            "correlation": 0.98,
+            "mae": 0.0784
+          },
+          "metrics_cmems": {
+            "rmse": 0.265,
+            "bias": 0.2179,
+            "correlation": 0.9354,
+            "mae": 0.2421
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "wave_period_peak": {
+      "own_model_provider": "swan_1km",
+      "cmems_equivalent": "cmems_swan",
+      "units": "s",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1164,
+            "bias": 0.0345,
+            "correlation": 0.9756,
+            "mae": 0.0913
+          },
+          "metrics_cmems": {
+            "rmse": 0.2073,
+            "bias": 0.1822,
+            "correlation": 0.9832,
+            "mae": 0.1835
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1124,
+            "bias": 0.0392,
+            "correlation": 0.9669,
+            "mae": 0.0908
+          },
+          "metrics_cmems": {
+            "rmse": 0.2555,
+            "bias": 0.2062,
+            "correlation": 0.92,
+            "mae": 0.2237
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1139,
+            "bias": 0.0543,
+            "correlation": 0.9789,
+            "mae": 0.0827
+          },
+          "metrics_cmems": {
+            "rmse": 0.2637,
+            "bias": 0.1969,
+            "correlation": 0.9159,
+            "mae": 0.2187
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1218,
+            "bias": 0.0581,
+            "correlation": 0.9699,
+            "mae": 0.1008
+          },
+          "metrics_cmems": {
+            "rmse": 0.2329,
+            "bias": 0.1773,
+            "correlation": 0.9347,
+            "mae": 0.2024
+          },
+          "own_beats_cmems": true
+        }
+      }
+    },
+    "wave_direction": {
+      "own_model_provider": "swan_1km",
+      "cmems_equivalent": "cmems_swan",
+      "units": "deg",
+      "stations": {
+        "dragonera_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1236,
+            "bias": 0.0393,
+            "correlation": 0.9544,
+            "mae": 0.1058
+          },
+          "metrics_cmems": {
+            "rmse": 0.2455,
+            "bias": 0.2089,
+            "correlation": 0.9481,
+            "mae": 0.2245
+          },
+          "own_beats_cmems": true
+        },
+        "mahon_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1076,
+            "bias": 0.0523,
+            "correlation": 0.9497,
+            "mae": 0.087
+          },
+          "metrics_cmems": {
+            "rmse": 0.272,
+            "bias": 0.229,
+            "correlation": 0.8658,
+            "mae": 0.2307
+          },
+          "own_beats_cmems": true
+        },
+        "palma_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1232,
+            "bias": 0.0457,
+            "correlation": 0.9456,
+            "mae": 0.0937
+          },
+          "metrics_cmems": {
+            "rmse": 0.2567,
+            "bias": 0.1971,
+            "correlation": 0.9021,
+            "mae": 0.209
+          },
+          "own_beats_cmems": true
+        },
+        "valencia_buoy": {
+          "metrics_own_model": {
+            "rmse": 0.1349,
+            "bias": 0.0765,
+            "correlation": 0.9651,
+            "mae": 0.1052
+          },
+          "metrics_cmems": {
+            "rmse": 0.271,
+            "bias": 0.1857,
+            "correlation": 0.9085,
+            "mae": 0.2188
+          },
+          "own_beats_cmems": true
+        }
+      }
+    }
+  },
+  "summary": {
+    "total_stations_evaluated": 36,
+    "own_model_beats_cmems_count": 36,
+    "win_percentage": 100.0
+  }
+}

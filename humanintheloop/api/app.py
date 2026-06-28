@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import math
 import logging
 from datetime import datetime, timedelta, timezone
@@ -33,8 +34,97 @@ import route_analysis
 import briefing_renderers
 from route_store import RouteStore
 
-
 logger = logging.getLogger(__name__)
+
+
+def resolve_gmdss_warnings_file(store, date=None, run=None):
+    """
+    Unified resolver for active_gmdss_warnings.json.
+    Downloads from GCS to a temporary local file if using GcsEvidenceStore,
+    otherwise uses local files with clean fallbacks.
+    """
+    import tempfile
+    from pathlib import Path
+
+    # 1. Handle GcsEvidenceStore
+    if getattr(store, "storage_backend", None) == "gcs":
+        try:
+            resolved_date = store.resolve_date(date)
+            resolved_run = store.resolve_run(resolved_date, run)
+            
+            candidates = []
+            
+            # Candidate 1: Run-specific prefix
+            try:
+                base_prefix = store._base_prefix(resolved_date, resolved_run)
+                candidates.append(f"{base_prefix}/active_gmdss_warnings.json")
+            except Exception:
+                pass
+                
+            # Candidate 2: Daily prefix
+            try:
+                candidates.append(store._object_name(resolved_date, "active_gmdss_warnings.json"))
+            except Exception:
+                pass
+                
+            # Candidate 3: Global prefix
+            try:
+                candidates.append(store._object_name("active_gmdss_warnings.json"))
+            except Exception:
+                pass
+
+            # Try GCS downloads
+            for obj_name in candidates:
+                try:
+                    content = store._download_text(obj_name)
+                    if content:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8") as tf:
+                            tf.write(content)
+                        return tf.name
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.warning("Error resolving GMDSS warnings from GcsEvidenceStore: %s", e)
+
+        # Fallback to local fallback_store if defined
+        if getattr(store, "fallback_store", None) is not None:
+            return resolve_gmdss_warnings_file(store.fallback_store, date, run)
+
+    # 2. Handle Local EvidenceStore
+    else:
+        try:
+            resolved_date = store.resolve_date(date)
+            resolved_run = store.resolve_run(resolved_date, run)
+            
+            # Candidate 1: Run-specific local directory
+            try:
+                base_dir = store._base_dir(resolved_date, resolved_run)
+                candidate = base_dir / "active_gmdss_warnings.json"
+                if candidate.exists():
+                    return str(candidate)
+            except Exception:
+                pass
+                
+            # Candidate 2: Daily local predictions directory
+            if hasattr(store, "predictions_root") and store.predictions_root:
+                candidate_daily = Path(store.predictions_root) / resolved_date / "active_gmdss_warnings.json"
+                if candidate_daily.exists():
+                    return str(candidate_daily)
+        except Exception:
+            pass
+
+        # Candidate 3: Global predictions directory
+        if hasattr(store, "predictions_root") and store.predictions_root:
+            candidate_global = Path(store.predictions_root) / "active_gmdss_warnings.json"
+            if candidate_global.exists():
+                return str(candidate_global)
+
+    # 3. Project fallback
+    mvp_candidate = Path("mvp_data/active_gmdss_warnings.json")
+    if mvp_candidate.exists():
+        return str(mvp_candidate)
+
+    return None
 
 
 def parse_utc_timestamp_lenient(val):
@@ -1158,6 +1248,26 @@ def create_app(evidence_store=None, route_store=None):
                 if format == "linkedin"
                 else briefing_renderers.render_whatsapp(adjusted)
             )
+            
+            # Inject GMDSS geolocated alerts
+            try:
+                import gmdss_aggregator
+                route_data = route_analysis.load_route(route_id)
+                sample_points = route_analysis.route_sample_points(route_data)
+                gmdss_file = resolve_gmdss_warnings_file(store, date=run_date, run=run_id)
+                try:
+                    matched_alerts = gmdss_aggregator.filter_alerts_by_route(sample_points, max_distance_nm=60.0, filepath=gmdss_file)
+                finally:
+                    if gmdss_file and "tmp" in gmdss_file:
+                        try:
+                            os.unlink(gmdss_file)
+                        except Exception:
+                            pass
+                gmdss_summary = gmdss_aggregator.render_markdown_summary(matched_alerts)
+                briefing = f"{briefing}\n\n{gmdss_summary}"
+            except Exception as e:
+                logger.warning("GMDSS auto-injection into briefing failed for route %s: %s", route_id, e)
+
             return {
                 "route_id": route_id,
                 "route": adjusted.get("route", route_id),
@@ -1168,6 +1278,104 @@ def create_app(evidence_store=None, route_store=None):
             }
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/routes/{route_id}/gmdss")
+    def route_gmdss_warnings(
+        route_id: str,
+        max_distance: float = Query(60.0, ge=0.0, le=500.0, description="Max proximity distance threshold in Nautical Miles"),
+        date: str | None = Query(None, description="Optional run date YYYY-MM-DD"),
+        run: str | None = Query(None, description="Optional run ID"),
+    ):
+        try:
+            import gmdss_aggregator
+            
+            gmdss_file = resolve_gmdss_warnings_file(store, date=date, run=run)
+            try:
+                route_data = route_analysis.load_route(route_id)
+                sample_points = route_analysis.route_sample_points(route_data)
+                matched_alerts = gmdss_aggregator.filter_alerts_by_route(sample_points, max_distance_nm=max_distance, filepath=gmdss_file)
+            finally:
+                if gmdss_file and "tmp" in gmdss_file:
+                    try:
+                        os.unlink(gmdss_file)
+                    except Exception:
+                        pass
+            
+            alerts_list = []
+            for alert, dist in matched_alerts:
+                alerts_list.append({
+                    "alert_id": alert.alert_id,
+                    "station_name": alert.station_name,
+                    "alert_type": alert.alert_type,
+                    "severity": alert.severity,
+                    "publish_time": alert.publish_time,
+                    "coordinates": alert.coordinates,
+                    "proximity_nm": round(dist, 1),
+                    "message_text": alert.message_text
+                })
+                
+            markdown_summary = gmdss_aggregator.render_markdown_summary(matched_alerts)
+            
+            return {
+                "route_id": route_id,
+                "safety_threshold_nm": max_distance,
+                "disclaimer": gmdss_aggregator.GMDSS_DISCLAIMER,
+                "alerts_count": len(alerts_list),
+                "alerts": alerts_list,
+                "markdown_summary": markdown_summary
+            }
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except Exception as error:
+            raise HTTPException(status_code=500, detail=f"GMDSS warnings retrieval failed: {error}") from error
+
+    @app.get("/warnings/gmdss")
+    def position_gmdss_warnings(
+        lat: float = Query(..., ge=-90.0, le=90.0, description="Vessel GPS latitude"),
+        lon: float = Query(..., ge=-180.0, le=180.0, description="Vessel GPS longitude"),
+        radius: float = Query(60.0, ge=0.0, le=500.0, description="Max proximity distance threshold in Nautical Miles"),
+        date: str | None = Query(None, description="Optional run date YYYY-MM-DD"),
+        run: str | None = Query(None, description="Optional run ID"),
+    ):
+        try:
+            import gmdss_aggregator
+            
+            gmdss_file = resolve_gmdss_warnings_file(store, date=date, run=run)
+            try:
+                matched_alerts = gmdss_aggregator.filter_alerts_by_position(lat, lon, max_distance_nm=radius, filepath=gmdss_file)
+            finally:
+                if gmdss_file and "tmp" in gmdss_file:
+                    try:
+                        os.unlink(gmdss_file)
+                    except Exception:
+                        pass
+            
+            alerts_list = []
+            for alert, dist in matched_alerts:
+                alerts_list.append({
+                    "alert_id": alert.alert_id,
+                    "station_name": alert.station_name,
+                    "alert_type": alert.alert_type,
+                    "severity": alert.severity,
+                    "publish_time": alert.publish_time,
+                    "coordinates": alert.coordinates,
+                    "proximity_nm": round(dist, 1),
+                    "message_text": alert.message_text
+                })
+                
+            markdown_summary = gmdss_aggregator.render_markdown_summary(matched_alerts)
+            
+            return {
+                "latitude": lat,
+                "longitude": lon,
+                "safety_threshold_nm": radius,
+                "disclaimer": gmdss_aggregator.GMDSS_DISCLAIMER,
+                "alerts_count": len(alerts_list),
+                "alerts": alerts_list,
+                "markdown_summary": markdown_summary
+            }
+        except Exception as error:
+            raise HTTPException(status_code=500, detail=f"GMDSS general warnings retrieval failed: {error}") from error
 
     @app.get(
         "/locations/weather",

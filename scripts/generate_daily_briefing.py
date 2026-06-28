@@ -1054,6 +1054,23 @@ def generate_daily_briefings(
                 time_text=current_time,
             )
 
+        # Persist GMDSS active warnings for the day
+        try:
+            import gmdss_aggregator
+            gmdss_file = run_dir / "active_gmdss_warnings.json"
+            gmdss_aggregator.save_warnings_to_file(gmdss_aggregator.MOCK_WARNINGS_DATABASE, filepath=gmdss_file)
+            
+            # Also save to daily cache file under the output day directory and outputs/ root
+            daily_gmdss_file = day_dir / "active_gmdss_warnings.json"
+            gmdss_aggregator.save_warnings_to_file(gmdss_aggregator.MOCK_WARNINGS_DATABASE, filepath=daily_gmdss_file)
+            
+            global_gmdss_file = output_root / "active_gmdss_warnings.json"
+            gmdss_aggregator.save_warnings_to_file(gmdss_aggregator.MOCK_WARNINGS_DATABASE, filepath=global_gmdss_file)
+            
+            print(f"Persisted active GMDSS warnings to run folder, day folder, and global outputs folder.", flush=True)
+        except Exception as error:
+            print(f"⚠️ Warning: Could not persist GMDSS warnings: {error}", flush=True)
+
     if atmospheric_context.get("enabled") or atmospheric_context.get("wind_lineage", {}).get("status") != "not_configured":
         forecast_source_entries.append(
             {

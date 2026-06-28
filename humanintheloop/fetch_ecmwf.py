@@ -18,7 +18,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from ingest_atmosphere import BALEARIC_BBOX
+from ingest_atmosphere import WESTMED_BBOX
 
 ECMWF_RESOLUTION_KM = 9.0
 TIMEOUT_SECONDS = int(os.getenv("PREDSEA_ECMWF_TIMEOUT", "120"))
@@ -89,7 +89,7 @@ def fetch_ecmwf_wind(output_dir=None, bbox=None, dry_run=False):
     Returns a dict with ``available=True`` and ``dataset_path`` on success,
     or raises on failure.
     """
-    bbox = bbox or BALEARIC_BBOX
+    bbox = bbox or WESTMED_BBOX
     output_dir = Path(output_dir or tempfile.mkdtemp(prefix="predsea_ecmwf_"))
     output_dir.mkdir(parents=True, exist_ok=True)
     dataset_path = output_dir / "ecmwf_wind.nc"

@@ -477,6 +477,8 @@ def normalize_forecast_row(row, ingested_at_utc):
         "truth_station_id": row.get("truth_station_id"),
         "truth_station_name": row.get("truth_station_name"),
         "source_field": row.get("source_field"),
+        "provider": row.get("provider") or row.get("forecast_source_id") or row.get("ocean_source"),
+        "network": row.get("network") or row.get("forecast_source_id") or row.get("ocean_source"),
     }
     normalized["source_field"] = row.get("source_field")
 

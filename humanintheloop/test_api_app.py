@@ -1093,6 +1093,105 @@ def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):
     assert "PredSea Captain's Briefing" in payload["briefing"]
 
 
+def test_route_gmdss_warnings_endpoint(tmp_path):
+    write_snapshot(tmp_path, route_id="cagliari_naples")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    # Test Cagliari -> Naples route (should have Rome SAR and Cagliari Military Exercises warnings active)
+    response = client.get("/routes/cagliari_naples/gmdss?max_distance=60.0")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["route_id"] == "cagliari_naples"
+    assert payload["safety_threshold_nm"] == 60.0
+    assert "disclaimer" in payload
+    assert payload["alerts_count"] >= 2
+    alert_ids = [a["alert_id"] for a in payload["alerts"]]
+    assert "NAVTEX-CAG-221" in alert_ids  # Cagliari exercises
+    assert "NAVTEX-ROM-115" in alert_ids  # Rome SAR yacht Aquarius
+    assert "GMDSS SAFETY NET & NAVTEX SUPPLEMENTAL SERVICE DISCLAIMER" in payload["markdown_summary"]
+
+    # Test with a very small threshold (should filter out these alerts)
+    response_small = client.get("/routes/cagliari_naples/gmdss?max_distance=1.0")
+    assert response_small.status_code == 200
+    payload_small = response_small.json()
+    assert payload_small["alerts_count"] == 0
+
+
+def test_route_briefing_injects_gmdss(tmp_path):
+    write_snapshot(tmp_path, route_id="cagliari_naples")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes/cagliari_naples/briefing?date=2026-05-29&format=whatsapp")
+    assert response.status_code == 200
+    payload = response.json()
+    # Ensure that GMDSS block is present in the rendered briefing string
+    assert "GMDSS SAFETY NET & NAVTEX SUPPLEMENTAL SERVICE DISCLAIMER" in payload["briefing"]
+    assert "NAVTEX-CAG-221" in payload["briefing"] or "NAVTEX-ROM-115" in payload["briefing"]
+
+
+def test_position_gmdss_warnings_endpoint(tmp_path):
+    write_snapshot(tmp_path, route_id="cagliari_naples")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    # Query with Naples coordinates (should return Rome SAR alert NAVTEX-ROM-115)
+    response = client.get("/warnings/gmdss?lat=40.8&lon=14.15&radius=45.0")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["latitude"] == 40.8
+    assert payload["longitude"] == 14.15
+    assert payload["safety_threshold_nm"] == 45.0
+    assert payload["alerts_count"] >= 1
+    alert_ids = [a["alert_id"] for a in payload["alerts"]]
+    assert "NAVTEX-ROM-115" in alert_ids
+
+    # Query with a tiny radius (should return 0 alerts)
+    response_small = client.get("/warnings/gmdss?lat=40.8&lon=14.15&radius=1.0")
+    assert response_small.status_code == 200
+    payload_small = response_small.json()
+    assert payload_small["alerts_count"] == 0
+
+
+def test_gmdss_warnings_loaded_from_custom_file(tmp_path):
+    # Set up custom run dir and write a custom active_gmdss_warnings.json to it
+    date_text = "2026-05-29"
+    run_id = "RUN_TEST"
+    run_dir = tmp_path / date_text / "runs" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Write a route snapshot as well so we can test route resolution
+    write_snapshot(tmp_path, date_text=date_text, route_id="cagliari_naples", run_id=run_id)
+    
+    custom_warnings = [
+        {
+            "alert_id": "CUSTOM-ALERT-999",
+            "station_name": "Ibiza Radio",
+            "alert_type": "Navigational",
+            "message_text": "Experimental warning at position 40.80N, 14.10E.",
+            "severity": "Critical",
+            "publish_time": "2026-06-26T22:00:00Z"
+        }
+    ]
+    warnings_file = run_dir / "active_gmdss_warnings.json"
+    with open(warnings_file, "w") as f:
+        json.dump(custom_warnings, f)
+        
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+    
+    # Test position warnings endpoint with custom date & run parameters
+    response = client.get(f"/warnings/gmdss?lat=40.8&lon=14.1&radius=50.0&date={date_text}&run={run_id}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["alerts_count"] == 1
+    assert payload["alerts"][0]["alert_id"] == "CUSTOM-ALERT-999"
+    
+    # Test route warnings endpoint with custom date & run parameters
+    response_route = client.get(f"/routes/cagliari_naples/gmdss?max_distance=60.0&date={date_text}&run={run_id}")
+    assert response_route.status_code == 200
+    payload_route = response_route.json()
+    assert payload_route["alerts_count"] == 1
+    assert payload_route["alerts"][0]["alert_id"] == "CUSTOM-ALERT-999"
+
+
 def test_place_weather_endpoint_returns_saved_weather_payload(tmp_path):
     write_place_weather(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))

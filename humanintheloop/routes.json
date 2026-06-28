@@ -1547,5 +1547,534 @@
         "latitude": 40.00
       }
     ]
+  },
+  "toulon_cagliari": {
+    "id": "toulon_cagliari",
+    "name": "Toulon -> Cagliari",
+    "origin": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "destination": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Toulon to Cagliari corridor, passing west of Corsica; watch out for northern and northwesterly wind acceleration.",
+    "sample_points": [
+      {
+        "name": "Toulon approach",
+        "longitude": 6.00,
+        "latitude": 43.00
+      },
+      {
+        "name": "Western Corsica transit",
+        "longitude": 7.80,
+        "latitude": 41.50
+      },
+      {
+        "name": "Southwest Sardinia crossing",
+        "longitude": 8.40,
+        "latitude": 39.50
+      }
+    ]
+  },
+  "marseille_toulon": {
+    "id": "marseille_toulon",
+    "name": "Marseille -> Toulon",
+    "origin": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "destination": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Short coastal transit along the French Riviera, highly sheltered but can experience Mistral gusts exiting bays.",
+    "sample_points": [
+      {
+        "name": "Marseille Bay",
+        "longitude": 5.40,
+        "latitude": 43.20
+      },
+      {
+        "name": "Cassis cliffs transit",
+        "longitude": 5.60,
+        "latitude": 43.15
+      },
+      {
+        "name": "Toulon approach",
+        "longitude": 5.85,
+        "latitude": 43.10
+      }
+    ]
+  },
+  "marseille_palma": {
+    "id": "marseille_palma",
+    "name": "Marseille -> Palma",
+    "origin": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "North-to-South crossing from the French mainland to Mallorca; fully exposed to the Gulf of Lion and the Balearic Sea swell.",
+    "sample_points": [
+      {
+        "name": "Gulf of Lion offshore",
+        "longitude": 4.80,
+        "latitude": 42.50
+      },
+      {
+        "name": "North of Mallorca crossing",
+        "longitude": 3.80,
+        "latitude": 40.50
+      },
+      {
+        "name": "Palma approach",
+        "longitude": 2.70,
+        "latitude": 39.60
+      }
+    ]
+  },
+  "toulon_palma": {
+    "id": "toulon_palma",
+    "name": "Toulon -> Palma",
+    "origin": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "North-to-South crossing from Toulon to Palma; fully exposed to the Gulf of Lion and Balearic Sea swell.",
+    "sample_points": [
+      {
+        "name": "Toulon offshore",
+        "longitude": 5.40,
+        "latitude": 42.50
+      },
+      {
+        "name": "North of Mallorca crossing",
+        "longitude": 3.80,
+        "latitude": 40.50
+      },
+      {
+        "name": "Palma approach",
+        "longitude": 2.70,
+        "latitude": 39.60
+      }
+    ]
+  },
+  "barcelona_marseille": {
+    "id": "barcelona_marseille",
+    "name": "Barcelona -> Marseille",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Coastal and offshore route crossing the Gulf of Lion; notorious for severe Tramontana and Mistral conditions.",
+    "sample_points": [
+      {
+        "name": "Costa Brava",
+        "longitude": 3.20,
+        "latitude": 41.80
+      },
+      {
+        "name": "Gulf of Lion",
+        "longitude": 4.20,
+        "latitude": 42.50
+      },
+      {
+        "name": "Marseille approach",
+        "longitude": 5.20,
+        "latitude": 43.15
+      }
+    ]
+  },
+  "barcelona_genoa": {
+    "id": "barcelona_genoa",
+    "name": "Barcelona -> Genoa",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Genoa",
+      "longitude": 8.93,
+      "latitude": 44.41
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Extensive West-to-East transit across the Gulf of Lion and Ligurian Sea; fully exposed to winter storm corridors.",
+    "sample_points": [
+      {
+        "name": "Gulf of Lion crossing",
+        "longitude": 4.50,
+        "latitude": 42.20
+      },
+      {
+        "name": "Ligurian Sea transit",
+        "longitude": 7.50,
+        "latitude": 43.50
+      },
+      {
+        "name": "Genoa approach",
+        "longitude": 8.80,
+        "latitude": 44.20
+      }
+    ]
+  },
+  "genoa_toulon": {
+    "id": "genoa_toulon",
+    "name": "Genoa -> Toulon",
+    "origin": {
+      "name": "Genoa",
+      "longitude": 8.93,
+      "latitude": 44.41
+    },
+    "destination": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Ligurian-Riviera coastal transit down to Toulon port; relatively protected from southern winds but exposed to strong North/Northwesterly offshore flows.",
+    "sample_points": [
+      {
+        "name": "Genoa approach",
+        "longitude": 8.80,
+        "latitude": 44.20
+      },
+      {
+        "name": "Ligurian Sea transit",
+        "longitude": 7.50,
+        "latitude": 43.60
+      },
+      {
+        "name": "Toulon approach",
+        "longitude": 6.10,
+        "latitude": 43.10
+      }
+    ]
+  },
+  "genoa_marseille": {
+    "id": "genoa_marseille",
+    "name": "Genoa -> Marseille",
+    "origin": {
+      "name": "Genoa",
+      "longitude": 8.93,
+      "latitude": 44.41
+    },
+    "destination": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Ligurian Sea passage to Marseille; exposed to the Mistral exiting the Rhone valley.",
+    "sample_points": [
+      {
+        "name": "Genoa approach",
+        "longitude": 8.80,
+        "latitude": 44.20
+      },
+      {
+        "name": "Ligurian Sea transit",
+        "longitude": 7.50,
+        "latitude": 43.60
+      },
+      {
+        "name": "Marseille approach",
+        "longitude": 5.50,
+        "latitude": 43.20
+      }
+    ]
+  },
+  "barcelona_cagliari": {
+    "id": "barcelona_cagliari",
+    "name": "Barcelona -> Cagliari",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Strategic West-to-East crossing from Barcelona to Cagliari; subject to significant waves building across the Algerian Basin.",
+    "sample_points": [
+      {
+        "name": "Balearic Sea offshore",
+        "longitude": 4.50,
+        "latitude": 40.50
+      },
+      {
+        "name": "Sardinian Sea passage",
+        "longitude": 7.20,
+        "latitude": 39.80
+      },
+      {
+        "name": "Cagliari approach",
+        "longitude": 9.00,
+        "latitude": 39.25
+      }
+    ]
+  },
+  "cagliari_naples": {
+    "id": "cagliari_naples",
+    "name": "Cagliari -> Naples",
+    "origin": {
+      "name": "Cagliari",
+      "longitude": 9.11,
+      "latitude": 39.21
+    },
+    "destination": {
+      "name": "Naples",
+      "longitude": 14.25,
+      "latitude": 40.84
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route across the Tyrrhenian Sea"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Open Tyrrhenian Sea crossing of approximately 240 nautical miles. Cruising vessels should watch out for westerly gale swells funneling between Sardinia and Italy.",
+    "sample_points": [
+      {
+        "name": "Sardinia departure approach",
+        "longitude": 9.40,
+        "latitude": 39.15
+      },
+      {
+        "name": "Mid Tyrrhenian passage",
+        "longitude": 11.80,
+        "latitude": 40.00
+      },
+      {
+        "name": "Gulf of Naples approach",
+        "longitude": 14.05,
+        "latitude": 40.72
+      }
+    ]
+  },
+  "palermo_naples": {
+    "id": "palermo_naples",
+    "name": "Palermo -> Naples",
+    "origin": {
+      "name": "Palermo",
+      "longitude": 13.36,
+      "latitude": 38.12
+    },
+    "destination": {
+      "name": "Naples",
+      "longitude": 14.25,
+      "latitude": 40.84
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "A scenic transit from Sicily to Naples of ~170 nautical miles passing west of Stromboli and the Aeolian Islands.",
+    "sample_points": [
+      {
+        "name": "Palermo offshore departure",
+        "longitude": 13.50,
+        "latitude": 38.30
+      },
+      {
+        "name": "Aeolian Islands passage",
+        "longitude": 14.20,
+        "latitude": 39.20
+      },
+      {
+        "name": "Gulf of Naples southern approach",
+        "longitude": 14.15,
+        "latitude": 40.60
+      }
+    ]
+  },
+  "naples_marseille": {
+    "id": "naples_marseille",
+    "name": "Naples -> Marseille",
+    "origin": {
+      "name": "Naples",
+      "longitude": 14.25,
+      "latitude": 40.84
+    },
+    "destination": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only multi-segment repositioning route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long-range early-to-late season repositioning route (~450 nm) traversing the northern Tyrrhenian, Bonifacio Strait, and the Gulf of Lion (Mistral zone).",
+    "sample_points": [
+      {
+        "name": "Tyrrhenian Sea northward leg",
+        "longitude": 12.50,
+        "latitude": 41.30
+      },
+      {
+        "name": "Bonifacio Strait crossing",
+        "longitude": 9.20,
+        "latitude": 41.35
+      },
+      {
+        "name": "Ligurian/Gulf of Lion transit",
+        "longitude": 7.00,
+        "latitude": 42.50
+      }
+    ]
   }
 }
+

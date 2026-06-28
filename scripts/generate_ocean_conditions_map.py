@@ -88,8 +88,12 @@ def generate_ocean_conditions_map(
         import numpy as np
         import xarray as xr
         import matplotlib.pyplot as plt
+        import cartopy
         import cartopy.crs as ccrs
         import cartopy.feature as cfeature
+
+        # Configure Cartopy to use local offline shapefiles to prevent dynamic downloads
+        cartopy.config['data_dir'] = str(Path(__file__).resolve().parent.parent / "assets" / "cartopy_data")
     except ImportError as error:
         raise dependency_error(error)
 

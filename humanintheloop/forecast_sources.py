@@ -54,6 +54,8 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False, foreca
 
 
 def configured_source_ids():
+    if os.getenv("PREDSEA_BYPASS_COPERNICUS") == "1":
+        return []
     return ["copernicus"]
 
 

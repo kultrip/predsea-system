@@ -35,14 +35,22 @@ WAVE_VARIABLES = [
     *WAVE_PARTITION_VARIABLES,
 ]
 
-# Coordinates for the expanded Mediterranean routing box
-# Covers the Balearics plus mainland BCN/VLC transit lanes.
-lon_min, lon_max = 0.5, 4.5
-lat_min, lat_max = 38.0, 41.5
+from dotenv import load_dotenv
+load_dotenv()
 
-# Time window
+# Map credentials from .env to copernicusmarine expected env vars
+if "COPERNICUS_USERNAME" in os.environ and "COPERNICUS_PASSWORD" in os.environ:
+    os.environ["COPERNICUSMARINE_SERVICE_USERNAME"] = os.environ["COPERNICUS_USERNAME"]
+    os.environ["COPERNICUSMARINE_SERVICE_PASSWORD"] = os.environ["COPERNICUS_PASSWORD"]
+
+# Coordinates for the expanded Mediterranean routing box
+# Covers the Western Mediterranean (Spain, Balearics, France, Sardinia, and Tyrrhenian cruising grounds including Naples/Sicily/Messina).
+lon_min, lon_max = -1.0, 16.5
+lat_min, lat_max = 35.0, 44.5
+
+# Time window (Changed to 5 days to retrieve a full REAL 5-day forecast)
 start_time = (datetime.datetime.now() - datetime.timedelta(hours=6))
-end_time = (datetime.datetime.now() + datetime.timedelta(days=1))
+end_time = (datetime.datetime.now() + datetime.timedelta(days=5))
 
 
 def validate_copernicus_credentials_available():
