@@ -2195,7 +2195,20 @@ def create_app(evidence_store=None, route_store=None):
             bq_config = resolve_config()
             if bq_config is None:
                 raise HTTPException(status_code=503, detail="BigQuery is not configured on this deployment.")
-            table_name = f"{bq_config.project_id}.{bq_config.dataset_id}.{bq_config.table_id}"
+
+            # Station metadata is written by export_station_metadata_to_bigquery() to a
+            # SEPARATE table from evidence_rows (default table_id "station_metadata",
+            # overridable via PREDSEA_BIGQUERY_STATION_METADATA_TABLE -- same env var
+            # export_station_metadata_to_bigquery() itself respects). It is NOT a
+            # record_type value inside evidence_rows, even though the row itself carries
+            # a record_type='station_metadata' field for provenance.
+            evidence_table_name = f"{bq_config.project_id}.{bq_config.dataset_id}.{bq_config.table_id}"
+            station_metadata_table_id = (
+                os.environ.get("PREDSEA_BIGQUERY_STATION_METADATA_TABLE") or "station_metadata"
+            )
+            station_metadata_table_name = (
+                f"{bq_config.project_id}.{bq_config.dataset_id}.{station_metadata_table_id}"
+            )
             client = bigquery.Client(project=bq_config.project_id)
 
             variable_filter_sql = "AND variable = @variable" if variable else ""
@@ -2205,9 +2218,8 @@ def create_app(evidence_store=None, route_store=None):
                     station_id, station_name, station_kind, network, provider,
                     latitude, longitude,
                     ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY ingested_at_utc DESC) AS rnk
-                  FROM `{table_name}`
-                  WHERE record_type = 'station_metadata'
-                    AND station_id IS NOT NULL
+                  FROM `{station_metadata_table_name}`
+                  WHERE station_id IS NOT NULL
                     AND latitude IS NOT NULL
                     AND longitude IS NOT NULL
                 ),
@@ -2217,7 +2229,7 @@ def create_app(evidence_store=None, route_store=None):
                     ROW_NUMBER() OVER (
                       PARTITION BY station_id, variable ORDER BY observed_at_utc DESC
                     ) AS rnk
-                  FROM `{table_name}`
+                  FROM `{evidence_table_name}`
                   WHERE record_type = 'observation'
                     AND observed_at_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @lookback_days DAY)
                     AND value IS NOT NULL
