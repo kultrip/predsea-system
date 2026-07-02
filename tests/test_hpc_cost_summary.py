@@ -58,7 +58,7 @@ def test_build_cost_section_with_no_real_reports_never_fabricates():
     section, total_cost, any_real = hcs.build_cost_section(bucket, "2026-07-02")
     assert any_real is False
     assert total_cost is None  # not 0.0, not a guessed constant -- genuinely unknown
-    for model in ("wrf", "roms", "swan"):
+    for model in ("wrf", "croco", "nemo", "swan"):
         assert section[model]["status"] == "no_real_cost_recorded"
 
 
@@ -72,8 +72,8 @@ def test_build_cost_section_uses_real_cost_when_present():
     assert any_real is True
     assert section["wrf"]["status"] == "real"
     assert total_cost == 1.23
-    # roms/swan still have no real report -> must stay honest, not inherit wrf's number
-    assert section["roms"]["status"] == "no_real_cost_recorded"
+    # croco/nemo/swan still have no real report -> must stay honest, not inherit wrf's number
+    assert section["croco"]["status"] == "no_real_cost_recorded"
 
 
 def test_build_cost_section_estimates_from_real_runtime_when_no_actual_cost():
@@ -100,14 +100,18 @@ def test_build_accuracy_section_no_report_recommends_no_real_run_yet():
 def test_build_accuracy_section_never_says_proceed_to_production():
     # Even with full real comparison coverage, the recommendation vocabulary must
     # never include "proceed_to_production" -- that judgment call belongs to a human.
+    # Note the nested variable -> provider shape (matches model_comparison.py's
+    # corrected report, since e.g. current_speed has both predsea_croco and
+    # predsea_nemo entries).
     accuracy_report = {
         "data_source": "real",
         "variables": {
             "wave_height": {
-                "status": "compared",
-                "own_model_provider": "predsea_swan",
-                "metrics_own_model": {"rmse": 0.2, "bias": 0.05, "correlation": 0.9, "mae": 0.15, "sample_size": 20},
-                "stations_used": ["palma_buoy"],
+                "predsea_swan": {
+                    "status": "compared",
+                    "metrics_own_model": {"rmse": 0.2, "bias": 0.05, "correlation": 0.9, "mae": 0.15, "sample_size": 20},
+                    "stations_used": ["palma_buoy"],
+                }
             }
         },
     }

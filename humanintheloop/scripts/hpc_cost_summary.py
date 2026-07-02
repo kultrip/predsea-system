@@ -104,7 +104,10 @@ def build_cost_section(bucket, date_str):
     total_real_cost = 0.0
     any_real_cost = False
 
-    for model in ("wrf", "roms", "swan"):
+    # 2026-07-02: was ("wrf", "roms", "swan") -- but daily_orchestrator.py never runs
+    # roms_forecast_ingestor.py; the real ocean models it runs are CROCO and NEMO
+    # (see model_comparison.py's COMPARISON_SPECS for the same correction).
+    for model in ("wrf", "croco", "nemo", "swan"):
         report = load_json_from_gcs(bucket, f"reports/{date_str}/{model}_cost.json")
         if report and report.get("actual_cost_usd") is not None:
             section[model] = {
@@ -163,19 +166,24 @@ def build_accuracy_section(bucket, date_str):
             "compared_variables": [],
         }, "no_real_run_yet"
 
+    # accuracy_comparison.json nests by variable -> provider (e.g. current_speed has
+    # both predsea_croco and predsea_nemo, since the orchestrator runs both models)
     compared_variables = []
-    for variable, details in (accuracy_report.get("variables") or {}).items():
-        if details.get("status") == "compared":
-            compared_variables.append(
-                {
-                    "variable": variable,
-                    "own_model_provider": details.get("own_model_provider"),
-                    "metrics_own_model": details.get("metrics_own_model"),
-                    "stations_used": details.get("stations_used"),
-                }
-            )
+    total_pairs = 0
+    for variable, by_provider in (accuracy_report.get("variables") or {}).items():
+        for provider, details in (by_provider or {}).items():
+            total_pairs += 1
+            if details.get("status") == "compared":
+                compared_variables.append(
+                    {
+                        "variable": variable,
+                        "own_model_provider": provider,
+                        "metrics_own_model": details.get("metrics_own_model"),
+                        "stations_used": details.get("stations_used"),
+                    }
+                )
 
-    total_variables = len(accuracy_report.get("variables") or {})
+    total_variables = total_pairs
     if not compared_variables:
         recommendation = "insufficient_real_validation_data"
     elif len(compared_variables) < total_variables:

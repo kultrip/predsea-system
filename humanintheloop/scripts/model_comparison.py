@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 scripts/model_comparison.py
-Compares PredSea's own high-resolution model output (WRF wind, ROMS currents/water
-temperature/sea level, SWAN waves) against real buoy/tide-gauge observations already
-ingested into BigQuery `evidence_rows`, to see whether the own model is actually more
-accurate than the CMEMS/AROME baseline it hopes to eventually replace.
+Compares PredSea's own high-resolution model output (WRF wind, CROCO/NEMO currents/
+water temperature/sea level, SWAN waves) against real buoy/tide-gauge observations
+already ingested into BigQuery `evidence_rows`, to see whether the own model is
+actually more accurate than the CMEMS/AROME baseline it hopes to eventually replace.
 
 IMPORTANT HISTORY: the previous version of this script fabricated its input data --
 it generated synthetic observation/CMEMS/own-model values with `np.random.seed(42)`
@@ -13,16 +13,28 @@ near-universal win before any real data was touched. That is why
 `humanintheloop/hpc_cost_summary.json`'s "12/12 wins, proceed_to_production" claim was
 not a measurement.
 
+CORRECTION (2026-07-02, second pass): the first corrected version of this script
+assumed the ocean model's forecast_source_id/provider was "predsea_roms", matching
+scripts/roms_forecast_ingestor.py. Reading scripts/daily_orchestrator.py -- the
+script actually wired to the 03:00 Europe/Madrid Cloud Scheduler job via
+infra/deploy.sh -- shows the automatic pipeline calls wrf_forecast_ingestor.py,
+croco_forecast_ingestor.py, nemo_forecast_ingestor.py, and swan_forecast_ingestor.py.
+roms_forecast_ingestor.py is not called by the scheduled job at all. That means the
+real providers to compare are predsea_wrf, predsea_croco, predsea_nemo, and
+predsea_swan -- not predsea_roms. This version compares CROCO and NEMO separately
+(the orchestrator runs both), since they're two distinct models, not two names for
+the same one.
+
 This version only ever reports a result when it finds real, time-matched
 forecast/observation pairs in BigQuery. If it can't find enough real data (e.g.
-because no real WRF/ROMS/SWAN run has been ingested yet, or no nearby buoy has
-recent data), it says so explicitly in the output instead of inventing a number.
+because no real model run has been ingested yet, or no nearby buoy has recent data),
+it says so explicitly in the output instead of inventing a number.
 
 Matching approach:
-1. Pull real forecast rows for our own models (provider in predsea_wrf/predsea_roms/
-   predsea_swan) for the target date, including their sampling latitude/longitude
-   (added to the ingestors in scripts/*_forecast_ingestor.py on 2026-07-02 -- older
-   forecast rows ingested before that fix won't have coordinates and are skipped).
+1. Pull real forecast rows for our own models (provider in predsea_wrf/predsea_croco/
+   predsea_nemo/predsea_swan) for the target date, including their sampling
+   latitude/longitude (added to the ingestors on 2026-07-02 -- older forecast rows
+   ingested before that fix won't have coordinates and are skipped).
 2. Pull the real, currently-known observation station catalog (BigQuery
    `station_metadata`) and, for each distinct forecast sampling point, find the
    nearest real station within --max-station-distance-nm. Forecast sampling points
@@ -31,14 +43,14 @@ Matching approach:
 3. Pull real observation rows for the matched stations and pair each forecast value
    with the nearest-in-time real observation within --time-tolerance-minutes.
 4. Compute RMSE/bias/correlation/MAE on those real pairs only, with a minimum sample
-   size per variable before it counts towards the win/loss summary.
+   size per (variable, provider) pair before it counts towards the summary.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -56,25 +68,31 @@ DEFAULT_MAX_STATION_DISTANCE_NM = 25.0
 DEFAULT_TIME_TOLERANCE_MINUTES = 30
 DEFAULT_MIN_SAMPLE_SIZE = 5
 
-# Maps each own-model forecast variable to the CMEMS-family equivalent it's meant to
-# beat and to the real observation `variable` string it should be checked against.
-# Observation variable names come from the canonical schema used by the Puertos del
-# Estado and EMODnet Physics connectors (see
-# humanintheloop/predsea/connectors/emodnet_physics/etl.py) -- NOT from this script.
-COMPARISON_VARIABLES = {
-    "wind_speed":        {"own_provider": "predsea_wrf",  "cmems_equivalent": "arome_1km",  "obs_variable": "wind_speed",        "units": "knots"},
-    "wind_direction":    {"own_provider": "predsea_wrf",  "cmems_equivalent": "arome_1km",  "obs_variable": "wind_direction",    "units": "degree"},
-    "current_speed":     {"own_provider": "predsea_roms", "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
-    "water_temperature": {"own_provider": "predsea_roms", "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
-    "sea_level":         {"own_provider": "predsea_roms", "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
-    "wave_height":       {"own_provider": "predsea_swan", "cmems_equivalent": "cmems_swan", "obs_variable": "wave_height",       "units": "m"},
-    "wave_direction":    {"own_provider": "predsea_swan", "cmems_equivalent": "cmems_swan", "obs_variable": "wave_direction",    "units": "degree"},
-}
+# Each entry is one (variable, own-model provider) pair to validate against real
+# observations. CROCO and NEMO both appear for the ocean variables because
+# scripts/daily_orchestrator.py runs both models in parallel -- they are two
+# different models, not two names for the same thing (that conflation was the bug
+# fixed here). Observation variable names come from the canonical schema used by the
+# Puertos del Estado and EMODnet Physics connectors, not invented by this script.
+COMPARISON_SPECS = [
+    {"variable": "wind_speed",        "own_provider": "predsea_wrf",   "cmems_equivalent": "arome_1km",  "obs_variable": "wind_speed",        "units": "knots"},
+    {"variable": "wind_direction",    "own_provider": "predsea_wrf",   "cmems_equivalent": "arome_1km",  "obs_variable": "wind_direction",    "units": "degree"},
+    {"variable": "current_speed",     "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
+    {"variable": "current_speed",     "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
+    {"variable": "water_temperature", "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
+    {"variable": "water_temperature", "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
+    {"variable": "sea_level",         "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
+    {"variable": "sea_level",         "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
+    {"variable": "wave_height",       "own_provider": "predsea_swan",  "cmems_equivalent": "cmems_swan", "obs_variable": "wave_height",       "units": "m"},
+    {"variable": "wave_direction",    "own_provider": "predsea_swan",  "cmems_equivalent": "cmems_swan", "obs_variable": "wave_direction",    "units": "degree"},
+]
+
+_SPEC_BY_VARIABLE_AND_PROVIDER = {(s["variable"], s["own_provider"]): s for s in COMPARISON_SPECS}
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
-        description="Compare real own-model (WRF/ROMS/SWAN) forecasts against real buoy observations."
+        description="Compare real own-model (WRF/CROCO/NEMO/SWAN) forecasts against real buoy observations."
     )
     parser.add_argument("--date", default=datetime.now(timezone.utc).strftime("%Y-%m-%d"), help="Evaluation target date (YYYY-MM-DD)")
     parser.add_argument("--lookback-days", type=int, default=1, help="How many days of forecast/observation history to include, ending on --date.")
@@ -84,7 +102,7 @@ def parse_args(argv=None):
     parser.add_argument("--station-table", default="station_metadata", help="BigQuery table with the real observation station catalog.")
     parser.add_argument("--max-station-distance-nm", type=float, default=DEFAULT_MAX_STATION_DISTANCE_NM, help="Max distance to accept a forecast<->station match.")
     parser.add_argument("--time-tolerance-minutes", type=int, default=DEFAULT_TIME_TOLERANCE_MINUTES, help="Max time gap to accept a forecast<->observation match.")
-    parser.add_argument("--min-sample-size", type=int, default=DEFAULT_MIN_SAMPLE_SIZE, help="Minimum real matched pairs required before a variable counts in the summary.")
+    parser.add_argument("--min-sample-size", type=int, default=DEFAULT_MIN_SAMPLE_SIZE, help="Minimum real matched pairs required before a (variable, provider) counts in the summary.")
     parser.add_argument("--no-upload", action="store_true", help="Skip uploading the report to GCS (still writes it locally). Useful for local runs/tests.")
     parser.add_argument("--output", default="accuracy_comparison.json", help="Local path to write the report JSON to.")
     return parser.parse_args(argv)
@@ -130,13 +148,13 @@ def fetch_forecast_rows(client, project_id, dataset, table, target_date, lookbac
     """Real forecast rows for our own models, with sampling lat/lon.
 
     Requires the ingestor fix (2026-07-02) that adds `latitude`/`longitude` to every
-    forecast row in scripts/wrf_forecast_ingestor.py, roms_forecast_ingestor.py, and
-    swan_forecast_ingestor.py. Forecast rows ingested before that fix won't have
-    coordinates and are filtered out here rather than guessed at.
+    forecast row in scripts/{wrf,croco,nemo,swan}_forecast_ingestor.py. Forecast rows
+    ingested before that fix won't have coordinates and are filtered out here rather
+    than guessed at.
     """
     from google.cloud import bigquery
 
-    providers = sorted({cfg["own_provider"] for cfg in COMPARISON_VARIABLES.values()})
+    providers = sorted({spec["own_provider"] for spec in COMPARISON_SPECS})
     table_ref = f"{project_id}.{dataset}.{table}"
     query = f"""
         SELECT
@@ -258,8 +276,9 @@ def _as_utc(value):
 
 def pair_forecasts_with_observations(annotated_forecast_rows, observation_rows, time_tolerance_minutes):
     """Pairs each forecast value with the nearest-in-time real observation at its
-    matched station, within tolerance. Returns {variable: {"own": [...], "obs": [...],
-    "stations": {...}}}."""
+    matched station, within tolerance. Returns {(variable, provider): {"own": [...],
+    "obs": [...], "stations": {...}}} -- keyed by provider too, since CROCO and NEMO
+    both produce e.g. "current_speed" and must not be pooled together as one model."""
     tolerance = timedelta(minutes=time_tolerance_minutes)
 
     obs_by_key = {}
@@ -267,12 +286,12 @@ def pair_forecasts_with_observations(annotated_forecast_rows, observation_rows, 
         key = (obs["station_id"], obs["variable"])
         obs_by_key.setdefault(key, []).append((_as_utc(obs["observed_at_utc"]), obs["value"]))
 
-    pairs_by_variable = {}
+    pairs_by_variable_provider = {}
     for row in annotated_forecast_rows:
-        obs_variable = COMPARISON_VARIABLES.get(row["variable"], {}).get("obs_variable")
-        if not obs_variable:
+        spec = _SPEC_BY_VARIABLE_AND_PROVIDER.get((row["variable"], row["provider"]))
+        if not spec:
             continue
-        candidates = obs_by_key.get((row["matched_station_id"], obs_variable))
+        candidates = obs_by_key.get((row["matched_station_id"], spec["obs_variable"]))
         if not candidates:
             continue
 
@@ -285,49 +304,50 @@ def pair_forecasts_with_observations(annotated_forecast_rows, observation_rows, 
         if best_value is None:
             continue
 
-        bucket = pairs_by_variable.setdefault(row["variable"], {"own": [], "obs": [], "stations": set()})
+        key = (row["variable"], row["provider"])
+        bucket = pairs_by_variable_provider.setdefault(key, {"own": [], "obs": [], "stations": set()})
         bucket["own"].append(row["value"])
         bucket["obs"].append(best_value)
         bucket["stations"].add(row["matched_station_id"])
 
-    return pairs_by_variable
+    return pairs_by_variable_provider
 
 
-def build_comparison_report(pairs_by_variable, min_sample_size, target_date):
+def build_comparison_report(pairs_by_variable_provider, min_sample_size, target_date):
     report = {
         "evaluation_date": target_date,
         "data_source": "real",
         "variables": {},
     }
-    better_count, total_count = 0, 0
+    total_count = 0
 
-    for variable, cfg in COMPARISON_VARIABLES.items():
-        bucket = pairs_by_variable.get(variable)
+    for spec in COMPARISON_SPECS:
+        variable, provider = spec["variable"], spec["own_provider"]
+        report["variables"].setdefault(variable, {})
+        bucket = pairs_by_variable_provider.get((variable, provider))
+
         if not bucket:
-            report["variables"][variable] = {
-                "own_model_provider": cfg["own_provider"],
-                "cmems_equivalent": cfg["cmems_equivalent"],
-                "units": cfg["units"],
+            report["variables"][variable][provider] = {
+                "cmems_equivalent": spec["cmems_equivalent"],
+                "units": spec["units"],
                 "status": "no_real_matched_pairs",
             }
             continue
 
         metrics = compute_metrics(bucket["own"], bucket["obs"])
         if metrics is None or metrics["sample_size"] < min_sample_size:
-            report["variables"][variable] = {
-                "own_model_provider": cfg["own_provider"],
-                "cmems_equivalent": cfg["cmems_equivalent"],
-                "units": cfg["units"],
+            report["variables"][variable][provider] = {
+                "cmems_equivalent": spec["cmems_equivalent"],
+                "units": spec["units"],
                 "status": "insufficient_sample_size",
                 "sample_size": 0 if metrics is None else metrics["sample_size"],
                 "min_sample_size_required": min_sample_size,
             }
             continue
 
-        report["variables"][variable] = {
-            "own_model_provider": cfg["own_provider"],
-            "cmems_equivalent": cfg["cmems_equivalent"],
-            "units": cfg["units"],
+        report["variables"][variable][provider] = {
+            "cmems_equivalent": spec["cmems_equivalent"],
+            "units": spec["units"],
             "status": "compared",
             "stations_used": sorted(bucket["stations"]),
             "metrics_own_model": metrics,
@@ -341,13 +361,15 @@ def build_comparison_report(pairs_by_variable, min_sample_size, target_date):
         total_count += 1
 
     report["summary"] = {
-        "variables_with_real_comparison": total_count,
-        "variables_total": len(COMPARISON_VARIABLES),
+        "variable_provider_pairs_with_real_comparison": total_count,
+        "variable_provider_pairs_total": len(COMPARISON_SPECS),
         "note": (
             "own_beats_cmems is intentionally not reported yet -- this version only "
-            "validates the own model against real buoy observations. Comparing "
+            "validates each own model against real buoy observations. Comparing "
             "against a real CMEMS forecast pull is a follow-up, not something to "
-            "guess at here."
+            "guess at here. CROCO and NEMO are reported separately -- they are two "
+            "different models the daily orchestrator runs in parallel, not two names "
+            "for the same run."
         ),
     }
     return report
@@ -369,10 +391,10 @@ def main(argv=None):
             "data_source": "real",
             "status": "no_forecast_data",
             "message": (
-                "No real WRF/ROMS/SWAN forecast rows with coordinates were found in "
+                "No real WRF/CROCO/NEMO/SWAN forecast rows with coordinates were found in "
                 f"{project_id}.{args.dataset}.{args.evidence_table} for this window. "
                 "This is expected until a real model run has been ingested via "
-                "scripts/{wrf,roms,swan}_forecast_ingestor.py. Nothing was fabricated."
+                "scripts/{wrf,croco,nemo,swan}_forecast_ingestor.py. Nothing was fabricated."
             ),
         }
         _write_and_maybe_upload(report, args)
@@ -406,11 +428,12 @@ def main(argv=None):
         client, project_id, args.dataset, args.evidence_table, matched_station_ids, target_date, args.lookback_days
     )
 
-    pairs_by_variable = pair_forecasts_with_observations(annotated_rows, observation_rows, args.time_tolerance_minutes)
-    report = build_comparison_report(pairs_by_variable, args.min_sample_size, target_date)
+    pairs_by_variable_provider = pair_forecasts_with_observations(annotated_rows, observation_rows, args.time_tolerance_minutes)
+    report = build_comparison_report(pairs_by_variable_provider, args.min_sample_size, target_date)
 
-    compared = report["summary"]["variables_with_real_comparison"]
-    print(f"Real comparison complete. {compared}/{len(COMPARISON_VARIABLES)} variables had enough real matched data to report.")
+    compared = report["summary"]["variable_provider_pairs_with_real_comparison"]
+    total = report["summary"]["variable_provider_pairs_total"]
+    print(f"Real comparison complete. {compared}/{total} (variable, model) pairs had enough real matched data to report.")
 
     _write_and_maybe_upload(report, args)
     return 0

@@ -330,8 +330,10 @@ def process_nemo_forecast(
                         "units": var_units,
                         "lead_time_hours": float(lead_hours),
                         "resolution_km": 1.0,
+                        "latitude": lat,
+                        "longitude": lon,
                     })
-                    
+
         print(f"✅ Generated {len(forecast_rows)} long-format forecast rows from NEMO outputs.")
         return forecast_rows
 

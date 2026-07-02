@@ -54,10 +54,13 @@ def compute_bias_metrics(
             AND obs.record_type = 'observation'
             AND fc.target_time_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {lookback_days} DAY)
             AND obs.observed_at_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {lookback_days} DAY)
-            -- NOTE: was 'predsea_croco' before 2026-07-02, which never matched the ROMS
-            -- ingestor's actual provider value ('predsea_roms'), so ROMS bias correction
-            -- silently never populated. Fixed to match scripts/roms_forecast_ingestor.py.
-            AND fc.provider IN ('predsea_wrf', 'predsea_roms', 'predsea_swan')
+            -- NOTE: was 'predsea_wrf', 'predsea_roms', 'predsea_swan' between the two
+            -- 2026-07-02 fixes. scripts/daily_orchestrator.py never calls
+            -- roms_forecast_ingestor.py -- the real ocean-model providers it ingests are
+            -- 'predsea_croco' and 'predsea_nemo' (see croco_forecast_ingestor.py /
+            -- nemo_forecast_ingestor.py). 'predsea_roms' rows only exist if someone runs
+            -- roms_forecast_ingestor.py by hand, which isn't part of the automatic pipeline.
+            AND fc.provider IN ('predsea_wrf', 'predsea_croco', 'predsea_nemo', 'predsea_swan')
             AND fc.value IS NOT NULL
             AND obs.value IS NOT NULL
             -- KNOWN LIMITATION (see model_comparison.py for the fix): fc.reference_station_id

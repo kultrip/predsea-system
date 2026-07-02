@@ -88,12 +88,14 @@ def test_pair_forecasts_with_observations_respects_time_tolerance():
     annotated_rows = [
         {
             "variable": "wave_height",
+            "provider": "predsea_swan",
             "value": 1.2,
             "target_time_utc": _t(6, 0),
             "matched_station_id": "palma_buoy",
         },
         {
             "variable": "wave_height",
+            "provider": "predsea_swan",
             "value": 1.5,
             "target_time_utc": _t(9, 0),
             "matched_station_id": "palma_buoy",
@@ -106,40 +108,67 @@ def test_pair_forecasts_with_observations_respects_time_tolerance():
         {"station_id": "palma_buoy", "variable": "wave_height", "value": 2.0, "observed_at_utc": _t(9, 45)},
     ]
     pairs = mc.pair_forecasts_with_observations(annotated_rows, observation_rows, time_tolerance_minutes=30)
-    assert pairs["wave_height"]["own"] == [1.2]
-    assert pairs["wave_height"]["obs"] == [1.0]
+    key = ("wave_height", "predsea_swan")
+    assert pairs[key]["own"] == [1.2]
+    assert pairs[key]["obs"] == [1.0]
+
+
+def test_pair_forecasts_keeps_croco_and_nemo_separate():
+    # Both models sample the same point/time and both report current_speed --
+    # they must not be pooled into one bucket just because the variable matches.
+    annotated_rows = [
+        {"variable": "current_speed", "provider": "predsea_croco", "value": 0.5, "target_time_utc": _t(6, 0), "matched_station_id": "palma_buoy"},
+        {"variable": "current_speed", "provider": "predsea_nemo", "value": 0.9, "target_time_utc": _t(6, 0), "matched_station_id": "palma_buoy"},
+    ]
+    observation_rows = [
+        {"station_id": "palma_buoy", "variable": "current_speed", "value": 0.6, "observed_at_utc": _t(6, 5)},
+    ]
+    pairs = mc.pair_forecasts_with_observations(annotated_rows, observation_rows, time_tolerance_minutes=30)
+    assert pairs[("current_speed", "predsea_croco")]["own"] == [0.5]
+    assert pairs[("current_speed", "predsea_nemo")]["own"] == [0.9]
 
 
 def test_build_comparison_report_reports_insufficient_data_honestly():
     # Only 2 real matched pairs, below the default minimum sample size of 5 --
     # the report must say so, not compute a metric anyway.
-    pairs_by_variable = {
-        "wave_height": {"own": [1.1, 1.3], "obs": [1.0, 1.2], "stations": {"palma_buoy"}},
+    pairs_by_variable_provider = {
+        ("wave_height", "predsea_swan"): {"own": [1.1, 1.3], "obs": [1.0, 1.2], "stations": {"palma_buoy"}},
     }
-    report = mc.build_comparison_report(pairs_by_variable, min_sample_size=5, target_date="2026-07-02")
+    report = mc.build_comparison_report(pairs_by_variable_provider, min_sample_size=5, target_date="2026-07-02")
     assert report["data_source"] == "real"
-    assert report["variables"]["wave_height"]["status"] == "insufficient_sample_size"
-    assert "metrics_own_model" not in report["variables"]["wave_height"]
-    # Untouched variables must say plainly that there was no real matched data at all.
-    assert report["variables"]["wind_speed"]["status"] == "no_real_matched_pairs"
-    assert report["summary"]["variables_with_real_comparison"] == 0
+    assert report["variables"]["wave_height"]["predsea_swan"]["status"] == "insufficient_sample_size"
+    assert "metrics_own_model" not in report["variables"]["wave_height"]["predsea_swan"]
+    # Untouched (variable, provider) pairs must say plainly there was no real matched data.
+    assert report["variables"]["wind_speed"]["predsea_wrf"]["status"] == "no_real_matched_pairs"
+    assert report["summary"]["variable_provider_pairs_with_real_comparison"] == 0
 
 
 def test_build_comparison_report_reports_real_metrics_when_enough_data():
-    pairs_by_variable = {
-        "wave_height": {
+    pairs_by_variable_provider = {
+        ("wave_height", "predsea_swan"): {
             "own": [1.1, 1.3, 0.9, 1.0, 1.2],
             "obs": [1.0, 1.2, 1.0, 0.9, 1.1],
             "stations": {"palma_buoy"},
         }
     }
-    report = mc.build_comparison_report(pairs_by_variable, min_sample_size=5, target_date="2026-07-02")
-    assert report["variables"]["wave_height"]["status"] == "compared"
-    assert report["variables"]["wave_height"]["metrics_own_model"]["sample_size"] == 5
-    assert report["summary"]["variables_with_real_comparison"] == 1
+    report = mc.build_comparison_report(pairs_by_variable_provider, min_sample_size=5, target_date="2026-07-02")
+    assert report["variables"]["wave_height"]["predsea_swan"]["status"] == "compared"
+    assert report["variables"]["wave_height"]["predsea_swan"]["metrics_own_model"]["sample_size"] == 5
+    assert report["summary"]["variable_provider_pairs_with_real_comparison"] == 1
     # own_beats_cmems must never appear -- that comparison isn't wired up yet, and
     # must not be guessed at.
-    assert "own_beats_cmems" not in report["variables"]["wave_height"]
+    assert "own_beats_cmems" not in report["variables"]["wave_height"]["predsea_swan"]
+
+
+def test_build_comparison_report_keeps_croco_and_nemo_as_separate_entries():
+    pairs_by_variable_provider = {
+        ("current_speed", "predsea_croco"): {"own": [0.5] * 5, "obs": [0.6] * 5, "stations": {"palma_buoy"}},
+    }
+    report = mc.build_comparison_report(pairs_by_variable_provider, min_sample_size=5, target_date="2026-07-02")
+    assert report["variables"]["current_speed"]["predsea_croco"]["status"] == "compared"
+    # NEMO wasn't given any real pairs here, so it must independently say so --
+    # never inherit CROCO's result.
+    assert report["variables"]["current_speed"]["predsea_nemo"]["status"] == "no_real_matched_pairs"
 
 
 if __name__ == "__main__":
