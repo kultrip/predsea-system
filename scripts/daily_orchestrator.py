@@ -335,6 +335,26 @@ def main():
         print("❌ Error: Climatology Anomaly Check script returned an execution failure.")
         sys.exit(1)
 
+    # Step 6: Real model-vs-observation validation (non-fatal -- validation reporting
+    # must never block the core forecast pipeline from completing, same philosophy as
+    # the rest of this ETL: e.g. BigQuery export failures don't break ingestion).
+    log_step("6. Real Model Comparison (WRF/CROCO/NEMO/SWAN vs. real buoy observations)")
+
+    comparison_cmd = [
+        python_bin, str(HUMANINTHELOOP_DIR / "scripts" / "model_comparison.py"),
+        f"--date={run_date}",
+    ]
+    if args.project:
+        comparison_cmd.append(f"--project={args.project}")
+
+    comparison_rc = run_subprocess(comparison_cmd, dry_run=args.dry_run)
+    if comparison_rc != 0:
+        print(
+            "⚠️ Warning: model_comparison.py returned a non-zero exit code. This does NOT "
+            "fail the daily run -- validation reporting is best-effort, same as the rest "
+            "of this pipeline. Check logs for this step separately if the report looks stale."
+        )
+
     print("\n🌟 =================================================================")
     print("🏆 PredSea end-to-end daily forecasting orchestrator run successfully!")
     print(f"Run date {run_date} completed successfully.")
