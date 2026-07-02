@@ -1,19 +1,43 @@
-# Runbook: getting a real WRF/ROMS/SWAN run validated (not simulated)
+# Runbook: getting a real WRF/CROCO/NEMO/SWAN run validated (not simulated)
 
 This is the part of the July 2 fix that can't be done from a sandboxed environment
 without your GCP credentials — it has to run on your machine (or CI) with real
-`gcloud`/`GOOGLE_APPLICATION_CREDENTIALS` access and will spend real credit. Steps 2–5
-of the code fix (ingestion, comparison, cost reporting) are already done and tested in
-this repo; this runbook is just Step 1 plus how to confirm the rest actually works
-against real data.
+`gcloud`/`GOOGLE_APPLICATION_CREDENTIALS` access and will spend real credit.
+
+As of the second correction pass (also July 2), `scripts/daily_orchestrator.py` —
+the script actually wired to the `0 3 * * *` (03:00 Europe/Madrid) Cloud Scheduler
+job created by `infra/deploy.sh` — automatically runs the whole chain: boundary
+fetch, Spot VM launch, ingestion for **WRF, CROCO, NEMO, and SWAN** (not ROMS —
+`roms_forecast_ingestor.py` exists but isn't called by the scheduled job), the
+daily briefing, the climatology anomaly check, and now a real model-comparison
+step. So most of this runbook describes what happens automatically and how to
+check it worked — not manual steps you need to run every day.
+
+`hpc_cost_summary.py` is deliberately **not** wired into the automatic run (your
+call) — run it manually per Section 5 if/when you want a cost report.
 
 ## 0. Before you spend anything
 
 - Confirm your project/billing account: `gcloud config get-value project` should show your real project (per `humanintheloop/docs/bigquery-evidence-rows.md`, the account used for backfills is `hello@predsea.com` — make sure you're not accidentally pointed at a different ADC identity).
 - Confirm the WRF/WPS compile artifact from your June 23 Cloud Build run still exists (check whatever image/tag `scripts/vm_startup.sh` expects — `--image-tag latest` by default). If it's gone, you'll compile again before you can run.
-- Decide scope for this first real run: **WRF + SWAN only** is the safer first attempt — ROMS compilation is referenced across multiple scripts but the production `simulation/Dockerfile` doesn't currently build it, so confirm your ROMS binary is actually wired into `vm_startup.sh` before expecting ROMS output. If it isn't, run WRF+SWAN first and add ROMS once its build path is confirmed.
+- Confirm CROCO and NEMO are actually wired into `vm_startup.sh` and the production Dockerfile — `simulation/Dockerfile` only builds WRF/WPS as of this writing, so double check the image `--image-tag latest` actually points to before assuming CROCO/NEMO output will be there.
 
-## 1. Launch the real Spot VM run
+## 1. Trigger a real run
+
+To exercise the exact path the 3am scheduler uses (boundaries → Spot VM → all four
+ingestors → briefing → anomaly check → model comparison):
+
+```bash
+python scripts/daily_orchestrator.py \
+  --project <your-project-id> \
+  --run-date 2026-07-0X \
+  --zone europe-west1-b \
+  --machine-type c2d-standard-32 \
+  --gcs-bucket predsea-daily-outputs
+```
+
+Or, to launch just the Spot VM and drive the rest yourself step by step (useful for
+debugging a specific stage):
 
 ```bash
 python scripts/gcp_orchestrator.py \
@@ -25,11 +49,10 @@ python scripts/gcp_orchestrator.py \
   --execution-mode container
 ```
 
-This prints the instance name and the exact GCS prefix it will write to
-(`gs://<bucket>/predictions/<run-date>/runs/<run-id>/`) — write both down, you'll need
-the run-id for every step below.
+Either way, write down the instance name and run-id printed — you'll need the
+run-id if you re-run any single step manually later.
 
-Monitor it (this is the exact command the script itself prints):
+Monitor the VM (this is the exact command the script itself prints):
 
 ```bash
 gcloud compute instances get-serial-port-output <instance-name> --zone=europe-west1-b --project=<your-project-id>
@@ -47,30 +70,17 @@ gsutil ls -r gs://predsea-daily-outputs/predictions/<run-date>/runs/<run-id>/
 ```
 
 You're looking for `.nc`/`.nc4` files whose names contain `d03` or `wrfout` (WRF),
-`roms`/`his`/`avg` (ROMS), or `swan`/`wave` (SWAN) — those are the exact patterns
-`scripts/*_forecast_ingestor.py` search for. If nothing matches those patterns, the
-ingestors won't find anything to ingest even if the run technically succeeded —
-check the actual filenames the model containers wrote and adjust the ingestor's
+`croco`/`his`/`avg` (CROCO), `nemo` (NEMO), or `swan`/`wave` (SWAN) — those are the
+exact patterns `scripts/*_forecast_ingestor.py` search for. If nothing matches, the
+ingestors won't find anything even if the run technically succeeded — check the
+actual filenames the model containers wrote and adjust the ingestor's
 `download_*_file_from_gcs()` match patterns if they've drifted, rather than renaming
 files by hand every time.
 
-## 3. Ingest the real output
+## 3. Confirm ingestion actually happened
 
-```bash
-export PREDSEA_ENV=prod
-export GOOGLE_CLOUD_PROJECT=<your-project-id>
-export PREDSEA_BIGQUERY_DATASET=predsea_validation
-
-python scripts/wrf_forecast_ingestor.py  --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
-python scripts/swan_forecast_ingestor.py --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
-# only if ROMS output actually landed in step 2:
-python scripts/roms_forecast_ingestor.py --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
-```
-
-Add `--dry-run` first to sanity-check the parsed rows (including the new
-`latitude`/`longitude` fields added 2026-07-02) before writing to BigQuery.
-
-Confirm the rows actually landed:
+If you ran `daily_orchestrator.py`, this already happened automatically (step "3b").
+Confirm it in BigQuery:
 
 ```sql
 SELECT provider, COUNT(*), MIN(target_time_utc), MAX(target_time_utc)
@@ -79,7 +89,30 @@ WHERE record_type = 'forecast' AND run_date = '<run-date>'
 GROUP BY provider
 ```
 
-## 4. Run the real comparison (not the old synthetic one)
+You should see rows for `predsea_wrf`, `predsea_croco`, `predsea_nemo`, and
+`predsea_swan`. If you need to re-run a single ingestor by hand (e.g. after fixing a
+filename-matching issue):
+
+```bash
+export PREDSEA_ENV=prod
+export GOOGLE_CLOUD_PROJECT=<your-project-id>
+export PREDSEA_BIGQUERY_DATASET=predsea_validation
+
+python scripts/wrf_forecast_ingestor.py   --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
+python scripts/croco_forecast_ingestor.py --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
+python scripts/nemo_forecast_ingestor.py  --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
+python scripts/swan_forecast_ingestor.py  --run-date <run-date> --run-id <run-id> --gcs-bucket predsea-daily-outputs
+```
+
+Add `--dry-run` first to sanity-check the parsed rows (including the
+`latitude`/`longitude` fields added 2026-07-02) before writing to BigQuery.
+
+## 4. The real comparison (also automatic now, step 6 of the orchestrator)
+
+If you ran `daily_orchestrator.py`, `humanintheloop/scripts/model_comparison.py`
+already ran as step 6 and uploaded `accuracy_comparison.json` to
+`gs://predsea-hpc-outputs/reports/<run-date>/`. To re-run it manually (e.g. to
+backfill an earlier date, or with different matching tolerances):
 
 ```bash
 cd humanintheloop
@@ -89,26 +122,29 @@ python scripts/model_comparison.py --date <run-date> --project <your-project-id>
 Expect one of a few honest outcomes, not automatically a win:
 - `no_forecast_data` — step 3 didn't actually write rows for that date; check the BigQuery query above.
 - `no_nearby_stations` — your forecast sampling points aren't within 25nm of a station in `station_metadata`; widen `--max-station-distance-nm` or check that table has real recent rows.
-- A real report with some variables `"status": "compared"` and real RMSE/bias/correlation, and others `"status": "insufficient_sample_size"` if you don't have 5+ matched pairs yet for that variable. This is normal for a first run — one day of hourly data gives at most ~24 points per variable per station, and buoy coverage is uneven.
+- A real report where `variables.<name>.<provider>` shows `"status": "compared"` with real RMSE/bias/correlation for some (variable, model) pairs, and `"insufficient_sample_size"` for others if you don't have 5+ matched pairs yet. Note **CROCO and NEMO are reported separately** even for the same physical variable (e.g. `current_speed`) — they're two different models the orchestrator runs in parallel, not two names for the same run. This is normal for a first run — one day of hourly data gives at most ~24 points per (variable, model, station), and buoy coverage is uneven.
 
-## 5. Regenerate the cost/status summary
+## 5. Cost reporting (optional, manual, not wired into the automatic run)
+
+By your own call, `hpc_cost_summary.py` is not part of the automatic daily run. If
+you want a real cost number for a given day, run it manually:
 
 ```bash
-python scripts/hpc_cost_summary.py --date <run-date>
+python humanintheloop/scripts/hpc_cost_summary.py --date <run-date>
 ```
 
-If you didn't separately log `reports/<run-date>/{wrf,roms,swan}_cost.json` or
-`_runtime.json` to GCS during the run, this will correctly say
-`no_real_cost_recorded` rather than guess — if you want a real cost number, capture
-the VM's actual runtime (start/end timestamps from the serial log in step 1) and drop
-a small `{"vm_type": "...", "wallclock_minutes": ...}` JSON at
-`gs://predsea-hpc-outputs/reports/<run-date>/wrf_runtime.json` (etc.) before rerunning
-this script — it'll turn that into a labeled estimate automatically.
+If you didn't separately log `reports/<run-date>/{wrf,croco,nemo,swan}_cost.json` or
+`_runtime.json` to GCS during the run, this correctly says `no_real_cost_recorded`
+rather than guessing — to get a real cost, capture the VM's actual runtime
+(start/end timestamps from the serial log in step 1) and drop a small
+`{"vm_type": "...", "wallclock_minutes": ...}` JSON at
+`gs://predsea-hpc-outputs/reports/<run-date>/wrf_runtime.json` (etc.) before
+rerunning — it'll turn that into a labeled estimate automatically.
 
 ## 6. What "done" looks like
 
-Not "12/12 wins" — a report you could hand to Google's engineer or your own team that
-says, for however many variables had enough real data: real sample size, real RMSE,
-real bias, which real station it was checked against, and an honest
-`no_real_cost_recorded` or a clearly-labeled estimate for cost. That's a smaller
-number than the old file claimed, and a far more useful one.
+Not "12/12 wins" — a report you could hand to Google's engineer or your own team
+that says, for however many (variable, model) pairs had enough real data: real
+sample size, real RMSE, real bias, which real station it was checked against. If
+`daily_orchestrator.py` runs clean tonight, you'll have this automatically every
+morning without touching anything.
