@@ -102,10 +102,23 @@ def delete_gce_instance(instance_name: str, zone: str, project_id: str | None = 
 
 
 def main():
+    # Resolve project paths and import configuration defaults
+    HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
+    if str(HUMANINTHELOOP_DIR) not in sys.path:
+        sys.path.insert(0, str(HUMANINTHELOOP_DIR))
+
+    try:
+        from api.config import PREDSEA_GCS_BUCKET
+    except ImportError:
+        env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+        if env not in ("test", "prod"):
+            env = "test"
+        PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
+
     parser = argparse.ArgumentParser(description="PredSea daily master end-to-end forecasting orchestrator.")
     parser.add_argument("--run-date", help="ISO Run Date YYYY-MM-DD. Defaults to Europe/Madrid today.")
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
-    parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="Cloud Storage Bucket name")
+    parser.add_argument("--gcs-bucket", default=PREDSEA_GCS_BUCKET, help="Cloud Storage Bucket name")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
     parser.add_argument("--machine-type", default="c2d-standard-32", help="GCP Machine Type for Spot VM")
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")

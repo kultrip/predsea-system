@@ -228,9 +228,24 @@ def generate_warnings(rows: list[dict], generated_at_utc: str) -> list[dict]:
 
 
 def main():
+    import sys
+    from pathlib import Path
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
+    if str(HUMANINTHELOOP_DIR) not in sys.path:
+        sys.path.insert(0, str(HUMANINTHELOOP_DIR))
+
+    try:
+        from api.config import PREDSEA_BIGQUERY_DATASET
+    except ImportError:
+        env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+        if env not in ("test", "prod"):
+            env = "test"
+        PREDSEA_BIGQUERY_DATASET = os.environ.get("PREDSEA_BIGQUERY_DATASET") or f"predsea_validation_{env}"
+
     parser = argparse.ArgumentParser(description="Check BigQuery observations against climatology baseline for anomalies.")
     parser.add_argument("--project", help="BigQuery GCP Project ID")
-    parser.add_argument("--dataset", default="predsea_validation", help="BigQuery Dataset ID")
+    parser.add_argument("--dataset", default=PREDSEA_BIGQUERY_DATASET, help="BigQuery Dataset ID")
     parser.add_argument("--evidence-table", default="evidence_rows", help="Evidence Rows Table Name")
     parser.add_argument("--climatology-table", default="climatology_baseline", help="Climatology Baseline Table Name")
     parser.add_argument("--location", default="EU", help="BigQuery dataset location")
@@ -241,7 +256,7 @@ def main():
     args = parser.parse_args()
 
     project_id = args.project or resolve_env("PREDSEA_BIGQUERY_PROJECT", "GOOGLE_CLOUD_PROJECT")
-    dataset_id = args.dataset or resolve_env("PREDSEA_BIGQUERY_DATASET", "BQ_DATASET", default="predsea_validation")
+    dataset_id = args.dataset or resolve_env("PREDSEA_BIGQUERY_DATASET", "BQ_DATASET", default=PREDSEA_BIGQUERY_DATASET)
     evidence_table = args.evidence_table or resolve_env("PREDSEA_BIGQUERY_EVIDENCE_TABLE", "BQ_TABLE_EVIDENCE", default="evidence_rows")
     climatology_table = args.climatology_table or resolve_env("PREDSEA_BIGQUERY_CLIMATOLOGY_TABLE", "BQ_TABLE_CLIMATOLOGY", default="climatology_baseline")
     api_url = args.api_url or resolve_env("PREDSEA_API_URL", default="http://localhost:8000").rstrip("/")

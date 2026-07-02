@@ -37,13 +37,22 @@ CLIMATOLOGY_SCHEMA = [
 
 
 def main(argv=None):
+    try:
+        from api.config import PREDSEA_BIGQUERY_DATASET, PREDSEA_GCS_BUCKET
+    except ImportError:
+        env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+        if env not in ("test", "prod"):
+            env = "test"
+        PREDSEA_BIGQUERY_DATASET = os.environ.get("PREDSEA_BIGQUERY_DATASET") or f"predsea_validation_{env}"
+        PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
+
     parser = argparse.ArgumentParser(description="Construct climatological baseline aggregated metrics from BigQuery and GCS observations.")
     parser.add_argument("--project", default=resolve_env("PREDSEA_BIGQUERY_PROJECT", "GOOGLE_CLOUD_PROJECT"))
-    parser.add_argument("--dataset", default=resolve_env("PREDSEA_BIGQUERY_DATASET", "BQ_DATASET", default="predsea_validation"))
+    parser.add_argument("--dataset", default=resolve_env("PREDSEA_BIGQUERY_DATASET", "BQ_DATASET", default=PREDSEA_BIGQUERY_DATASET))
     parser.add_argument("--evidence-table", default=resolve_env("PREDSEA_BIGQUERY_EVIDENCE_TABLE", "BQ_TABLE_EVIDENCE", default="evidence_rows"))
     parser.add_argument("--climatology-table", default=resolve_env("PREDSEA_BIGQUERY_CLIMATOLOGY_TABLE", "BQ_TABLE_CLIMATOLOGY", default="climatology_baseline"))
     parser.add_argument("--location", default=resolve_env("PREDSEA_BIGQUERY_LOCATION", "BQ_LOCATION", default="EU"))
-    parser.add_argument("--gcs-bucket", default=resolve_env("PREDSEA_CLIMATOLOGY_GCS_BUCKET", default="predsea-daily-outputs"))
+    parser.add_argument("--gcs-bucket", default=resolve_env("PREDSEA_CLIMATOLOGY_GCS_BUCKET", default=PREDSEA_GCS_BUCKET))
     parser.add_argument("--gcs-prefix", default=resolve_env("PREDSEA_CLIMATOLOGY_GCS_PREFIX", default="predictions"))
     parser.add_argument("--start-date", default="2019-01-01")
     parser.add_argument("--end-date", default="2025-01-01")

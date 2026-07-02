@@ -107,11 +107,27 @@ def launch_spot_vm(args):
 
 
 def main():
+    import sys
+    from pathlib import Path
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
+    if str(HUMANINTHELOOP_DIR) not in sys.path:
+        sys.path.insert(0, str(HUMANINTHELOOP_DIR))
+
+    try:
+        from api.config import PREDSEA_GCS_BUCKET
+    except ImportError:
+        import os
+        env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+        if env not in ("test", "prod"):
+            env = "test"
+        PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
+
     parser = argparse.ArgumentParser(description="Launch ephemeral Spot VMs for high-resolution WRF/ROMS runs.")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
     parser.add_argument("--machine-type", default="c2d-standard-32", help="GCP Machine Type (e.g. c2d-standard-32, c2d-standard-16)")
-    parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="Cloud Storage Bucket name")
+    parser.add_argument("--gcs-bucket", default=PREDSEA_GCS_BUCKET, help="Cloud Storage Bucket name")
     parser.add_argument("--run-date", help="ISO run date YYYY-MM-DD (defaults to today)")
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")

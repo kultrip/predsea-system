@@ -133,6 +133,22 @@ def fetch_ecmwf_data(
 
 
 def parse_args() -> argparse.Namespace:
+    import sys
+    from pathlib import Path
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
+    if str(HUMANINTHELOOP_DIR) not in sys.path:
+        sys.path.insert(0, str(HUMANINTHELOOP_DIR))
+
+    try:
+        from api.config import PREDSEA_GCS_BUCKET
+    except ImportError:
+        import os
+        env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+        if env not in ("test", "prod"):
+            env = "test"
+        PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
+
     parser = argparse.ArgumentParser(description="Download ECMWF Open Data forcing for WRF.")
     parser.add_argument(
         "--run-date",
@@ -160,7 +176,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--gcs-bucket",
-        default="predsea-daily-outputs",
+        default=PREDSEA_GCS_BUCKET,
         help="GCS bucket name for archiving raw forcing (skips if empty)",
     )
     parser.add_argument(

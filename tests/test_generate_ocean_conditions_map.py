@@ -47,3 +47,18 @@ def test_cli_defaults_to_black_current_arrows():
     module = load_map_script()
 
     assert module.parse_args(["--waves", "waves.nc", "--output", "map.png"]).arrow_color == "black"
+
+
+def test_cli_accepts_scalar_and_vector_variables():
+    module = load_map_script()
+    args = module.parse_args([
+        "--waves", "waves.nc",
+        "--output", "map.png",
+        "--scalar-var", "VHM0_SW1",
+        "--vector-var", "wave_dir",
+        "--wind", "wind.nc",
+    ])
+    assert args.scalar_var == "VHM0_SW1"
+    assert args.vector_var == "wave_dir"
+    assert args.wind == "wind.nc"
+

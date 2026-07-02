@@ -21,11 +21,24 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "outputs"
-COPERNICUS_GCS_PREFIX = "gs://predsea-daily-outputs/copernicus"
+
+human_path = str(HUMANINTHELOOP_DIR)
+if human_path not in sys.path:
+    sys.path.insert(0, human_path)
+
+try:
+    from api.config import PREDSEA_GCS_BUCKET
+except ImportError:
+    env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+    if env not in ("test", "prod"):
+        env = "test"
+    PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
+
+COPERNICUS_GCS_PREFIX = f"gs://{PREDSEA_GCS_BUCKET}/copernicus"
 COPERNICUS_LATEST_WAVES_GCS_URI = f"{COPERNICUS_GCS_PREFIX}/waves_latest.nc"
 COPERNICUS_LATEST_CURRENTS_GCS_URI = f"{COPERNICUS_GCS_PREFIX}/currents_latest.nc"
 COPERNICUS_BUNDLE_GCS_PREFIX = f"{COPERNICUS_GCS_PREFIX}/bundles"
-ROUTES_GCS_PREFIX = "gs://predsea-daily-outputs/routes"
+ROUTES_GCS_PREFIX = f"gs://{PREDSEA_GCS_BUCKET}/routes"
 PRECOMPUTE_ROUTES_SCRIPT = HUMANINTHELOOP_DIR / "files" / "precompute_routes.py"
 DEFAULT_LOCAL_TIMEZONE = "Europe/Madrid"
 ROUTE_PRECOMPUTE_TIMEOUT_SECONDS = int(os.environ.get("PREDSEA_ROUTE_PRECOMPUTE_TIMEOUT_SECONDS", "1200"))
@@ -43,10 +56,6 @@ REGIONAL_LIMITATIONS = (
     "No anchoring restrictions",
     "No nearby shelter search",
 )
-
-human_path = str(HUMANINTHELOOP_DIR)
-if human_path not in sys.path:
-    sys.path.insert(0, human_path)
 
 import source_lineage
 
@@ -369,16 +378,48 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
     if skip_maps:
         return None
     output_path = route_dir / "route_decision_map.png"
+    
+    # Calculate dynamic extent from route coordinates
+    lat1 = float(route["origin"]["latitude"])
+    lon1 = float(route["origin"]["longitude"])
+    lat2 = float(route["destination"]["latitude"])
+    lon2 = float(route["destination"]["longitude"])
+    
+    lon_min = min(lon1, lon2)
+    lon_max = max(lon1, lon2)
+    lat_min = min(lat1, lat2)
+    lat_max = max(lat1, lat2)
+    
+    # Add padding to map boundaries
+    padding = 0.6
+    lon_min -= padding
+    lon_max += padding
+    lat_min -= padding
+    lat_max += padding
+    
+    # Keep minimum span of 1.8 degrees to look premium
+    min_span = 1.8
+    if (lon_max - lon_min) < min_span:
+        mid_lon = (lon_min + lon_max) / 2
+        lon_min = mid_lon - min_span / 2
+        lon_max = mid_lon + min_span / 2
+    if (lat_max - lat_min) < min_span:
+        mid_lat = (lat_min + lat_max) / 2
+        lat_min = mid_lat - min_span / 2
+        lat_max = mid_lat + min_span / 2
+        
+    extent = [lon_min, lon_max, lat_min, lat_max]
+    
     publication_map = load_publication_map_generator()
     publication_map.generate_ocean_conditions_map(
         waves_path,
         output_path,
         currents_path=currents_path,
         requested_time=snapshot.get("forecast", {}).get("wave_peak_time"),
-        title="PredSea Balearic Sea Conditions",
+        title=f"PredSea Route Conditions: {route.get('name', 'Transit Route')}",
         resolution_label=resolution_label,
         coastline_resolution="10m",
-        extent=[0.9, 4.55, 38.55, 40.55],
+        extent=extent,
         dpi=220,
         arrow_density="normal",
         arrow_color="black",
