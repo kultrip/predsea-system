@@ -854,9 +854,51 @@ def haversine_nm(lat1, lon1, lat2, lon2):
     return earth_radius_nm * c
 
 
+def parse_utc_timestamp_lenient(val):
+    if not val:
+        return None
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            return val.replace(tzinfo=timezone.utc)
+        return val.astimezone(timezone.utc)
+    val_str = str(val).strip()
+    if val_str.endswith(" UTC"):
+        val_str = val_str[:-4].strip()
+    if "T" in val_str:
+        try:
+            dt = datetime.fromisoformat(val_str.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except ValueError:
+            pass
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(val_str, fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
 def closest_hourly_sample(hourly, eta):
     if not hourly:
         return None
+
+    eta_utc = parse_utc_timestamp_lenient(eta)
+    if eta_utc is not None:
+        best_row = None
+        best_diff_seconds = None
+        for row in hourly:
+            row_utc = parse_utc_timestamp_lenient(row.get("time_utc"))
+            if row_utc is not None:
+                diff_seconds = abs((row_utc - eta_utc).total_seconds())
+                if best_diff_seconds is None or diff_seconds < best_diff_seconds:
+                    best_diff_seconds = diff_seconds
+                    best_row = row
+        if best_row is not None:
+            return best_row
+
     eta_minutes = time_to_minutes(eta)
     if eta_minutes is None:
         return hourly[0]

@@ -553,6 +553,27 @@
     "observation_candidates": [
       "emodnet_messina"
     ]
+  },
+  {
+    "id": "montpellier",
+    "name": "Montpellier (Sète)",
+    "type": "main_port",
+    "latitude": 43.40,
+    "longitude": 3.69,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "montpellier",
+      "sete",
+      "port de sete",
+      "sete port",
+      "sete/montpellier",
+      "sete montpellier"
+    ],
+    "observation_candidates": [
+      "emodnet_sete",
+      "emodnet_montpellier"
+    ]
   }
 ]
 

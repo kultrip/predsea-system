@@ -2075,6 +2075,167 @@
         "latitude": 42.50
       }
     ]
+  },
+  "montpellier_palma": {
+    "id": "montpellier_palma",
+    "name": "Montpellier -> Palma",
+    "origin": {
+      "name": "Montpellier",
+      "longitude": 3.69,
+      "latitude": 43.40
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long-distance crossing from Sète/Montpellier to Mallorca crossing the Gulf of Lion.",
+    "sample_points": [
+      {
+        "name": "Sète Offshore",
+        "longitude": 3.75,
+        "latitude": 43.20
+      },
+      {
+        "name": "Gulf of Lion",
+        "longitude": 3.20,
+        "latitude": 41.50
+      },
+      {
+        "name": "Palma approach",
+        "longitude": 2.70,
+        "latitude": 39.60
+      }
+    ]
+  },
+  "montpellier_barcelona": {
+    "id": "montpellier_barcelona",
+    "name": "Montpellier -> Barcelona",
+    "origin": {
+      "name": "Montpellier",
+      "longitude": 3.69,
+      "latitude": 43.40
+    },
+    "destination": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Coastal and offshore route from Montpellier along the Pyrenean coast to Barcelona.",
+    "sample_points": [
+      {
+        "name": "Sète Offshore",
+        "longitude": 3.75,
+        "latitude": 43.20
+      },
+      {
+        "name": "Costa Brava",
+        "longitude": 3.20,
+        "latitude": 41.80
+      },
+      {
+        "name": "Barcelona approach",
+        "longitude": 2.19,
+        "latitude": 41.20
+      }
+    ]
+  },
+  "montpellier_marseille": {
+    "id": "montpellier_marseille",
+    "name": "Montpellier -> Marseille",
+    "origin": {
+      "name": "Montpellier",
+      "longitude": 3.69,
+      "latitude": 43.40
+    },
+    "destination": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.30
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Short coastal run across the northern Gulf of Lion from Sète to Marseille.",
+    "sample_points": [
+      {
+        "name": "Gulf of Lion east",
+        "longitude": 4.50,
+        "latitude": 43.10
+      }
+    ]
+  },
+  "montpellier_genoa": {
+    "id": "montpellier_genoa",
+    "name": "Montpellier -> Genoa",
+    "origin": {
+      "name": "Montpellier",
+      "longitude": 3.69,
+      "latitude": 43.40
+    },
+    "destination": {
+      "name": "Genoa",
+      "longitude": 8.93,
+      "latitude": 44.41
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Coastal transit from Sète along the French Riviera to the Ligurian port of Genoa.",
+    "sample_points": [
+      {
+        "name": "Cote d'Azur transit",
+        "longitude": 6.50,
+        "latitude": 43.20
+      },
+      {
+        "name": "Genoa approach",
+        "longitude": 8.80,
+        "latitude": 44.20
+      }
+    ]
   }
 }
 

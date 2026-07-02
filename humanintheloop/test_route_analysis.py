@@ -239,6 +239,37 @@ def test_closest_hourly_sample_does_not_treat_midnight_as_eta():
     assert sample["wave_m"] == 1.1
 
 
+def test_closest_hourly_sample_with_full_datetimes():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    madrid_tz = ZoneInfo("Europe/Madrid")
+
+    hourly = [
+        {"time": "08:00", "time_utc": "2026-06-30 06:00 UTC", "wave_m": 0.1},
+        {"time": "18:00", "time_utc": "2026-06-30 16:00 UTC", "wave_m": 0.5},
+        {"time": "08:00", "time_utc": "2026-07-02 06:00 UTC", "wave_m": 1.2},
+        {"time": "18:00", "time_utc": "2026-07-02 16:00 UTC", "wave_m": 1.8},
+    ]
+
+    # Test 1: ETA matching June 30th 08:30 CEST (06:30 UTC)
+    eta_june30 = datetime(2026, 6, 30, 8, 30, tzinfo=madrid_tz)
+    sample_june30 = route_analysis.closest_hourly_sample(hourly, eta_june30)
+    assert sample_june30["time_utc"] == "2026-06-30 06:00 UTC"
+    assert sample_june30["wave_m"] == 0.1
+
+    # Test 2: ETA matching July 2nd 08:30 CEST (06:30 UTC)
+    eta_july2 = datetime(2026, 7, 2, 8, 30, tzinfo=madrid_tz)
+    sample_july2 = route_analysis.closest_hourly_sample(hourly, eta_july2)
+    assert sample_july2["time_utc"] == "2026-07-02 06:00 UTC"
+    assert sample_july2["wave_m"] == 1.2
+
+    # Test 3: ETA matching July 2nd 17:38 CEST (15:38 UTC)
+    eta_july2_evening = datetime(2026, 7, 2, 17, 38, tzinfo=madrid_tz)
+    sample_july2_evening = route_analysis.closest_hourly_sample(hourly, eta_july2_evening)
+    assert sample_july2_evening["time_utc"] == "2026-07-02 16:00 UTC"
+    assert sample_july2_evening["wave_m"] == 1.8
+
+
 def test_build_route_snapshot_embeds_passage_evidence_when_segments_exist():
     route = {
         "id": "palma_ibiza",

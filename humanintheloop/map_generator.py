@@ -269,23 +269,25 @@ def rgba_for_color(hex_color, alpha=255):
 def segment_color_for_wave(value):
     if value is None or value != value:
         return MUTED
-    if value >= 1.8:
-        return RED
-    if value >= 1.2:
-        return YELLOW
-    if value >= 0.7:
-        return "#39d98a"
-    return LOW_WAVE
+    if value <= 0.5:
+        return "#d0e6e4"  # Smooth
+    if value <= 1.25:
+        return "#78b5c5"  # Slight
+    if value <= 2.5:
+        return "#2c6d8a"  # Moderate
+    if value <= 4.0:
+        return "#d6802c"  # Rough
+    return "#b32c2c"      # Very rough
 
 
-def rainbow_wave_color(value, min_value=0.0, max_value=2.5):
+def rainbow_wave_color(value, min_value=0.0, max_value=4.0):
     ratio = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
     stops = [
-        (0.00, (23, 68, 214)),
-        (0.25, (39, 221, 234)),
-        (0.50, (70, 220, 105)),
-        (0.72, (255, 216, 77)),
-        (1.00, (255, 83, 95)),
+        (0.0, (208, 230, 228)),      # #d0e6e4
+        (0.125, (120, 181, 197)),    # #78b5c5
+        (0.3125, (44, 109, 138)),    # #2c6d8a
+        (0.625, (214, 128, 44)),     # #d6802c
+        (1.0, (179, 44, 44)),        # #b32c2c
     ]
     for index in range(len(stops) - 1):
         start_pos, start = stops[index]
@@ -293,7 +295,7 @@ def rainbow_wave_color(value, min_value=0.0, max_value=2.5):
         if start_pos <= ratio <= end_pos:
             local = (ratio - start_pos) / (end_pos - start_pos)
             return blend(start, end, local)
-    return RED
+    return "#b32c2c"
 
 
 def draw_wave_field(draw, wave, map_box, bounds):
@@ -301,7 +303,7 @@ def draw_wave_field(draw, wave, map_box, bounds):
     lats = [float(value) for value in wave["latitude"].values]
     values = wave.values
     min_value = 0.0
-    max_value = max(2.5, max(float(value) for row in values for value in row if value == value))
+    max_value = max(4.0, max(float(value) for row in values for value in row if value == value))
     for lat_index, lat in enumerate(lats):
         for lon_index, lon in enumerate(lons):
             value = float(values[lat_index][lon_index])
@@ -324,16 +326,8 @@ def draw_wave_field(draw, wave, map_box, bounds):
             )
 
 
-def wave_color(value, min_value=0.0, max_value=2.5):
-    ratio = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
-    if ratio < 0.45:
-        local = ratio / 0.45
-        return blend((9, 61, 80), (37, 229, 240), local)
-    if ratio < 0.75:
-        local = (ratio - 0.45) / 0.30
-        return blend((37, 229, 240), (255, 216, 77), local)
-    local = (ratio - 0.75) / 0.25
-    return blend((255, 216, 77), (255, 107, 107), local)
+def wave_color(value, min_value=0.0, max_value=4.0):
+    return rainbow_wave_color(value, min_value, max_value)
 
 
 def blend(start, end, ratio):
@@ -498,9 +492,16 @@ def draw_legend(draw, map_box, fonts):
     bar = (legend[0] + 24, legend[1] + 68, legend[0] + 420, legend[1] + 94)
     for index in range(bar[0], bar[2]):
         ratio = (index - bar[0]) / (bar[2] - bar[0])
-        color = rainbow_wave_color(ratio * 2.5)
+        color = rainbow_wave_color(ratio * 4.0)
         draw.line((index, bar[1], index, bar[3]), fill=color, width=1)
-    for label, x in [("0", bar[0]), ("1.2", (bar[0] + bar[2]) / 2), ("2.5+", bar[2] - 44)]:
+    ticks = [
+        ("0.0", bar[0]),
+        ("0.5", bar[0] + (bar[2] - bar[0]) * 0.125),
+        ("1.25", bar[0] + (bar[2] - bar[0]) * 0.3125),
+        ("2.5", bar[0] + (bar[2] - bar[0]) * 0.625),
+        ("4.0+", bar[2] - 30)
+    ]
+    for label, x in ticks:
         draw.text((x, bar[3] + 8), label, font=fonts["micro"], fill=MUTED)
     draw.line((legend[0] + 470, bar[1] + 12, legend[0] + 535, bar[1] + 12), fill="#d8fbff", width=4)
     draw.text((legend[0] + 470, bar[3] + 8), "current", font=fonts["micro"], fill=MUTED)

@@ -9,7 +9,11 @@ from files.route_store import RouteStore as _BaseRouteStore
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_ROUTE_GCS_PREFIX = "gs://predsea-daily-outputs/routes"
+try:
+    from api.config import DEFAULT_ROUTE_GCS_PREFIX
+except ImportError:
+    DEFAULT_ROUTE_GCS_PREFIX = "gs://predsea-daily-outputs/routes"
+
 DEFAULT_API_TIMEZONE = "Europe/Madrid"
 
 

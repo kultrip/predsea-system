@@ -22,6 +22,12 @@
     "san antonio": "san_antonio",
     "sant antoni": "san_antonio",
     "sant antoni de portmany": "san_antonio",
-    "tarragona": "tarragona"
+    "tarragona": "tarragona",
+    "montpellier": "montpellier",
+    "sete": "montpellier",
+    "port de sete": "montpellier",
+    "sete port": "montpellier",
+    "sete/montpellier": "montpellier",
+    "sete montpellier": "montpellier"
   }
 }

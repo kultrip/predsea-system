@@ -376,8 +376,9 @@ class GcsEvidenceStore:
 
 
 def create_evidence_store_from_env():
+    from api.config import PREDSEA_GCS_BUCKET
     local_store = EvidenceStore()
-    bucket_name = os.environ.get("PREDSEA_GCS_BUCKET")
+    bucket_name = os.environ.get("PREDSEA_GCS_BUCKET") or PREDSEA_GCS_BUCKET
     if not bucket_name:
         return local_store
     return GcsEvidenceStore(
@@ -385,3 +386,4 @@ def create_evidence_store_from_env():
         prefix=os.environ.get("PREDSEA_GCS_PREFIX", DEFAULT_GCS_PREFIX),
         fallback_store=local_store,
     )
+

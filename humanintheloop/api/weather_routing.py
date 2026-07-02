@@ -3,6 +3,7 @@ import math
 import heapq
 import numpy as np
 import xarray as xr
+import pandas as pd
 
 DEFAULT_VESSEL_SPEED_KN = 15.0
 DEFAULT_W_WAVE = 0.5
@@ -20,6 +21,7 @@ class AStarWeatherRouter:
         vessel_speed: float = DEFAULT_VESSEL_SPEED_KN,
         w_wave: float = DEFAULT_W_WAVE,
         max_wave_height: float = DEFAULT_MAX_WAVE_HEIGHT,
+        vessel_profile = None,
     ):
         # Set paths to default if not provided
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,9 +32,21 @@ class AStarWeatherRouter:
 
         self.waves_path = waves_path
         self.currents_path = currents_path
-        self.vessel_speed = float(vessel_speed)
         self.w_wave = float(w_wave)
-        self.max_wave_height = float(max_wave_height)
+
+        if vessel_profile is not None:
+            self.vessel_profile = vessel_profile
+            self.vessel_speed = float(vessel_profile.cruising_speed_knots)
+            self.max_wave_height = float(vessel_profile.max_wave_height_tolerance_m)
+        else:
+            from api.schemas import VesselProfile
+            # Fallback to a default VesselProfile built from inputs
+            self.vessel_profile = VesselProfile(
+                cruising_speed_knots=float(vessel_speed),
+                max_wave_height_tolerance_m=float(max_wave_height)
+            )
+            self.vessel_speed = float(vessel_speed)
+            self.max_wave_height = float(max_wave_height)
 
         # Load datasets (using lazy-loaded class-level cache to optimize memory)
         self._load_datasets()
@@ -208,6 +222,7 @@ class AStarWeatherRouter:
         origin_lon: float,
         dest_lat: float,
         dest_lon: float,
+        departure_dt = None,
     ) -> dict:
         """
         Runs the 4D A* weather routing algorithm.
@@ -235,6 +250,14 @@ class AStarWeatherRouter:
         
         came_from = {}
 
+        # If departure_dt is provided, compute start_time_idx (the starting offset)
+        start_time_idx = 0
+        if departure_dt is not None:
+            dep_time = pd.to_datetime(departure_dt).tz_localize(None)
+            base_time = pd.to_datetime(self.times[0]).tz_localize(None)
+            diff_hours = (dep_time - base_time).total_seconds() / 3600.0
+            start_time_idx = max(0, int(round(diff_hours)))
+
         # Pre-cache coordinates to speed up indexing in the loop
         lat_values = self.lats
         lon_values = self.lons
@@ -257,6 +280,11 @@ class AStarWeatherRouter:
         # Note: current file longitude might be 85 vs wave file 84. Ensure boundary safety on indexing current
         current_lons_len = self.currents.longitude.shape[0]
         vo_matrix = self.currents.vo.values
+
+        # Extra matrices for Tp peak period heuristic
+        wave_height_matrix_ww = self.waves.VHM0_WW.values if "VHM0_WW" in self.waves else None
+        wave_height_matrix_sw1 = self.waves.VHM0_SW1.values if "VHM0_SW1" in self.waves else None
+        vtpk_matrix = self.waves.VTPK.values if "VTPK" in self.waves else None
 
         # Moore neighborhood movements (8 directions)
         moves = [
@@ -320,7 +348,7 @@ class AStarWeatherRouter:
             current_lon = lon_values[lon_idx]
 
             # Determine the appropriate time coordinate index based on physical duration elapsed
-            time_idx = min(int(math.floor(current_time)), max_time_idx)
+            time_idx = min(start_time_idx + int(math.floor(current_time)), max_time_idx)
 
             for d_lat, d_lon in moves:
                 n_lat_idx = lat_idx + d_lat
@@ -366,8 +394,27 @@ class AStarWeatherRouter:
                 # Projection dot product
                 c_proj = u_c * ux + v_c * uy
 
+                # Compute peak wave period Tp
+                if vtpk_matrix is not None:
+                    Tp = vtpk_matrix[time_idx, n_lat_idx, n_lon_idx]
+                    if np.isnan(Tp):
+                        Tp = 4.0
+                else:
+                    # Physical heuristic for Mediterranean wave period approximation
+                    ww = wave_height_matrix_ww[time_idx, n_lat_idx, n_lon_idx] if wave_height_matrix_ww is not None else 0.0
+                    sw1 = wave_height_matrix_sw1[time_idx, n_lat_idx, n_lon_idx] if wave_height_matrix_sw1 is not None else 0.0
+                    if ww > sw1 or sw1 < 0.2:
+                        Tp = 4.0  # Wind-sea dominated (steep wave chop)
+                    else:
+                        Tp = 6.0  # Swell-dominated (longer period)
+
+                # Apply speed degradation penalty: If small vessel (< 20m), Hs > 1m, and Tp < 5s, reduce cruising speed by 20%
+                current_speed = self.vessel_speed
+                if self.vessel_profile.length_over_all_m < 20.0 and float(H) > 1.0 and float(Tp) < 5.0:
+                    current_speed = self.vessel_speed * 0.8
+
                 # Effective vessel speed (ensure positive and safe)
-                v_eff = max(self.vessel_speed + c_proj, 1.0)
+                v_eff = max(current_speed + c_proj, 1.0)
 
                 # Compute step travel time (hours)
                 step_time_h = step_dist / v_eff

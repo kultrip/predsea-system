@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.evidence_store import EvidenceNotFoundError, create_evidence_store_from_env
+from api.config import PREDSEA_ENV
 from api.schemas import (
     BriefingResponse,
     CoordinateDistanceResponse,
@@ -786,7 +787,7 @@ def build_route_checkpoints(
             run_id=run_id,
             latitude=point["lat"],
             longitude=point["lng"],
-            eta_local_time_text=eta_local_time,
+            eta_local_time_text=eta_local,
         )
         checkpoints.append(
             {
@@ -1089,6 +1090,76 @@ def render_location_answer(intent, decision, samples, request):
     )
 
 
+def enrich_route_elements_with_headings(waypoints: list, date_str: str | None = None) -> list:
+    if not waypoints:
+        return waypoints
+
+    from pygeomag import GeoMag
+    import datetime
+    
+    # Resolve decimal year for magnetic variation
+    try:
+        dt = datetime.datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.datetime.now()
+    except Exception:
+        dt = datetime.datetime.now()
+    year_start = datetime.datetime(dt.year, 1, 1)
+    year_end = datetime.datetime(dt.year + 1, 1, 1)
+    decimal_year = dt.year + (dt - year_start) / (year_end - year_start)
+    
+    geo_mag = GeoMag()
+    
+    enriched = []
+    n = len(waypoints)
+    
+    def get_coords(wp):
+        lat = wp.get("lat") or wp.get("latitude")
+        lng = wp.get("lng") or wp.get("lon") or wp.get("longitude")
+        return float(lat), float(lng)
+
+    headings_cache = []
+    for i in range(n - 1):
+        lat1, lon1 = get_coords(waypoints[i])
+        lat2, lon2 = get_coords(waypoints[i+1])
+        
+        # Great circle course bearing calculation
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        delta_lambda = math.radians(lon2 - lon1)
+        
+        y = math.sin(delta_lambda) * math.cos(phi2)
+        x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(delta_lambda)
+        
+        true_course = math.degrees(math.atan2(y, x))
+        true_course = (true_course + 360) % 360
+        
+        # Magnetic variation calculation at waypoint i
+        variation = geo_mag.calculate(lat1, lon1, 0, decimal_year).d
+        magnetic_course = (true_course - variation) % 360
+        
+        headings_cache.append({
+            "true_heading_deg": round(true_course, 1),
+            "magnetic_variation_deg": round(variation, 2),
+            "magnetic_heading_deg": round(magnetic_course, 1)
+        })
+        
+    if headings_cache:
+        # For the last element, copy the values from the preceding element
+        headings_cache.append(dict(headings_cache[-1]))
+    else:
+        headings_cache.append({
+            "true_heading_deg": 0.0,
+            "magnetic_variation_deg": 0.0,
+            "magnetic_heading_deg": 0.0
+        })
+        
+    for i, wp in enumerate(waypoints):
+        wp_copy = dict(wp)
+        wp_copy.update(headings_cache[i])
+        enriched.append(wp_copy)
+        
+    return enriched
+
+
 def create_app(evidence_store=None, route_store=None):
     app = FastAPI(
         title="PredSea MVP API",
@@ -1134,7 +1205,39 @@ def create_app(evidence_store=None, route_store=None):
             "latest_date": latest_date,
             "latest_run": latest_run,
             "storage_backend": getattr(store, "storage_backend", "unknown"),
+            "environment": PREDSEA_ENV,
         }
+
+    @app.get("/navigation/magnetic-variation")
+    def get_magnetic_variation(
+        latitude: float = Query(..., ge=-90, le=90, description="Latitude coordinate"),
+        longitude: float = Query(..., ge=-180, le=180, description="Longitude coordinate"),
+        date: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$", description="Optional date format YYYY-MM-DD")
+    ):
+        try:
+            import datetime
+            from pygeomag import GeoMag
+            
+            if date:
+                dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+            else:
+                dt = datetime.datetime.now()
+                
+            year_start = datetime.datetime(dt.year, 1, 1)
+            year_end = datetime.datetime(dt.year + 1, 1, 1)
+            decimal_year = dt.year + (dt - year_start) / (year_end - year_start)
+            
+            geo_mag = GeoMag()
+            result = geo_mag.calculate(latitude, longitude, 0, decimal_year)
+            return {
+                "latitude": latitude,
+                "longitude": longitude,
+                "date": date or dt.strftime("%Y-%m-%d"),
+                "magnetic_variation_deg": round(result.d, 4)
+            }
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to calculate magnetic variation: {e}")
+
 
     @app.get("/routes")
     def routes(date: str | None = None, run: str | None = None):
@@ -1455,6 +1558,12 @@ def create_app(evidence_store=None, route_store=None):
         destination: str,
         priority: str = Query("comfort", pattern="^(time|comfort|safety)$"),
         vessel_class: str = Query("medium", pattern="^(small|medium|large)$"),
+        length_over_all_m: float | None = Query(None, ge=1.0, description="Vessel LOA in meters"),
+        beam_m: float | None = Query(None, ge=1.0, description="Vessel beam in meters"),
+        draft_m: float | None = Query(None, ge=0.1, description="Vessel draft in meters"),
+        vessel_type: str | None = Query(None, pattern="^(monohull|catamaran|sailing)$", description="Vessel type"),
+        cruising_speed_knots: float | None = Query(None, ge=1.0, description="Vessel cruising speed"),
+        max_wave_height_tolerance_m: float | None = Query(None, ge=0.5, description="Max wave height tolerance"),
     ):
         try:
             refresh_route_store(route_store)
@@ -1472,14 +1581,48 @@ def create_app(evidence_store=None, route_store=None):
                 raise EvidenceNotFoundError(
                     f"No precomputed route found for {origin_place_id} -> {destination_place_id}"
                 )
+            
+            # Resolve VesselProfile
+            from api.schemas import VesselProfile
+            profile = VesselProfile.from_vessel_class(vessel_class)
+            if length_over_all_m is not None:
+                profile.length_over_all_m = length_over_all_m
+            if beam_m is not None:
+                profile.beam_m = beam_m
+            if draft_m is not None:
+                profile.draft_m = draft_m
+            if vessel_type is not None:
+                profile.vessel_type = vessel_type
+            if cruising_speed_knots is not None:
+                profile.cruising_speed_knots = cruising_speed_knots
+            if max_wave_height_tolerance_m is not None:
+                profile.max_wave_height_tolerance_m = max_wave_height_tolerance_m
+
             response = dict(result)
             response["origin_place_name"] = origin_place["name"]
             response["destination_place_name"] = destination_place["name"]
             response["distance_nm"] = result.get("distance_nm")
             response["estimated_time_h"] = result.get("estimated_time_h")
+
+            # Enrich waypoints and checkpoints with compass headings
+            run_date = result.get("date")
+            if "waypoints" in response:
+                response["waypoints"] = enrich_route_elements_with_headings(response["waypoints"], run_date)
+            if "checkpoints" in response:
+                response["checkpoints"] = enrich_route_elements_with_headings(response["checkpoints"], run_date)
+
+            # Recommend strategic refuge safe havens
+            from api.safe_havens import SafeHavenFinder
+            finder = SafeHavenFinder()
+            response["backup_safe_havens"] = finder.find_nearest_refuges_for_route(
+                waypoints=response.get("waypoints", []),
+                vessel=profile
+            )
+
             return response
         except (EvidenceNotFoundError, ValueError) as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
 
     @app.get("/places/distance")
     def places_distance(origin: str, destination: str):
@@ -1658,7 +1801,14 @@ def create_app(evidence_store=None, route_store=None):
             gt=0,
             description="Typical vessel speed used to estimate travel time when the route geometry is returned.",
         ),
-        ):
+        vessel_class: str = Query("medium", pattern="^(small|medium|large)$"),
+        length_over_all_m: float | None = Query(None, ge=1.0, description="Vessel LOA in meters"),
+        beam_m: float | None = Query(None, ge=1.0, description="Vessel beam in meters"),
+        draft_m: float | None = Query(None, ge=0.1, description="Vessel draft in meters"),
+        vessel_type: str | None = Query(None, pattern="^(monohull|catamaran|sailing)$", description="Vessel type"),
+        cruising_speed_knots: float | None = Query(None, ge=1.0, description="Vessel cruising speed"),
+        max_wave_height_tolerance_m: float | None = Query(None, ge=0.5, description="Max wave height tolerance"),
+    ):
         try:
             refresh_route_store(route_store)
             try:
@@ -1679,20 +1829,44 @@ def create_app(evidence_store=None, route_store=None):
                 latitude=destination_latitude,
                 longitude=destination_longitude,
             )
+
+            # Resolve VesselProfile
+            from api.schemas import VesselProfile
+            profile = VesselProfile.from_vessel_class(vessel_class)
+            if length_over_all_m is not None:
+                profile.length_over_all_m = length_over_all_m
+            if beam_m is not None:
+                profile.beam_m = beam_m
+            if draft_m is not None:
+                profile.draft_m = draft_m
+            if vessel_type is not None:
+                profile.vessel_type = vessel_type
+            if cruising_speed_knots is not None:
+                profile.cruising_speed_knots = cruising_speed_knots
+            elif typical_speed_kn != 15.0:
+                profile.cruising_speed_knots = typical_speed_kn
+            else:
+                typical_speed_kn = profile.cruising_speed_knots
+
+            if max_wave_height_tolerance_m is not None:
+                profile.max_wave_height_tolerance_m = max_wave_height_tolerance_m
+
             # Try custom Metocean A* Weather Router for high-resolution Balearic grid, else fall back
             metrics = None
             is_mocked = getattr(place_registry.coordinates_route_geometry_metrics, "__name__", "") != "coordinates_route_geometry_metrics"
             if not is_mocked:
                 try:
                     from api.weather_routing import AStarWeatherRouter
-                    router = AStarWeatherRouter(vessel_speed=typical_speed_kn)
+                    router = AStarWeatherRouter(vessel_profile=profile)
                     if router.in_bounds(origin_side["latitude"], origin_side["longitude"]) and \
                        router.in_bounds(destination_side["latitude"], destination_side["longitude"]):
+                        departure_dt_local = parse_departure_datetime(run_date, departure_time)
                         route_metrics = router.find_route(
                             origin_lat=origin_side["latitude"],
                             origin_lon=origin_side["longitude"],
                             dest_lat=destination_side["latitude"],
                             dest_lon=destination_side["longitude"],
+                            departure_dt=departure_dt_local,
                         )
                         metrics = {
                             "origin_place_id": origin_side.get("place_id") or origin,
@@ -1736,6 +1910,22 @@ def create_app(evidence_store=None, route_store=None):
                 destination_latitude=destination_side["latitude"],
                 destination_longitude=destination_side["longitude"],
             )
+
+            # Enrich waypoints and checkpoints with compass headings
+            waypoints = metrics["waypoints"]
+            if waypoints:
+                waypoints = enrich_route_elements_with_headings(waypoints, run_date)
+            if checkpoints:
+                checkpoints = enrich_route_elements_with_headings(checkpoints, run_date)
+
+            # Recommend strategic refuge safe havens
+            from api.safe_havens import SafeHavenFinder
+            finder = SafeHavenFinder()
+            backup_havens = finder.find_nearest_refuges_for_route(
+                waypoints=waypoints,
+                vessel=profile
+            )
+
             return {
                 "origin_place_id": origin_side.get("place_id"),
                 "origin_place_name": origin_side.get("place_name"),
@@ -1747,10 +1937,12 @@ def create_app(evidence_store=None, route_store=None):
                 "destination_longitude": destination_side["longitude"],
                 "distance_nm": metrics["distance_nm"],
                 "estimated_time_h": metrics["estimated_time_h"],
-                "waypoints": metrics["waypoints"],
+                "waypoints": waypoints,
                 "checkpoints": checkpoints,
+                "backup_safe_havens": backup_havens,
                 "source_tag": metrics["source_tag"],
                 "computed_at_local": format_local_timestamp(datetime.now(ZoneInfo("Europe/Madrid"))),
+                "environment": PREDSEA_ENV,
             }
         except ValueError as error:
             message = str(error)

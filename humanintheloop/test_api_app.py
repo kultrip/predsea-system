@@ -1411,7 +1411,8 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
     assert payload["origin_place_id"] == "palma"
     assert payload["destination_place_id"] == "ibiza"
     assert payload["distance_nm"] == 100.0
-    assert payload["waypoints"][0] == {"lat": 39.52, "lng": 2.58}
+    assert payload["waypoints"][0]["lat"] == 39.52
+    assert payload["waypoints"][0]["lng"] == 2.58
     assert payload["checkpoints"][0]["eta_local"] == "2026-06-17 15:30 CEST"
     assert payload["checkpoints"][0]["weather"]["wave_height_m"] == 1.1
     assert payload["source_tag"] == "graph_sea_route_v1"
@@ -2128,6 +2129,7 @@ def test_health_reports_gcs_backend_when_gcs_store_is_injected():
         "latest_date": "2026-05-31",
         "latest_run": None,
         "storage_backend": "gcs",
+        "environment": "test",
     }
 
 

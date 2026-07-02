@@ -79,3 +79,45 @@ def test_api_route_fallback_out_of_bounds(tmp_path):
     data = response.json()
     assert data["source_tag"] == "graph_sea_route_v1"  # Verified fallback!
 
+
+def test_astar_routing_with_departure_offset():
+    import pandas as pd
+    router = AStarWeatherRouter()
+    
+    # Run route with no departure (uses default base time index 0)
+    route_base = router.find_route(
+        origin_lat=39.52,
+        origin_lon=2.58,
+        dest_lat=39.84,
+        dest_lon=3.14,
+    )
+    
+    # Run route with departure offset (12 hours in the future)
+    base_time = pd.to_datetime(router.times[0]).tz_localize(None)
+    future_dt = base_time + pd.Timedelta(hours=12)
+    
+    route_future = router.find_route(
+        origin_lat=39.52,
+        origin_lon=2.58,
+        dest_lat=39.84,
+        dest_lon=3.14,
+        departure_dt=future_dt,
+    )
+    
+    assert "waypoints" in route_future
+    assert len(route_future["waypoints"]) >= 2
+    assert route_future["distance_nm"] > 0
+
+
+def test_api_route_departure_time(tmp_path):
+    store = EvidenceStore(tmp_path)
+    app = create_app(store)
+    client = TestClient(app)
+
+    response = client.get("/places/route/palma/alcudia?departure_time=15:30&date=2026-06-29")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["source_tag"] == "astar_weather_route_v1"
+    assert len(data["waypoints"]) >= 2
+
+

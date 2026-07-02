@@ -6,6 +6,46 @@ from pydantic import BaseModel, Field, model_validator
 VesselClass = Literal["small", "medium", "large"]
 
 
+class VesselProfile(BaseModel):
+    length_over_all_m: float = Field(15.0, ge=1.0)
+    beam_m: float = Field(4.5, ge=1.0)
+    draft_m: float = Field(1.5, ge=0.1)
+    vessel_type: Literal["monohull", "catamaran", "sailing"] = "monohull"
+    cruising_speed_knots: float = Field(10.0, ge=1.0)
+    max_wave_height_tolerance_m: float = Field(2.5, ge=0.5)
+
+    @classmethod
+    def from_vessel_class(cls, vessel_class: str) -> "VesselProfile":
+        if vessel_class == "small":
+            return cls(
+                length_over_all_m=10.0,
+                beam_m=3.0,
+                draft_m=1.0,
+                vessel_type="monohull",
+                cruising_speed_knots=8.0,
+                max_wave_height_tolerance_m=1.5
+            )
+        elif vessel_class == "large":
+            return cls(
+                length_over_all_m=25.0,
+                beam_m=6.0,
+                draft_m=2.2,
+                vessel_type="monohull",
+                cruising_speed_knots=18.0,
+                max_wave_height_tolerance_m=4.0
+            )
+        else:  # medium
+            return cls(
+                length_over_all_m=15.0,
+                beam_m=4.5,
+                draft_m=1.5,
+                vessel_type="monohull",
+                cruising_speed_knots=12.0,
+                max_wave_height_tolerance_m=2.5
+            )
+
+
+
 class QuestionRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Captain question about a stored route snapshot.")
     date: Optional[str] = None
@@ -238,6 +278,9 @@ class CoordinateDistanceResponse(BaseModel):
 class RouteWaypoint(BaseModel):
     lat: float
     lng: float
+    true_heading_deg: Optional[float] = None
+    magnetic_variation_deg: Optional[float] = None
+    magnetic_heading_deg: Optional[float] = None
 
 
 class RouteWaypointCheckpoint(BaseModel):
@@ -248,6 +291,9 @@ class RouteWaypointCheckpoint(BaseModel):
     distance_from_origin_nm: float
     forecast_time_local: str
     weather: Dict[str, Any] = Field(default_factory=dict)
+    true_heading_deg: Optional[float] = None
+    magnetic_variation_deg: Optional[float] = None
+    magnetic_heading_deg: Optional[float] = None
 
 
 class RouteWaypointsResponse(BaseModel):
@@ -263,8 +309,12 @@ class RouteWaypointsResponse(BaseModel):
     estimated_time_h: float
     waypoints: List[RouteWaypoint] = Field(default_factory=list)
     checkpoints: List[RouteWaypointCheckpoint] = Field(default_factory=list)
+    backup_safe_havens: List[Dict[str, Any]] = Field(default_factory=list)
     source_tag: str
     computed_at_local: str
+    environment: Optional[str] = None
+
+
 
 
 class RouteSummary(BaseModel):
@@ -277,6 +327,8 @@ class HealthResponse(BaseModel):
     latest_date: Optional[str]
     latest_run: Optional[str] = None
     storage_backend: str
+    environment: Optional[str] = None
+
 
 
 class WarningItem(BaseModel):

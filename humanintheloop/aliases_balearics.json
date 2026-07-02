@@ -68,6 +68,12 @@
   "palermo": "palermo",
   "palermo port": "palermo",
   "messina": "messina",
-  "messina port": "messina"
+  "messina port": "messina",
+  "montpellier": "montpellier",
+  "sete": "montpellier",
+  "port de sete": "montpellier",
+  "sete port": "montpellier",
+  "sete/montpellier": "montpellier",
+  "sete montpellier": "montpellier"
 }
 

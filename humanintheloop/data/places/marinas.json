@@ -1,0 +1,5618 @@
+[
+  {
+    "port_id": "es_palma",
+    "name": "Palma de Mallorca (Moll Vell)",
+    "country": "Spain",
+    "location": {
+      "latitude": 39.5696,
+      "longitude": 2.6502
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 971 711 700"
+    },
+    "amenities": {
+      "max_length_m": 80.0,
+      "max_draft_m": 6.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_barcelona",
+    "name": "Port Vell Barcelona",
+    "country": "Spain",
+    "location": {
+      "latitude": 41.3851,
+      "longitude": 2.1734
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 934 121 212"
+    },
+    "amenities": {
+      "max_length_m": 120.0,
+      "max_draft_m": 9.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_ibiza",
+    "name": "Marina Ibiza",
+    "country": "Spain",
+    "location": {
+      "latitude": 38.9089,
+      "longitude": 1.435
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 971 318 040"
+    },
+    "amenities": {
+      "max_length_m": 60.0,
+      "max_draft_m": 4.5,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_valencia",
+    "name": "Marina de Valencia",
+    "country": "Spain",
+    "location": {
+      "latitude": 39.4699,
+      "longitude": -0.3763
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 963 818 800"
+    },
+    "amenities": {
+      "max_length_m": 100.0,
+      "max_draft_m": 7.5,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_alcudia",
+    "name": "Alcudiamar Marina",
+    "country": "Spain",
+    "location": {
+      "latitude": 39.8531,
+      "longitude": 3.1215
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 971 546 000"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_ciutadella",
+    "name": "Port de Ciutadella",
+    "country": "Spain",
+    "location": {
+      "latitude": 40.0,
+      "longitude": 3.8303
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 971 381 050"
+    },
+    "amenities": {
+      "max_length_m": 25.0,
+      "max_draft_m": 3.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_mahon",
+    "name": "Port de Maó (Mahón)",
+    "country": "Spain",
+    "location": {
+      "latitude": 39.892,
+      "longitude": 4.265
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 971 363 066"
+    },
+    "amenities": {
+      "max_length_m": 50.0,
+      "max_draft_m": 5.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_soller",
+    "name": "Port de Sóller Marina",
+    "country": "Spain",
+    "location": {
+      "latitude": 39.7957,
+      "longitude": 2.6897
+    },
+    "comms": {
+      "vhf_channel": "12",
+      "phone": "+34 971 633 300"
+    },
+    "amenities": {
+      "max_length_m": 20.0,
+      "max_draft_m": 3.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "es_alicante",
+    "name": "Marina Deportiva de Alicante",
+    "country": "Spain",
+    "location": {
+      "latitude": 38.345,
+      "longitude": -0.481
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+34 965 213 600"
+    },
+    "amenities": {
+      "max_length_m": 50.0,
+      "max_draft_m": 4.5,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "fr_marseille",
+    "name": "Vieux Port de Marseille",
+    "country": "France",
+    "location": {
+      "latitude": 43.3,
+      "longitude": 5.37
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 91 99 75 60"
+    },
+    "amenities": {
+      "max_length_m": 90.0,
+      "max_draft_m": 6.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "fr_toulon",
+    "name": "Port de Toulon",
+    "country": "France",
+    "location": {
+      "latitude": 43.12,
+      "longitude": 5.93
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 94 41 23 45"
+    },
+    "amenities": {
+      "max_length_m": 60.0,
+      "max_draft_m": 5.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "fr_montpellier",
+    "name": "Port de Sète (Montpellier)",
+    "country": "France",
+    "location": {
+      "latitude": 43.4,
+      "longitude": 3.69
+    },
+    "comms": {
+      "vhf_channel": "12",
+      "phone": "+33 4 67 46 34 00"
+    },
+    "amenities": {
+      "max_length_m": 100.0,
+      "max_draft_m": 8.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "it_genoa",
+    "name": "Marina di Genova",
+    "country": "Italy",
+    "location": {
+      "latitude": 44.41,
+      "longitude": 8.93
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 010 614 3420"
+    },
+    "amenities": {
+      "max_length_m": 130.0,
+      "max_draft_m": 8.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "it_naples",
+    "name": "Porto di Napoli",
+    "country": "Italy",
+    "location": {
+      "latitude": 40.84,
+      "longitude": 14.25
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 081 244 5111"
+    },
+    "amenities": {
+      "max_length_m": 150.0,
+      "max_draft_m": 10.0,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "it_cagliari",
+    "name": "Cagliari Port (Marina di Sant'Elmo)",
+    "country": "Italy",
+    "location": {
+      "latitude": 39.21,
+      "longitude": 9.11
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 070 300 123"
+    },
+    "amenities": {
+      "max_length_m": 50.0,
+      "max_draft_m": 4.5,
+      "fuel_available": true
+    }
+  },
+  {
+    "port_id": "osm_27502542",
+    "name": "Port Saint-Sauveur",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.5952482,
+      "longitude": 1.4562994
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 5 61 22 22 17"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_162847430",
+    "name": "Vieux-Port",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2945804,
+      "longitude": 5.3692811
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 91 33 25 44"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_255880618",
+    "name": "Gare Maritime d'Arenc",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3122587,
+      "longitude": 5.3641653
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_266384565",
+    "name": "Porto di Palermo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1289041,
+      "longitude": 13.3698787
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_293952214",
+    "name": "Susak",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.512533,
+      "longitude": 14.3113232
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_447090333",
+    "name": "Formia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2568273,
+      "longitude": 13.6115338
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_454221033",
+    "name": "Cannigione",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.1070182,
+      "longitude": 9.4443553
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 346 806 5848"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_506117889",
+    "name": "Porto Canale",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.6512554,
+      "longitude": 12.5858794
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 0923 946388"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_521365002",
+    "name": "Valun",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.904897,
+      "longitude": 14.362625
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_664499994",
+    "name": "Halte nautique du Mas-d'Agenais",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4127373,
+      "longitude": 0.218436
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 5 53 89 50 80"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_664507786",
+    "name": "Halte nautique d'Agen",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.2095694,
+      "longitude": 0.6275741
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 5 53 66 00 74"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_675823070",
+    "name": "Porticciolo di San Nicola L'arena",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0162791,
+      "longitude": 13.6151767
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_702247823",
+    "name": "Luka Cres",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.9588903,
+      "longitude": 14.4082508
+    },
+    "comms": {
+      "vhf_channel": "10",
+      "phone": "+38 51 571-111"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_759587901",
+    "name": "Marina Corta",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.4635434,
+      "longitude": 14.9576023
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_759588289",
+    "name": "Porto Pignataro",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.4774499,
+      "longitude": 14.9626926
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 090 9880354"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_759819432",
+    "name": "Porto di Sciacca",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.5015806,
+      "longitude": 13.0765125
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_760583710",
+    "name": "Unnamed Marina (760583710)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.2370874,
+      "longitude": 14.5386321
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_822727790",
+    "name": "Unnamed Marina (822727790)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2832738,
+      "longitude": 13.2567216
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_829082780",
+    "name": "Porto di Castiglione della Pescaia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.7611409,
+      "longitude": 10.8791022
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_847877472",
+    "name": "Porto Azzurro Marina",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.7646696,
+      "longitude": 10.3976156
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "00 39 056 51935269"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_849528602",
+    "name": "Port du Mourre-Blanc",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.4044936,
+      "longitude": 3.5775546
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_849572470",
+    "name": "Port de Mèze",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.422884,
+      "longitude": 3.6062859
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_860935275",
+    "name": "Port industrial d'Alcanar",
+    "country": "Unknown",
+    "location": {
+      "latitude": 40.5720766,
+      "longitude": 0.5513185
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_967323022",
+    "name": "Unnamed Marina (967323022)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1890974,
+      "longitude": -0.5579687
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_967323023",
+    "name": "Unnamed Marina (967323023)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1896867,
+      "longitude": -0.5625147
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_972189122",
+    "name": "Halte Fluviale",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.0670168,
+      "longitude": 4.7887285
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_973733045",
+    "name": "Porto d'Imperia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8760178,
+      "longitude": 8.0278527
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39-0183-61412"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_982362519",
+    "name": "Puerto de Escombreras",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.569926,
+      "longitude": -0.9715942
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_982362690",
+    "name": "Puerto de Cartagena",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.5927246,
+      "longitude": -0.9808162
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1081039511",
+    "name": "ميناء رادس",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8031119,
+      "longitude": 10.265804
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+216 71 735 300"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1105990628",
+    "name": "Terminal Traghetti di Piombino",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.9299216,
+      "longitude": 10.5477812
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1130799057",
+    "name": "Porticciolo turistico",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.6483959,
+      "longitude": 12.5843235
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 923946388"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1130799068",
+    "name": "Mazara del Vallo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.645664,
+      "longitude": 12.5841153
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 923946388"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1130799084",
+    "name": "Porto Nuovo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.6505031,
+      "longitude": 12.580275
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 923946388"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1130830919",
+    "name": "Unnamed Marina (1130830919)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.6477294,
+      "longitude": 12.5800481
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 923946388"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1179880415",
+    "name": "Porto di Pila",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.979606,
+      "longitude": 12.478232
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0426 387055"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1223076705",
+    "name": "Porticciolo di Levanzo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.9864387,
+      "longitude": 12.340038
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1223076724",
+    "name": "Unnamed Marina (1223076724)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.9867009,
+      "longitude": 12.3417224
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1231379104",
+    "name": "Marina degli Aregai",
+    "country": "IT",
+    "location": {
+      "latitude": 43.8381452,
+      "longitude": 7.9157227
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0184 4891"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1260653242",
+    "name": "Unije",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.6361683,
+      "longitude": 14.2462615
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1260653243",
+    "name": "Vele Srakane",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.5753729,
+      "longitude": 14.3202341
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1288330288",
+    "name": "Porto di Riccione",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.0070923,
+      "longitude": 12.6570371
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1295452446",
+    "name": "Rimini",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.0798587,
+      "longitude": 12.575017
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1295452466",
+    "name": "Portoverde",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.9732148,
+      "longitude": 12.7193991
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1309638563",
+    "name": "Porto Canale",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.200995,
+      "longitude": 9.0872552
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1310043325",
+    "name": "Unnamed Marina (1310043325)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 40.9170913,
+      "longitude": 9.5242457
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 333 7117104"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1320725715",
+    "name": "Pesaro",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.925134,
+      "longitude": 12.9065648
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1345353706",
+    "name": "Darsena Europa",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.863008,
+      "longitude": 10.2426514
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1345353814",
+    "name": "Darsena Lucca",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8656206,
+      "longitude": 10.2534886
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1345353916",
+    "name": "Darsena Toscana",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8643582,
+      "longitude": 10.2476168
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1345354124",
+    "name": "Darsena Italia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8640032,
+      "longitude": 10.246279
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1346018278",
+    "name": "Porto di Anzio",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.4454354,
+      "longitude": 12.634007
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1354001812",
+    "name": "Port de Saumaty",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3554472,
+      "longitude": 5.3213055
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1359419052",
+    "name": "Port du Frioul",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2782996,
+      "longitude": 5.3073373
+    },
+    "comms": {
+      "vhf_channel": "09-16",
+      "phone": "+33 4 91 59 01 82"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1359920348",
+    "name": "Stade Nautique du Roucas Blanc",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2669324,
+      "longitude": 5.3695895
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1360819286",
+    "name": "Grand port maritime de Marseille",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3123549,
+      "longitude": 5.3572539
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1360889640",
+    "name": "Avant-port Joliette",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2970608,
+      "longitude": 5.3569358
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1362243768",
+    "name": "Base nautique municipale de Corbière",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3582728,
+      "longitude": 5.2926316
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1363126788",
+    "name": "Port Abri",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3576791,
+      "longitude": 5.3173108
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1373733223",
+    "name": "Puerto deportivo de Lo Pagán",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.817096,
+      "longitude": -0.7836604
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+34 968186969"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1374950189",
+    "name": "ميناء سيدي داود",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.0203887,
+      "longitude": 10.9080837
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1389338798",
+    "name": "Club náutico Mar Menor",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.7353333,
+      "longitude": -0.8488941
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+34 968575129"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1393666789",
+    "name": "Puerto Pesquero de Lo Pagán",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.8158808,
+      "longitude": -0.7837339
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1446075791",
+    "name": "Port Marchand de Carthage",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8414507,
+      "longitude": 10.3248504
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1446075796",
+    "name": "Port de Carthage",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8456504,
+      "longitude": 10.3248036
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1450773441",
+    "name": "Port de Sóller",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.7977844,
+      "longitude": 2.6947283
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+49 971 631699"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1470668802",
+    "name": "Puerto deportivo de Urrutias",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.6783094,
+      "longitude": -0.8240425
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+34 968134438"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1497381542",
+    "name": "Porto di Carloforte",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.1439039,
+      "longitude": 8.3140524
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1497491205",
+    "name": "Portovesme",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.1944031,
+      "longitude": 8.3928384
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1583966731",
+    "name": "Real Club Náutico",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.5671495,
+      "longitude": 2.6361489
+    },
+    "comms": {
+      "vhf_channel": "9;77",
+      "phone": "+34 971 726 848"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1592327398",
+    "name": "Local boats",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.4349035,
+      "longitude": 11.1228503
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1592327407",
+    "name": "Porto Santo Stefano Porto Domiziano",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.4365048,
+      "longitude": 11.121488
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1592327413",
+    "name": "Private Yacht Club",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.4369463,
+      "longitude": 11.1250914
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1619182809",
+    "name": "Port de Saint Mandrier sur Mer",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.0794806,
+      "longitude": 5.9256931
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1690815748",
+    "name": "Marina Alicante",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.3390742,
+      "longitude": -0.4828435
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1701468437",
+    "name": "Pointe-Rouge",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.243082,
+      "longitude": 5.3671642
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1714192603",
+    "name": "Hôtel de Ville",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2958583,
+      "longitude": 5.3704675
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1714192604",
+    "name": "Place aux Huiles",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2934941,
+      "longitude": 5.3710841
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1737659334",
+    "name": "Halte nautique du Mas-d'Agenais",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4104866,
+      "longitude": 0.2218739
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 5 53 89 50 37"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1784848951",
+    "name": "Mali Lošinj",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.5352765,
+      "longitude": 14.4660403
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346292",
+    "name": "Alicudi",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.533747,
+      "longitude": 14.3612478
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346299",
+    "name": "Punta Lingua",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5411757,
+      "longitude": 14.8702485
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346307",
+    "name": "Rinella",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5472449,
+      "longitude": 14.8290451
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346321",
+    "name": "Marina Salina",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5555141,
+      "longitude": 14.8718692
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346329",
+    "name": "Santa Marina Salina",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5578362,
+      "longitude": 14.8727291
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346336",
+    "name": "Pecorini a mare",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5580768,
+      "longitude": 14.5658713
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346359",
+    "name": "Filicudi",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5621304,
+      "longitude": 14.581567
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1828346368",
+    "name": "Scalo Galera",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.5813011,
+      "longitude": 14.8394467
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1829971797",
+    "name": "Port de Skikda",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8873956,
+      "longitude": 6.9099205
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1852953594",
+    "name": "Nautic Sant Antoni",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.9767755,
+      "longitude": 1.3003397
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+34 971 340645"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1960923467",
+    "name": "Porto Cervo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.1347167,
+      "longitude": 9.5326587
+    },
+    "comms": {
+      "vhf_channel": "9;16;11",
+      "phone": "+39 0789 905602"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2107847679",
+    "name": "Unnamed Marina (2107847679)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.9842325,
+      "longitude": 10.3081918
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2107871746",
+    "name": "Unnamed Marina (2107871746)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.9676887,
+      "longitude": 10.3740217
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2133811508",
+    "name": "Port de Carcassonne",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2173889,
+      "longitude": 2.350408
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 68 25 10 48"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2133811540",
+    "name": "Port Cassafières",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2915506,
+      "longitude": 3.3712844
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 67 90 91 70"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2153344436",
+    "name": "Port de Marseillan-Ville",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3527834,
+      "longitude": 3.5352648
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+33 4 67 77 34 93"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2156660410",
+    "name": "Port du Tabarka",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3553228,
+      "longitude": 3.5348567
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2204803565",
+    "name": "Portosole Sanremo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8171047,
+      "longitude": 7.7869675
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+390184500349"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2259760976",
+    "name": "L'Estaque",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3607918,
+      "longitude": 5.3102753
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2259851878",
+    "name": "Port de Béziers",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3342873,
+      "longitude": 3.2184812
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 67 11 81 35"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2277562039",
+    "name": "Port de la Mède",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.4031756,
+      "longitude": 5.1187896
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2379492142",
+    "name": "Božava",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.1394059,
+      "longitude": 14.907044
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2397832855",
+    "name": "Base nautique de Garabit",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.973446,
+      "longitude": 3.1617883
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2400175923",
+    "name": "Port de commerce de Port-la-Nouvelle",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.0200982,
+      "longitude": 3.0547956
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 68 48 01 56"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2400175925",
+    "name": "Halte nautique de Port-la-Nouvelle",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.0229926,
+      "longitude": 3.0449566
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 68 48 01 58"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2410469166",
+    "name": "Unnamed Marina (2410469166)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.1283548,
+      "longitude": 1.9015366
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2415789397",
+    "name": "Port de Marseillan-Plage",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3182353,
+      "longitude": 3.5573617
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+33 4 67 21 99 30"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2429114684",
+    "name": "Porto di Fano",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8528922,
+      "longitude": 13.0168858
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0721 820768"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2431489503",
+    "name": "Unnamed Marina (2431489503)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.8560981,
+      "longitude": 12.8625943
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2431489504",
+    "name": "Unnamed Marina (2431489504)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.8635549,
+      "longitude": 12.8527305
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2451133349",
+    "name": "Les Goudes",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2163922,
+      "longitude": 5.3448502
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2487851622",
+    "name": "Porto di Cefalù",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0390307,
+      "longitude": 14.0348733
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2510189405",
+    "name": "Porto Empedocle",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.2820524,
+      "longitude": 13.5271765
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2510771701",
+    "name": "halte nautique d'Avignon",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.9538942,
+      "longitude": 4.8099782
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2511338404",
+    "name": "Porto di San Vito lo Capo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1810257,
+      "longitude": 12.7338431
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2515417315",
+    "name": "Port de Cargèse",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.131146,
+      "longitude": 8.5969562
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2519645561",
+    "name": "Porto di Sant'Agata di Militello",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0734906,
+      "longitude": 14.6239383
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2520218717",
+    "name": "Port Xavier Colonna",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.5645959,
+      "longitude": 8.7582473
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2521561732",
+    "name": "Vieux Bassin",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.396744,
+      "longitude": 3.6997123
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2661677085",
+    "name": "Porticello",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0883973,
+      "longitude": 13.5410981
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2661690349",
+    "name": "Unnamed Marina (2661690349)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.9780044,
+      "longitude": 13.7106042
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2661690361",
+    "name": "Termini Imerese",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.9845958,
+      "longitude": 13.7090411
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2661744014",
+    "name": "Unnamed Marina (2661744014)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.3688564,
+      "longitude": 14.9944147
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2661744018",
+    "name": "Porto di Levante",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.4141675,
+      "longitude": 14.9614511
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975839",
+    "name": "Porto di Trapani",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0129708,
+      "longitude": 12.5183249
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 329 5950 762"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975851",
+    "name": "porto peschereccio",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0152749,
+      "longitude": 12.497952
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975873",
+    "name": "Porto di Castellammare",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0319077,
+      "longitude": 12.8802596
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975874",
+    "name": "Balestrate Marina",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.0547327,
+      "longitude": 13.0026955
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975876",
+    "name": "Unnamed Marina (2662975876)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.067637,
+      "longitude": 12.5937849
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975879",
+    "name": "Terrasini",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1590558,
+      "longitude": 13.0811634
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975880",
+    "name": "Porto dell'Addaura",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1917909,
+      "longitude": 13.3519294
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975881",
+    "name": "Unnamed Marina (2662975881)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.2001701,
+      "longitude": 13.274956
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975882",
+    "name": "Femmine",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.2007161,
+      "longitude": 13.2476613
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975883",
+    "name": "Unnamed Marina (2662975883)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.2064693,
+      "longitude": 13.3274889
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2662975885",
+    "name": "Unnamed Marina (2662975885)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.2153096,
+      "longitude": 13.3237501
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2715497127",
+    "name": "Port de Béjaïa",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7504565,
+      "longitude": 5.0853821
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2720678481",
+    "name": "Port de Tipaza",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.5944674,
+      "longitude": 2.4489132
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_2972893498",
+    "name": "Port de pêche Collo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.0041249,
+      "longitude": 6.5712946
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3021972952",
+    "name": "Port de Cap Djinet",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8751748,
+      "longitude": 3.717182
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3297528556",
+    "name": "Porto di Carrara",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.0330039,
+      "longitude": 10.0399013
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3427899459",
+    "name": "Port de pêche de Kristel",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.8219633,
+      "longitude": -0.4908894
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3429542829",
+    "name": "Petit port",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.2110118,
+      "longitude": 0.3993856
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3429546600",
+    "name": "Port de Beni Haoua",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.53619,
+      "longitude": 1.5849409
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3456275597",
+    "name": "Unnamed Marina (3456275597)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.9152865,
+      "longitude": 3.9168209
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3465928627",
+    "name": "Port de pêche",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.0669536,
+      "longitude": 7.3849054
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3467572320",
+    "name": "Cala Renella",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2131103,
+      "longitude": 9.4107995
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3467575012",
+    "name": "Cala Mangiavolpe",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2126863,
+      "longitude": 9.4086802
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3509365611",
+    "name": "Porte 6 : Ferrys",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3367722,
+      "longitude": 5.3450765
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3509366406",
+    "name": "Porte 4 : Ferrys",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3388248,
+      "longitude": 5.3434742
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3617093367",
+    "name": "Dársena de Escombreras",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.5688624,
+      "longitude": -0.9557078
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3768236736",
+    "name": "Port de pêche Bouharoun",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.6261582,
+      "longitude": 2.6558911
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3904523504",
+    "name": "Port de pêche d'El Kala;ميناء القالة الصيد",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8984197,
+      "longitude": 8.4443442
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3933946360",
+    "name": "Petit Port de pêche El Koss",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.9216497,
+      "longitude": 3.8858281
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3952045136",
+    "name": "Port de la Vesse",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.341987,
+      "longitude": 5.2613297
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_3952045137",
+    "name": "Calanque de Niolon",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3393412,
+      "longitude": 5.2583626
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4013878790",
+    "name": "Unnamed Marina (4013878790)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.82987,
+      "longitude": 5.8950128
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4013893146",
+    "name": "Unnamed Marina (4013893146)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8176605,
+      "longitude": 5.7762459
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4013893158",
+    "name": "Unnamed Marina (4013893158)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8254802,
+      "longitude": 5.7775662
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4086902809",
+    "name": "Unnamed Marina (4086902809)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7842425,
+      "longitude": 3.0637268
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4209784180",
+    "name": "Vieux Port",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2947018,
+      "longitude": 5.3736766
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4212162783",
+    "name": "Porto di Miseno",
+    "country": "Unknown",
+    "location": {
+      "latitude": 40.7905562,
+      "longitude": 14.0811085
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4246223790",
+    "name": "Denia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.8436179,
+      "longitude": 0.1125226
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4246223791",
+    "name": "Dénia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.8434433,
+      "longitude": 0.1151613
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4246223792",
+    "name": "Denia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.8495936,
+      "longitude": 0.1313044
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4246230871",
+    "name": "Javea",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.7939915,
+      "longitude": 0.1866984
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253157726",
+    "name": "Gare Maritime de La Major",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3029723,
+      "longitude": 5.3633225
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253157734",
+    "name": "Porte 4 : Croisières",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3401841,
+      "longitude": 5.3366432
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253157735",
+    "name": "Porte 4 : Croisières",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3417588,
+      "longitude": 5.3337932
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158326",
+    "name": "Gare Croisières du J4",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2981862,
+      "longitude": 5.3610049
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158328",
+    "name": "Gare Maritime d'Arenc",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3090745,
+      "longitude": 5.3635801
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158331",
+    "name": "Gare Maritime de La Joliette",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3044032,
+      "longitude": 5.3642537
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158332",
+    "name": "Gare Maritime de La Joliette",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3046992,
+      "longitude": 5.3642328
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158333",
+    "name": "Gare Maritime de la Joliette",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3053539,
+      "longitude": 5.3624426
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158334",
+    "name": "Gare Maritime de La Major",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2993065,
+      "longitude": 5.3623247
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158335",
+    "name": "Gare Maritime de La Major",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3026692,
+      "longitude": 5.3635925
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158336",
+    "name": "Porte 4 : Croisières",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3424988,
+      "longitude": 5.3370998
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158337",
+    "name": "Porte 4 : Croisières",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3436084,
+      "longitude": 5.3304369
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4253158338",
+    "name": "Porte 4 : Croisières",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3443448,
+      "longitude": 5.3332399
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4435972819",
+    "name": "Unnamed Marina (4435972819)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.7567213,
+      "longitude": 14.7210392
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4463740135",
+    "name": "Porto di Savona",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.3124508,
+      "longitude": 8.4898681
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4947708417",
+    "name": "Port de Carro",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3302419,
+      "longitude": 5.040306
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_4980313786",
+    "name": "Unnamed Marina (4980313786)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4706349,
+      "longitude": 14.9545987
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5008411260",
+    "name": "Porto Industriale di Piombino",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.9338564,
+      "longitude": 10.5466512
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100311408",
+    "name": "Unnamed Marina (5100311408)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.9423399,
+      "longitude": 9.7038231
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100376570",
+    "name": "Cagliari",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.2110922,
+      "longitude": 9.1124853
+    },
+    "comms": {
+      "vhf_channel": "74",
+      "phone": "+39 331 9209101"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100424606",
+    "name": "La Maddalena",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2110973,
+      "longitude": 9.4086114
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100439780",
+    "name": "Pontile Albatros",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.1061683,
+      "longitude": 9.4431091
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 339 433 7030"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100439784",
+    "name": "Unnamed Marina (5100439784)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.1269634,
+      "longitude": 9.4685989
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100578087",
+    "name": "Marina di Portisco",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.0326108,
+      "longitude": 9.5257294
+    },
+    "comms": {
+      "vhf_channel": "69",
+      "phone": "+39 0789 33520"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100591914",
+    "name": "Porto Corallo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.4380182,
+      "longitude": 9.6403028
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5100682188",
+    "name": "Santa Teresa Gallura",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2472186,
+      "longitude": 9.1974789
+    },
+    "comms": {
+      "vhf_channel": "12",
+      "phone": "+39 0789 751452"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5174894222",
+    "name": "Marina di Vico Equense",
+    "country": "Unknown",
+    "location": {
+      "latitude": 40.6657449,
+      "longitude": 14.4285237
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5697597995",
+    "name": "Port de Saint Jean",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.1863319,
+      "longitude": 5.6276098
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5720209344",
+    "name": "Port Avis",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.0272257,
+      "longitude": 6.4539045
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5720209345",
+    "name": "Unnamed Marina (5720209345)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.0153756,
+      "longitude": 6.4338335
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_5992332847",
+    "name": "ميناء الصيد البحري بالشابة",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.2327553,
+      "longitude": 11.1600977
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_6373788683",
+    "name": "Port Bastide",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.8518606,
+      "longitude": -0.5614856
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_6394897335",
+    "name": "Mshdia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.4993997,
+      "longitude": 11.0709464
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_6840571309",
+    "name": "Bukašin",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.1095881,
+      "longitude": 14.9403977
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_8993159216",
+    "name": "Port Fay",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.9994654,
+      "longitude": 6.168007
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9056125403",
+    "name": "Accès navettes",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.5093666,
+      "longitude": 7.0438385
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9215967668",
+    "name": "Unnamed Marina (9215967668)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2180862,
+      "longitude": 3.2341852
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9379386424",
+    "name": "Porto di Pozzallo",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7158146,
+      "longitude": 14.8286767
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9502703439",
+    "name": "Porte 11",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3348417,
+      "longitude": 5.3468525
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9502703440",
+    "name": "Porte 12",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3348048,
+      "longitude": 5.347509
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9663213078",
+    "name": "Port du Ségala",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3411579,
+      "longitude": 1.8355558
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9663224917",
+    "name": "Port La Fabrique",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2477888,
+      "longitude": 2.6593173
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_9663226948",
+    "name": "Port de Bram",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2551841,
+      "longitude": 2.1269526
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_11770878566",
+    "name": "Malherbe",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.1030451,
+      "longitude": 6.3191114
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_12244223705",
+    "name": "Unnamed Marina (12244223705)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.573673,
+      "longitude": 12.9072404
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_13588264004",
+    "name": "Marina Ibiza",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.9135751,
+      "longitude": 1.4438985
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_20567726",
+    "name": "Frontignan",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.432476,
+      "longitude": 3.7748087
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33467184490"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_27743705",
+    "name": "Sampierdarena Ponente",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4068573,
+      "longitude": 8.8884269
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_50988783",
+    "name": "Port d'Alger ميناء الجزائر",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7638473,
+      "longitude": 3.0674991
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_60501090",
+    "name": "ACI Marina Cres",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.9481564,
+      "longitude": 14.414965
+    },
+    "comms": {
+      "vhf_channel": "17",
+      "phone": "+385 51 571-622;+385 98 398-839"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_109129734",
+    "name": "Yacht Club Restaurant",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.385487,
+      "longitude": 4.8340725
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_109132559",
+    "name": "Unnamed Marina (109132559)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.384703,
+      "longitude": 4.8354815
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_136037075",
+    "name": "Vado Ligure",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.2718996,
+      "longitude": 8.4457522
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_148700342",
+    "name": "Sampierdarena Levante",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4033802,
+      "longitude": 8.9096625
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_174740048",
+    "name": "ميناء بني خيار",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.4543491,
+      "longitude": 10.7972461
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_182685199",
+    "name": "Unnamed Marina (182685199)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.4809222,
+      "longitude": 3.1348768
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_200159303",
+    "name": "Port Lauragais",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3532855,
+      "longitude": 1.8019008
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_200840723",
+    "name": "Service du Pilotage",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.397775,
+      "longitude": 4.981207
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_211827121",
+    "name": "Unnamed Marina (211827121)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.8169257,
+      "longitude": 7.7861121
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0184 505531"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_216592207",
+    "name": "Port de Poilhes",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3083263,
+      "longitude": 3.0786684
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_217521082",
+    "name": "Port Minervois",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.2683681,
+      "longitude": 2.716405
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_228946617",
+    "name": "Unnamed Marina (228946617)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8849154,
+      "longitude": 6.9109542
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_228946618",
+    "name": "Unnamed Marina (228946618)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.888521,
+      "longitude": 6.9007786
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_228946620",
+    "name": "Unnamed Marina (228946620)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8857285,
+      "longitude": 6.904112
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_231801362",
+    "name": "Salerno Container Terminal",
+    "country": "Unknown",
+    "location": {
+      "latitude": 40.6741534,
+      "longitude": 14.7414566
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_237728671",
+    "name": "Amico & Co.",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.3951224,
+      "longitude": 8.9331717
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_240952910",
+    "name": "Brbinj",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.084621,
+      "longitude": 14.995882
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_242881135",
+    "name": "Port de plaisance Notre-Dame",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.5445809,
+      "longitude": 5.0322623
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 90 50 92 07"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_242889395",
+    "name": "Port de Pêche du Pertuis",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.5477382,
+      "longitude": 5.0306406
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+33 4 42 56 62 17"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_249237540",
+    "name": "Port de pêche Boudis",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8183273,
+      "longitude": 5.7750461
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_251515515",
+    "name": "Porto industriale di Oristano",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.8661446,
+      "longitude": 8.5544243
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_251515516",
+    "name": "Porto turistico di Oristano",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.903941,
+      "longitude": 8.4914942
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0783 22189"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_251618466",
+    "name": "SAAR",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.402637,
+      "longitude": 8.917121
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_251618468",
+    "name": "Terminal Forest",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4042632,
+      "longitude": 8.8899058
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_251618469",
+    "name": "Terminal Frutta",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4054638,
+      "longitude": 8.8902412
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_255067275",
+    "name": "ENI",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4004215,
+      "longitude": 8.9161971
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_255067278",
+    "name": "Petrolig",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.4005977,
+      "longitude": 8.9154829
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_256856548",
+    "name": "Banchina rinfuse",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.2158296,
+      "longitude": 9.0600207
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_303777167",
+    "name": "القاعدة البحرية المرسى الكبير",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.7253683,
+      "longitude": -0.6852348
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_308613007",
+    "name": "Bassin National",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3201117,
+      "longitude": 5.3557818
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_308613702",
+    "name": "Bassin de Radoub",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.3227639,
+      "longitude": 5.360284
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_310944369",
+    "name": "Porto Commerciale",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7123799,
+      "longitude": 14.8339119
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_313962422",
+    "name": "Port d'El Aouana",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7771555,
+      "longitude": 5.6043463
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_317790265",
+    "name": "Unnamed Marina (317790265)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.6571955,
+      "longitude": 14.3991976
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_320881424",
+    "name": "Nouveau port de pêche d'El Kala;ميناء الصيد الجديد بالقالة",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8997372,
+      "longitude": 8.4224329
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_326214679",
+    "name": "Port d'Oran",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.71336,
+      "longitude": -0.6403246
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_341061500",
+    "name": "ميناء عنابة",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.8960673,
+      "longitude": 7.7683522
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_355437265",
+    "name": "Porticciolo di Framura",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.1997681,
+      "longitude": 9.5564191
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_356731940",
+    "name": "Cala d'Aiguafreda",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.9645213,
+      "longitude": 3.2272444
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_366341944",
+    "name": "محطة العبارة الجزائر",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7778857,
+      "longitude": 3.0633845
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_367224556",
+    "name": "Port de Pêche de Ziama Mansouriah",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.6766363,
+      "longitude": 5.4786735
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_371239554",
+    "name": "AC Stupice",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.7962352,
+      "longitude": 13.9187533
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_377885029",
+    "name": "ميناء عنابة للصيد",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.9050511,
+      "longitude": 7.774241
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_406223755",
+    "name": "Ustica",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.7080703,
+      "longitude": 13.1965272
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_422833298",
+    "name": "Cala Dogana",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.9867868,
+      "longitude": 12.3407658
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_436694441",
+    "name": "Marina di San Pietro",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.0019088,
+      "longitude": 15.0015892
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0875 705398"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_442212074",
+    "name": "Cala Camiciotto",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.2148092,
+      "longitude": 9.4272498
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_458287739",
+    "name": "Port de plaisance de Sidi Fredj",
+    "country": "Unknown",
+    "location": {
+      "latitude": 36.7637789,
+      "longitude": 2.847841
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_467456983",
+    "name": "Dársena de Santiago",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.59695,
+      "longitude": -0.9746702
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_505256432",
+    "name": "Port La Caleta",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1668953,
+      "longitude": -0.4783908
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_518509264",
+    "name": "La Cala",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1211534,
+      "longitude": 13.3698179
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_521579665",
+    "name": "ميناء الصيد وهران",
+    "country": "Unknown",
+    "location": {
+      "latitude": 35.7106485,
+      "longitude": -0.6536791
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_548784021",
+    "name": "Porto dell'Acquasanta",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1438325,
+      "longitude": 13.3706083
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_548784023",
+    "name": "Porto dell'Arenella",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.1506829,
+      "longitude": 13.3745067
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_618240331",
+    "name": "Port de Barcelona",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.3299051,
+      "longitude": 2.1387733
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_618240339",
+    "name": "Port de Barcelona",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.3298496,
+      "longitude": 2.1402693
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_619831605",
+    "name": "ACI marina Pomer",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.8216141,
+      "longitude": 13.9023336
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+385 52 573 162"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_678711349",
+    "name": "Marina di Stabia",
+    "country": "Unknown",
+    "location": {
+      "latitude": 40.7194966,
+      "longitude": 14.4734909
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_845077280",
+    "name": "Unnamed Marina (845077280)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.6165531,
+      "longitude": 14.5010148
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+3859890957477"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_919776998",
+    "name": "Porto di Ortona",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.3517323,
+      "longitude": 14.4163236
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1206095643",
+    "name": "Unnamed Marina (1206095643)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6759345,
+      "longitude": 1.5219689
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1241460093",
+    "name": "Circolo Nautico Nazario Sauro",
+    "country": "Unknown",
+    "location": {
+      "latitude": 43.5386613,
+      "longitude": 10.3005175
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1244717122",
+    "name": "Porticciolo San Vito",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.6434657,
+      "longitude": 12.6014434
+    },
+    "comms": {
+      "vhf_channel": "16",
+      "phone": "+39 0923 946388"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1255720834",
+    "name": "GPMB - Bassens Aval",
+    "country": "Unknown",
+    "location": {
+      "latitude": 44.9103731,
+      "longitude": -0.5412832
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1295809536",
+    "name": "Unnamed Marina (1295809536)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 42.2871128,
+      "longitude": 14.4819242
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1307063290",
+    "name": "Unnamed Marina (1307063290)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 41.9340121,
+      "longitude": 3.2168187
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1323357625",
+    "name": "Marina di Cala del Sole",
+    "country": "Unknown",
+    "location": {
+      "latitude": 37.0962143,
+      "longitude": 13.9440839
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": "+39 0922 183 7137"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1349618081",
+    "name": "Unnamed Marina (1349618081)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6775847,
+      "longitude": 1.5166731
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1355353730",
+    "name": "Port de Vedella",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.9144488,
+      "longitude": 1.2235723
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1355353731",
+    "name": "Port Es Boldado",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.8906831,
+      "longitude": 1.2222809
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1366571677",
+    "name": "Port Mastella",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.0244292,
+      "longitude": 1.596705
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1370762576",
+    "name": "Marina de Menorca",
+    "country": "Unknown",
+    "location": {
+      "latitude": 39.8946581,
+      "longitude": 4.2587586
+    },
+    "comms": {
+      "vhf_channel": "9",
+      "phone": "+34 971 365889"
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1380935795",
+    "name": "Unnamed Marina (1380935795)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.7297035,
+      "longitude": 1.4523399
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1383593934",
+    "name": "Unnamed Marina (1383593934)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.678783,
+      "longitude": 1.4356125
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1384411017",
+    "name": "Unnamed Marina (1384411017)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.7285468,
+      "longitude": 1.4075723
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1384411018",
+    "name": "Unnamed Marina (1384411018)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.7327741,
+      "longitude": 1.3973642
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1385768143",
+    "name": "Unnamed Marina (1385768143)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6522283,
+      "longitude": 1.5354861
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1385768161",
+    "name": "Unnamed Marina (1385768161)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6546195,
+      "longitude": 1.5232051
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1386087733",
+    "name": "Unnamed Marina (1386087733)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6593998,
+      "longitude": 1.4165678
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1427936760",
+    "name": "Unnamed Marina (1427936760)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6842582,
+      "longitude": 1.4669249
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1428516078",
+    "name": "Unnamed Marina (1428516078)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.6739903,
+      "longitude": 1.495375
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  },
+  {
+    "port_id": "osm_1428634224",
+    "name": "Unnamed Marina (1428634224)",
+    "country": "Unknown",
+    "location": {
+      "latitude": 38.680773,
+      "longitude": 1.4800526
+    },
+    "comms": {
+      "vhf_channel": "09",
+      "phone": null
+    },
+    "amenities": {
+      "max_length_m": 30.0,
+      "max_draft_m": 4.0,
+      "fuel_available": false
+    }
+  }
+]

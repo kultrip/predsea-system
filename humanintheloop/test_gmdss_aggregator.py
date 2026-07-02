@@ -5,6 +5,9 @@ import gmdss_aggregator
 
 class TestGMDSSAggregator(unittest.TestCase):
 
+    def setUp(self):
+        gmdss_aggregator.active_warnings_db = []
+
     def test_haversine_distance(self):
         # Distance from Palma to Ibiza is approx 70 nautical miles
         dist = gmdss_aggregator.haversine_distance(39.5696, 2.6502, 38.9089, 1.435)
