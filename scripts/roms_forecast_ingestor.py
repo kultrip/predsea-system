@@ -50,13 +50,30 @@ ROMS_ZETA_NAMES = ("zeta", "zos", "ssh", "sea_surface_height")
 
 
 def parse_args(argv=None):
+    import sys
+    from pathlib import Path
+    PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    HUMANINTHELOOP_DIR = PROJECT_ROOT / "humanintheloop"
+    if str(HUMANINTHELOOP_DIR) not in sys.path:
+        sys.path.insert(0, str(HUMANINTHELOOP_DIR))
+
+    try:
+        from api.config import PREDSEA_GCS_BUCKET, PREDSEA_BIGQUERY_DATASET
+    except ImportError:
+        import os
+        env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+        if env not in ("test", "prod"):
+            env = "test"
+        PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
+        PREDSEA_BIGQUERY_DATASET = os.environ.get("PREDSEA_BIGQUERY_DATASET") or f"predsea_validation_{env}"
+
     parser = argparse.ArgumentParser(description="Ingest ROMS daily forecasts into BigQuery evidence_rows.")
     parser.add_argument("--run-date", help="ISO run date YYYY-MM-DD. Defaults to UTC today.")
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current UTC time).")
-    parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="GCS bucket name containing simulation runs.")
+    parser.add_argument("--gcs-bucket", default=PREDSEA_GCS_BUCKET, help="GCS bucket name containing simulation runs.")
     parser.add_argument("--local-file", help="Override GCS download and use a local NetCDF file for ingestion.")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud project).")
-    parser.add_argument("--dataset", default="predsea_validation", help="Target BigQuery dataset.")
+    parser.add_argument("--dataset", default=PREDSEA_BIGQUERY_DATASET, help="Target BigQuery dataset.")
     parser.add_argument("--table", default="evidence_rows", help="Target BigQuery table.")
     parser.add_argument("--dry-run", action="store_true", help="Perform extraction and print rows without loading into BigQuery.")
     return parser.parse_args(argv)
@@ -313,6 +330,8 @@ def process_roms_forecast(
                         "units": var_units,
                         "lead_time_hours": float(lead_hours),
                         "resolution_km": 1.0,
+                        "latitude": lat,
+                        "longitude": lon,
                     })
                     
         print(f"✅ Generated {len(forecast_rows)} long-format forecast rows from ROMS outputs.")

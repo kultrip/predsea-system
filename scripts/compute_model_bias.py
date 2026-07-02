@@ -54,9 +54,18 @@ def compute_bias_metrics(
             AND obs.record_type = 'observation'
             AND fc.target_time_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {lookback_days} DAY)
             AND obs.observed_at_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {lookback_days} DAY)
-            AND fc.provider IN ('predsea_wrf', 'predsea_croco', 'predsea_swan')
+            -- NOTE: was 'predsea_croco' before 2026-07-02, which never matched the ROMS
+            -- ingestor's actual provider value ('predsea_roms'), so ROMS bias correction
+            -- silently never populated. Fixed to match scripts/roms_forecast_ingestor.py.
+            AND fc.provider IN ('predsea_wrf', 'predsea_roms', 'predsea_swan')
             AND fc.value IS NOT NULL
             AND obs.value IS NOT NULL
+            -- KNOWN LIMITATION (see model_comparison.py for the fix): fc.reference_station_id
+            -- is a place/route-point id (e.g. "palma", "palma_ibiza_3"), not a real buoy
+            -- station id, so this exact-match join will return ~0 rows against real data
+            -- until forecast rows are matched to observation stations by nearest distance
+            -- instead of by id equality. Do not treat an empty result here as "no bias" --
+            -- it currently means "the join can't find the stations at all".
         )
         SELECT 
           provider,

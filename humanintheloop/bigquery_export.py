@@ -68,7 +68,15 @@ def resolve_config(
     table_id: str | None = None,
     location: str | None = None,
 ) -> BigQueryConfig | None:
-    dataset_id = dataset_id or os.environ.get("PREDSEA_BIGQUERY_DATASET") or DEFAULT_DATASET
+    if not dataset_id:
+        try:
+            from api.config import PREDSEA_BIGQUERY_DATASET
+            dataset_id = PREDSEA_BIGQUERY_DATASET
+        except ImportError:
+            env = os.environ.get("PREDSEA_ENV", "test").strip().lower()
+            if env not in ("test", "prod"):
+                env = "test"
+            dataset_id = os.environ.get("PREDSEA_BIGQUERY_DATASET") or f"{DEFAULT_DATASET}_{env}"
     table_id = table_id or os.environ.get("PREDSEA_BIGQUERY_TABLE") or DEFAULT_TABLE
     project_id = (
         project_id
@@ -479,6 +487,8 @@ def normalize_forecast_row(row, ingested_at_utc):
         "source_field": row.get("source_field"),
         "provider": row.get("provider") or row.get("forecast_source_id") or row.get("ocean_source"),
         "network": row.get("network") or row.get("forecast_source_id") or row.get("ocean_source"),
+        "latitude": numeric_value(row.get("latitude")),
+        "longitude": numeric_value(row.get("longitude")),
     }
     normalized["source_field"] = row.get("source_field")
 
