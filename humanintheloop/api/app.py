@@ -1160,6 +1160,51 @@ def enrich_route_elements_with_headings(waypoints: list, date_str: str | None = 
     return enriched
 
 
+def build_observation_stations_response(rows, lookback_days, variable_filter=None, generated_at_utc=None):
+    """Groups flat (station, variable) BigQuery rows into one entry per station.
+
+    Pure function, no I/O -- takes whatever `client.query(...).result()` (or an
+    equivalent list of row-like dicts) returned, so it's testable without a live
+    BigQuery connection. Never invents an observation: a station with no matching
+    row for a variable in the lookback window simply has no entry for that variable
+    in `observations`, rather than a guessed/default value.
+    """
+    stations: dict[str, dict] = {}
+    for row in rows:
+        station_id = row.get("station_id")
+        if not station_id:
+            continue
+        entry = stations.setdefault(
+            station_id,
+            {
+                "station_id": station_id,
+                "station_name": row.get("station_name") or station_id,
+                "station_kind": row.get("station_kind") or "unknown",
+                "network": row.get("network"),
+                "provider": row.get("provider"),
+                "latitude": row.get("latitude"),
+                "longitude": row.get("longitude"),
+                "observations": {},
+            },
+        )
+        row_variable = row.get("variable")
+        if row_variable and row.get("value") is not None:
+            observed_at = row.get("observed_at_utc")
+            entry["observations"][row_variable] = {
+                "value": row.get("value"),
+                "units": row.get("units"),
+                "observed_at_utc": observed_at.isoformat() if hasattr(observed_at, "isoformat") else observed_at,
+            }
+
+    return {
+        "status": "real",
+        "lookback_days": lookback_days,
+        "variable_filter": variable_filter,
+        "generated_at_utc": generated_at_utc or datetime.now(timezone.utc).isoformat(),
+        "stations": list(stations.values()),
+    }
+
+
 def create_app(evidence_store=None, route_store=None):
     app = FastAPI(
         title="PredSea MVP API",
@@ -2129,6 +2174,77 @@ def create_app(evidence_store=None, route_store=None):
             }
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get("/observations/stations")
+    def observation_stations(
+        variable: str | None = None,
+        lookback_days: int = Query(3, ge=1, le=30),
+    ):
+        """Real observation stations (buoys, tide gauges, HF radar, EMODnet platforms)
+        with their most recent real observed value, read live from BigQuery.
+
+        Never fabricates: a station with no recent real observation for the requested
+        variable is returned with an empty `observations` dict for that variable, not a
+        guessed value. If BigQuery isn't reachable, this returns 503 rather than a
+        placeholder station list.
+        """
+        try:
+            from google.cloud import bigquery
+            from bigquery_export import resolve_config
+
+            bq_config = resolve_config()
+            if bq_config is None:
+                raise HTTPException(status_code=503, detail="BigQuery is not configured on this deployment.")
+            table_name = f"{bq_config.project_id}.{bq_config.dataset_id}.{bq_config.table_id}"
+            client = bigquery.Client(project=bq_config.project_id)
+
+            variable_filter_sql = "AND variable = @variable" if variable else ""
+            query = f"""
+                WITH latest_station AS (
+                  SELECT
+                    station_id, station_name, station_kind, network, provider,
+                    latitude, longitude,
+                    ROW_NUMBER() OVER (PARTITION BY station_id ORDER BY ingested_at_utc DESC) AS rnk
+                  FROM `{table_name}`
+                  WHERE record_type = 'station_metadata'
+                    AND station_id IS NOT NULL
+                    AND latitude IS NOT NULL
+                    AND longitude IS NOT NULL
+                ),
+                latest_observation AS (
+                  SELECT
+                    station_id, variable, value, units, observed_at_utc,
+                    ROW_NUMBER() OVER (
+                      PARTITION BY station_id, variable ORDER BY observed_at_utc DESC
+                    ) AS rnk
+                  FROM `{table_name}`
+                  WHERE record_type = 'observation'
+                    AND observed_at_utc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @lookback_days DAY)
+                    AND value IS NOT NULL
+                    {variable_filter_sql}
+                )
+                SELECT
+                  s.station_id, s.station_name, s.station_kind, s.network, s.provider,
+                  s.latitude, s.longitude,
+                  o.variable, o.value, o.units, o.observed_at_utc
+                FROM latest_station s
+                LEFT JOIN latest_observation o ON o.station_id = s.station_id AND o.rnk = 1
+                WHERE s.rnk = 1
+            """
+            query_parameters = [bigquery.ScalarQueryParameter("lookback_days", "INT64", lookback_days)]
+            if variable:
+                query_parameters.append(bigquery.ScalarQueryParameter("variable", "STRING", variable))
+            job_config = bigquery.QueryJobConfig(query_parameters=query_parameters)
+            rows = list(client.query(query, job_config=job_config).result())
+        except HTTPException:
+            raise
+        except Exception as error:
+            logger.warning("observation_stations query failed: %s", error)
+            raise HTTPException(
+                status_code=503, detail="Could not load real observation stations right now."
+            ) from error
+
+        return build_observation_stations_response(rows, lookback_days, variable_filter=variable)
 
     @app.post(
         "/question",
