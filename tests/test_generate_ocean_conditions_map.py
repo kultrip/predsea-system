@@ -62,3 +62,139 @@ def test_cli_accepts_scalar_and_vector_variables():
     assert args.vector_var == "wave_dir"
     assert args.wind == "wind.nc"
 
+
+SAMPLE_ROUTE = {
+    "origin": {"name": "Palma", "latitude": 39.5696, "longitude": 2.6502},
+    "destination": {"name": "Ibiza", "latitude": 38.9089, "longitude": 1.435},
+    "sample_points": [
+        {"name": "Mid Palma-Ibiza", "latitude": 39.19, "longitude": 2.04},
+    ],
+}
+
+
+class FakeAStarWeatherRouter:
+    """Stands in for api.weather_routing.AStarWeatherRouter so tests don't need real
+    NetCDF grids. Tracks constructor/clear_cache calls so tests can assert on them."""
+
+    init_calls = []
+    clear_cache_calls = 0
+
+    def __init__(self, waves_path=None, currents_path=None):
+        FakeAStarWeatherRouter.init_calls.append((waves_path, currents_path))
+        self.waves_path = waves_path
+        self.currents_path = currents_path
+
+    @classmethod
+    def clear_cache(cls):
+        cls.clear_cache_calls += 1
+
+    def in_bounds(self, lat, lon):
+        return True
+
+    def find_route(self, origin_lat, origin_lon, dest_lat, dest_lon, departure_dt=None):
+        return {
+            "waypoints": [
+                {"lat": origin_lat, "lng": origin_lon},
+                {"lat": (origin_lat + dest_lat) / 2, "lng": (origin_lon + dest_lon) / 2},
+                {"lat": dest_lat, "lng": dest_lon},
+            ],
+            "distance_nm": 42.0,
+            "estimated_time_h": 2.8,
+            "source_tag": "astar_weather_route_v1",
+        }
+
+
+class OutOfBoundsAStarWeatherRouter(FakeAStarWeatherRouter):
+    def in_bounds(self, lat, lon):
+        return False
+
+
+def test_resolve_route_waypoints_prefers_waypoints_already_on_route():
+    module = load_map_script()
+    route = dict(SAMPLE_ROUTE, waypoints=[{"lat": 1.0, "lng": 2.0}])
+
+    waypoints = module.resolve_route_waypoints(route, waves_path="waves.nc", currents_path="currents.nc")
+
+    assert waypoints == [{"lat": 1.0, "lng": 2.0}]
+
+
+def test_resolve_route_waypoints_uses_weather_router_with_forcing_files():
+    module = load_map_script()
+    FakeAStarWeatherRouter.init_calls = []
+    FakeAStarWeatherRouter.clear_cache_calls = 0
+
+    waypoints = module.waypoints_from_weather_router(
+        SAMPLE_ROUTE, "waves.nc", "currents.nc", router_cls=FakeAStarWeatherRouter
+    )
+
+    assert FakeAStarWeatherRouter.clear_cache_calls == 1
+    assert FakeAStarWeatherRouter.init_calls == [("waves.nc", "currents.nc")]
+    assert waypoints[0] == {"lat": 39.5696, "lng": 2.6502}
+    assert waypoints[-1] == {"lat": 38.9089, "lng": 1.435}
+    assert len(waypoints) == 3
+
+
+def test_waypoints_from_weather_router_returns_empty_without_currents_path():
+    module = load_map_script()
+
+    waypoints = module.waypoints_from_weather_router(
+        SAMPLE_ROUTE, "waves.nc", None, router_cls=FakeAStarWeatherRouter
+    )
+
+    assert waypoints == []
+
+
+def test_waypoints_from_weather_router_falls_back_when_out_of_bounds():
+    module = load_map_script()
+
+    waypoints = module.waypoints_from_weather_router(
+        SAMPLE_ROUTE, "waves.nc", "currents.nc", router_cls=OutOfBoundsAStarWeatherRouter
+    )
+
+    assert waypoints == []
+
+
+def test_waypoints_from_weather_router_swallows_routing_errors():
+    module = load_map_script()
+
+    class ExplodingRouter(FakeAStarWeatherRouter):
+        def find_route(self, *args, **kwargs):
+            raise RuntimeError("no navigable path found")
+
+    waypoints = module.waypoints_from_weather_router(
+        SAMPLE_ROUTE, "waves.nc", "currents.nc", router_cls=ExplodingRouter
+    )
+
+    assert waypoints == []
+
+
+def test_waypoints_from_sample_points_prepends_origin_and_appends_destination():
+    module = load_map_script()
+
+    waypoints = module.waypoints_from_sample_points(SAMPLE_ROUTE)
+
+    assert waypoints[0] == {"lat": 39.5696, "lng": 2.6502}
+    assert waypoints[1] == {"lat": 39.19, "lng": 2.04}
+    assert waypoints[-1] == {"lat": 38.9089, "lng": 1.435}
+
+
+def test_resolve_route_waypoints_falls_back_to_sample_points_when_router_unavailable():
+    module = load_map_script()
+    # No waves/currents path given (as when called without forcing files) and place_registry
+    # resolution isn't importable/available in this route dict -> should still get a route
+    # from sample_points rather than an empty overlay.
+    route = dict(SAMPLE_ROUTE)
+
+    waypoints = module.resolve_route_waypoints(route, waves_path=None, currents_path=None)
+
+    assert waypoints
+    assert waypoints[0] == {"lat": 39.5696, "lng": 2.6502}
+    assert waypoints[-1] == {"lat": 38.9089, "lng": 1.435}
+
+
+def test_resolve_route_waypoints_passes_through_list_route():
+    module = load_map_script()
+    raw_waypoints = [{"lat": 1.0, "lng": 2.0}, {"lat": 3.0, "lng": 4.0}]
+
+    assert module.resolve_route_waypoints(raw_waypoints) == raw_waypoints
+

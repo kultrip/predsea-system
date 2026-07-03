@@ -73,6 +73,120 @@ def dependency_error(error):
     return runtime_error
 
 
+def _humanintheloop_path_on_sys_path():
+    import sys
+    human_path = str(Path(__file__).resolve().parent.parent / "humanintheloop")
+    if human_path not in sys.path:
+        sys.path.insert(0, human_path)
+    return human_path
+
+
+def waypoints_from_weather_router(route, waves_path, currents_path, router_cls=None):
+    """Resolve the sea-route path via the A* weather router that backs the /places/route
+    API endpoint, using the exact wave/current files a given map is plotting so the drawn
+    path matches what a captain would actually be shown. Returns [] on any failure so
+    callers can fall back to a cruder route geometry.
+    """
+    if currents_path is None:
+        return []
+    try:
+        if router_cls is None:
+            _humanintheloop_path_on_sys_path()
+            from api.weather_routing import AStarWeatherRouter as router_cls
+
+        lat1 = float(route["origin"]["latitude"])
+        lon1 = float(route["origin"]["longitude"])
+        lat2 = float(route["destination"]["latitude"])
+        lon2 = float(route["destination"]["longitude"])
+
+        # The router caches datasets at the class level keyed only on "loaded or not" --
+        # force a reload so it doesn't serve stale data left behind by a previous
+        # route/source that used different forcing files.
+        router_cls.clear_cache()
+        router = router_cls(waves_path=str(waves_path), currents_path=str(currents_path))
+        if not (router.in_bounds(lat1, lon1) and router.in_bounds(lat2, lon2)):
+            return []
+        route_metrics = router.find_route(
+            origin_lat=lat1,
+            origin_lon=lon1,
+            dest_lat=lat2,
+            dest_lon=lon2,
+        )
+        return route_metrics.get("waypoints", [])
+    except Exception as e:
+        print(f"Warning: A* weather routing unavailable for map waypoints: {e}")
+        return []
+
+
+def waypoints_from_place_registry(route):
+    """Resolve route geometry via place_registry's simpler (non-weather-aware) geometry
+    function. Used as a fallback when the A* weather router can't produce a path.
+    """
+    try:
+        _humanintheloop_path_on_sys_path()
+        import place_registry
+
+        lat1 = float(route["origin"]["latitude"])
+        lon1 = float(route["origin"]["longitude"])
+        lat2 = float(route["destination"]["latitude"])
+        lon2 = float(route["destination"]["longitude"])
+
+        origin_id = route.get("origin_place_id") or place_registry.default_place_id_for_query(route["origin"]["name"])
+        destination_id = route.get("destination_place_id") or place_registry.default_place_id_for_query(route["destination"]["name"])
+        if not (origin_id and destination_id):
+            return []
+        metrics = place_registry.coordinates_route_geometry_metrics(
+            origin_place_id=origin_id,
+            origin_place_name=route["origin"]["name"],
+            origin_latitude=lat1,
+            origin_longitude=lon1,
+            destination_place_id=destination_id,
+            destination_place_name=route["destination"]["name"],
+            destination_latitude=lat2,
+            destination_longitude=lon2,
+        )
+        return metrics.get("waypoints", [])
+    except Exception as e:
+        print(f"Warning: could not resolve waypoints dynamically: {e}")
+        return []
+
+
+def waypoints_from_sample_points(route):
+    """Fall back to the route's own coarse sample_points (origin + a handful of
+    hand-picked points + destination) when no real route geometry is available.
+    """
+    if "sample_points" not in route:
+        return []
+    sample = route.get("sample_points", [])
+    waypoints = [{"lat": route["origin"]["latitude"], "lng": route["origin"]["longitude"]}]
+    for sp in sample:
+        waypoints.append({"lat": sp["latitude"], "lng": sp["longitude"]})
+    waypoints.append({"lat": route["destination"]["latitude"], "lng": route["destination"]["longitude"]})
+    return waypoints
+
+
+def resolve_route_waypoints(route, waves_path=None, currents_path=None):
+    """Resolve the list of {lat, lng} waypoints to draw for a route, preferring (in order):
+    1. Waypoints already attached to the route dict (e.g. from a /places/route response).
+    2. The A* weather router, using the same forcing files this map is plotting.
+    3. place_registry's simpler route geometry.
+    4. The route's own coarse sample_points.
+    """
+    if isinstance(route, list):
+        return route
+    if not isinstance(route, dict):
+        return []
+
+    waypoints = route.get("waypoints", [])
+    if not waypoints:
+        waypoints = waypoints_from_weather_router(route, waves_path, currents_path)
+    if not waypoints:
+        waypoints = waypoints_from_place_registry(route)
+    if not waypoints:
+        waypoints = waypoints_from_sample_points(route)
+    return waypoints
+
+
 def generate_ocean_conditions_map(
     waves_path,
     output_path,
@@ -309,51 +423,7 @@ def generate_ocean_conditions_map(
 
     # Step 5b: Overlay route waypoints if provided
     if route is not None:
-        waypoints = []
-        if isinstance(route, dict):
-            # Check if there are waypoints directly in the dict
-            waypoints = route.get("waypoints", [])
-            
-            # If waypoints is empty, try to resolve dynamically using place_registry
-            if not waypoints:
-                try:
-                    import sys
-                    human_path = str(Path(__file__).resolve().parent.parent / "humanintheloop")
-                    if human_path not in sys.path:
-                        sys.path.insert(0, human_path)
-                    import place_registry
-                    
-                    lat1 = float(route["origin"]["latitude"])
-                    lon1 = float(route["origin"]["longitude"])
-                    lat2 = float(route["destination"]["latitude"])
-                    lon2 = float(route["destination"]["longitude"])
-                    
-                    origin_id = route.get("origin_place_id") or place_registry.default_place_id_for_query(route["origin"]["name"])
-                    destination_id = route.get("destination_place_id") or place_registry.default_place_id_for_query(route["destination"]["name"])
-                    if origin_id and destination_id:
-                        metrics = place_registry.coordinates_route_geometry_metrics(
-                            origin_place_id=origin_id,
-                            origin_place_name=route["origin"]["name"],
-                            origin_latitude=lat1,
-                            origin_longitude=lon1,
-                            destination_place_id=destination_id,
-                            destination_place_name=route["destination"]["name"],
-                            destination_latitude=lat2,
-                            destination_longitude=lon2,
-                        )
-                        waypoints = metrics.get("waypoints", [])
-                except Exception as e:
-                    print(f"Warning: could not resolve waypoints dynamically: {e}")
-            
-            # If still empty, fall back to sample_points with origin/destination prepended/appended
-            if not waypoints and "sample_points" in route:
-                sample = route.get("sample_points", [])
-                waypoints = [{"lat": route["origin"]["latitude"], "lng": route["origin"]["longitude"]}]
-                for sp in sample:
-                    waypoints.append({"lat": sp["latitude"], "lng": sp["longitude"]})
-                waypoints.append({"lat": route["destination"]["latitude"], "lng": route["destination"]["longitude"]})
-        elif isinstance(route, list):
-            waypoints = route
+        waypoints = resolve_route_waypoints(route, waves_path=waves_path, currents_path=currents_path)
 
         if waypoints:
             lons = []

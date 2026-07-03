@@ -86,6 +86,7 @@ def launch_spot_vm(args):
         f"--project={project}",
         f"--zone={zone}",
         f"--machine-type={args.machine_type}",
+        "--subnet=default",
         "--provisioning-model=SPOT",
         "--instance-termination-action=DELETE",
         "--scopes=https://www.googleapis.com/auth/cloud-platform",

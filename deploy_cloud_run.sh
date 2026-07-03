@@ -36,11 +36,11 @@ fi
 log_info "Active GCP Project ID: ${PROJECT_ID}"
 
 REGION="europe-west1"
-IMAGE_NAME="gcr.io/${PROJECT_ID}/predsea-system:latest"
+IMAGE_NAME="europe-west1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/predsea-api:latest"
 
 # 2. Build the unified container image using Cloud Build
 log_info "Submitting build to Google Cloud Build (Remote compilation)..."
-gcloud builds submit --tag "${IMAGE_NAME}" .
+gcloud builds submit --region="${REGION}" --default-buckets-behavior="regional-user-owned-bucket" --tag "${IMAGE_NAME}" .
 
 # 3. Securely Load Environment Variables for API Integrations (CMEMS, AEMET, SOCIB)
 ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
@@ -68,7 +68,7 @@ if [ -f "humanintheloop/.env" ]; then
 fi
 
 # Append standard GCS bucket and prefix environment variables if they are not already set
-ENV_VARS="$ENV_VARS,PREDSEA_GCS_BUCKET=predsea-daily-outputs,PREDSEA_GCS_PREFIX=predictions"
+ENV_VARS="$ENV_VARS,PREDSEA_GCS_BUCKET=ds-revenue-protection-predsea-outputs,PREDSEA_GCS_PREFIX=predictions"
 
 log_info "Deploying the serverless Cloud Run Service: 'predsea-api'..."
 gcloud run deploy predsea-api \
