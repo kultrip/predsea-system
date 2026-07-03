@@ -423,6 +423,7 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
         dpi=220,
         arrow_density="normal",
         arrow_color="black",
+        route=route,
     )
     return output_path
 

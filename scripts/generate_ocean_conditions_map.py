@@ -89,6 +89,7 @@ def generate_ocean_conditions_map(
     arrow_density="normal",
     arrow_color="white",
     draw_currents=True,
+    route=None,
 ):
     try:
         import numpy as np
@@ -305,6 +306,149 @@ def generate_ocean_conditions_map(
             transform=projection,
             zorder=6,
         )
+
+    # Step 5b: Overlay route waypoints if provided
+    if route is not None:
+        waypoints = []
+        if isinstance(route, dict):
+            # Check if there are waypoints directly in the dict
+            waypoints = route.get("waypoints", [])
+            
+            # If waypoints is empty, try to resolve dynamically using place_registry
+            if not waypoints:
+                try:
+                    import sys
+                    human_path = str(Path(__file__).resolve().parent.parent / "humanintheloop")
+                    if human_path not in sys.path:
+                        sys.path.insert(0, human_path)
+                    import place_registry
+                    
+                    lat1 = float(route["origin"]["latitude"])
+                    lon1 = float(route["origin"]["longitude"])
+                    lat2 = float(route["destination"]["latitude"])
+                    lon2 = float(route["destination"]["longitude"])
+                    
+                    origin_id = route.get("origin_place_id") or place_registry.default_place_id_for_query(route["origin"]["name"])
+                    destination_id = route.get("destination_place_id") or place_registry.default_place_id_for_query(route["destination"]["name"])
+                    if origin_id and destination_id:
+                        metrics = place_registry.coordinates_route_geometry_metrics(
+                            origin_place_id=origin_id,
+                            origin_place_name=route["origin"]["name"],
+                            origin_latitude=lat1,
+                            origin_longitude=lon1,
+                            destination_place_id=destination_id,
+                            destination_place_name=route["destination"]["name"],
+                            destination_latitude=lat2,
+                            destination_longitude=lon2,
+                        )
+                        waypoints = metrics.get("waypoints", [])
+                except Exception as e:
+                    print(f"Warning: could not resolve waypoints dynamically: {e}")
+            
+            # If still empty, fall back to sample_points with origin/destination prepended/appended
+            if not waypoints and "sample_points" in route:
+                sample = route.get("sample_points", [])
+                waypoints = [{"lat": route["origin"]["latitude"], "lng": route["origin"]["longitude"]}]
+                for sp in sample:
+                    waypoints.append({"lat": sp["latitude"], "lng": sp["longitude"]})
+                waypoints.append({"lat": route["destination"]["latitude"], "lng": route["destination"]["longitude"]})
+        elif isinstance(route, list):
+            waypoints = route
+
+        if waypoints:
+            lons = []
+            lats = []
+            for wp in waypoints:
+                if "lng" in wp:
+                    lons.append(wp["lng"])
+                elif "longitude" in wp:
+                    lons.append(wp["longitude"])
+                if "lat" in wp:
+                    lats.append(wp["lat"])
+                elif "latitude" in wp:
+                    lats.append(wp["latitude"])
+            
+            if lons and lats:
+                # Plot the path line connecting the waypoints
+                axis.plot(
+                    lons,
+                    lats,
+                    color="#22e6f0",
+                    linewidth=3.0,
+                    transform=projection,
+                    zorder=8,
+                    label="Route Path"
+                )
+                
+                # Plot individual waypoint nodes/markers
+                axis.scatter(
+                    lons,
+                    lats,
+                    color="#f4fbff",
+                    edgecolor="#06202d",
+                    s=80,
+                    linewidth=1.5,
+                    transform=projection,
+                    zorder=9,
+                    label="Waypoints"
+                )
+                
+                # Highlight origin and destination specifically with distinct styling
+                # Origin (Green)
+                axis.scatter(
+                    [lons[0]],
+                    [lats[0]],
+                    color="#2cf37d",
+                    edgecolor="#06202d",
+                    s=120,
+                    linewidth=2.0,
+                    transform=projection,
+                    zorder=10,
+                )
+                # Destination (Red)
+                axis.scatter(
+                    [lons[-1]],
+                    [lats[-1]],
+                    color="#f32c2c",
+                    edgecolor="#06202d",
+                    s=120,
+                    linewidth=2.0,
+                    transform=projection,
+                    zorder=10,
+                )
+                
+                # Add labels for Origin and Destination
+                if isinstance(route, dict):
+                    origin_name = route.get("origin", {}).get("name", "Origin")
+                    dest_name = route.get("destination", {}).get("name", "Destination")
+                else:
+                    origin_name = "Origin"
+                    dest_name = "Destination"
+                
+                axis.text(
+                    lons[0],
+                    lats[0] + 0.08,
+                    origin_name,
+                    transform=projection,
+                    fontsize=10,
+                    fontweight="bold",
+                    color="#2cf37d",
+                    ha="center",
+                    bbox={"facecolor": "#06202d", "alpha": 0.85, "edgecolor": "none", "pad": 3},
+                    zorder=11
+                )
+                axis.text(
+                    lons[-1],
+                    lats[-1] + 0.08,
+                    dest_name,
+                    transform=projection,
+                    fontsize=10,
+                    fontweight="bold",
+                    color="#f32c2c",
+                    ha="center",
+                    bbox={"facecolor": "#06202d", "alpha": 0.85, "edgecolor": "none", "pad": 3},
+                    zorder=11
+                )
 
     gridlines = axis.gridlines(
         draw_labels=True,
