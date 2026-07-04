@@ -83,6 +83,22 @@ def check_gce_instance_exists(instance_name: str, zone: str, project_id: str | N
         return True
 
 
+def check_gcs_object_exists(gcs_path: str) -> bool:
+    """Check if a GCS object exists using gcloud storage objects describe."""
+    cmd = ["gcloud", "storage", "objects", "describe", gcs_path, "--format=value(name)"]
+    try:
+        subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
 def delete_gce_instance(instance_name: str, zone: str, project_id: str | None = None):
     """Explicitly delete a GCE instance to avoid runaway costs."""
     print(f"⚠️ Safety Cleanup: Forcing deletion of GCE instance {instance_name} in {zone}...")
@@ -127,6 +143,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Perform dry-run for boundaries and simulation checks")
     parser.add_argument("--poll-interval", type=int, default=30, help="GCE status polling interval in seconds")
     parser.add_argument("--timeout-hours", type=float, default=4.0, help="Maximum execution wait time for the GCE Spot VM")
+    parser.add_argument("--boot-disk-size", default="100GB", help="Boot disk size for GCE VM (e.g. 100GB)")
 
     args = parser.parse_args()
 
@@ -192,6 +209,7 @@ def main():
         f"--zone={args.zone}",
         f"--machine-type={args.machine_type}",
         f"--image-tag={args.image_tag}",
+        f"--boot-disk-size={args.boot_disk_size}",
     ]
     if args.project:
         orchestrator_cmd.append(f"--project={args.project}")
@@ -223,8 +241,15 @@ def main():
 
             exists = check_gce_instance_exists(instance_name, args.zone, args.project)
             if not exists:
-                print(f"🎉 Spot VM '{instance_name}' has successfully finished its run and self-terminated.")
-                completed_normally = True
+                print(f"ℹ️ Spot VM '{instance_name}' no longer exists. Verifying workload completion in GCS...")
+                success_gcs_path = f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/SUCCESS"
+                if check_gcs_object_exists(success_gcs_path):
+                    print(f"🎉 SUCCESS: Workload completion marker found at {success_gcs_path}.")
+                    completed_normally = True
+                else:
+                    print(f"❌ ERROR: Spot VM '{instance_name}' terminated, but NO completion marker was found at {success_gcs_path}.")
+                    print("This indicates the simulation workload failed, ran out of disk, or the VM was preempted.")
+                    completed_normally = False
                 break
 
             print(f"⏳ Still running... Elapsed time: {elapsed/60:.1f} minutes. Checking again in {args.poll_interval}s...")

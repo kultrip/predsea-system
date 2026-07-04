@@ -201,6 +201,11 @@ fi
 echo "Uploading generic outputs and logs to GCS..."
 gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/" || true
 
+# 6. Write and upload SUCCESS marker file to signal successful run completion
+echo "Uploading SUCCESS marker file to GCS..."
+echo "SUCCESS" > /tmp/SUCCESS
+gsutil cp /tmp/SUCCESS "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/SUCCESS"
+
 echo "============================================="
 echo "🎉 Simulation pipeline complete!"
 echo "============================================="

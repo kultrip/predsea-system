@@ -86,6 +86,7 @@ def launch_spot_vm(args):
         f"--project={project}",
         f"--zone={zone}",
         f"--machine-type={args.machine_type}",
+        f"--boot-disk-size={args.boot_disk_size}",
         "--subnet=default",
         "--provisioning-model=SPOT",
         "--instance-termination-action=DELETE",
@@ -134,6 +135,7 @@ def main():
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
     parser.add_argument("--instance-name", help="GCE Instance name (defaults to auto-generated)")
     parser.add_argument("--execution-mode", choices=["container", "bare-metal"], default="container", help="Model execution mode on GCE VM")
+    parser.add_argument("--boot-disk-size", default="100GB", help="Boot disk size for GCE VM (e.g. 100GB)")
 
     args = parser.parse_args()
     launch_spot_vm(args)
