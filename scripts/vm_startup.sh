@@ -94,10 +94,20 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
   # Run model simulation inside the container
   echo "Executing model simulation in container..."
   set +e
+
+  # Check if a pre-generated namelist.wps is present in the downloaded forcing inputs
+  DOCKER_MOUNT_OPTS=""
+  if [ -f /workspace/inputs/namelist.wps ]; then
+    echo "Using pre-generated namelist.wps from forcing..."
+    cp /workspace/inputs/namelist.wps /workspace/namelist.wps
+    DOCKER_MOUNT_OPTS="-v /workspace/namelist.wps:/workspace/namelist.wps"
+  fi
+
   docker run --rm \
     -v /workspace/inputs:/data \
     -v /workspace/outputs:/workspace/run \
     -v /workspace/WPS_GEOG:/opt/WPS_GEOG \
+    ${DOCKER_MOUNT_OPTS:-} \
     -e START_DATE="${RUN_DATE}_00:00:00" \
     -e END_DATE="$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)_00:00:00" \
     "${DOCKER_IMAGE}" \

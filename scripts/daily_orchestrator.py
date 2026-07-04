@@ -98,6 +98,29 @@ def check_gcs_object_exists(gcs_path: str) -> bool:
     except subprocess.CalledProcessError:
         return False
 
+def upload_file_to_gcs(bucket_name: str, local_path: Path, gcs_blob_path: str, dry_run: bool = False) -> None:
+    """Upload a local file to GCS, using google-cloud-storage or gsutil fallback."""
+    print(f"☁️ Uploading {local_path.name} to gs://{bucket_name}/{gcs_blob_path}...")
+    if dry_run:
+        print("⚡ [DRY RUN] Skipping upload.")
+        return
+    try:
+        from google.cloud import storage
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_blob_path)
+        blob.upload_from_filename(str(local_path))
+        print("✅ Uploaded successfully via Python SDK.")
+    except Exception as e:
+        print(f"⚠️ SDK upload failed: {e}. Trying gsutil fallback...")
+        try:
+            cmd = ["gsutil", "cp", str(local_path), f"gs://{bucket_name}/{gcs_blob_path}"]
+            subprocess.run(cmd, check=True)
+            print("✅ Uploaded successfully via gsutil.")
+        except Exception as e2:
+            print(f"❌ Fallback also failed: {e2}")
+            raise
+
 
 def delete_gce_instance(instance_name: str, zone: str, project_id: str | None = None):
     """Explicitly delete a GCE instance to avoid runaway costs."""
@@ -197,6 +220,32 @@ def main():
     if cmems_rc != 0:
         print("❌ Error: Boundary condition download failed (CMEMS). Exiting.")
         sys.exit(1)
+
+    # Step 1.5: Pre-generate namelist.wps and upload to forcing directory
+    log_step("1.5. Pre-generating namelist.wps for simulation run")
+    run_date_dt = datetime.datetime.strptime(run_date, "%Y-%m-%d")
+    end_date_dt = run_date_dt + datetime.timedelta(days=1)
+    end_date_str = end_date_dt.strftime("%Y-%m-%d")
+
+    # Create tmp directory in the workspace if it doesn't exist
+    tmp_dir = PROJECT_ROOT / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    namelist_local_path = tmp_dir / "namelist.wps"
+
+    setup_domain_cmd = [
+        python_bin, str(PROJECT_ROOT / "simulation" / "setup_domain.py"),
+        f"--output={namelist_local_path}",
+        f"--start-date={run_date}_00:00:00",
+        f"--end-date={end_date_str}_00:00:00",
+    ]
+    
+    setup_rc = run_subprocess(setup_domain_cmd, dry_run=args.dry_run)
+    if setup_rc != 0:
+        print("❌ Error: Generating namelist.wps locally failed. Exiting.")
+        sys.exit(1)
+        
+    gcs_namelist_path = f"forcing/ecmwf/{run_date}/namelist.wps"
+    upload_file_to_gcs(args.gcs_bucket, namelist_local_path, gcs_namelist_path, dry_run=args.dry_run)
 
     # Step 2: Trigger GCE Spot VM WRF/ROMS simulation
     log_step("2. Launching GCE Spot VM")
