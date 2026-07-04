@@ -16,7 +16,7 @@
  j_parent_start = 1, 20, 35,
  e_we = 160, 277, 151,
  e_sn = 120, 271, 151,
- geog_data_res = 'modis_lakes+5m', 'modis_lakes+5m', 'modis_lakes+5m',
+ geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default',
  dx = 9000,
  dy = 9000,
  map_proj = 'lambert',

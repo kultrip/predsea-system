@@ -91,6 +91,12 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
   mkdir -p /workspace/WPS_GEOG
   gsutil -m rsync -r gs://predsea-hpc-outputs/WPS_GEOG/ /workspace/WPS_GEOG/
 
+  # Create safety symlinks for missing high-resolution datasets to avoid geogrid crashes.
+  # Using relative links so they resolve correctly inside the docker container mount (/opt/WPS_GEOG).
+  ln -sfn soiltype_top_5m /workspace/WPS_GEOG/soiltype_top_30s
+  ln -sfn soiltype_bot_5m /workspace/WPS_GEOG/soiltype_bot_30s
+  ln -sfn modis_landuse_20class_30s_with_lakes /workspace/WPS_GEOG/modis_landuse_21class_30s
+
   # Run model simulation inside the container
   echo "Executing model simulation in container..."
   set +e
