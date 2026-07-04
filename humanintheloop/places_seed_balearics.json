@@ -574,6 +574,26 @@
       "emodnet_sete",
       "emodnet_montpellier"
     ]
+  },
+  {
+    "id": "monaco",
+    "name": "Monaco",
+    "type": "main_port",
+    "latitude": 43.7325,
+    "longitude": 7.4197,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "monaco",
+      "monte carlo",
+      "port hercules",
+      "port hercule",
+      "principality of monaco"
+    ],
+    "observation_candidates": [
+      "emodnet_monaco",
+      "emodnet_nice"
+    ]
   }
 ]
 

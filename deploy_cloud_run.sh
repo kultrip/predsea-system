@@ -68,7 +68,7 @@ if [ -f "humanintheloop/.env" ]; then
 fi
 
 # Append standard GCS bucket and prefix environment variables if they are not already set
-ENV_VARS="$ENV_VARS,PREDSEA_GCS_BUCKET=ds-revenue-protection-predsea-outputs,PREDSEA_GCS_PREFIX=predictions"
+ENV_VARS="$ENV_VARS,PREDSEA_GCS_BUCKET=predsea-daily-outputs,PREDSEA_GCS_PREFIX=predictions"
 
 log_info "Deploying the serverless Cloud Run Service: 'predsea-api'..."
 gcloud run deploy predsea-api \
