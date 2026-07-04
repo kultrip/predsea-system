@@ -96,6 +96,10 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
   ln -sfn soiltype_top_5m /workspace/WPS_GEOG/soiltype_top_30s
   ln -sfn soiltype_bot_5m /workspace/WPS_GEOG/soiltype_bot_30s
   ln -sfn modis_landuse_20class_30s_with_lakes /workspace/WPS_GEOG/modis_landuse_21class_30s
+  ln -sfn greenfrac_fpar_modis_5m /workspace/WPS_GEOG/greenfrac_fpar_modis
+  ln -sfn greenfrac_fpar_modis_5m /workspace/WPS_GEOG/greenfrac_fpar_modis_30s
+  ln -sfn lai_modis_10m /workspace/WPS_GEOG/lai_modis
+  ln -sfn lai_modis_10m /workspace/WPS_GEOG/lai_modis_30s
 
   # Run model simulation inside the container
   echo "Executing model simulation in container..."
