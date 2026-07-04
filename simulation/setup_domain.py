@@ -47,7 +47,7 @@ def render_namelist(domain: BalearicDomain) -> str:
  j_parent_start = 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start},
  e_we = {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we},
  e_sn = {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn},
- geog_data_res = 'default', 'default', 'default',
+ geog_data_res = 'modis_lakes+5m', 'modis_lakes+5m', 'modis_lakes+5m',
  dx = {domain.d01_dx_m},
  dy = {domain.d01_dy_m},
  map_proj = 'lambert',
