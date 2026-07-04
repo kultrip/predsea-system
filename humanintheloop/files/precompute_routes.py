@@ -27,12 +27,17 @@ import json
 import logging
 import pickle
 import os
+import sys
 from datetime import datetime, timezone
 from itertools import combinations
 from pathlib import Path
 
 from route_graph import MaritimeGrid
 from route_solver import RouteSolver
+
+HUMANINTHELOOP_DIR = Path(__file__).resolve().parent.parent
+if str(HUMANINTHELOOP_DIR) not in sys.path:
+    sys.path.insert(0, str(HUMANINTHELOOP_DIR))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +49,20 @@ logger = logging.getLogger("precompute_routes")
 # ---------------------------------------------------------------------------
 # Canonical places
 # ---------------------------------------------------------------------------
+#
+# This used to be the only source of truth for what gets precomputed, paired
+# via combinations() -- i.e. every place against every other place. That
+# quietly missed most of the mainland/Sardinia/Italy routes.json entries
+# (Genoa, Marseille, Toulon, Cagliari, Naples, Palermo, Messina, Montpellier,
+# Tarragona, Palamos were never in here), and blindly adding all of those here
+# would multiply the nightly solve count several times over for pairs nobody
+# actually asks for (e.g. "Port Adriano -> Messina").
+#
+# Instead: keep this core Balearic cluster fully cross-connected (unchanged
+# behavior), and separately pull in exactly the additional pairs that
+# routes.json actually defines -- so precompute tracks the product's real
+# route inventory (including new additions like Monaco) instead of a third,
+# hand-maintained place list.
 
 CANONICAL_PLACES = {
     "palma":       (39.5696,  2.6502),
@@ -61,6 +80,48 @@ CANONICAL_PLACES = {
     "barcelona":   (41.3851,  2.1734),
     "valencia":    (39.4699, -0.3763),
 }
+
+
+def additional_pairs_from_routes_json():
+    """Resolve every routes.json entry's origin/destination to canonical place
+    ids via place_registry, returning {place_id: (lat, lon)} for any place not
+    already in CANONICAL_PLACES, plus the list of (origin_id, destination_id)
+    pairs those routes actually need. Best-effort: any entry that can't be
+    resolved (e.g. place_registry unavailable) is skipped, not fatal.
+    """
+    extra_places = {}
+    extra_pairs = []
+    routes_path = HUMANINTHELOOP_DIR / "routes.json"
+    try:
+        import place_registry
+        routes = json.loads(routes_path.read_text(encoding="utf-8"))
+    except Exception as error:
+        logger.warning("Could not derive extra route pairs from routes.json: %s", error)
+        return extra_places, extra_pairs
+
+    for route in routes.values():
+        try:
+            origin = route["origin"]
+            destination = route["destination"]
+            origin_id = place_registry.default_place_id_for_query(origin["name"])
+            destination_id = place_registry.default_place_id_for_query(destination["name"])
+            if not origin_id or not destination_id or origin_id == destination_id:
+                continue
+            extra_places.setdefault(origin_id, (float(origin["latitude"]), float(origin["longitude"])))
+            extra_places.setdefault(destination_id, (float(destination["latitude"]), float(destination["longitude"])))
+            extra_pairs.append((origin_id, destination_id))
+            extra_pairs.append((destination_id, origin_id))
+        except Exception as error:
+            logger.warning("Skipping routes.json entry %r: %s", route.get("id"), error)
+
+    # Places already covered by the core cluster don't need re-adding.
+    extra_places = {
+        place_id: coords
+        for place_id, coords in extra_places.items()
+        if place_id not in CANONICAL_PLACES
+    }
+    return extra_places, extra_pairs
+
 
 # Vessel profiles for precomputation
 VESSEL_PROFILES = [
@@ -157,12 +218,29 @@ def precompute(
     grid = MaritimeGrid.from_netcdf(waves_local, currents_local)
     grid.build_vertex_index()
 
-    # Generate all unique ordered pairs (A->B and B->A — different due to currents)
+    # Core Balearic cluster stays fully cross-connected (unchanged behavior).
     place_ids = list(CANONICAL_PLACES.keys())
     route_pairs = []
     for a, b in combinations(place_ids, 2):
         route_pairs.append((a, b))
         route_pairs.append((b, a))
+
+    # Additionally, solve exactly the pairs routes.json actually defines for
+    # places outside that core cluster (Monaco, Genoa, Marseille, Cagliari,
+    # etc.) instead of cross-connecting everything, to avoid an unnecessary
+    # combinatorial blow-up for pairs no one queries.
+    extra_places, extra_pairs = additional_pairs_from_routes_json()
+    all_places = dict(CANONICAL_PLACES)
+    all_places.update(extra_places)
+    for pair in extra_pairs:
+        if pair not in route_pairs:
+            route_pairs.append(pair)
+
+    if extra_places:
+        logger.info(
+            "Added %d extra places and %d extra route pairs from routes.json: %s",
+            len(extra_places), len(extra_pairs), sorted(extra_places),
+        )
 
     logger.info(
         "Precomputing %d route pairs × %d priorities × %d vessel classes = %d solves",
@@ -198,8 +276,8 @@ def precompute(
             solver = RouteSolver(grid)
 
             for origin_id, dest_id in route_pairs:
-                origin_lat, origin_lon = CANONICAL_PLACES[origin_id]
-                dest_lat,   dest_lon   = CANONICAL_PLACES[dest_id]
+                origin_lat, origin_lon = all_places[origin_id]
+                dest_lat,   dest_lon   = all_places[dest_id]
 
                 route_key = f"{origin_id}__{dest_id}__{priority}__{vessel_class}"
 

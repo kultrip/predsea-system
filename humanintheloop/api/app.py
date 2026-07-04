@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import math
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -767,9 +768,11 @@ def build_route_checkpoints(
         ],
         {"lat": float(destination_latitude), "lng": float(destination_longitude)},
     ]
-    checkpoints = []
-    cumulative_nm = 0.0
 
+    # Distance/ETA bookkeeping is sequential (each depends on the running total),
+    # but it's pure arithmetic -- cheap. Compute it first for every checkpoint.
+    pending = []
+    cumulative_nm = 0.0
     for index, point in enumerate(route_points[1:-1]):
         previous = route_points[index]
         cumulative_nm += route_analysis.haversine_nm(
@@ -780,16 +783,7 @@ def build_route_checkpoints(
         )
         eta_local = departure_dt_local + timedelta(hours=cumulative_nm / float(typical_speed_kn or 15.0))
         eta_local_text = format_local_timestamp(eta_local)
-        eta_local_time = eta_local.astimezone(ZoneInfo("Europe/Madrid")).strftime("%H:%M")
-        weather = route_waypoint_weather(
-            store,
-            run_date=run_date,
-            run_id=run_id,
-            latitude=point["lat"],
-            longitude=point["lng"],
-            eta_local_time_text=eta_local,
-        )
-        checkpoints.append(
+        pending.append(
             {
                 "waypoint_index": index,
                 "lat": float(point["lat"]),
@@ -797,9 +791,34 @@ def build_route_checkpoints(
                 "eta_local": eta_local_text,
                 "distance_from_origin_nm": round(cumulative_nm, 2),
                 "forecast_time_local": eta_local_text,
-                "weather": weather,
+                "eta_local_dt": eta_local,
             }
         )
+
+    if not pending:
+        return []
+
+    # The weather lookup per checkpoint is I/O-bound (reads the evidence store,
+    # typically backed by GCS) and each checkpoint is independent of the others,
+    # so fan them out instead of doing one sequential round trip per waypoint.
+    def fetch_weather(entry):
+        return route_waypoint_weather(
+            store,
+            run_date=run_date,
+            run_id=run_id,
+            latitude=entry["lat"],
+            longitude=entry["lng"],
+            eta_local_time_text=entry["eta_local_dt"],
+        )
+
+    with ThreadPoolExecutor(max_workers=min(8, len(pending))) as executor:
+        weather_results = list(executor.map(fetch_weather, pending))
+
+    checkpoints = []
+    for entry, weather in zip(pending, weather_results):
+        entry.pop("eta_local_dt", None)
+        entry["weather"] = weather
+        checkpoints.append(entry)
     return checkpoints
 
 
@@ -1896,10 +1915,57 @@ def create_app(evidence_store=None, route_store=None):
             if max_wave_height_tolerance_m is not None:
                 profile.max_wave_height_tolerance_m = max_wave_height_tolerance_m
 
-            # Try custom Metocean A* Weather Router for high-resolution Balearic grid, else fall back
+            # Fast path: check precomputed route cache if:
+            # 1. No coordinate overrides are provided (since cache is only for canonical port-to-port routes)
+            # 2. Live routing functions are not mocked (so we don't break unit test assertions)
             metrics = None
+            has_coordinate_overrides = (
+                origin_latitude is not None or
+                origin_longitude is not None or
+                destination_latitude is not None or
+                destination_longitude is not None
+            )
             is_mocked = getattr(place_registry.coordinates_route_geometry_metrics, "__name__", "") != "coordinates_route_geometry_metrics"
-            if not is_mocked:
+
+            if not has_coordinate_overrides and not is_mocked:
+                cached_origin_place_id = origin_side.get("place_id")
+                cached_destination_place_id = destination_side.get("place_id")
+                if cached_origin_place_id and cached_destination_place_id:
+                    try:
+                        cached_result = route_store.get(
+                            cached_origin_place_id,
+                            cached_destination_place_id,
+                            priority="comfort",
+                            vessel_class=vessel_class,
+                        )
+                    except Exception as ex:
+                        cached_result = None
+                        logger.warning(f"Route cache lookup failed for {cached_origin_place_id}->{cached_destination_place_id}: {ex}")
+                    if cached_result:
+                        cached_waypoints = [
+                            {"lat": float(point["lat"]), "lng": float(point["lon"])}
+                            for point in (cached_result.get("waypoints") or [])
+                            if point.get("lat") is not None and point.get("lon") is not None
+                        ]
+                        if cached_waypoints:
+                            metrics = {
+                                "origin_place_id": cached_origin_place_id,
+                                "origin_place_name": origin_side.get("place_name") or origin,
+                                "origin_latitude": float(origin_side["latitude"]),
+                                "origin_longitude": float(origin_side["longitude"]),
+                                "destination_place_id": cached_destination_place_id,
+                                "destination_place_name": destination_side.get("place_name") or destination,
+                                "destination_latitude": float(destination_side["latitude"]),
+                                "destination_longitude": float(destination_side["longitude"]),
+                                "distance_nm": float(cached_result["distance_nm"]),
+                                "estimated_time_h": round(float(cached_result["estimated_time_h"]), 2),
+                                "typical_speed_kn": float(typical_speed_kn),
+                                "waypoints": cached_waypoints,
+                                "source_tag": "precomputed_route_cache_v1",
+                            }
+
+            # Try custom Metocean A* Weather Router for high-resolution Balearic grid, else fall back
+            if metrics is None and not is_mocked:
                 try:
                     from api.weather_routing import AStarWeatherRouter
                     router = AStarWeatherRouter(vessel_profile=profile)

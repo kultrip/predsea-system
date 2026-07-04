@@ -77,6 +77,7 @@ gcloud run deploy predsea-api \
     --allow-unauthenticated \
     --memory 2Gi \
     --cpu 2 \
+    --min-instances=1 \
     ${ENV_VARS:+--set-env-vars="$ENV_VARS"} \
     --quiet
 
