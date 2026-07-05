@@ -252,6 +252,11 @@ def main():
     gcs_run_pipeline_path = f"forcing/ecmwf/{run_date}/run_pipeline.sh"
     upload_file_to_gcs(args.gcs_bucket, run_pipeline_local_path, gcs_run_pipeline_path, dry_run=args.dry_run)
 
+    # Upload updated setup_domain.py to allow dynamic patching inside the container
+    setup_domain_local_path = PROJECT_ROOT / "simulation" / "setup_domain.py"
+    gcs_setup_domain_path = f"forcing/ecmwf/{run_date}/setup_domain.py"
+    upload_file_to_gcs(args.gcs_bucket, setup_domain_local_path, gcs_setup_domain_path, dry_run=args.dry_run)
+
     # Upload GRIB2 compatible Vtable to avoid missing Vtable or decoding failures
     vtable_local_path = PROJECT_ROOT / "simulation" / "Vtable.ECMWF_grib2"
     gcs_vtable_path = f"forcing/ecmwf/{run_date}/Vtable.ECMWF_grib2"

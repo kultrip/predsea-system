@@ -123,6 +123,12 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
     DOCKER_MOUNT_OPTS="${DOCKER_MOUNT_OPTS} -v /workspace/run_pipeline.sh:/opt/predsea/run_pipeline.sh"
   fi
 
+  if [ -f /workspace/inputs/setup_domain.py ]; then
+    echo "Using updated setup_domain.py from forcing to bypass image rebuild..."
+    cp /workspace/inputs/setup_domain.py /workspace/setup_domain.py
+    DOCKER_MOUNT_OPTS="${DOCKER_MOUNT_OPTS} -v /workspace/setup_domain.py:/opt/predsea/setup_domain.py"
+  fi
+
   docker run --rm \
     -v /workspace/inputs:/data \
     -v /workspace/outputs:/workspace/run \
