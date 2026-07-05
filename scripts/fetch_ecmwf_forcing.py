@@ -26,7 +26,7 @@ PRESSURE_LEVELS = [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 50]
 PL_VARS = ["z", "t", "r", "u", "v"]
 
 # Core surface parameters (soil/sea skin + air surface components)
-SFC_VARS = ["10u", "10v", "2t", "2d", "sp", "msl", "skt", "lsm", "sst"]
+SFC_VARS = ["10u", "10v", "2t", "2d", "sp", "msl", "skt", "lsm"]
 
 
 def get_latest_run_time() -> int:
@@ -132,6 +132,37 @@ def fetch_ecmwf_data(
     return {"pl_path": pl_file, "sfc_path": sfc_file}
 
 
+def convert_grib_packing_to_simple(grib_path: Path) -> None:
+    """Repack GRIB2 file from complex/CCSDS compression (Data Representation Template 42)
+    to simple grid packing (natively supported by WPS/ungrib without complex libraries).
+    """
+    import subprocess
+    import shutil
+
+    if not grib_path.exists():
+        print(f"⚠️ GRIB file not found for repacking: {grib_path}")
+        return
+
+    # Check if grib_set is available on PATH
+    if not shutil.which("grib_set"):
+        print("⚠️ 'grib_set' executable not found on PATH. Skipping GRIB repacking.")
+        print("   If running in Cloud Run, ensure libeccodes-tools is installed in the container.")
+        return
+
+    print(f"🔄 Repacking GRIB2 file {grib_path.name} to simple grid packing using grib_set...")
+    tmp_path = grib_path.with_suffix(".tmp_simple.grib2")
+    try:
+        cmd = ["grib_set", "-r", "-s", "packingType=grid_simple", str(grib_path), str(tmp_path)]
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        tmp_path.replace(grib_path)
+        print(f"✅ Repacked GRIB2 successfully. Size: {grib_path.stat().st_size / 1024 / 1024:.1f} MB")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ grib_set failed with exit code {e.returncode}: {e.stderr}", file=sys.stderr)
+        if tmp_path.exists():
+            tmp_path.unlink()
+        raise RuntimeError(f"GRIB repacking failed for {grib_path}") from e
+
+
 def parse_args() -> argparse.Namespace:
     import sys
     from pathlib import Path
@@ -200,6 +231,11 @@ def main() -> None:
             dry_run=args.dry_run,
         )
 
+        if not args.dry_run:
+            # Convert GRIB files to simple packing format to bypass ungrib CCSDS compression limits
+            convert_grib_packing_to_simple(paths["pl_path"])
+            convert_grib_packing_to_simple(paths["sfc_path"])
+
         if args.gcs_bucket and not args.dry_run:
             # Upload pl file
             gcs_pl_path = f"forcing/ecmwf/{args.run_date}/{paths['pl_path'].name}"
@@ -209,7 +245,7 @@ def main() -> None:
             gcs_sfc_path = f"forcing/ecmwf/{args.run_date}/{paths['sfc_path'].name}"
             upload_to_gcs(args.gcs_bucket, paths["sfc_path"], gcs_sfc_path)
 
-            print(f"🎉 All files successfully downloaded and archived in GCS.")
+            print(f"🎉 All files successfully downloaded, repacked, and archived in GCS.")
         elif args.dry_run:
             print("⚡ Dry run complete. Paths resolved:")
             print(f"PL Path: {paths['pl_path']}")
