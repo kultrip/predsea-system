@@ -100,6 +100,9 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
   ln -sfn greenfrac_fpar_modis_5m /workspace/WPS_GEOG/greenfrac_fpar_modis_30s
   ln -sfn lai_modis_10m /workspace/WPS_GEOG/lai_modis
   ln -sfn lai_modis_10m /workspace/WPS_GEOG/lai_modis_30s
+  ln -sfn orogwd_1deg /workspace/WPS_GEOG/orogwd_10m
+  ln -sfn orogwd_1deg /workspace/WPS_GEOG/orogwd_20m
+
 
   # Run model simulation inside the container
   echo "Executing model simulation in container..."
