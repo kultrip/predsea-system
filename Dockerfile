@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     proj-bin \
     libnetcdf-dev \
     libhdf5-dev \
+    libeccodes-tools \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
