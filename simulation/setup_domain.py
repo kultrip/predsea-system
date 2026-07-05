@@ -78,7 +78,7 @@ def write_namelist(path: Path, domain: BalearicDomain) -> Path:
     return path
 
 
-def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str) -> None:
+def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, domain: BalearicDomain) -> None:
     try:
         parts_start = start_date_str.split("_")
         date_start = parts_start[0].split("-")
@@ -105,14 +105,57 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str) -> 
     
     import re
     replacements = {
-        r"(\bstart_year\s*=)[^,/;\n]+": f"\\1 {s_yr}, {s_yr}, {s_yr}",
-        r"(\bstart_month\s*=)[^,/;\n]+": f"\\1 {s_mo}, {s_mo}, {s_mo}",
-        r"(\bstart_day\s*=)[^,/;\n]+": f"\\1 {s_dy}, {s_dy}, {s_dy}",
-        r"(\bstart_hour\s*=)[^,/;\n]+": f"\\1 {s_hr}, {s_hr}, {s_hr}",
-        r"(\bend_year\s*=)[^,/;\n]+": f"\\1 {e_yr}, {e_yr}, {e_yr}",
-        r"(\bend_month\s*=)[^,/;\n]+": f"\\1 {e_mo}, {e_mo}, {e_mo}",
-        r"(\bend_day\s*=)[^,/;\n]+": f"\\1 {e_dy}, {e_dy}, {e_dy}",
-        r"(\bend_hour\s*=)[^,/;\n]+": f"\\1 {e_hr}, {e_hr}, {e_hr}",
+        # Time control
+        r"(\bstart_year\s*=)[^!\n/]+": f"\\1 {s_yr}, {s_yr}, {s_yr},",
+        r"(\bstart_month\s*=)[^!\n/]+": f"\\1 {s_mo}, {s_mo}, {s_mo},",
+        r"(\bstart_day\s*=)[^!\n/]+": f"\\1 {s_dy}, {s_dy}, {s_dy},",
+        r"(\bstart_hour\s*=)[^!\n/]+": f"\\1 {s_hr}, {s_hr}, {s_hr},",
+        r"(\bend_year\s*=)[^!\n/]+": f"\\1 {e_yr}, {e_yr}, {e_yr},",
+        r"(\bend_month\s*=)[^!\n/]+": f"\\1 {e_mo}, {e_mo}, {e_mo},",
+        r"(\bend_day\s*=)[^!\n/]+": f"\\1 {e_dy}, {e_dy}, {e_dy},",
+        r"(\bend_hour\s*=)[^!\n/]+": f"\\1 {e_hr}, {e_hr}, {e_hr},",
+        r"(\bhistory_interval\s*=)[^!\n/]+": f"\\1 60, 60, 60,",
+        r"(\bframes_per_outfile\s*=)[^!\n/]+": f"\\1 1, 1, 1,",
+        r"(\binput_from_file\s*=)[^!\n/]+": f"\\1 .true., .true., .true.,",
+        
+        # Domains
+        r"(\bmax_dom\s*=)[^!\n/]+": f"\\1 3,",
+        r"(\be_we\s*=)[^!\n/]+": f"\\1 {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we},",
+        r"(\be_sn\s*=)[^!\n/]+": f"\\1 {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn},",
+        r"(\be_vert\s*=)[^!\n/]+": f"\\1 45, 45, 45,",
+        r"(\bnum_metgrid_levels\s*=)[^!\n/]+": f"\\1 13,",
+        r"(\bnum_metgrid_soil_levels\s*=)[^!\n/]+": f"\\1 0,",
+        r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.d01_dx_m // 9},",
+        r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.d01_dy_m // 9},",
+        r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 1, 2, 3,",
+        r"(\bparent_id\s*=)[^!\n/]+": f"\\1 0, 1, 2,",
+        r"(\bi_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start},",
+        r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start},",
+        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3,",
+        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3,",
+        
+        # Physics arrays
+        r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bcu_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bra_lw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bra_sw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bbl_pbl_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bsf_sfclay_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bsf_surface_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
+        r"(\bradt\s*=)[^!\n/]+": f"\\1 15, 15, 15,",
+        r"(\bbldt\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
+        r"(\bcudt\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
+        r"(\bsf_urban_physics\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
+        
+        # Dynamics arrays
+        r"(\bzdamp\s*=)[^!\n/]+": f"\\1 5000., 5000., 5000.,",
+        r"(\bdampcoef\s*=)[^!\n/]+": f"\\1 0.2, 0.2, 0.2,",
+        r"(\bkhdif\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
+        r"(\bkvdif\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
+        r"(\bnon_hydrostatic\s*=)[^!\n/]+": f"\\1 .true., .true., .true.,",
+        r"(\bmoist_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1,",
+        r"(\bscalar_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1,",
+        r"(\bgwd_opt\s*=)[^!\n/]+": f"\\1 1, 0, 0,",
     }
     
     new_content = content
@@ -120,7 +163,7 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str) -> 
         new_content = re.sub(pattern, replacement, new_content, flags=re.IGNORECASE)
         
     path.write_text(new_content)
-    print(f"Successfully patched {path} with start_date={start_date_str} and end_date={end_date_str}")
+    print(f"Successfully patched {path} for domain starting {start_date_str}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -145,7 +188,7 @@ def main() -> None:
     output = write_namelist(args.output, domain)
     print(output)
     if args.patch_namelist_input:
-        patch_namelist_input(args.patch_namelist_input, args.start_date, args.end_date)
+        patch_namelist_input(args.patch_namelist_input, args.start_date, args.end_date, domain)
 
 
 if __name__ == "__main__":
