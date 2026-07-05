@@ -19,21 +19,44 @@ class BalearicDomain:
     d01_e_sn: int = 120
     d02_e_we: int = 277
     d02_e_sn: int = 271
+    # Domain 3: Balearics nest (1km)
     d03_e_we: int = 151
     d03_e_sn: int = 151
+    # Domain 4: French Coast nest (1km)
+    d04_e_we: int = 301
+    d04_e_sn: int = 100
+    # Domain 5: Corsica & Sardinia nest (1km)
+    d05_e_we: int = 151
+    d05_e_sn: int = 400
+    # Domain 6: Ligurian/Tuscan Coast nest (1km)
+    d06_e_we: int = 151
+    d06_e_sn: int = 202
+    # Domain 7: Tyrrhenian Coast & Sicily nest (1km)
+    d07_e_we: int = 253
+    d07_e_sn: int = 301
+
     d02_i_parent_start: int = 40
     d02_j_parent_start: int = 20
     d03_i_parent_start: int = 34
     d03_j_parent_start: int = 35
+    d04_i_parent_start: int = 10
+    d04_j_parent_start: int = 180
+    d05_i_parent_start: int = 110
+    d05_j_parent_start: int = 60
+    d06_i_parent_start: int = 160
+    d06_j_parent_start: int = 180
+    d07_i_parent_start: int = 160
+    d07_j_parent_start: int = 10
+
     forcing_prefix: str = "ECMWF"
 
 
 def render_namelist(domain: BalearicDomain) -> str:
     return f"""&share
  wrf_core = 'ARW',
- max_dom = 3,
- start_date = '{domain.start_date}', '{domain.start_date}', '{domain.start_date}',
- end_date = '{domain.end_date}', '{domain.end_date}', '{domain.end_date}',
+ max_dom = 7,
+ start_date = '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}',
+ end_date = '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}',
  interval_seconds = {domain.interval_seconds},
  io_form_geogrid = 2,
  opt_output_from_geogrid_path = './geo_em',
@@ -41,13 +64,13 @@ def render_namelist(domain: BalearicDomain) -> str:
 /
 
 &geogrid
- parent_id = 1, 1, 2,
- parent_grid_ratio = 1, 3, 3,
- i_parent_start = 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start},
- j_parent_start = 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start},
- e_we = {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we},
- e_sn = {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn},
- geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default',
+ parent_id = 1, 1, 2, 2, 2, 2, 2,
+ parent_grid_ratio = 1, 3, 3, 3, 3, 3, 3,
+ i_parent_start = 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start}, {domain.d04_i_parent_start}, {domain.d05_i_parent_start}, {domain.d06_i_parent_start}, {domain.d07_i_parent_start},
+ j_parent_start = 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},
+ e_we = {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we}, {domain.d04_e_we}, {domain.d05_e_we}, {domain.d06_e_we}, {domain.d07_e_we},
+ e_sn = {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn}, {domain.d04_e_sn}, {domain.d05_e_sn}, {domain.d06_e_sn}, {domain.d07_e_sn},
+ geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default',
  dx = {domain.d01_dx_m},
  dy = {domain.d01_dy_m},
  map_proj = 'lambert',
@@ -106,56 +129,56 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
     import re
     replacements = {
         # Time control
-        r"(\bstart_year\s*=)[^!\n/]+": f"\\1 {s_yr}, {s_yr}, {s_yr},",
-        r"(\bstart_month\s*=)[^!\n/]+": f"\\1 {s_mo}, {s_mo}, {s_mo},",
-        r"(\bstart_day\s*=)[^!\n/]+": f"\\1 {s_dy}, {s_dy}, {s_dy},",
-        r"(\bstart_hour\s*=)[^!\n/]+": f"\\1 {s_hr}, {s_hr}, {s_hr},",
-        r"(\bend_year\s*=)[^!\n/]+": f"\\1 {e_yr}, {e_yr}, {e_yr},",
-        r"(\bend_month\s*=)[^!\n/]+": f"\\1 {e_mo}, {e_mo}, {e_mo},",
-        r"(\bend_day\s*=)[^!\n/]+": f"\\1 {e_dy}, {e_dy}, {e_dy},",
-        r"(\bend_hour\s*=)[^!\n/]+": f"\\1 {e_hr}, {e_hr}, {e_hr},",
-        r"(\bhistory_interval\s*=)[^!\n/]+": f"\\1 60, 60, 60,",
-        r"(\bframes_per_outfile\s*=)[^!\n/]+": f"\\1 1, 1, 1,",
-        r"(\binput_from_file\s*=)[^!\n/]+": f"\\1 .true., .true., .true.,",
+        r"(\bstart_year\s*=)[^!\n/]+": f"\\1 {s_yr}, {s_yr}, {s_yr}, {s_yr}, {s_yr}, {s_yr}, {s_yr},",
+        r"(\bstart_month\s*=)[^!\n/]+": f"\\1 {s_mo}, {s_mo}, {s_mo}, {s_mo}, {s_mo}, {s_mo}, {s_mo},",
+        r"(\bstart_day\s*=)[^!\n/]+": f"\\1 {s_dy}, {s_dy}, {s_dy}, {s_dy}, {s_dy}, {s_dy}, {s_dy},",
+        r"(\bstart_hour\s*=)[^!\n/]+": f"\\1 {s_hr}, {s_hr}, {s_hr}, {s_hr}, {s_hr}, {s_hr}, {s_hr},",
+        r"(\bend_year\s*=)[^!\n/]+": f"\\1 {e_yr}, {e_yr}, {e_yr}, {e_yr}, {e_yr}, {e_yr}, {e_yr},",
+        r"(\bend_month\s*=)[^!\n/]+": f"\\1 {e_mo}, {e_mo}, {e_mo}, {e_mo}, {e_mo}, {e_mo}, {e_mo},",
+        r"(\bend_day\s*=)[^!\n/]+": f"\\1 {e_dy}, {e_dy}, {e_dy}, {e_dy}, {e_dy}, {e_dy}, {e_dy},",
+        r"(\bend_hour\s*=)[^!\n/]+": f"\\1 {e_hr}, {e_hr}, {e_hr}, {e_hr}, {e_hr}, {e_hr}, {e_hr},",
+        r"(\bhistory_interval\s*=)[^!\n/]+": f"\\1 60, 60, 60, 60, 60, 60, 60,",
+        r"(\bframes_per_outfile\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
+        r"(\binput_from_file\s*=)[^!\n/]+": f"\\1 .true., .true., .true., .true., .true., .true., .true.,",
         
         # Domains
-        r"(\bmax_dom\s*=)[^!\n/]+": f"\\1 3,",
-        r"(\be_we\s*=)[^!\n/]+": f"\\1 {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we},",
-        r"(\be_sn\s*=)[^!\n/]+": f"\\1 {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn},",
-        r"(\be_vert\s*=)[^!\n/]+": f"\\1 45, 45, 45,",
+        r"(\bmax_dom\s*=)[^!\n/]+": f"\\1 7,",
+        r"(\be_we\s*=)[^!\n/]+": f"\\1 {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we}, {domain.d04_e_we}, {domain.d05_e_we}, {domain.d06_e_we}, {domain.d07_e_we},",
+        r"(\be_sn\s*=)[^!\n/]+": f"\\1 {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn}, {domain.d04_e_sn}, {domain.d05_e_sn}, {domain.d06_e_sn}, {domain.d07_e_sn},",
+        r"(\be_vert\s*=)[^!\n/]+": f"\\1 45, 45, 45, 45, 45, 45, 45,",
         r"(\bnum_metgrid_levels\s*=)[^!\n/]+": f"\\1 13,",
         r"(\bnum_metgrid_soil_levels\s*=)[^!\n/]+": f"\\1 0,",
-        r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.d01_dx_m // 9},",
-        r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.d01_dy_m // 9},",
-        r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 1, 2, 3,",
-        r"(\bparent_id\s*=)[^!\n/]+": f"\\1 0, 1, 2,",
-        r"(\bi_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start},",
-        r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start},",
-        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3,",
-        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3,",
+        r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9},",
+        r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9},",
+        r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 1, 2, 3, 4, 5, 6, 7,",
+        r"(\bparent_id\s*=)[^!\n/]+": f"\\1 0, 1, 2, 2, 2, 2, 2,",
+        r"(\bi_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start}, {domain.d04_i_parent_start}, {domain.d05_i_parent_start}, {domain.d06_i_parent_start}, {domain.d07_i_parent_start},",
+        r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},",
+        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3, 3, 3, 3, 3,",
+        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3, 3, 3, 3, 3,",
         
         # Physics arrays
-        r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bcu_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bra_lw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bra_sw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bbl_pbl_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bsf_sfclay_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bsf_surface_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1,",
-        r"(\bradt\s*=)[^!\n/]+": f"\\1 15, 15, 15,",
-        r"(\bbldt\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
-        r"(\bcudt\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
-        r"(\bsf_urban_physics\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
+        r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bcu_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bra_lw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bra_sw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bbl_pbl_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bsf_sfclay_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bsf_surface_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
+        r"(\bradt\s*=)[^!\n/]+": f"\\1 15, 15, 15, 15, 15, 15, 15,",
+        r"(\bbldt\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
+        r"(\bcudt\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
+        r"(\bsf_urban_physics\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
         
         # Dynamics arrays
-        r"(\bzdamp\s*=)[^!\n/]+": f"\\1 5000., 5000., 5000.,",
-        r"(\bdampcoef\s*=)[^!\n/]+": f"\\1 0.2, 0.2, 0.2,",
-        r"(\bkhdif\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
-        r"(\bkvdif\s*=)[^!\n/]+": f"\\1 0, 0, 0,",
-        r"(\bnon_hydrostatic\s*=)[^!\n/]+": f"\\1 .true., .true., .true.,",
-        r"(\bmoist_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1,",
-        r"(\bscalar_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1,",
-        r"(\bgwd_opt\s*=)[^!\n/]+": f"\\1 1, 0, 0,",
+        r"(\bzdamp\s*=)[^!\n/]+": f"\\1 5000., 5000., 5000., 5000., 5000., 5000., 5000.,",
+        r"(\bdampcoef\s*=)[^!\n/]+": f"\\1 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2,",
+        r"(\bkhdif\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
+        r"(\bkvdif\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
+        r"(\bnon_hydrostatic\s*=)[^!\n/]+": f"\\1 .true., .true., .true., .true., .true., .true., .true.,",
+        r"(\bmoist_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
+        r"(\bscalar_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
+        r"(\bgwd_opt\s*=)[^!\n/]+": f"\\1 1, 0, 0, 0, 0, 0, 0,",
     }
     
     new_content = content

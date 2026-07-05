@@ -26,7 +26,11 @@ PRESSURE_LEVELS = [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 50]
 PL_VARS = ["z", "t", "r", "u", "v"]
 
 # Core surface parameters (soil/sea skin + air surface components)
-SFC_VARS = ["10u", "10v", "2t", "2d", "sp", "msl", "skt", "lsm"]
+SFC_VARS = [
+    "10u", "10v", "2t", "2d", "sp", "msl", "skt", "lsm",
+    "stl1", "stl2", "stl3", "stl4",
+    "swvl1", "swvl2", "swvl3", "swvl4"
+]
 
 
 def get_latest_run_time() -> int:

@@ -6,19 +6,19 @@ from simulation.setup_domain import BalearicDomain, render_namelist
 def test_render_namelist_defines_one_km_balearic_nested_domain():
     namelist = render_namelist(BalearicDomain())
 
-    assert "max_dom = 3" in namelist
-    assert "parent_id = 1, 1, 2" in namelist
-    assert "parent_grid_ratio = 1, 3, 3" in namelist
+    assert "max_dom = 7" in namelist
+    assert "parent_id = 1, 1, 2, 2, 2, 2, 2" in namelist
+    assert "parent_grid_ratio = 1, 3, 3, 3, 3, 3, 3" in namelist
     assert "dx = 9000" in namelist
     assert "dy = 9000" in namelist
     assert "ref_lat = 40.0000" in namelist
     assert "ref_lon = 5.0000" in namelist
     assert "stand_lon = 5.0000" in namelist
-    assert "geog_data_res = 'default', 'default', 'default'" in namelist
-    assert "i_parent_start = 1, 40, 34" in namelist
-    assert "j_parent_start = 1, 20, 35" in namelist
-    assert "e_we = 160, 277, 151" in namelist
-    assert "e_sn = 120, 271, 151" in namelist
+    assert "geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default'" in namelist
+    assert "i_parent_start = 1, 40, 34, 10, 110, 160, 160" in namelist
+    assert "j_parent_start = 1, 20, 35, 180, 60, 180, 10" in namelist
+    assert "e_we = 160, 277, 151, 301, 151, 151, 253" in namelist
+    assert "e_sn = 120, 271, 151, 100, 400, 202, 301" in namelist
 
 
 
@@ -32,11 +32,11 @@ def test_render_namelist_allows_dates_and_geog_path_override():
     )
 
     assert (
-        "start_date = '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00'"
+        "start_date = '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00'"
         in namelist
     )
     assert (
-        "end_date = '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00'"
+        "end_date = '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00'"
         in namelist
     )
     assert "geog_data_path = '/opt/wps_geog'" in namelist

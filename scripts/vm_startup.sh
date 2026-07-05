@@ -136,6 +136,7 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
     ${DOCKER_MOUNT_OPTS:-} \
     -e START_DATE="${RUN_DATE}_00:00:00" \
     -e END_DATE="$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)_00:00:00" \
+    -e MPI_PROCS="$(nproc)" \
     "${DOCKER_IMAGE}" \
     /opt/predsea/run_pipeline.sh 2>&1 | tee /workspace/outputs/docker_run.log
   DOCKER_EXIT_CODE=${PIPESTATUS[0]}
@@ -186,38 +187,43 @@ else
       --patch-namelist-input /workspace/outputs/wrf/namelist.input || true
   fi
 
-  # Step A: WRF (32-core parallel)
+  CORES=$(nproc)
+  echo "System has ${CORES} cores available for parallel execution."
+
+  # Step A: WRF (dynamic parallel cores)
   echo "============================================="
-  echo "🏃 Running Step A: WRF (32-core parallel)"
+  echo "🏃 Running Step A: WRF (${CORES}-core parallel)"
   echo "============================================="
   cd /workspace/outputs/wrf
   if [ -f /workspace/bin/real.exe ]; then
     echo "Running real.exe..."
-    mpirun -np 32 /workspace/bin/real.exe 2>&1 | tee real.log || true
+    mpirun -np "${CORES}" /workspace/bin/real.exe 2>&1 | tee real.log || true
   fi
   if [ -f /workspace/bin/wrf.exe ]; then
     echo "Running wrf.exe..."
-    mpirun -np 32 /workspace/bin/wrf.exe 2>&1 | tee wrf.log || true
+    mpirun -np "${CORES}" /workspace/bin/wrf.exe 2>&1 | tee wrf.log || true
   fi
 
-  # Step B: CROCO/ROMS (16-core parallel)
+  # Step B: CROCO/ROMS (dynamic parallel cores)
+  CROCO_CORES=$((CORES / 2 > 16 ? CORES / 2 : 16))
   echo "============================================="
-  echo "🏃 Running Step B: CROCO/ROMS (16-core parallel)"
+  echo "🏃 Running Step B: CROCO/ROMS (${CROCO_CORES}-core parallel)"
   echo "============================================="
   cd /workspace/outputs/roms
   if [ -f /workspace/bin/croco.exe ]; then
     echo "Running croco.exe..."
-    mpirun -np 16 /workspace/bin/croco.exe 2>&1 | tee croco.log || true
+    mpirun -np "${CROCO_CORES}" /workspace/bin/croco.exe 2>&1 | tee croco.log || true
   fi
 
-  # Step C: SWAN (8-core parallel)
+  # Step C: SWAN (dynamic parallel cores)
+  SWAN_CORES=$((CORES / 4 > 8 ? CORES / 4 : 8))
   echo "============================================="
-  echo "🏃 Running Step C: SWAN (8-core parallel)"
+  echo "🏃 Running Step C: SWAN (${SWAN_CORES}-core parallel)"
   echo "============================================="
   cd /workspace/outputs/swan
   if [ -f /workspace/bin/swan.exe ]; then
     echo "Running swan.exe..."
-    mpirun -np 8 /workspace/bin/swan.exe 2>&1 | tee swan.log || true
+    mpirun -np "${SWAN_CORES}" /workspace/bin/swan.exe 2>&1 | tee swan.log || true
   fi
 fi
 

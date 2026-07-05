@@ -159,7 +159,7 @@ def main():
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
     parser.add_argument("--gcs-bucket", default=PREDSEA_GCS_BUCKET, help="Cloud Storage Bucket name")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
-    parser.add_argument("--machine-type", default="c2d-standard-32", help="GCP Machine Type for Spot VM")
+    parser.add_argument("--machine-type", default="c2d-standard-112", help="GCP Machine Type for Spot VM")
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
     parser.add_argument("--api-url", default=os.getenv("PREDSEA_API_URL", "http://localhost:8000"), help="Base URL of the FastAPI application")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
