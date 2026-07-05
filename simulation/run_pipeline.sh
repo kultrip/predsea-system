@@ -54,6 +54,10 @@ set -e
 cd "${RUN_DIR}"
 cp "${WPS_DIR}"/met_em/met_em.d0*.nc .
 cp "${WRF_DIR}/run"/* . || true
+python3 /opt/predsea/setup_domain.py \
+  --start-date "${START_DATE:-2026-05-04_00:00:00}" \
+  --end-date "${END_DATE:-2026-05-05_00:00:00}" \
+  --patch-namelist-input namelist.input
 cp "${PREDSEA_BIN}/real.exe" .
 cp "${PREDSEA_BIN}/wrf.exe" .
 
