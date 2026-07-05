@@ -247,6 +247,16 @@ def main():
     gcs_namelist_path = f"forcing/ecmwf/{run_date}/namelist.wps"
     upload_file_to_gcs(args.gcs_bucket, namelist_local_path, gcs_namelist_path, dry_run=args.dry_run)
 
+    # Upload modified run_pipeline.sh to avoid expensive docker image rebuilds
+    run_pipeline_local_path = PROJECT_ROOT / "simulation" / "run_pipeline.sh"
+    gcs_run_pipeline_path = f"forcing/ecmwf/{run_date}/run_pipeline.sh"
+    upload_file_to_gcs(args.gcs_bucket, run_pipeline_local_path, gcs_run_pipeline_path, dry_run=args.dry_run)
+
+    # Upload GRIB2 compatible Vtable to avoid missing Vtable or decoding failures
+    vtable_local_path = PROJECT_ROOT / "simulation" / "Vtable.ECMWF_grib2"
+    gcs_vtable_path = f"forcing/ecmwf/{run_date}/Vtable.ECMWF_grib2"
+    upload_file_to_gcs(args.gcs_bucket, vtable_local_path, gcs_vtable_path, dry_run=args.dry_run)
+
     # Step 2: Trigger GCE Spot VM WRF/ROMS simulation
     log_step("2. Launching GCE Spot VM")
     orchestrator_cmd = [

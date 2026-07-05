@@ -9,8 +9,10 @@ RUN_DIR="${RUN_DIR:-/workspace/run}"
 NAMELIST_WPS="${NAMELIST_WPS:-/workspace/namelist.wps}"
 if [[ -f "/data/Vtable.ECMWF_grib2" ]]; then
   Vtable="/data/Vtable.ECMWF_grib2"
+elif [[ -f "/data/Vtable.ECMWF" ]]; then
+  Vtable="/data/Vtable.ECMWF"
 else
-  Vtable="${WPS_DIR}/ungrib/Variable_Tables/Vtable.ECMWF_grib2"
+  Vtable="${WPS_DIR}/ungrib/Variable_Tables/Vtable.ECMWF"
 fi
 MPI_PROCS="${MPI_PROCS:-4}"
 

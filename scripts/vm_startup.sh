@@ -113,7 +113,14 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
   if [ -f /workspace/inputs/namelist.wps ]; then
     echo "Using pre-generated namelist.wps from forcing..."
     cp /workspace/inputs/namelist.wps /workspace/namelist.wps
-    DOCKER_MOUNT_OPTS="-v /workspace/namelist.wps:/workspace/namelist.wps"
+    DOCKER_MOUNT_OPTS="${DOCKER_MOUNT_OPTS} -v /workspace/namelist.wps:/workspace/namelist.wps"
+  fi
+
+  if [ -f /workspace/inputs/run_pipeline.sh ]; then
+    echo "Using updated run_pipeline.sh from forcing to bypass image rebuild..."
+    cp /workspace/inputs/run_pipeline.sh /workspace/run_pipeline.sh
+    chmod +x /workspace/run_pipeline.sh
+    DOCKER_MOUNT_OPTS="${DOCKER_MOUNT_OPTS} -v /workspace/run_pipeline.sh:/opt/predsea/run_pipeline.sh"
   fi
 
   docker run --rm \
