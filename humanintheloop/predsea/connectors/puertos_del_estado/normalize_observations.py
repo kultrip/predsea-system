@@ -84,19 +84,12 @@ def _fill_values_from_dataarray(da, extra_fill_values=None):
 
 
 def _is_fill_value(value, fill_values):
-    if value is None:
+    if value is None or pd.isna(value):
         return True
-    try:
-        if isinstance(value, float) and math.isnan(value):
-            return True
-    except Exception:
-        pass
     for candidate in fill_values or ():
+        if candidate is None or pd.isna(candidate):
+            continue
         try:
-            if candidate is None:
-                continue
-            if isinstance(candidate, float) and math.isnan(candidate):
-                continue
             if float(value) == float(candidate):
                 return True
         except Exception:

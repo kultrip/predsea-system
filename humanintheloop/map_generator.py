@@ -6,16 +6,16 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 WIDTH = 1440
 HEIGHT = 1800
-BG = "#061621"
-PANEL = "#0b2430"
-GRID = "#1d4b59"
-CYAN = "#22e6f0"
-TEXT = "#f4fbff"
-MUTED = "#a8bdc6"
-GREEN = "#6ee65d"
-YELLOW = "#ffd84d"
-RED = "#ff6b6b"
-LOW_WAVE = "#27ddea"
+BG = "#eee3c8"
+PANEL = "#ded1a9"
+GRID = "#b3a67d"
+CYAN = "#8a7350"
+TEXT = "#2f2a20"
+MUTED = "#6b573b"
+GREEN = "#2e7d5b"
+YELLOW = "#c98a1b"
+RED = "#a83232"
+LOW_WAVE = "#e4e6d8"
 
 
 def map_metadata():
@@ -117,6 +117,44 @@ def draw_background(draw):
     return
 
 
+def draw_dashed_line(draw, start, end, fill, width=1, dash_len=6, gap_len=10):
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+    dist = math.hypot(dx, dy)
+    if dist == 0:
+        return
+    dx /= dist
+    dy /= dist
+    
+    pos = 0.0
+    while pos < dist:
+        segment_end = min(pos + dash_len, dist)
+        sx = x1 + dx * pos
+        sy = y1 + dy * pos
+        ex = x1 + dx * segment_end
+        ey = y1 + dy * segment_end
+        draw.line((sx, sy, ex, ey), fill=fill, width=width)
+        pos += dash_len + gap_len
+
+
+def draw_centered_text(draw, text, center_x, y, font, fill):
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    draw.text((center_x - w / 2, y), text, font=font, fill=fill)
+
+
+def route_segment_color(value, default_color):
+    if value is None or value != value:
+        return default_color
+    if value <= 0.5:
+        return GREEN
+    if value <= 1.25:
+        return YELLOW
+    return RED
+
+
 def draw_header(draw, fonts, route, time_label):
     draw.text((80, 70), "PredSea", font=fonts["brand"], fill=TEXT)
     draw.text((80, 165), "OCEANOGRAPHIC CONDITIONS MAP", font=fonts["title"], fill=TEXT)
@@ -144,19 +182,23 @@ def route_sample_current_values(current_u, current_v, route):
 
 def draw_oceanographic_map_base(image, draw, wave, map_box, bounds):
     left, top, right, bottom = map_box
-    draw.rounded_rectangle(map_box, radius=34, fill="#082331", outline="#1a6374", width=3)
+    fonts = load_fonts()
+    draw.rounded_rectangle(map_box, radius=34, fill=LOW_WAVE, outline=MUTED, width=4)
     draw_bathymetry(draw, map_box)
     draw_smooth_wave_field(image, wave, map_box, bounds)
     draw_island_context(draw, map_box, bounds)
-    draw.rounded_rectangle(map_box, radius=34, outline="#2b7c8f", width=3)
-    draw.text((left + 34, top + 30), "Significant wave height + surface current vectors | Copernicus Med 4.2 km grid", font=load_fonts()["small"], fill=MUTED)
+    draw.rounded_rectangle(map_box, radius=34, outline=MUTED, width=4)
+    draw.text((left + 34, top + 30), "field: significant wave height — max over passage window · arrows: surface current", font=fonts["small"], fill=TEXT)
 
 
 def draw_bathymetry(draw, map_box):
     left, top, right, bottom = map_box
-    for fraction in (0.25, 0.5, 0.75):
+    for fraction in (0.2, 0.4, 0.6, 0.8):
         y = top + (bottom - top) * fraction
-        draw.line((left + 40, y, right - 40, y), fill="#0e3442", width=1)
+        draw_dashed_line(draw, (left + 4, y), (right - 4, y), fill=GRID, width=1)
+    for fraction in (0.2, 0.4, 0.6, 0.8):
+        x = left + (right - left) * fraction
+        draw_dashed_line(draw, (x, top + 4), (x, bottom - 4), fill=GRID, width=1)
 
 
 ISLAND_SHAPES = {
@@ -202,7 +244,12 @@ def draw_island_context(draw, map_box, bounds):
         projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
         if not all(point_inside_map(point, map_box, margin=10) for point in projected):
             continue
-        draw.polygon(projected, fill="#12313d", outline="#77aebc")
+        
+        closed_path = projected + [projected[0]]
+        draw.line(closed_path, fill="#d3e2dc", width=16, joint="round")
+        draw.polygon(projected, fill=PANEL)
+        draw.line(closed_path, fill="#3a3226", width=3, joint="round")
+        
         center_x = sum(point[0] for point in projected) / len(projected)
         center_y = sum(point[1] for point in projected) / len(projected)
         label = ISLAND_LABELS[island]
@@ -210,7 +257,7 @@ def draw_island_context(draw, map_box, bounds):
         label_width = label_box[2] - label_box[0]
         offset_x, offset_y = ISLAND_LABEL_OFFSETS.get(island, (0, 0))
         label_position = (center_x - label_width / 2 + offset_x, center_y - 12 + offset_y)
-        draw_outlined_text(draw, label_position, label, fonts["micro"], fill="#d8fbff")
+        draw_outlined_text(draw, label_position, label, fonts["micro"], fill=TEXT, outline=PANEL)
 
 
 def point_inside_map(point, map_box, margin=0):
@@ -252,8 +299,8 @@ def draw_smooth_wave_field(image, wave, map_box, bounds):
             )
             if rect[2] < rect[0] or rect[3] < rect[1]:
                 continue
-            overlay_draw.rectangle(rect, fill=rgba_for_color(rainbow_wave_color(value), alpha=165))
-    overlay = overlay.filter(ImageFilter.GaussianBlur(26))
+            overlay_draw.rectangle(rect, fill=rgba_for_color(rainbow_wave_color(value), alpha=220))
+    overlay = overlay.filter(ImageFilter.GaussianBlur(12))
     image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
 
 
@@ -270,32 +317,18 @@ def segment_color_for_wave(value):
     if value is None or value != value:
         return MUTED
     if value <= 0.5:
-        return "#d0e6e4"  # Smooth
+        return "#e4e6d8"  # smooth
     if value <= 1.25:
-        return "#78b5c5"  # Slight
+        return "#c8d1c1"  # slight
     if value <= 2.5:
-        return "#2c6d8a"  # Moderate
+        return "#9fb2a9"  # moderate
     if value <= 4.0:
-        return "#d6802c"  # Rough
-    return "#b32c2c"      # Very rough
+        return "#c99a5a"  # rough
+    return "#a05a4a"      # very rough
 
 
 def rainbow_wave_color(value, min_value=0.0, max_value=4.0):
-    ratio = max(0.0, min(1.0, (value - min_value) / (max_value - min_value)))
-    stops = [
-        (0.0, (208, 230, 228)),      # #d0e6e4
-        (0.125, (120, 181, 197)),    # #78b5c5
-        (0.3125, (44, 109, 138)),    # #2c6d8a
-        (0.625, (214, 128, 44)),     # #d6802c
-        (1.0, (179, 44, 44)),        # #b32c2c
-    ]
-    for index in range(len(stops) - 1):
-        start_pos, start = stops[index]
-        end_pos, end = stops[index + 1]
-        if start_pos <= ratio <= end_pos:
-            local = (ratio - start_pos) / (end_pos - start_pos)
-            return blend(start, end, local)
-    return "#b32c2c"
+    return segment_color_for_wave(value)
 
 
 def draw_wave_field(draw, wave, map_box, bounds):
@@ -327,7 +360,7 @@ def draw_wave_field(draw, wave, map_box, bounds):
 
 
 def wave_color(value, min_value=0.0, max_value=4.0):
-    return rainbow_wave_color(value, min_value, max_value)
+    return segment_color_for_wave(value)
 
 
 def blend(start, end, ratio):
@@ -362,21 +395,25 @@ def draw_current_arrows(draw, current_u, current_v, map_box, bounds):
             speed = math.hypot(u, v)
             if speed == 0 or speed != speed:
                 continue
-            length = min(42, 14 + speed * 100)
+            length = 32.0
             angle = math.atan2(v, u)
             x2 = x + math.cos(angle) * length
             y2 = y - math.sin(angle) * length
-            draw_arrow(draw, (x, y), (x2, y2), "#ffffff", width=3)
+            draw_arrow(draw, (x, y), (x2, y2), "#4a3f2d", width=2)
 
 
-def draw_arrow(draw, start, end, fill, width=4):
+def draw_arrow(draw, start, end, fill, width=3):
     draw.line((*start, *end), fill=fill, width=width)
-    angle = math.atan2(end[1] - start[1], end[0] - start[0])
-    for offset in (2.5, -2.5):
-        head_angle = angle + offset
-        x = end[0] + math.cos(head_angle) * 14
-        y = end[1] + math.sin(head_angle) * 14
-        draw.line((*end, x, y), fill=fill, width=width)
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    angle = math.atan2(dy, dx)
+    head_len = 14
+    left_angle = angle + math.pi - 0.4
+    right_angle = angle + math.pi + 0.4
+    p1 = end
+    p2 = (end[0] + math.cos(left_angle) * head_len, end[1] + math.sin(left_angle) * head_len)
+    p3 = (end[0] + math.cos(right_angle) * head_len, end[1] + math.sin(right_angle) * head_len)
+    draw.polygon([p1, p2, p3], fill=fill)
 
 
 def draw_current_context(draw, route, route_currents, map_box, bounds):
@@ -386,11 +423,11 @@ def draw_current_context(draw, route, route_currents, map_box, bounds):
         speed = current["speed"]
         if speed == 0 or speed != speed:
             continue
-        length = min(68, 28 + speed * 130)
+        length = 32.0
         angle = math.atan2(current["v"], current["u"])
         end = (x + math.cos(angle) * length, y - math.sin(angle) * length)
-        draw_arrow(draw, (x, y), end, "#d8fbff", width=4)
-    draw.text((map_box[0] + 34, map_box[3] - 80), "small arrows: surface current context", font=fonts["micro"], fill=MUTED)
+        draw_arrow(draw, (x, y), end, "#4a3f2d", width=2)
+    draw.text((map_box[0] + 34, map_box[3] - 80), "arrows: surface current vectors", font=fonts["micro"], fill=MUTED)
 
 
 def draw_route_reference(draw, route, map_box, bounds, route_values=None, emphasize=True):
@@ -421,20 +458,29 @@ def draw_route(draw, route, map_box, bounds, snapshot, route_values=None):
     points.extend((point["longitude"], point["latitude"]) for point in route.get("sample_points", []))
     points.append((route["destination"]["longitude"], route["destination"]["latitude"]))
     projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
-    color = severity_color(snapshot.get("recommendation", {}).get("vessel_severity"))
+    
+    default_color = severity_color(snapshot.get("recommendation", {}).get("vessel_severity"))
+    
     if len(projected) >= 2:
         worst_segment = worst_segment_from_route_values(route_values or [], len(projected) - 1)
+        
+        # 1. Draw entire route casing first (dark ink #2f2a20, width 16)
+        for start, end in zip(projected, projected[1:]):
+            draw.line((*start, *end), fill=TEXT, width=16, joint="round")
+            
+        # 2. Draw graded segments on top (width 10)
         for index, (start, end) in enumerate(zip(projected, projected[1:])):
             local_value = segment_wave_value(route_values or [], index)
-            segment_color = color if index == worst_segment else "#d8fbff"
-            if index != worst_segment and local_value is not None and local_value >= 1.8:
-                segment_color = RED
-            width = 16 if index == worst_segment else 8
-            draw.line((*start, *end), fill=segment_color, width=width)
+            segment_color = route_segment_color(local_value, default_color)
+            draw.line((*start, *end), fill=segment_color, width=10, joint="round")
+            
+    # 3. Draw waypoint circles on top
     for x, y in projected:
-        draw.ellipse((x - 13, y - 13, x + 13, y + 13), fill=TEXT, outline=BG, width=4)
+        draw.ellipse((x - 13, y - 13, x + 13, y + 13), fill=BG, outline=TEXT, width=4)
+        
     label_point(draw, route["origin"]["name"], projected[0], dx=22, dy=-50)
     label_point(draw, route["destination"]["name"], projected[-1], dx=22, dy=20)
+    
     if len(projected) >= 2:
         start, end = list(zip(projected, projected[1:]))[worst_segment]
         mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
@@ -486,32 +532,55 @@ def draw_outlined_text(draw, position, text, font, fill=TEXT, outline=BG):
 
 def draw_legend(draw, map_box, fonts):
     left, top, right, bottom = map_box
-    legend = (left + 34, top + 86, left + 650, top + 230)
-    draw.rounded_rectangle(legend, radius=18, fill="#09202a", outline="#164552", width=2)
-    draw.text((legend[0] + 24, legend[1] + 18), "Significant wave height (m)", font=fonts["small"], fill=TEXT)
-    bar = (legend[0] + 24, legend[1] + 68, legend[0] + 420, legend[1] + 94)
-    for index in range(bar[0], bar[2]):
-        ratio = (index - bar[0]) / (bar[2] - bar[0])
-        color = rainbow_wave_color(ratio * 4.0)
-        draw.line((index, bar[1], index, bar[3]), fill=color, width=1)
+    legend = (left + 34, top + 86, left + 680, top + 230)
+    
+    draw.rounded_rectangle(legend, radius=18, fill=PANEL, outline=MUTED, width=2)
+    draw.text((legend[0] + 24, legend[1] + 16), "Significant wave height (m)", font=fonts["small"], fill=TEXT)
+    
+    start_x = legend[0] + 24
+    swatch_y1 = legend[1] + 68
+    swatch_y2 = legend[1] + 94
+    swatch_w = 64
+    
+    swatches = [
+        ("#e4e6d8", "smooth"),
+        ("#c8d1c1", "slight"),
+        ("#9fb2a9", "moderate"),
+        ("#c99a5a", "rough"),
+        ("#a05a4a", "very rough"),
+    ]
+    
+    for index, (color, name) in enumerate(swatches):
+        x1 = start_x + index * swatch_w
+        x2 = x1 + swatch_w
+        draw.rectangle((x1, swatch_y1, x2, swatch_y2), fill=color)
+        
+        center_x = (x1 + x2) / 2
+        draw_centered_text(draw, name, center_x, swatch_y2 + 8, fonts["micro"], fill=TEXT)
+        
     ticks = [
-        ("0.0", bar[0]),
-        ("0.5", bar[0] + (bar[2] - bar[0]) * 0.125),
-        ("1.25", bar[0] + (bar[2] - bar[0]) * 0.3125),
-        ("2.5", bar[0] + (bar[2] - bar[0]) * 0.625),
-        ("4.0+", bar[2] - 30)
+        ("0", start_x),
+        ("0.5", start_x + swatch_w),
+        ("1.25", start_x + 2 * swatch_w),
+        ("2.5", start_x + 3 * swatch_w),
+        ("4.0", start_x + 4 * swatch_w),
+        ("4.0+", start_x + 5 * swatch_w),
     ]
     for label, x in ticks:
-        draw.text((x, bar[3] + 8), label, font=fonts["micro"], fill=MUTED)
-    draw.line((legend[0] + 470, bar[1] + 12, legend[0] + 535, bar[1] + 12), fill="#d8fbff", width=4)
-    draw.text((legend[0] + 470, bar[3] + 8), "current", font=fonts["micro"], fill=MUTED)
+        draw.line((x, swatch_y1 - 6, x, swatch_y1), fill=MUTED, width=1)
+        draw_centered_text(draw, label, x, swatch_y1 - 25, fonts["micro"], fill=MUTED)
+        
+    current_x = legend[0] + 440
+    current_y = swatch_y1 + 8
+    draw_arrow(draw, (current_x, current_y), (current_x + 32, current_y), "#4a3f2d", width=2)
+    draw.text((current_x + 48, swatch_y1 - 10), "surface current\nvector", font=fonts["micro"], fill=TEXT)
 
 
 def draw_decision_panel(draw, fonts, snapshot):
     forecast = snapshot.get("forecast", {})
     rec = snapshot.get("recommendation", {})
     panel = (80, 1315, 1360, 1705)
-    draw.rounded_rectangle(panel, radius=28, fill=PANEL, outline="#174c5e", width=2)
+    draw.rounded_rectangle(panel, radius=28, fill=PANEL, outline=MUTED, width=3)
     status = status_label(rec.get("vessel_severity"))
     color = severity_color(rec.get("vessel_severity"))
     draw.ellipse((122, 1372, 152, 1402), fill=color)
