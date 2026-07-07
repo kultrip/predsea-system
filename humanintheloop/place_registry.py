@@ -111,7 +111,7 @@ def _haversine_nm(lat1, lon1, lat2, lon2):
     return 2.0 * radius_nm * atan2(sqrt(a), sqrt(1.0 - a))
 
 
-def _normalize_route_waypoints(route):
+def _normalize_route_waypoints(route, simplify=True):
     def iter_points(node):
         if node is None:
             return
@@ -159,7 +159,7 @@ def _normalize_route_waypoints(route):
             break
 
     # Apply Douglas-Peucker simplification to smooth out intermediate open-ocean grid jogs
-    if len(waypoints) > 2:
+    if simplify and len(waypoints) > 2:
         waypoints = _simplify_waypoints(waypoints, epsilon=0.015)
 
     return waypoints
@@ -214,6 +214,7 @@ def _searoute_metrics(
     destination_latitude,
     *,
     speed_kn,
+    simplify=True,
 ):
     try:
         import searoute as sr
@@ -229,7 +230,7 @@ def _searoute_metrics(
     properties = route.get("properties") if isinstance(route, dict) else getattr(route, "properties", None)
     if not isinstance(properties, dict):
         properties = properties or {}
-    waypoints = _normalize_route_waypoints(route)
+    waypoints = _normalize_route_waypoints(route, simplify=simplify)
     length_nm = properties.get("length")
     duration_hours = properties.get("duration_hours")
     if length_nm is None and duration_hours is None:
@@ -642,6 +643,7 @@ def coordinates_route_geometry_metrics(
     destination_latitude,
     destination_longitude,
     typical_speed_kn=DEFAULT_TRAVEL_SPEED_KN,
+    simplify=True,
 ):
     metrics = _searoute_metrics(
         origin_longitude,
@@ -649,6 +651,7 @@ def coordinates_route_geometry_metrics(
         destination_longitude,
         destination_latitude,
         speed_kn=typical_speed_kn,
+        simplify=simplify,
     )
     typical_speed_kn = float(typical_speed_kn or DEFAULT_TRAVEL_SPEED_KN)
     return {

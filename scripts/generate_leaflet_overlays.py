@@ -103,7 +103,7 @@ def fill_transparent_rgb_from_neighbors(rgba, valid):
     height, width = valid.shape
     filled = valid.copy()
     rgb = rgba[..., :3].copy()
-    max_iterations = height + width
+    max_iterations = min(10, height + width)
 
     for _ in range(max_iterations):
         missing = ~filled

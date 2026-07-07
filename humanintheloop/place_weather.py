@@ -187,6 +187,7 @@ def build_place_weather_record(
         "current_kn": sample.get("current_kn"),
         "current_direction_deg": sample.get("current_direction_deg"),
         "wind_kn": observation.get("wind_kn"),
+        "wind_gust_kn": observation.get("wind_gust_kn"),
         "wind_direction_deg": observation.get("wind_direction_deg"),
         "water_temperature_c": observation.get("water_temperature_c") or observation.get("water_temp_c"),
         "air_temperature_c": observation.get("air_temperature_c") or observation.get("temperature_c"),
@@ -466,6 +467,36 @@ def normalize_observation(record, station_id=None, generated_at_utc=None):
                     wind_speed = None
         if wind_speed is not None:
             normalized["wind_kn"] = wind_speed
+    if normalized.get("wind_gust_kn") is None:
+        wind_gust = normalized.get("wind_gust_kn_val")
+        if wind_gust is None:
+            wind_gust = normalized.get("wind_gust")
+        if wind_gust is None:
+            wind_gust = normalized.get("wind_speed_gust")
+        if wind_gust is None:
+            wind_gust = normalized.get("gust_kn")
+        if wind_gust is None:
+            wind_gust = normalized.get("gust")
+        if wind_gust is None:
+            wind_gust = normalized.get("wind_gust_mps")
+            if wind_gust is not None:
+                try:
+                    wind_gust = float(wind_gust) * MPS_TO_KNOTS
+                except (TypeError, ValueError):
+                    wind_gust = None
+        else:
+            if "wind_speed_mps" in normalized or "wind_gust_mps" in normalized:
+                try:
+                    wind_gust = float(wind_gust) * MPS_TO_KNOTS
+                except (TypeError, ValueError):
+                    wind_gust = None
+            else:
+                try:
+                    wind_gust = float(wind_gust)
+                except (TypeError, ValueError):
+                    wind_gust = None
+        if wind_gust is not None:
+            normalized["wind_gust_kn"] = wind_gust
     if generated_at_utc is not None:
         generated_at = parse_utc_timestamp(generated_at_utc)
         observed_at = parse_utc_timestamp(normalized.get("last_sample_utc") or normalized.get("observed_at_utc"))

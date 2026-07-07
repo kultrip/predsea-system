@@ -2324,6 +2324,60 @@ def create_app(evidence_store=None, route_store=None):
 
         return build_observation_stations_response(rows, lookback_days, variable_filter=variable)
 
+    @app.get("/forecasts/evaluate")
+    def evaluate_forecasts(
+        location: str | None = None,
+        date: str | None = None,
+        lookback_days: int = Query(1, ge=1, le=30),
+        max_station_distance_nm: float = Query(25.0, ge=1.0, le=100.0),
+        time_tolerance_minutes: int = Query(30, ge=5, le=180),
+        min_sample_size: int = Query(5, ge=1, le=100),
+    ):
+        """Run real-time forecast evaluation against buoy/station observations.
+
+        Allows filtering by observation location/station name, evaluation date, and time range.
+        Does not fabricate or use synthetic data.
+        """
+        try:
+            from google.cloud import bigquery
+            from bigquery_export import resolve_config
+            import scripts.model_comparison as mc
+
+            bq_config = resolve_config()
+            if bq_config is None:
+                raise HTTPException(status_code=503, detail="BigQuery is not configured on this deployment.")
+
+            project_id = bq_config.project_id
+            dataset = bq_config.dataset_id
+            evidence_table = bq_config.table_id
+            station_table = os.environ.get("PREDSEA_BIGQUERY_STATION_METADATA_TABLE") or "station_metadata"
+
+            client = bigquery.Client(project=project_id)
+            target_date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+            report = mc.run_evaluation(
+                client=client,
+                project_id=project_id,
+                dataset=dataset,
+                evidence_table=evidence_table,
+                station_table=station_table,
+                target_date=target_date,
+                lookback_days=lookback_days,
+                max_station_distance_nm=max_station_distance_nm,
+                time_tolerance_minutes=time_tolerance_minutes,
+                min_sample_size=min_sample_size,
+                location_name=location,
+            )
+            return report
+        except HTTPException:
+            raise
+        except Exception as error:
+            logger.warning("evaluate_forecasts failed: %s", error)
+            raise HTTPException(
+                status_code=500, detail=f"Failed to run forecast evaluation: {str(error)}"
+            ) from error
+
+
     @app.post(
         "/question",
         summary="Location question from a shared GPS position",

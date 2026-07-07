@@ -165,6 +165,10 @@ class PlaceWeatherResponse(BaseModel):
         default=None,
         description="Optional observed wind speed. Present only when the selected observation source provides it.",
     )
+    wind_gust_kn: Optional[float] = Field(
+        default=None,
+        description="Optional observed wind gust speed in knots. Present only when the selected observation source provides it.",
+    )
     wind_direction_deg: Optional[float] = Field(
         default=None,
         description="Optional observed wind direction in degrees. Present only when the selected observation source provides it.",

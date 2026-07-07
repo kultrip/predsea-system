@@ -1,8 +1,9 @@
 import math
 from pathlib import Path
+import sys
+import io
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
-
 
 WIDTH = 1440
 HEIGHT = 1800
@@ -21,12 +22,301 @@ LOW_WAVE = "#e4e6d8"
 def map_metadata():
     return {
         "title": "OCEANOGRAPHIC CONDITIONS MAP",
-        "primary_layers": ["wave_height", "current_vectors", "island_context"],
+        "primary_layers": ["wave_height", "current_vectors", "land_context"],
         "route_role": "none",
-        "extent": "full_forecast_region",
+        "extent": "dynamic_route_corridor",
         "current_resolution": "Copernicus Mediterranean 4.2km forecast grid",
-        "coastline_source": "schematic_balearic_context",
+        "coastline_source": "Natural Earth 10m high-resolution coastlines",
     }
+
+
+def add_rounded_corners(img, radius=34):
+    mask = Image.new("L", img.size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, img.size[0], img.size[1]), radius=radius, fill=255)
+    result = Image.new("RGBA", img.size)
+    result.paste(img, (0, 0), mask=mask)
+    return result
+
+
+def compute_map_extent_from_route(lons, lats, padding=0.55):
+    lon_min = min(lons) - padding
+    lon_max = max(lons) + padding
+    lat_min = min(lats) - padding
+    lat_max = max(lats) + padding
+
+    # Target aspect ratio of the map container (12.80 / 8.85)
+    target_aspect = 12.80 / 8.85  # ~1.4463
+
+    # Calculate midpoints and current spans
+    lat_mid = (lat_min + lat_max) / 2
+    lon_mid = (lon_min + lon_max) / 2
+
+    import math
+    cos_lat = math.cos(math.radians(lat_mid))
+    if cos_lat <= 0.1:
+        cos_lat = 1.0
+
+    d_lat = lat_max - lat_min
+    d_lon = lon_max - lon_min
+
+    # Calculate current screen-equivalent aspect ratio
+    current_aspect = (d_lon * cos_lat) / d_lat
+
+    if current_aspect < target_aspect:
+        # Extent is too tall/narrow, expand longitude
+        d_lon_needed = (d_lat * target_aspect) / cos_lat
+        lon_min = lon_mid - d_lon_needed / 2
+        lon_max = lon_mid + d_lon_needed / 2
+    else:
+        # Extent is too wide/short, expand latitude
+        d_lat_needed = (d_lon * cos_lat) / target_aspect
+        lat_min = lat_mid - d_lat_needed / 2
+        lat_max = lat_mid + d_lat_needed / 2
+
+    return [lon_min, lon_max, lat_min, lat_max]
+
+
+def resolve_route_waypoints(route, waves_path=None, currents_path=None):
+    if not isinstance(route, dict):
+        return []
+    waypoints = route.get("waypoints", [])
+    if not waypoints:
+        import json
+        route_id = route.get("id") or route.get("route_id")
+        if route_id:
+            try:
+                routes_path = Path(__file__).resolve().parent / "routes.json"
+                if routes_path.exists():
+                    with open(routes_path, "r") as f:
+                        routes_data = json.load(f)
+                    if route_id in routes_data:
+                        waypoints = routes_data[route_id].get("waypoints", [])
+            except Exception as e:
+                print(f"Warning: map_generator could not load waypoints from routes.json for {route_id}: {e}")
+
+    if not waypoints:
+        try:
+            # Add workspace path to resolve place_registry
+            human_path = str(Path(__file__).resolve().parent)
+            if human_path not in sys.path:
+                sys.path.insert(0, human_path)
+            import place_registry
+
+            lat1 = float(route["origin"]["latitude"])
+            lon1 = float(route["origin"]["longitude"])
+            lat2 = float(route["destination"]["latitude"])
+            lon2 = float(route["destination"]["longitude"])
+            origin_id = route.get("origin_place_id") or place_registry.default_place_id_for_query(route["origin"]["name"])
+            destination_id = route.get("destination_place_id") or place_registry.default_place_id_for_query(route["destination"]["name"])
+            if origin_id and destination_id:
+                metrics = place_registry.coordinates_route_geometry_metrics(
+                    origin_place_id=origin_id,
+                    origin_place_name=route["origin"]["name"],
+                    origin_latitude=lat1,
+                    origin_longitude=lon1,
+                    destination_place_id=destination_id,
+                    destination_place_name=route["destination"]["name"],
+                    destination_latitude=lat2,
+                    destination_longitude=lon2,
+                    simplify=False,
+                )
+                waypoints = metrics.get("waypoints", [])
+        except Exception as e:
+            print(f"Warning: map_generator could not resolve place registry waypoints: {e}")
+
+    if not waypoints:
+        # Fallback to sample points
+        waypoints = [{"lat": route["origin"]["latitude"], "lng": route["origin"]["longitude"]}]
+        for sp in route.get("sample_points", []):
+            waypoints.append({"lat": sp["latitude"], "lng": sp["longitude"]})
+        waypoints.append({"lat": route["destination"]["latitude"], "lng": route["destination"]["longitude"]})
+
+    return waypoints
+
+
+def render_matplotlib_map(waves_path, currents_path, route, snapshot, target_time=None):
+    import numpy as np
+    import xarray as xr
+    import matplotlib
+    matplotlib.use("Agg")  # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    import cartopy
+    import cartopy.crs as ccrs
+    import cartopy.feature as cfeature
+    from matplotlib.colors import ListedColormap, BoundaryNorm
+
+    # Configure Cartopy to use local offline shapefiles
+    cartopy.config['data_dir'] = str(Path(__file__).resolve().parent.parent / "assets" / "cartopy_data")
+
+    # 1. Resolve waypoints
+    waypoints = resolve_route_waypoints(route, waves_path, currents_path)
+    lons = []
+    lats = []
+    for wp in waypoints:
+        lons.append(wp.get("lng") or wp.get("longitude"))
+        lats.append(wp.get("lat") or wp.get("latitude"))
+
+    # 2. Compute map extent
+    extent = compute_map_extent_from_route(lons, lats, padding=0.55)
+
+    # 3. Create matplotlib figure and PlateCarree axes
+    # Dimension is exactly 1280x885 pixels at 100 DPI
+    fig = plt.figure(figsize=(12.80, 8.85), dpi=100, facecolor="none")
+    axis = fig.add_axes([0.06, 0.06, 0.88, 0.88], projection=ccrs.PlateCarree())
+    axis.set_extent(extent, crs=ccrs.PlateCarree())
+    axis.set_facecolor("#e4e6d8")  # sea base fill
+
+    # 4. Draw wave height contours
+    wave_loaded = False
+    try:
+        with xr.open_dataset(waves_path) as waves:
+            time_index = select_time_index(waves, target_time or snapshot.get("forecast", {}).get("wave_peak_time"))
+            wave = waves["VHM0"].isel(time=time_index)
+            lons_grid = wave["longitude"].values
+            lats_grid = wave["latitude"].values
+            wave_vals = wave.values
+
+            # Thresholds and colors matching RELAY-46
+            levels = [0.0, 0.5, 1.25, 2.5, 4.0, 15.0]
+            colors = ["#e4e6d8", "#c8d1c1", "#9fb2a9", "#c99a5a", "#a05a4a"]
+            cmap = ListedColormap(colors)
+            norm = BoundaryNorm(levels, cmap.N)
+
+            axis.contourf(
+                lons_grid, lats_grid, wave_vals,
+                levels=levels, cmap=cmap, norm=norm,
+                extend="max", transform=ccrs.PlateCarree(), zorder=1
+            )
+            wave_loaded = True
+    except Exception as e:
+        print(f"Warning: Failed to load waves contour in map_generator: {e}")
+
+    # 5. Draw current arrows (if currents available)
+    currents_drawn = False
+    if currents_path and Path(currents_path).exists():
+        try:
+            with xr.open_dataset(currents_path) as currents:
+                time_index_currents = min(time_index if wave_loaded else 0, currents.sizes.get("time", 1) - 1)
+                u_c = currents["uo"].isel(time=time_index_currents)
+                v_c = currents["vo"].isel(time=time_index_currents)
+                vector_lons = u_c["longitude"].values
+                vector_lats = u_c["latitude"].values
+                vector_u = u_c.values
+                vector_v = v_c.values
+
+                # Density reduction to fit spec spacing
+                lon_step = max(1, len(vector_lons) // 10)
+                lat_step = max(1, len(vector_lats) // 10)
+
+                axis.quiver(
+                    vector_lons[::lon_step],
+                    vector_lats[::lat_step],
+                    vector_u[::lat_step, ::lon_step],
+                    vector_v[::lat_step, ::lon_step],
+                    color="#4a3f2d",  # current arrows color
+                    scale=6.5,
+                    width=0.003,
+                    headwidth=3.2,
+                    transform=ccrs.PlateCarree(),
+                    zorder=6,
+                )
+                currents_drawn = True
+        except Exception as e:
+            print(f"Warning: Failed to load currents in map_generator: {e}")
+
+    # 6. Draw coastal halo (coastal halo under land, width ~12, round joins)
+    axis.coastlines(resolution="10m", color="#d3e2dc", linewidth=12, zorder=3)
+
+    # 7. Draw land
+    land = cfeature.NaturalEarthFeature(
+        "physical", "land", "10m",
+        edgecolor="none", facecolor="#ded1a9"
+    )
+    axis.add_feature(land, zorder=4)
+
+    # 8. Draw coastline ink
+    axis.coastlines(resolution="10m", color="#3a3226", linewidth=1.5, zorder=5)
+
+    # 9. Draw graticule lines styled according to spec (#b3a67d, opacity 0.7, dash 3,5)
+    gl = axis.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False, zorder=2, linewidth=1.2, color="#b3a67d", alpha=0.7)
+    gl.xlines = True
+    gl.ylines = True
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.line_style = (0, (3, 5))
+    gl.xlabel_style = {'size': 13, 'color': '#6b573b', 'weight': 'semibold'}
+    gl.ylabel_style = {'size': 13, 'color': '#6b573b', 'weight': 'semibold'}
+
+    # 10. Draw route casing and route graded segments
+    if lons and lats:
+        route_values = []
+        for lon, lat in zip(lons, lats):
+            if wave_loaded:
+                try:
+                    val = float(wave.sel(longitude=lon, latitude=lat, method="nearest").values)
+                    if val != val:  # NaN check
+                        val = 0.0
+                except Exception:
+                    val = 0.0
+            else:
+                val = 0.0
+            route_values.append(val)
+
+        # 10.1 Draw route casing (dark ink #2f2a20, width 12)
+        axis.plot(lons, lats, color="#2f2a20", linewidth=12, transform=ccrs.PlateCarree(), zorder=7, solid_capstyle='round', solid_joinstyle='round')
+
+        # 10.2 Draw route graded segments (width 7)
+        for i in range(len(lons) - 1):
+            segment_lon = [lons[i], lons[i+1]]
+            segment_lat = [lats[i], lats[i+1]]
+
+            val = max(route_values[i], route_values[i+1])
+            if val <= 0.5:
+                color = "#2e7d5b"  # route fair
+                linewidth = 7
+            elif val <= 1.25:
+                color = "#c98a1b"  # route caution
+                linewidth = 7
+            else:
+                color = "#a83232"  # route unsafe
+                linewidth = 9
+
+            axis.plot(segment_lon, segment_lat, color=color, linewidth=linewidth, transform=ccrs.PlateCarree(), zorder=8, solid_capstyle='round', solid_joinstyle='round')
+
+        # 10.3 Draw waypoint circles
+        if len(lons) > 2:
+            axis.scatter(lons[1:-1], lats[1:-1], color="#eee3c8", edgecolor="#2f2a20", s=64, linewidth=2, transform=ccrs.PlateCarree(), zorder=9)
+
+        # 10.4 Draw origin and destination markers
+        axis.scatter([lons[0]], [lats[0]], color="#2e7d5b", edgecolor="#2f2a20", s=180, linewidth=2.5, transform=ccrs.PlateCarree(), zorder=10)
+        dest_color = "#2e7d5b" if route_values[-1] <= 0.5 else ("#c98a1b" if route_values[-1] <= 1.25 else "#a83232")
+        axis.scatter([lons[-1]], [lats[-1]], color=dest_color, edgecolor="#2f2a20", s=180, linewidth=2.5, transform=ccrs.PlateCarree(), zorder=10)
+
+        # 10.5 Draw labels with distinct colored backgrounds
+        axis.text(
+            lons[0] + 0.12, lats[0] + 0.05, route["origin"]["name"],
+            color="#ffffff", weight="bold", size=13,
+            bbox=dict(facecolor="#2e7d5b", edgecolor="#2f2a20", boxstyle="round,pad=0.3", linewidth=1.5),
+            transform=ccrs.PlateCarree(), zorder=11
+        )
+        axis.text(
+            lons[-1] + 0.12, lats[-1] + 0.05, route["destination"]["name"],
+            color="#ffffff", weight="bold", size=13,
+            bbox=dict(facecolor=dest_color, edgecolor="#2f2a20", boxstyle="round,pad=0.3", linewidth=1.5),
+            transform=ccrs.PlateCarree(), zorder=11
+        )
+
+    # 11. Style spines to represent a clean map bounding box border
+    axis.spines['geo'].set_edgecolor("#6b573b")  # MUTED frame dark color
+    axis.spines['geo'].set_linewidth(2)
+
+    # 12. Save to PIL image
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight", pad_inches=0, transparent=True)
+    plt.close(fig)
+    buf.seek(0)
+    return Image.open(buf), wave_loaded, currents_drawn
 
 
 def generate_route_decision_map(waves_path, currents_path, route, snapshot, output_path, target_time=None):
@@ -36,39 +326,53 @@ def generate_route_decision_map(waves_path, currents_path, route, snapshot, outp
         raise RuntimeError("xarray is required to generate PredSea Decision Maps") from error
 
     output_path = Path(output_path)
-    with xr.open_dataset(waves_path) as waves, xr.open_dataset(currents_path) as currents:
+    with xr.open_dataset(waves_path) as waves:
         time_index = select_time_index(waves, target_time or snapshot.get("forecast", {}).get("wave_peak_time"))
-        wave = waves["VHM0"].isel(time=time_index)
-        current_u = currents["uo"].isel(time=min(time_index, currents.sizes.get("time", 1) - 1))
-        current_v = currents["vo"].isel(time=min(time_index, currents.sizes.get("time", 1) - 1))
         time_label = str(waves["time"].dt.strftime("%H:%M UTC").values[time_index])
 
-        image = Image.new("RGB", (WIDTH, HEIGHT), BG)
-        draw = ImageDraw.Draw(image)
-        fonts = load_fonts()
+    image = Image.new("RGB", (WIDTH, HEIGHT), BG)
+    draw = ImageDraw.Draw(image)
+    fonts = load_fonts()
 
-        draw_background(draw)
-        draw_header(draw, fonts, route, time_label)
+    draw_background(draw)
+    draw_header(draw, fonts, route, time_label)
 
-        map_box = (80, 350, 1360, 1235)
-        bounds = forecast_region_bounds(wave)
-        draw_oceanographic_map_base(image, draw, wave, map_box, bounds)
-        draw_current_arrows(draw, current_u, current_v, map_box, bounds)
-        route_wave_values = route_sample_wave_values(wave, route)
-        draw_route(draw, route, map_box, bounds, snapshot, route_values=route_wave_values)
-        draw_current_context(
-            draw,
-            route,
-            route_sample_current_values(current_u, current_v, route),
-            map_box,
-            bounds,
-        )
-        draw_legend(draw, map_box, fonts)
-        draw_decision_panel(draw, fonts, snapshot)
+    map_box = (80, 350, 1360, 1235)
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        image.save(output_path)
-        return output_path
+    # 1. Render map using matplotlib and cartopy
+    map_image, wave_loaded, currents_drawn = render_matplotlib_map(waves_path, currents_path, route, snapshot, target_time)
+
+    # 2. Match map image to exact 1280x885 map_box size in case of rounding discrepancies
+    if map_image.size != (1280, 885):
+        map_image = map_image.resize((1280, 885), Image.Resampling.LANCZOS)
+
+    # 3. Add rounded corners to the map image
+    rounded_map = add_rounded_corners(map_image, radius=34)
+
+    # 4. Paste on main canvas
+    image.paste(rounded_map, (80, 350), mask=rounded_map.getchannel("A"))
+
+    # 5. Draw frame outline
+    draw.rounded_rectangle(map_box, radius=34, outline=MUTED, width=4)
+
+    # 6. Compose dynamic caption based on actual loaded components
+    if wave_loaded:
+        caption = "field: significant wave height — max over passage window"
+    else:
+        caption = "field: unavailable — verdict from along-route sampling only"
+
+    if currents_drawn:
+        caption += " · arrows: surface current"
+
+    draw.text((80 + 34, 350 + 30), caption, font=fonts["small"], fill=TEXT)
+
+    # 7. Draw outer chrome components
+    draw_legend(draw, map_box, fonts)
+    draw_decision_panel(draw, fonts, snapshot)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path)
+    return output_path
 
 
 def select_time_index(dataset, peak_time):
@@ -78,39 +382,6 @@ def select_time_index(dataset, peak_time):
     if peak_time in labels:
         return labels.index(peak_time)
     return 0
-
-
-def route_bounds(route, wave):
-    route_lons = [route["origin"]["longitude"], route["destination"]["longitude"]]
-    route_lats = [route["origin"]["latitude"], route["destination"]["latitude"]]
-    for point in route.get("sample_points", []):
-        route_lons.append(point["longitude"])
-        route_lats.append(point["latitude"])
-    lon_min = min(route_lons) - 0.45
-    lon_max = max(route_lons) + 0.45
-    lat_min = min(route_lats) - 0.35
-    lat_max = max(route_lats) + 0.35
-    if lon_min == lon_max:
-        lon_min -= 0.1
-        lon_max += 0.1
-    if lat_min == lat_max:
-        lat_min -= 0.1
-        lat_max += 0.1
-    return lon_min, lon_max, lat_min, lat_max
-
-
-def forecast_region_bounds(wave):
-    lons = [float(value) for value in wave["longitude"].values]
-    lats = [float(value) for value in wave["latitude"].values]
-    return min(lons), max(lons), min(lats), max(lats)
-
-
-def project(lon, lat, map_box, bounds):
-    left, top, right, bottom = map_box
-    lon_min, lon_max, lat_min, lat_max = bounds
-    x = left + (float(lon) - lon_min) / (lon_max - lon_min) * (right - left)
-    y = bottom - (float(lat) - lat_min) / (lat_max - lat_min) * (bottom - top)
-    return x, y
 
 
 def draw_background(draw):
@@ -127,14 +398,14 @@ def draw_dashed_line(draw, start, end, fill, width=1, dash_len=6, gap_len=10):
         return
     dx /= dist
     dy /= dist
-    
+
     pos = 0.0
     while pos < dist:
         segment_end = min(pos + dash_len, dist)
         sx = x1 + dx * pos
         sy = y1 + dy * pos
         ex = x1 + dx * segment_end
-        ey = y1 + dy * segment_end
+        ey = x1 + dx * segment_end
         draw.line((sx, sy, ex, ey), fill=fill, width=width)
         pos += dash_len + gap_len
 
@@ -145,16 +416,6 @@ def draw_centered_text(draw, text, center_x, y, font, fill):
     draw.text((center_x - w / 2, y), text, font=font, fill=fill)
 
 
-def route_segment_color(value, default_color):
-    if value is None or value != value:
-        return default_color
-    if value <= 0.5:
-        return GREEN
-    if value <= 1.25:
-        return YELLOW
-    return RED
-
-
 def draw_header(draw, fonts, route, time_label):
     draw.text((80, 70), "PredSea", font=fonts["brand"], fill=TEXT)
     draw.text((80, 165), "OCEANOGRAPHIC CONDITIONS MAP", font=fonts["title"], fill=TEXT)
@@ -163,246 +424,70 @@ def draw_header(draw, fonts, route, time_label):
     draw.text((980, 92), f"Model slice: {time_label}", font=fonts["small"], fill=MUTED)
 
 
-def route_sample_wave_values(wave, route):
-    values = []
-    for point in route.get("sample_points", []):
-        sample = wave.sel(longitude=point["longitude"], latitude=point["latitude"], method="nearest")
-        values.append(float(sample.values))
-    return values
-
-
-def route_sample_current_values(current_u, current_v, route):
-    values = []
-    for point in route.get("sample_points", []):
-        u = float(current_u.sel(longitude=point["longitude"], latitude=point["latitude"], method="nearest").values)
-        v = float(current_v.sel(longitude=point["longitude"], latitude=point["latitude"], method="nearest").values)
-        values.append({"u": u, "v": v, "speed": math.hypot(u, v)})
-    return values
-
-
-def draw_oceanographic_map_base(image, draw, wave, map_box, bounds):
+def draw_legend(draw, map_box, fonts):
     left, top, right, bottom = map_box
-    fonts = load_fonts()
-    draw.rounded_rectangle(map_box, radius=34, fill=LOW_WAVE, outline=MUTED, width=4)
-    draw_bathymetry(draw, map_box)
-    draw_smooth_wave_field(image, wave, map_box, bounds)
-    draw_island_context(draw, map_box, bounds)
-    draw.rounded_rectangle(map_box, radius=34, outline=MUTED, width=4)
-    draw.text((left + 34, top + 30), "field: significant wave height — max over passage window · arrows: surface current", font=fonts["small"], fill=TEXT)
+    # Place extremely compact, horizontal, thin floating legend in the bottom-right corner above tick labels
+    legend_w = 450
+    legend_h = 56
+    legend_left = right - 34 - legend_w
+    legend_top = bottom - 74 - legend_h
+    legend = (legend_left, legend_top, legend_left + legend_w, legend_top + legend_h)
+
+    # Drawing a soft parchment/sea blend that looks almost invisible and floating
+    draw.rounded_rectangle(legend, radius=12, fill="#ebece0", outline="#a8b29c", width=1)
+    
+    # 1. Label: "Wave height"
+    draw.text((legend_left + 12, legend_top + 19), "Wave height", font=fonts["micro"], fill=TEXT)
+
+    # 2. Continuous horizontal swatch bar
+    start_x = legend_left + 125
+    swatch_y1 = legend_top + 15
+    swatch_y2 = legend_top + 25
+    swatch_w = 28
+
+    swatches = [
+        "#e4e6d8",  # smooth
+        "#c8d1c1",  # slight
+        "#9fb2a9",  # moderate
+        "#c99a5a",  # rough
+        "#a05a4a",  # very rough
+    ]
+
+    for index, color in enumerate(swatches):
+        x1 = start_x + index * swatch_w
+        x2 = x1 + swatch_w
+        draw.rectangle((x1, swatch_y1, x2, swatch_y2), fill=color)
+
+    # Ticks and tick labels below the bar
+    ticks = [
+        ("0", start_x),
+        ("0.5", start_x + swatch_w),
+        ("1.2", start_x + 2 * swatch_w),
+        ("2.5", start_x + 3 * swatch_w),
+        ("4.0", start_x + 4 * swatch_w),
+        ("4+", start_x + 5 * swatch_w),
+    ]
+    for label, x in ticks:
+        draw.line((x, swatch_y2, x, swatch_y2 + 4), fill=MUTED, width=1)
+        draw_centered_text(draw, label, x, swatch_y2 + 6, fonts["nano"], fill=MUTED)
+
+    # 3. Label: "surface current" and its arrow
+    current_x = legend_left + 280
+    current_y = legend_top + 28
+    
+    # Custom sharp horizontal arrow: text first, then arrow
+    draw.text((current_x, legend_top + 19), "surface current", font=fonts["micro"], fill=TEXT)
+    
+    arrow_start_x = current_x + 120
+    draw.line((arrow_start_x, current_y, arrow_start_x + 22, current_y), fill=MUTED, width=2)
+    # Arrow head
+    p1 = (arrow_start_x + 22, current_y)
+    p2 = (arrow_start_x + 16, current_y - 3)
+    p3 = (arrow_start_x + 16, current_y + 3)
+    draw.polygon([p1, p2, p3], fill=MUTED)
 
 
-def draw_bathymetry(draw, map_box):
-    left, top, right, bottom = map_box
-    for fraction in (0.2, 0.4, 0.6, 0.8):
-        y = top + (bottom - top) * fraction
-        draw_dashed_line(draw, (left + 4, y), (right - 4, y), fill=GRID, width=1)
-    for fraction in (0.2, 0.4, 0.6, 0.8):
-        x = left + (right - left) * fraction
-        draw_dashed_line(draw, (x, top + 4), (x, bottom - 4), fill=GRID, width=1)
-
-
-ISLAND_SHAPES = {
-    "mallorca": [
-        (2.35, 39.30), (2.65, 39.52), (3.05, 39.82), (3.55, 39.92), (3.95, 39.78),
-        (4.25, 39.48), (4.05, 39.25), (3.55, 39.18), (3.10, 39.18), (2.70, 39.22),
-    ],
-    "ibiza": [
-        (1.18, 38.83), (1.32, 39.02), (1.62, 39.08), (1.75, 38.96),
-        (1.60, 38.78), (1.30, 38.74),
-    ],
-    "formentera": [
-        (1.25, 38.66), (1.42, 38.73), (1.62, 38.72), (1.58, 38.62), (1.36, 38.58),
-    ],
-    "menorca": [
-        (3.78, 39.86), (4.12, 40.08), (4.44, 40.07), (4.35, 39.88),
-    ],
-    "cabrera": [
-        (2.88, 39.12), (2.98, 39.17), (3.05, 39.11), (2.96, 39.06),
-    ],
-}
-
-ISLAND_LABELS = {
-    "mallorca": "MALLORCA",
-    "ibiza": "IBIZA",
-    "formentera": "FORMENTERA",
-    "menorca": "MENORCA",
-    "cabrera": "CABRERA",
-}
-
-ISLAND_LABEL_OFFSETS = {
-    "mallorca": (0, 0),
-    "ibiza": (-18, -44),
-    "formentera": (38, 46),
-    "menorca": (0, 18),
-    "cabrera": (54, 22),
-}
-
-
-def draw_island_context(draw, map_box, bounds):
-    fonts = load_fonts()
-    for island, points in ISLAND_SHAPES.items():
-        projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
-        if not all(point_inside_map(point, map_box, margin=10) for point in projected):
-            continue
-        
-        closed_path = projected + [projected[0]]
-        draw.line(closed_path, fill="#d3e2dc", width=16, joint="round")
-        draw.polygon(projected, fill=PANEL)
-        draw.line(closed_path, fill="#3a3226", width=3, joint="round")
-        
-        center_x = sum(point[0] for point in projected) / len(projected)
-        center_y = sum(point[1] for point in projected) / len(projected)
-        label = ISLAND_LABELS[island]
-        label_box = draw.textbbox((0, 0), label, font=fonts["micro"])
-        label_width = label_box[2] - label_box[0]
-        offset_x, offset_y = ISLAND_LABEL_OFFSETS.get(island, (0, 0))
-        label_position = (center_x - label_width / 2 + offset_x, center_y - 12 + offset_y)
-        draw_outlined_text(draw, label_position, label, fonts["micro"], fill=TEXT, outline=PANEL)
-
-
-def point_inside_map(point, map_box, margin=0):
-    x, y = point
-    left, top, right, bottom = map_box
-    return left - margin <= x <= right + margin and top - margin <= y <= bottom + margin
-
-
-def draw_route_condition_halos(image, route, route_values, map_box, bounds):
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    overlay_draw = ImageDraw.Draw(overlay)
-    for point, value in zip(route.get("sample_points", []), route_values):
-        x, y = project(point["longitude"], point["latitude"], map_box, bounds)
-        color = rgba_for_wave(value, alpha=120)
-        overlay_draw.ellipse((x - 145, y - 145, x + 145, y + 145), fill=color)
-    overlay = overlay.filter(ImageFilter.GaussianBlur(42))
-    image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
-
-
-def draw_smooth_wave_field(image, wave, map_box, bounds):
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    overlay_draw = ImageDraw.Draw(overlay)
-    lons = [float(value) for value in wave["longitude"].values]
-    lats = [float(value) for value in wave["latitude"].values]
-    values = wave.values
-    for lat_index, lat in enumerate(lats):
-        for lon_index, lon in enumerate(lons):
-            value = float(values[lat_index][lon_index])
-            if value != value:
-                continue
-            x, y = project(lon, lat, map_box, bounds)
-            cell = 75
-            left, top, right, bottom = map_box
-            rect = (
-                max(left, x - cell),
-                max(top, y - cell),
-                min(right, x + cell),
-                min(bottom, y + cell),
-            )
-            if rect[2] < rect[0] or rect[3] < rect[1]:
-                continue
-            overlay_draw.rectangle(rect, fill=rgba_for_color(rainbow_wave_color(value), alpha=220))
-    overlay = overlay.filter(ImageFilter.GaussianBlur(12))
-    image.paste(Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB"))
-
-
-def rgba_for_wave(value, alpha=255):
-    hex_color = segment_color_for_wave(value)
-    return rgba_for_color(hex_color, alpha)
-
-
-def rgba_for_color(hex_color, alpha=255):
-    return tuple(int(hex_color[index : index + 2], 16) for index in (1, 3, 5)) + (alpha,)
-
-
-def segment_color_for_wave(value):
-    if value is None or value != value:
-        return MUTED
-    if value <= 0.5:
-        return "#e4e6d8"  # smooth
-    if value <= 1.25:
-        return "#c8d1c1"  # slight
-    if value <= 2.5:
-        return "#9fb2a9"  # moderate
-    if value <= 4.0:
-        return "#c99a5a"  # rough
-    return "#a05a4a"      # very rough
-
-
-def rainbow_wave_color(value, min_value=0.0, max_value=4.0):
-    return segment_color_for_wave(value)
-
-
-def draw_wave_field(draw, wave, map_box, bounds):
-    lons = [float(value) for value in wave["longitude"].values]
-    lats = [float(value) for value in wave["latitude"].values]
-    values = wave.values
-    min_value = 0.0
-    max_value = max(4.0, max(float(value) for row in values for value in row if value == value))
-    for lat_index, lat in enumerate(lats):
-        for lon_index, lon in enumerate(lons):
-            value = float(values[lat_index][lon_index])
-            if value != value:
-                continue
-            x, y = project(lon, lat, map_box, bounds)
-            cell = 90
-            left, top, right, bottom = map_box
-            rect = (
-                max(left, x - cell),
-                max(top, y - cell),
-                min(right, x + cell),
-                min(bottom, y + cell),
-            )
-            if rect[2] < rect[0] or rect[3] < rect[1]:
-                continue
-            draw.rectangle(
-                rect,
-                fill=wave_color(value, min_value, max_value),
-            )
-
-
-def wave_color(value, min_value=0.0, max_value=4.0):
-    return segment_color_for_wave(value)
-
-
-def blend(start, end, ratio):
-    rgb = tuple(round(start[index] + (end[index] - start[index]) * ratio) for index in range(3))
-    return "#{:02x}{:02x}{:02x}".format(*rgb)
-
-
-def draw_grid(draw, map_box):
-    left, top, right, bottom = map_box
-    draw.rounded_rectangle(map_box, radius=28, outline="#2b6b7d", width=3)
-    for fraction in (0.25, 0.5, 0.75):
-        x = left + (right - left) * fraction
-        y = top + (bottom - top) * fraction
-        draw.line((x, top, x, bottom), fill=GRID, width=1)
-        draw.line((left, y, right, y), fill=GRID, width=1)
-
-
-def draw_current_arrows(draw, current_u, current_v, map_box, bounds):
-    lons = [float(value) for value in current_u["longitude"].values]
-    lats = [float(value) for value in current_u["latitude"].values]
-    lon_step = max(1, len(lons) // 8)
-    lat_step = max(1, len(lats) // 8)
-    for lat_index in range(0, len(lats), lat_step):
-        for lon_index in range(0, len(lons), lon_step):
-            lon = lons[lon_index]
-            lat = lats[lat_index]
-            x, y = project(lon, lat, map_box, bounds)
-            if not point_inside_map((x, y), map_box, margin=-24):
-                continue
-            u = float(current_u.values[lat_index][lon_index])
-            v = float(current_v.values[lat_index][lon_index])
-            speed = math.hypot(u, v)
-            if speed == 0 or speed != speed:
-                continue
-            length = 32.0
-            angle = math.atan2(v, u)
-            x2 = x + math.cos(angle) * length
-            y2 = y - math.sin(angle) * length
-            draw_arrow(draw, (x, y), (x2, y2), "#4a3f2d", width=2)
-
-
-def draw_arrow(draw, start, end, fill, width=3):
+def draw_arrow_legend(draw, start, end, fill, width=3):
     draw.line((*start, *end), fill=fill, width=width)
     dx = end[0] - start[0]
     dy = end[1] - start[1]
@@ -414,166 +499,6 @@ def draw_arrow(draw, start, end, fill, width=3):
     p2 = (end[0] + math.cos(left_angle) * head_len, end[1] + math.sin(left_angle) * head_len)
     p3 = (end[0] + math.cos(right_angle) * head_len, end[1] + math.sin(right_angle) * head_len)
     draw.polygon([p1, p2, p3], fill=fill)
-
-
-def draw_current_context(draw, route, route_currents, map_box, bounds):
-    fonts = load_fonts()
-    for point, current in zip(route.get("sample_points", []), route_currents):
-        x, y = project(point["longitude"], point["latitude"], map_box, bounds)
-        speed = current["speed"]
-        if speed == 0 or speed != speed:
-            continue
-        length = 32.0
-        angle = math.atan2(current["v"], current["u"])
-        end = (x + math.cos(angle) * length, y - math.sin(angle) * length)
-        draw_arrow(draw, (x, y), end, "#4a3f2d", width=2)
-    draw.text((map_box[0] + 34, map_box[3] - 80), "arrows: surface current vectors", font=fonts["micro"], fill=MUTED)
-
-
-def draw_route_reference(draw, route, map_box, bounds, route_values=None, emphasize=True):
-    points = [(route["origin"]["longitude"], route["origin"]["latitude"])]
-    points.extend((point["longitude"], point["latitude"]) for point in route.get("sample_points", []))
-    points.append((route["destination"]["longitude"], route["destination"]["latitude"]))
-    projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
-    for start, end in zip(projected, projected[1:]):
-        draw.line((*start, *end), fill="#e8fbff", width=4 if not emphasize else 6)
-    for x, y in projected:
-        radius = 7 if not emphasize else 12
-        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=TEXT, outline=BG, width=3)
-    if emphasize:
-        label_point(draw, route["origin"]["name"], projected[0], dx=22, dy=-50)
-        label_point(draw, route["destination"]["name"], projected[-1], dx=22, dy=20)
-    if emphasize and route_values:
-        sample_points = projected[1:-1]
-        valid = [(index, value) for index, value in enumerate(route_values) if value == value and index < len(sample_points)]
-        if valid:
-            peak_index, peak_value = max(valid, key=lambda item: item[1])
-            x, y = sample_points[peak_index]
-            draw.ellipse((x - 28, y - 28, x + 28, y + 28), outline=YELLOW, width=5)
-            label_point(draw, "sampled route point", (x, y), dx=28, dy=-62)
-
-
-def draw_route(draw, route, map_box, bounds, snapshot, route_values=None):
-    points = [(route["origin"]["longitude"], route["origin"]["latitude"])]
-    points.extend((point["longitude"], point["latitude"]) for point in route.get("sample_points", []))
-    points.append((route["destination"]["longitude"], route["destination"]["latitude"]))
-    projected = [project(lon, lat, map_box, bounds) for lon, lat in points]
-    
-    default_color = severity_color(snapshot.get("recommendation", {}).get("vessel_severity"))
-    
-    if len(projected) >= 2:
-        worst_segment = worst_segment_from_route_values(route_values or [], len(projected) - 1)
-        
-        # 1. Draw entire route casing first (dark ink #2f2a20, width 16)
-        for start, end in zip(projected, projected[1:]):
-            draw.line((*start, *end), fill=TEXT, width=16, joint="round")
-            
-        # 2. Draw graded segments on top (width 10)
-        for index, (start, end) in enumerate(zip(projected, projected[1:])):
-            local_value = segment_wave_value(route_values or [], index)
-            segment_color = route_segment_color(local_value, default_color)
-            draw.line((*start, *end), fill=segment_color, width=10, joint="round")
-            
-    # 3. Draw waypoint circles on top
-    for x, y in projected:
-        draw.ellipse((x - 13, y - 13, x + 13, y + 13), fill=BG, outline=TEXT, width=4)
-        
-    label_point(draw, route["origin"]["name"], projected[0], dx=22, dy=-50)
-    label_point(draw, route["destination"]["name"], projected[-1], dx=22, dy=20)
-    
-    if len(projected) >= 2:
-        start, end = list(zip(projected, projected[1:]))[worst_segment]
-        mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
-        label_point(draw, "exposed section", mid, dx=22, dy=-40)
-
-
-def exposed_segment_index(snapshot, segment_count):
-    hourly = snapshot.get("forecast", {}).get("hourly") or []
-    if not hourly:
-        return max(0, segment_count // 2)
-    return max(0, segment_count // 2)
-
-
-def worst_segment_from_route_values(route_values, segment_count):
-    if segment_count <= 0:
-        return 0
-    valid = [(index, value) for index, value in enumerate(route_values) if value == value]
-    if not valid:
-        return max(0, segment_count // 2)
-    worst_point_index = max(valid, key=lambda item: item[1])[0]
-    return max(0, min(segment_count - 1, worst_point_index))
-
-
-def segment_wave_value(route_values, segment_index):
-    candidates = []
-    if 0 <= segment_index < len(route_values):
-        candidates.append(route_values[segment_index])
-    previous = segment_index - 1
-    if 0 <= previous < len(route_values):
-        candidates.append(route_values[previous])
-    valid = [value for value in candidates if value == value]
-    if not valid:
-        return None
-    return max(valid)
-
-
-def label_point(draw, label, point, dx=12, dy=12):
-    font = load_fonts()["small"]
-    x, y = point
-    draw.text((x + dx, y + dy), label, font=font, fill=TEXT)
-
-
-def draw_outlined_text(draw, position, text, font, fill=TEXT, outline=BG):
-    x, y = position
-    for dx, dy in ((-2, 0), (2, 0), (0, -2), (0, 2)):
-        draw.text((x + dx, y + dy), text, font=font, fill=outline)
-    draw.text(position, text, font=font, fill=fill)
-
-
-def draw_legend(draw, map_box, fonts):
-    left, top, right, bottom = map_box
-    legend = (left + 34, top + 86, left + 680, top + 230)
-    
-    draw.rounded_rectangle(legend, radius=18, fill=PANEL, outline=MUTED, width=2)
-    draw.text((legend[0] + 24, legend[1] + 16), "Significant wave height (m)", font=fonts["small"], fill=TEXT)
-    
-    start_x = legend[0] + 24
-    swatch_y1 = legend[1] + 68
-    swatch_y2 = legend[1] + 94
-    swatch_w = 64
-    
-    swatches = [
-        ("#e4e6d8", "smooth"),
-        ("#c8d1c1", "slight"),
-        ("#9fb2a9", "moderate"),
-        ("#c99a5a", "rough"),
-        ("#a05a4a", "very rough"),
-    ]
-    
-    for index, (color, name) in enumerate(swatches):
-        x1 = start_x + index * swatch_w
-        x2 = x1 + swatch_w
-        draw.rectangle((x1, swatch_y1, x2, swatch_y2), fill=color)
-        
-        center_x = (x1 + x2) / 2
-        draw_centered_text(draw, name, center_x, swatch_y2 + 8, fonts["micro"], fill=TEXT)
-        
-    ticks = [
-        ("0", start_x),
-        ("0.5", start_x + swatch_w),
-        ("1.25", start_x + 2 * swatch_w),
-        ("2.5", start_x + 3 * swatch_w),
-        ("4.0", start_x + 4 * swatch_w),
-        ("4.0+", start_x + 5 * swatch_w),
-    ]
-    for label, x in ticks:
-        draw.line((x, swatch_y1 - 6, x, swatch_y1), fill=MUTED, width=1)
-        draw_centered_text(draw, label, x, swatch_y1 - 25, fonts["micro"], fill=MUTED)
-        
-    current_x = legend[0] + 440
-    current_y = swatch_y1 + 8
-    draw_arrow(draw, (current_x, current_y), (current_x + 32, current_y), "#4a3f2d", width=2)
-    draw.text((current_x + 48, swatch_y1 - 10), "surface current\nvector", font=fonts["micro"], fill=TEXT)
 
 
 def draw_decision_panel(draw, fonts, snapshot):
@@ -642,6 +567,7 @@ def load_fonts():
             "body": ImageFont.truetype(regular, 34),
             "small": ImageFont.truetype(regular, 25),
             "micro": ImageFont.truetype(regular, 18),
+            "nano": ImageFont.truetype(regular, 13),
         }
     default = ImageFont.load_default()
-    return {key: default for key in ("brand", "title", "subtitle", "status", "body", "small", "micro")}
+    return {key: default for key in ("brand", "title", "subtitle", "status", "body", "small", "micro", "nano")}

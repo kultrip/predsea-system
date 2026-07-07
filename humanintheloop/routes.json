@@ -1401,13 +1401,13 @@
       },
       {
         "name": "Mid Balearic-Sardinian passage",
-        "longitude": 5.80,
-        "latitude": 39.30
+        "longitude": 5.8,
+        "latitude": 39.3
       },
       {
         "name": "Southwest Sardinia approach",
-        "longitude": 8.50,
-        "latitude": 39.10
+        "longitude": 8.5,
+        "latitude": 39.1
       }
     ]
   },
@@ -1440,23 +1440,23 @@
     "sample_points": [
       {
         "name": "Ibiza offshore",
-        "longitude": 1.60,
-        "latitude": 38.90
+        "longitude": 1.6,
+        "latitude": 38.9
       },
       {
         "name": "South of Mallorca",
-        "longitude": 3.10,
-        "latitude": 38.80
+        "longitude": 3.1,
+        "latitude": 38.8
       },
       {
         "name": "Mid passage",
-        "longitude": 6.00,
-        "latitude": 39.00
+        "longitude": 6.0,
+        "latitude": 39.0
       },
       {
         "name": "Southwest Sardinia approach",
-        "longitude": 8.50,
-        "latitude": 39.10
+        "longitude": 8.5,
+        "latitude": 39.1
       }
     ]
   },
@@ -1489,18 +1489,18 @@
     "sample_points": [
       {
         "name": "Ligurian Sea",
-        "longitude": 9.00,
-        "latitude": 43.80
+        "longitude": 9.0,
+        "latitude": 43.8
       },
       {
         "name": "Corsica Channel",
-        "longitude": 9.70,
-        "latitude": 41.80
+        "longitude": 9.7,
+        "latitude": 41.8
       },
       {
         "name": "East Sardinia approach",
-        "longitude": 9.90,
-        "latitude": 40.10
+        "longitude": 9.9,
+        "latitude": 40.1
       }
     ]
   },
@@ -1510,7 +1510,7 @@
     "origin": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "destination": {
       "name": "Cagliari",
@@ -1533,18 +1533,18 @@
     "sample_points": [
       {
         "name": "Marseille approach",
-        "longitude": 5.50,
-        "latitude": 43.10
+        "longitude": 5.5,
+        "latitude": 43.1
       },
       {
         "name": "Western Corsica transit",
-        "longitude": 7.30,
-        "latitude": 41.20
+        "longitude": 7.3,
+        "latitude": 41.2
       },
       {
         "name": "Northwest Sardinia crossing",
-        "longitude": 8.20,
-        "latitude": 40.00
+        "longitude": 8.2,
+        "latitude": 40.0
       }
     ]
   },
@@ -1577,18 +1577,18 @@
     "sample_points": [
       {
         "name": "Toulon approach",
-        "longitude": 6.00,
-        "latitude": 43.00
+        "longitude": 6.0,
+        "latitude": 43.0
       },
       {
         "name": "Western Corsica transit",
-        "longitude": 7.80,
-        "latitude": 41.50
+        "longitude": 7.8,
+        "latitude": 41.5
       },
       {
         "name": "Southwest Sardinia crossing",
-        "longitude": 8.40,
-        "latitude": 39.50
+        "longitude": 8.4,
+        "latitude": 39.5
       }
     ]
   },
@@ -1598,7 +1598,7 @@
     "origin": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "destination": {
       "name": "Toulon",
@@ -1621,18 +1621,18 @@
     "sample_points": [
       {
         "name": "Marseille Bay",
-        "longitude": 5.40,
-        "latitude": 43.20
+        "longitude": 5.4,
+        "latitude": 43.2
       },
       {
         "name": "Cassis cliffs transit",
-        "longitude": 5.60,
+        "longitude": 5.6,
         "latitude": 43.15
       },
       {
         "name": "Toulon approach",
         "longitude": 5.85,
-        "latitude": 43.10
+        "latitude": 43.1
       }
     ]
   },
@@ -1642,7 +1642,7 @@
     "origin": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "destination": {
       "name": "Palma",
@@ -1665,18 +1665,112 @@
     "sample_points": [
       {
         "name": "Gulf of Lion offshore",
-        "longitude": 4.80,
-        "latitude": 42.50
+        "longitude": 4.8,
+        "latitude": 42.5
       },
       {
         "name": "North of Mallorca crossing",
-        "longitude": 3.80,
-        "latitude": 40.50
+        "longitude": 3.8,
+        "latitude": 40.5
       },
       {
         "name": "Palma approach",
-        "longitude": 2.70,
-        "latitude": 39.60
+        "longitude": 2.7,
+        "latitude": 39.6
+      }
+    ],
+    "waypoints": [
+      {
+        "latitude": 43.3,
+        "longitude": 5.37,
+        "name": "Marseille"
+      },
+      {
+        "latitude": 43.3224,
+        "longitude": 5.3141
+      },
+      {
+        "latitude": 43.1864,
+        "longitude": 5.2125
+      },
+      {
+        "latitude": 43.1443,
+        "longitude": 5.0394
+      },
+      {
+        "latitude": 43.3504,
+        "longitude": 4.2869
+      },
+      {
+        "latitude": 43.51,
+        "longitude": 4.0589,
+        "name": "Sète"
+      },
+      {
+        "latitude": 43.3504,
+        "longitude": 3.7499
+      },
+      {
+        "latitude": 42.7696,
+        "longitude": 3.4277,
+        "name": "Perpignan Approach"
+      },
+      {
+        "latitude": 42.4537,
+        "longitude": 3.4948,
+        "name": "Cap de Creus"
+      },
+      {
+        "latitude": 41.7972,
+        "longitude": 3.3104,
+        "name": "Costa Brava"
+      },
+      {
+        "latitude": 41.3,
+        "longitude": 2.5
+      },
+      {
+        "latitude": 41.3122,
+        "longitude": 2.2094,
+        "name": "Barcelona"
+      },
+      {
+        "latitude": 41.1761,
+        "longitude": 2.3141
+      },
+      {
+        "latitude": 40.9676,
+        "longitude": 2.4744
+      },
+      {
+        "latitude": 40.6715,
+        "longitude": 2.4517
+      },
+      {
+        "latitude": 40.5312,
+        "longitude": 2.4409
+      },
+      {
+        "latitude": 40.3979,
+        "longitude": 2.4306
+      },
+      {
+        "latitude": 40.3077,
+        "longitude": 2.4237
+      },
+      {
+        "latitude": 40.0,
+        "longitude": 2.4
+      },
+      {
+        "latitude": 39.4254,
+        "longitude": 2.2681,
+        "name": "Mallorca West"
+      },
+      {
+        "latitude": 39.5696,
+        "longitude": 2.6502,
+        "name": "Palma"
       }
     ]
   },
@@ -1709,18 +1803,18 @@
     "sample_points": [
       {
         "name": "Toulon offshore",
-        "longitude": 5.40,
-        "latitude": 42.50
+        "longitude": 5.4,
+        "latitude": 42.5
       },
       {
         "name": "North of Mallorca crossing",
-        "longitude": 3.80,
-        "latitude": 40.50
+        "longitude": 3.8,
+        "latitude": 40.5
       },
       {
         "name": "Palma approach",
-        "longitude": 2.70,
-        "latitude": 39.60
+        "longitude": 2.7,
+        "latitude": 39.6
       }
     ]
   },
@@ -1735,7 +1829,7 @@
     "destination": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "validation": {
       "truth_source": null,
@@ -1753,17 +1847,17 @@
     "sample_points": [
       {
         "name": "Costa Brava",
-        "longitude": 3.20,
-        "latitude": 41.80
+        "longitude": 3.2,
+        "latitude": 41.8
       },
       {
         "name": "Gulf of Lion",
-        "longitude": 4.20,
-        "latitude": 42.50
+        "longitude": 4.2,
+        "latitude": 42.5
       },
       {
         "name": "Marseille approach",
-        "longitude": 5.20,
+        "longitude": 5.2,
         "latitude": 43.15
       }
     ]
@@ -1797,18 +1891,18 @@
     "sample_points": [
       {
         "name": "Gulf of Lion crossing",
-        "longitude": 4.50,
-        "latitude": 42.20
+        "longitude": 4.5,
+        "latitude": 42.2
       },
       {
         "name": "Ligurian Sea transit",
-        "longitude": 7.50,
-        "latitude": 43.50
+        "longitude": 7.5,
+        "latitude": 43.5
       },
       {
         "name": "Genoa approach",
-        "longitude": 8.80,
-        "latitude": 44.20
+        "longitude": 8.8,
+        "latitude": 44.2
       }
     ]
   },
@@ -1841,18 +1935,18 @@
     "sample_points": [
       {
         "name": "Genoa approach",
-        "longitude": 8.80,
-        "latitude": 44.20
+        "longitude": 8.8,
+        "latitude": 44.2
       },
       {
         "name": "Ligurian Sea transit",
-        "longitude": 7.50,
-        "latitude": 43.60
+        "longitude": 7.5,
+        "latitude": 43.6
       },
       {
         "name": "Toulon approach",
-        "longitude": 6.10,
-        "latitude": 43.10
+        "longitude": 6.1,
+        "latitude": 43.1
       }
     ]
   },
@@ -1867,7 +1961,7 @@
     "destination": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "validation": {
       "truth_source": null,
@@ -1885,18 +1979,18 @@
     "sample_points": [
       {
         "name": "Genoa approach",
-        "longitude": 8.80,
-        "latitude": 44.20
+        "longitude": 8.8,
+        "latitude": 44.2
       },
       {
         "name": "Ligurian Sea transit",
-        "longitude": 7.50,
-        "latitude": 43.60
+        "longitude": 7.5,
+        "latitude": 43.6
       },
       {
         "name": "Marseille approach",
-        "longitude": 5.50,
-        "latitude": 43.20
+        "longitude": 5.5,
+        "latitude": 43.2
       }
     ]
   },
@@ -1934,13 +2028,13 @@
       },
       {
         "name": "Mid Balearic-Riviera crossing",
-        "longitude": 5.00,
-        "latitude": 41.80
+        "longitude": 5.0,
+        "latitude": 41.8
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.10,
-        "latitude": 43.60
+        "longitude": 7.1,
+        "latitude": 43.6
       }
     ]
   },
@@ -1973,18 +2067,18 @@
     "sample_points": [
       {
         "name": "Ibiza offshore",
-        "longitude": 1.60,
-        "latitude": 39.00
+        "longitude": 1.6,
+        "latitude": 39.0
       },
       {
         "name": "Gulf of Lion crossing",
-        "longitude": 4.60,
-        "latitude": 42.00
+        "longitude": 4.6,
+        "latitude": 42.0
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.10,
-        "latitude": 43.60
+        "longitude": 7.1,
+        "latitude": 43.6
       }
     ]
   },
@@ -2022,13 +2116,13 @@
       },
       {
         "name": "Mid Balearic-Riviera passage",
-        "longitude": 4.80,
-        "latitude": 41.70
+        "longitude": 4.8,
+        "latitude": 41.7
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.10,
-        "latitude": 43.60
+        "longitude": 7.1,
+        "latitude": 43.6
       }
     ]
   },
@@ -2061,18 +2155,18 @@
     "sample_points": [
       {
         "name": "Menorca offshore",
-        "longitude": 4.30,
-        "latitude": 40.10
+        "longitude": 4.3,
+        "latitude": 40.1
       },
       {
         "name": "Mid passage",
-        "longitude": 6.00,
-        "latitude": 42.10
+        "longitude": 6.0,
+        "latitude": 42.1
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.10,
-        "latitude": 43.60
+        "longitude": 7.1,
+        "latitude": 43.6
       }
     ]
   },
@@ -2106,17 +2200,17 @@
       {
         "name": "Cabrera approach",
         "longitude": 2.95,
-        "latitude": 39.20
+        "latitude": 39.2
       },
       {
         "name": "Mid Balearic-Riviera passage",
-        "longitude": 5.20,
-        "latitude": 41.50
+        "longitude": 5.2,
+        "latitude": 41.5
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.10,
-        "latitude": 43.60
+        "longitude": 7.1,
+        "latitude": 43.6
       }
     ]
   },
@@ -2149,18 +2243,18 @@
     "sample_points": [
       {
         "name": "Valencia approach",
-        "longitude": 0.20,
-        "latitude": 39.60
+        "longitude": 0.2,
+        "latitude": 39.6
       },
       {
         "name": "Mid Western Med",
-        "longitude": 3.60,
-        "latitude": 40.90
+        "longitude": 3.6,
+        "latitude": 40.9
       },
       {
         "name": "Gulf of Lion",
-        "longitude": 5.80,
-        "latitude": 42.50
+        "longitude": 5.8,
+        "latitude": 42.5
       }
     ]
   },
@@ -2193,17 +2287,17 @@
     "sample_points": [
       {
         "name": "Costa Brava",
-        "longitude": 3.20,
-        "latitude": 41.80
+        "longitude": 3.2,
+        "latitude": 41.8
       },
       {
         "name": "Gulf of Lion",
-        "longitude": 4.90,
-        "latitude": 42.60
+        "longitude": 4.9,
+        "latitude": 42.6
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.00,
+        "longitude": 7.0,
         "latitude": 43.55
       }
     ]
@@ -2237,17 +2331,17 @@
     "sample_points": [
       {
         "name": "Tarragona departure",
-        "longitude": 1.30,
-        "latitude": 41.10
+        "longitude": 1.3,
+        "latitude": 41.1
       },
       {
         "name": "Gulf of Lion mid crossing",
-        "longitude": 4.50,
-        "latitude": 42.30
+        "longitude": 4.5,
+        "latitude": 42.3
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.00,
+        "longitude": 7.0,
         "latitude": 43.55
       }
     ]
@@ -2281,18 +2375,18 @@
     "sample_points": [
       {
         "name": "Palamos approach",
-        "longitude": 3.50,
-        "latitude": 42.00
+        "longitude": 3.5,
+        "latitude": 42.0
       },
       {
         "name": "Gulf of Lion",
-        "longitude": 5.20,
-        "latitude": 42.80
+        "longitude": 5.2,
+        "latitude": 42.8
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.00,
-        "latitude": 43.60
+        "longitude": 7.0,
+        "latitude": 43.6
       }
     ]
   },
@@ -2302,7 +2396,7 @@
     "origin": {
       "name": "Montpellier",
       "longitude": 3.69,
-      "latitude": 43.40
+      "latitude": 43.4
     },
     "destination": {
       "name": "Monaco",
@@ -2325,13 +2419,13 @@
     "sample_points": [
       {
         "name": "Gulf of Lion east",
-        "longitude": 4.90,
-        "latitude": 43.20
+        "longitude": 4.9,
+        "latitude": 43.2
       },
       {
         "name": "Cote d'Azur approach",
-        "longitude": 6.50,
-        "latitude": 43.40
+        "longitude": 6.5,
+        "latitude": 43.4
       }
     ]
   },
@@ -2341,7 +2435,7 @@
     "origin": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "destination": {
       "name": "Monaco",
@@ -2364,18 +2458,18 @@
     "sample_points": [
       {
         "name": "Cassis cliffs transit",
-        "longitude": 5.70,
+        "longitude": 5.7,
         "latitude": 43.15
       },
       {
         "name": "Toulon offshore",
-        "longitude": 6.30,
+        "longitude": 6.3,
         "latitude": 43.25
       },
       {
         "name": "Monaco approach",
-        "longitude": 7.10,
-        "latitude": 43.60
+        "longitude": 7.1,
+        "latitude": 43.6
       }
     ]
   },
@@ -2408,12 +2502,12 @@
     "sample_points": [
       {
         "name": "Cannes approach",
-        "longitude": 6.80,
-        "latitude": 43.40
+        "longitude": 6.8,
+        "latitude": 43.4
       },
       {
         "name": "Nice coast",
-        "longitude": 7.20,
+        "longitude": 7.2,
         "latitude": 43.62
       }
     ]
@@ -2447,13 +2541,13 @@
     "sample_points": [
       {
         "name": "Ligurian Sea transit",
-        "longitude": 8.00,
+        "longitude": 8.0,
         "latitude": 43.95
       },
       {
         "name": "Genoa approach",
-        "longitude": 8.80,
-        "latitude": 44.20
+        "longitude": 8.8,
+        "latitude": 44.2
       }
     ]
   },
@@ -2486,13 +2580,13 @@
     "sample_points": [
       {
         "name": "Ligurian Sea south",
-        "longitude": 8.40,
-        "latitude": 42.20
+        "longitude": 8.4,
+        "latitude": 42.2
       },
       {
         "name": "West Sardinia channel",
-        "longitude": 9.00,
-        "latitude": 40.50
+        "longitude": 9.0,
+        "latitude": 40.5
       },
       {
         "name": "Cagliari approach",
@@ -2530,17 +2624,17 @@
     "sample_points": [
       {
         "name": "Ligurian Sea south",
-        "longitude": 8.60,
-        "latitude": 42.80
+        "longitude": 8.6,
+        "latitude": 42.8
       },
       {
         "name": "Tyrrhenian mid passage",
-        "longitude": 11.60,
-        "latitude": 41.40
+        "longitude": 11.6,
+        "latitude": 41.4
       },
       {
         "name": "Naples approach",
-        "longitude": 14.00,
+        "longitude": 14.0,
         "latitude": 40.75
       }
     ]
@@ -2574,18 +2668,18 @@
     "sample_points": [
       {
         "name": "Ligurian Sea south",
-        "longitude": 8.70,
-        "latitude": 42.20
+        "longitude": 8.7,
+        "latitude": 42.2
       },
       {
         "name": "Tyrrhenian mid passage",
-        "longitude": 11.90,
-        "latitude": 39.90
+        "longitude": 11.9,
+        "latitude": 39.9
       },
       {
         "name": "North Sicily approach",
-        "longitude": 13.20,
-        "latitude": 38.50
+        "longitude": 13.2,
+        "latitude": 38.5
       }
     ]
   },
@@ -2618,18 +2712,18 @@
     "sample_points": [
       {
         "name": "Ligurian Sea south",
-        "longitude": 8.80,
-        "latitude": 42.00
+        "longitude": 8.8,
+        "latitude": 42.0
       },
       {
         "name": "Tyrrhenian mid passage",
-        "longitude": 12.60,
-        "latitude": 39.70
+        "longitude": 12.6,
+        "latitude": 39.7
       },
       {
         "name": "Aeolian Islands approach",
-        "longitude": 14.90,
-        "latitude": 38.50
+        "longitude": 14.9,
+        "latitude": 38.5
       }
     ]
   },
@@ -2662,17 +2756,17 @@
     "sample_points": [
       {
         "name": "Balearic Sea offshore",
-        "longitude": 4.50,
-        "latitude": 40.50
+        "longitude": 4.5,
+        "latitude": 40.5
       },
       {
         "name": "Sardinian Sea passage",
-        "longitude": 7.20,
-        "latitude": 39.80
+        "longitude": 7.2,
+        "latitude": 39.8
       },
       {
         "name": "Cagliari approach",
-        "longitude": 9.00,
+        "longitude": 9.0,
         "latitude": 39.25
       }
     ]
@@ -2706,13 +2800,13 @@
     "sample_points": [
       {
         "name": "Sardinia departure approach",
-        "longitude": 9.40,
+        "longitude": 9.4,
         "latitude": 39.15
       },
       {
         "name": "Mid Tyrrhenian passage",
-        "longitude": 11.80,
-        "latitude": 40.00
+        "longitude": 11.8,
+        "latitude": 40.0
       },
       {
         "name": "Gulf of Naples approach",
@@ -2750,18 +2844,18 @@
     "sample_points": [
       {
         "name": "Palermo offshore departure",
-        "longitude": 13.50,
-        "latitude": 38.30
+        "longitude": 13.5,
+        "latitude": 38.3
       },
       {
         "name": "Aeolian Islands passage",
-        "longitude": 14.20,
-        "latitude": 39.20
+        "longitude": 14.2,
+        "latitude": 39.2
       },
       {
         "name": "Gulf of Naples southern approach",
         "longitude": 14.15,
-        "latitude": 40.60
+        "latitude": 40.6
       }
     ]
   },
@@ -2776,7 +2870,7 @@
     "destination": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "validation": {
       "truth_source": null,
@@ -2794,18 +2888,18 @@
     "sample_points": [
       {
         "name": "Tyrrhenian Sea northward leg",
-        "longitude": 12.50,
-        "latitude": 41.30
+        "longitude": 12.5,
+        "latitude": 41.3
       },
       {
         "name": "Bonifacio Strait crossing",
-        "longitude": 9.20,
+        "longitude": 9.2,
         "latitude": 41.35
       },
       {
         "name": "Ligurian/Gulf of Lion transit",
-        "longitude": 7.00,
-        "latitude": 42.50
+        "longitude": 7.0,
+        "latitude": 42.5
       }
     ]
   },
@@ -2815,7 +2909,7 @@
     "origin": {
       "name": "Montpellier",
       "longitude": 3.69,
-      "latitude": 43.40
+      "latitude": 43.4
     },
     "destination": {
       "name": "Palma",
@@ -2839,17 +2933,17 @@
       {
         "name": "Sète Offshore",
         "longitude": 3.75,
-        "latitude": 43.20
+        "latitude": 43.2
       },
       {
         "name": "Gulf of Lion",
-        "longitude": 3.20,
-        "latitude": 41.50
+        "longitude": 3.2,
+        "latitude": 41.5
       },
       {
         "name": "Palma approach",
-        "longitude": 2.70,
-        "latitude": 39.60
+        "longitude": 2.7,
+        "latitude": 39.6
       }
     ]
   },
@@ -2859,7 +2953,7 @@
     "origin": {
       "name": "Montpellier",
       "longitude": 3.69,
-      "latitude": 43.40
+      "latitude": 43.4
     },
     "destination": {
       "name": "Barcelona",
@@ -2883,17 +2977,17 @@
       {
         "name": "Sète Offshore",
         "longitude": 3.75,
-        "latitude": 43.20
+        "latitude": 43.2
       },
       {
         "name": "Costa Brava",
-        "longitude": 3.20,
-        "latitude": 41.80
+        "longitude": 3.2,
+        "latitude": 41.8
       },
       {
         "name": "Barcelona approach",
         "longitude": 2.19,
-        "latitude": 41.20
+        "latitude": 41.2
       }
     ]
   },
@@ -2903,12 +2997,12 @@
     "origin": {
       "name": "Montpellier",
       "longitude": 3.69,
-      "latitude": 43.40
+      "latitude": 43.4
     },
     "destination": {
       "name": "Marseille",
       "longitude": 5.37,
-      "latitude": 43.30
+      "latitude": 43.3
     },
     "validation": {
       "truth_source": null,
@@ -2926,8 +3020,8 @@
     "sample_points": [
       {
         "name": "Gulf of Lion east",
-        "longitude": 4.50,
-        "latitude": 43.10
+        "longitude": 4.5,
+        "latitude": 43.1
       }
     ]
   },
@@ -2937,7 +3031,7 @@
     "origin": {
       "name": "Montpellier",
       "longitude": 3.69,
-      "latitude": 43.40
+      "latitude": 43.4
     },
     "destination": {
       "name": "Genoa",
@@ -2960,15 +3054,14 @@
     "sample_points": [
       {
         "name": "Cote d'Azur transit",
-        "longitude": 6.50,
-        "latitude": 43.20
+        "longitude": 6.5,
+        "latitude": 43.2
       },
       {
         "name": "Genoa approach",
-        "longitude": 8.80,
-        "latitude": 44.20
+        "longitude": 8.8,
+        "latitude": 44.2
       }
     ]
   }
 }
-

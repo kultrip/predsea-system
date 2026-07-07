@@ -178,8 +178,9 @@ def test_waypoints_from_sample_points_prepends_origin_and_appends_destination():
     assert waypoints[-1] == {"lat": 38.9089, "lng": 1.435}
 
 
-def test_resolve_route_waypoints_falls_back_to_sample_points_when_router_unavailable():
+def test_resolve_route_waypoints_falls_back_to_sample_points_when_router_unavailable(monkeypatch):
     module = load_map_script()
+    monkeypatch.setattr(module, "waypoints_from_place_registry", lambda route: [])
     # No waves/currents path given (as when called without forcing files) and place_registry
     # resolution isn't importable/available in this route dict -> should still get a route
     # from sample_points rather than an empty overlay.
@@ -197,4 +198,44 @@ def test_resolve_route_waypoints_passes_through_list_route():
     raw_waypoints = [{"lat": 1.0, "lng": 2.0}, {"lat": 3.0, "lng": 4.0}]
 
     assert module.resolve_route_waypoints(raw_waypoints) == raw_waypoints
+
+
+def test_compute_map_extent_respects_explicit_override():
+    module = load_map_script()
+    override = [1.0, 5.0, 35.0, 45.0]
+    assert module.compute_map_extent(None, extent=override) == override
+
+
+def test_compute_map_extent_expands_to_encompass_waypoints():
+    module = load_map_script()
+    # Wave grid covers lat [39.0, 40.0], lon [1.0, 3.0]
+    wave = xr.DataArray(
+        np.zeros((2, 3)),
+        coords={"latitude": [39.0, 40.0], "longitude": [1.0, 2.0, 3.0]},
+        dims=("latitude", "longitude"),
+    )
+    # Default wave grid extent with 0.08 padding is [0.92, 3.08, 38.92, 40.08]
+    # No waypoints -> returns default extent
+    assert module.compute_map_extent(wave, waypoints=[]) == [0.92, 3.08, 38.92, 40.08]
+
+    # Waypoints extending far to the north and east: Marseille and Cagliari alike (e.g. lat 43.3, lon 9.11)
+    waypoints = [
+        {"lat": 43.30, "lng": 5.37},
+        {"lat": 39.21, "lng": 9.11},
+    ]
+    # Padded waypoints:
+    # lon_min = 5.37 - 0.6 = 4.77
+    # lon_max = 9.11 + 0.6 = 9.71
+    # lat_min = 39.21 - 0.6 = 38.61
+    # lat_max = 43.30 + 0.6 = 43.90
+    #
+    # Union of grid [0.92, 3.08, 38.92, 40.08] and padded waypoints:
+    # lon_min: min(0.92, 4.77) = 0.92
+    # lon_max: max(3.08, 9.71) = 9.71
+    # lat_min: min(38.92, 38.61) = 38.61
+    # lat_max: max(40.08, 43.90) = 43.90
+    expected = [0.92, 9.71, 38.61, 43.90]
+    result = module.compute_map_extent(wave, waypoints=waypoints)
+    np.testing.assert_allclose(result, expected, atol=1e-5)
+
 

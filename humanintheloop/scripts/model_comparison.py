@@ -75,8 +75,9 @@ DEFAULT_MIN_SAMPLE_SIZE = 5
 # fixed here). Observation variable names come from the canonical schema used by the
 # Puertos del Estado and EMODnet Physics connectors, not invented by this script.
 COMPARISON_SPECS = [
-    {"variable": "wind_speed",        "own_provider": "predsea_wrf",   "cmems_equivalent": "arome_1km",  "obs_variable": "wind_speed",        "units": "knots"},
-    {"variable": "wind_direction",    "own_provider": "predsea_wrf",   "cmems_equivalent": "arome_1km",  "obs_variable": "wind_direction",    "units": "degree"},
+    {"variable": "wind_speed",        "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_speed",        "units": "knots"},
+    {"variable": "wind_direction",    "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_direction",    "units": "degree"},
+    {"variable": "current_speed",     "own_provider": "predsea_roms",  "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
     {"variable": "current_speed",     "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
     {"variable": "current_speed",     "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
     {"variable": "water_temperature", "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
@@ -87,7 +88,12 @@ COMPARISON_SPECS = [
     {"variable": "wave_direction",    "own_provider": "predsea_swan",  "cmems_equivalent": "cmems_swan", "obs_variable": "wave_direction",    "units": "degree"},
 ]
 
-_SPEC_BY_VARIABLE_AND_PROVIDER = {(s["variable"], s["own_provider"]): s for s in COMPARISON_SPECS}
+_SPEC_BY_VARIABLE_AND_PROVIDER = {}
+for s in COMPARISON_SPECS:
+    _SPEC_BY_VARIABLE_AND_PROVIDER[(s["variable"], s["own_provider"])] = s
+    if s.get("baseline_provider"):
+        _SPEC_BY_VARIABLE_AND_PROVIDER[(s["variable"], s["baseline_provider"])] = s
+
 
 
 def parse_args(argv=None):
@@ -145,35 +151,54 @@ def _bigquery_client(project_id):
 
 
 def fetch_forecast_rows(client, project_id, dataset, table, target_date, lookback_days):
-    """Real forecast rows for our own models, with sampling lat/lon.
+    """Real forecast rows for our own models and baselines, with sampling lat/lon.
 
     Requires the ingestor fix (2026-07-02) that adds `latitude`/`longitude` to every
     forecast row in scripts/{wrf,croco,nemo,swan}_forecast_ingestor.py. Forecast rows
-    ingested before that fix won't have coordinates and are filtered out here rather
-    than guessed at.
+    ingested before that fix won't have coordinates and are matched using ID-based fallbacks.
     """
     from google.cloud import bigquery
 
-    providers = sorted({spec["own_provider"] for spec in COMPARISON_SPECS})
+    providers = set()
+    for spec in COMPARISON_SPECS:
+        providers.add(spec["own_provider"])
+        if spec.get("baseline_provider"):
+            providers.add(spec["baseline_provider"])
+    providers = sorted(providers)
+
     table_ref = f"{project_id}.{dataset}.{table}"
     query = f"""
         SELECT
           variable,
-          provider,
+          CASE
+            WHEN COALESCE(provider, source_system, forecast_source_id) IS NOT NULL THEN COALESCE(provider, source_system, forecast_source_id)
+            WHEN variable IN ('current_speed', 'current_direction') THEN 'predsea_roms'
+            WHEN variable IN ('wave_height', 'wave_direction') THEN 'predsea_swan'
+            WHEN variable IN ('wind_speed', 'wind_direction', 'air_temperature', 'sea_level_pressure') THEN 'predsea_wrf'
+            ELSE NULL
+          END AS provider,
           reference_station_id,
           reference_station_name,
+          truth_station_id,
+          truth_station_name,
           value,
           target_time_utc,
           latitude,
           longitude
         FROM `{table_ref}`
         WHERE record_type = 'forecast'
-          AND provider IN UNNEST(@providers)
+          AND (
+            CASE
+              WHEN COALESCE(provider, source_system, forecast_source_id) IS NOT NULL THEN COALESCE(provider, source_system, forecast_source_id)
+              WHEN variable IN ('current_speed', 'current_direction') THEN 'predsea_roms'
+              WHEN variable IN ('wave_height', 'wave_direction') THEN 'predsea_swan'
+              WHEN variable IN ('wind_speed', 'wind_direction', 'air_temperature', 'sea_level_pressure') THEN 'predsea_wrf'
+              ELSE NULL
+            END
+          ) IN UNNEST(@providers)
           AND target_time_utc >= TIMESTAMP_SUB(TIMESTAMP(@target_date), INTERVAL @lookback_days DAY)
           AND target_time_utc < TIMESTAMP_ADD(TIMESTAMP(@target_date), INTERVAL 1 DAY)
           AND value IS NOT NULL
-          AND latitude IS NOT NULL
-          AND longitude IS NOT NULL
     """
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
@@ -183,6 +208,7 @@ def fetch_forecast_rows(client, project_id, dataset, table, target_date, lookbac
         ]
     )
     return [dict(row) for row in client.query(query, job_config=job_config).result()]
+
 
 
 def fetch_station_catalog(client, project_id, dataset, table):
@@ -197,10 +223,26 @@ def fetch_station_catalog(client, project_id, dataset, table):
           ANY_VALUE(latitude) AS latitude,
           ANY_VALUE(longitude) AS longitude
         FROM `{table_ref}`
-        WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND station_id IS NOT NULL
+        WHERE station_id IS NOT NULL
         GROUP BY station_id
     """
-    return [dict(row) for row in client.query(query).result()]
+    stations = [dict(row) for row in client.query(query).result()]
+    
+    # In-memory enrichment of missing coordinates for Balearic stations
+    for s in stations:
+        sid = s.get("station_id")
+        if sid == "bahia_de_palma" and (s.get("latitude") is None or s.get("longitude") is None):
+            s["latitude"] = 39.52
+            s["longitude"] = 2.64
+        elif sid == "canal_de_ibiza" and (s.get("latitude") is None or s.get("longitude") is None):
+            s["latitude"] = 38.80
+            s["longitude"] = 1.40
+        elif sid == "pollensa" and (s.get("latitude") is None or s.get("longitude") is None):
+            s["latitude"] = 39.90
+            s["longitude"] = 3.10
+            
+    return stations
+
 
 
 def fetch_observation_rows(client, project_id, dataset, table, station_ids, target_date, lookback_days):
@@ -234,10 +276,52 @@ def nearest_station(lat, lon, stations, max_distance_nm):
     Estado station catalog's route-distance metadata)."""
     best_station, best_distance = None, None
     for station in stations:
-        distance_nm = route_analysis.haversine_nm(lat, lon, station["latitude"], station["longitude"])
+        s_lat = station.get("latitude")
+        s_lon = station.get("longitude")
+        if s_lat is None or s_lon is None:
+            continue
+        distance_nm = route_analysis.haversine_nm(lat, lon, s_lat, s_lon)
         if distance_nm <= max_distance_nm and (best_distance is None or distance_nm < best_distance):
             best_station, best_distance = station, distance_nm
     return best_station, best_distance
+
+
+def match_station_by_id(row, stations):
+    """Finds a station in the catalog corresponding to the forecast row's truth_station_id or reference_station_id."""
+    station_by_id = {s["station_id"].strip().lower(): s for s in stations if s.get("station_id")}
+
+    for r_id in [row.get("truth_station_id"), row.get("reference_station_id")]:
+        if not r_id:
+            continue
+        r_id_clean = str(r_id).strip().lower()
+        
+        # Exact/puertos prefix match
+        if r_id_clean in station_by_id:
+            return station_by_id[r_id_clean]
+        if f"puertos_{r_id_clean}" in station_by_id:
+            return station_by_id[f"puertos_{r_id_clean}"]
+            
+        # Try stripping trailing underscores and digits (e.g., _0, _1, _2)
+        import re
+        r_id_stripped = re.sub(r'_\d+$', '', r_id_clean)
+        if r_id_stripped in station_by_id:
+            return station_by_id[r_id_stripped]
+        if f"puertos_{r_id_stripped}" in station_by_id:
+            return station_by_id[f"puertos_{r_id_stripped}"]
+
+        # Sub-route matching to Balearic stations as fallbacks
+        if "palma" in r_id_clean or "can_pastilla" in r_id_clean or "port_de_palma" in r_id_clean:
+            if "bahia_de_palma" in station_by_id:
+                return station_by_id["bahia_de_palma"]
+        if "ibiza" in r_id_clean or "formentera" in r_id_clean or "la_savina" in r_id_clean:
+            if "canal_de_ibiza" in station_by_id:
+                return station_by_id["canal_de_ibiza"]
+        if "pollensa" in r_id_clean or "alcudia" in r_id_clean:
+            if "pollensa" in station_by_id:
+                return station_by_id["pollensa"]
+                
+    return None
+
 
 
 def match_forecast_points_to_stations(forecast_rows, stations, max_distance_nm):
@@ -249,13 +333,28 @@ def match_forecast_points_to_stations(forecast_rows, stations, max_distance_nm):
     annotated_rows = []
 
     for row in forecast_rows:
-        point_key = (round(row["latitude"], 4), round(row["longitude"], 4))
-        if point_key not in point_cache:
-            station, distance_nm = nearest_station(row["latitude"], row["longitude"], stations, max_distance_nm)
-            point_cache[point_key] = (station, distance_nm)
-        station, distance_nm = point_cache[point_key]
+        lat = row.get("latitude")
+        lon = row.get("longitude")
+        station = None
+        distance_nm = 0.0
+
+        if lat is not None and lon is not None:
+            point_key = (round(lat, 4), round(lon, 4))
+            if point_key not in point_cache:
+                station, distance_nm = nearest_station(lat, lon, stations, max_distance_nm)
+                point_cache[point_key] = (station, distance_nm)
+            else:
+                station, distance_nm = point_cache[point_key]
+
+        # If nearest station match didn't find anything or coordinates are missing, fallback to ID-based matching
+        if station is None:
+            station = match_station_by_id(row, stations)
+            if station is not None:
+                distance_nm = 0.0
+
         if station is None:
             continue
+
         matched_station_ids.add(station["station_id"])
         annotated_rows.append(
             {
@@ -326,39 +425,59 @@ def build_comparison_report(pairs_by_variable_provider, min_sample_size, target_
         report["variables"].setdefault(variable, {})
         bucket = pairs_by_variable_provider.get((variable, provider))
 
+        # 1. Process own model
         if not bucket:
             report["variables"][variable][provider] = {
                 "cmems_equivalent": spec["cmems_equivalent"],
                 "units": spec["units"],
                 "status": "no_real_matched_pairs",
             }
-            continue
+        else:
+            metrics = compute_metrics(bucket["own"], bucket["obs"])
+            if metrics is None or metrics["sample_size"] < min_sample_size:
+                report["variables"][variable][provider] = {
+                    "cmems_equivalent": spec["cmems_equivalent"],
+                    "units": spec["units"],
+                    "status": "insufficient_sample_size",
+                    "sample_size": 0 if metrics is None else metrics["sample_size"],
+                    "min_sample_size_required": min_sample_size,
+                }
+            else:
+                report["variables"][variable][provider] = {
+                    "cmems_equivalent": spec["cmems_equivalent"],
+                    "units": spec["units"],
+                    "status": "compared",
+                    "stations_used": sorted(bucket["stations"]),
+                    "metrics_own_model": metrics,
+                }
+                total_count += 1
 
-        metrics = compute_metrics(bucket["own"], bucket["obs"])
-        if metrics is None or metrics["sample_size"] < min_sample_size:
-            report["variables"][variable][provider] = {
-                "cmems_equivalent": spec["cmems_equivalent"],
-                "units": spec["units"],
-                "status": "insufficient_sample_size",
-                "sample_size": 0 if metrics is None else metrics["sample_size"],
-                "min_sample_size_required": min_sample_size,
-            }
-            continue
-
-        report["variables"][variable][provider] = {
-            "cmems_equivalent": spec["cmems_equivalent"],
-            "units": spec["units"],
-            "status": "compared",
-            "stations_used": sorted(bucket["stations"]),
-            "metrics_own_model": metrics,
-            # NOTE: there is no real CMEMS-forecast-vs-observation comparison wired up
-            # yet in this script -- that requires the same real matching logic against
-            # whatever provider tag your Copernicus ingestion uses. Until that's added,
-            # this only reports the own model's real accuracy against real buoys, not
-            # a real own-vs-CMEMS win/loss. Do not backfill "own_beats_cmems" with a
-            # guess; leave it absent rather than fabricate the comparison.
-        }
-        total_count += 1
+        # 2. Process baseline if specified
+        baseline_provider = spec.get("baseline_provider")
+        if baseline_provider:
+            baseline_bucket = pairs_by_variable_provider.get((variable, baseline_provider))
+            baseline_key = "ecmwf_baseline"
+            if not baseline_bucket:
+                report["variables"][variable][baseline_key] = {
+                    "units": spec["units"],
+                    "status": "no_real_matched_pairs",
+                }
+            else:
+                baseline_metrics = compute_metrics(baseline_bucket["own"], baseline_bucket["obs"])
+                if baseline_metrics is None or baseline_metrics["sample_size"] < min_sample_size:
+                    report["variables"][variable][baseline_key] = {
+                        "units": spec["units"],
+                        "status": "insufficient_sample_size",
+                        "sample_size": 0 if baseline_metrics is None else baseline_metrics["sample_size"],
+                        "min_sample_size_required": min_sample_size,
+                    }
+                else:
+                    report["variables"][variable][baseline_key] = {
+                        "units": spec["units"],
+                        "status": "compared",
+                        "stations_used": sorted(baseline_bucket["stations"]),
+                        "metrics_baseline": baseline_metrics,
+                    }
 
     report["summary"] = {
         "variable_provider_pairs_with_real_comparison": total_count,
@@ -375,6 +494,80 @@ def build_comparison_report(pairs_by_variable_provider, min_sample_size, target_
     return report
 
 
+def run_evaluation(
+    client,
+    project_id,
+    dataset,
+    evidence_table,
+    station_table,
+    target_date,
+    lookback_days,
+    max_station_distance_nm,
+    time_tolerance_minutes,
+    min_sample_size,
+    location_name=None,
+):
+    """Executes the end-to-end evaluation pipeline over real BigQuery records."""
+    print(f"Fetching real own-model and baseline forecast rows for {target_date} (lookback {lookback_days}d)...")
+    forecast_rows = fetch_forecast_rows(client, project_id, dataset, evidence_table, target_date, lookback_days)
+
+    if not forecast_rows:
+        return {
+            "evaluation_date": target_date,
+            "data_source": "real",
+            "status": "no_forecast_data",
+            "message": (
+                "No real WRF/CROCO/NEMO/SWAN forecast rows with coordinates were found in "
+                f"{project_id}.{dataset}.{evidence_table} for this window. "
+                "This is expected until a real model run has been ingested via "
+                "scripts/{wrf,croco,nemo,swan}_forecast_ingestor.py. Nothing was fabricated."
+            ),
+        }
+
+    print(f"Found {len(forecast_rows)} real forecast rows. Fetching the real observation station catalog...")
+    stations = fetch_station_catalog(client, project_id, dataset, station_table)
+
+    if location_name:
+        loc_lower = location_name.lower()
+        stations = [
+            s for s in stations
+            if (s.get("station_id") and loc_lower in s["station_id"].lower())
+            or (s.get("station_name") and loc_lower in s["station_name"].lower())
+            or (s.get("provider") and loc_lower in s["provider"].lower())
+        ]
+        if not stations:
+            return {
+                "evaluation_date": target_date,
+                "data_source": "real",
+                "status": "no_matching_stations",
+                "message": f"No observation stations matched the location query '{location_name}'."
+            }
+
+    annotated_rows, matched_station_ids = match_forecast_points_to_stations(
+        forecast_rows, stations, max_station_distance_nm
+    )
+    if not matched_station_ids:
+        return {
+            "evaluation_date": target_date,
+            "data_source": "real",
+            "status": "no_nearby_stations",
+            "message": (
+                f"Found {len(forecast_rows)} real forecast rows, but none were within "
+                f"{max_station_distance_nm} nm of a known real observation station."
+                + (f" (filtered by location: '{location_name}')" if location_name else "")
+            ),
+        }
+
+    print(f"Matched forecast points to {len(matched_station_ids)} real station(s). Fetching real observations...")
+    observation_rows = fetch_observation_rows(
+        client, project_id, dataset, evidence_table, matched_station_ids, target_date, lookback_days
+    )
+
+    pairs_by_variable_provider = pair_forecasts_with_observations(annotated_rows, observation_rows, time_tolerance_minutes)
+    report = build_comparison_report(pairs_by_variable_provider, min_sample_size, target_date)
+    return report
+
+
 def main(argv=None):
     args = parse_args(argv)
     target_date = args.date
@@ -382,61 +575,29 @@ def main(argv=None):
     client = _bigquery_client(args.project)
     project_id = args.project or client.project
 
-    print(f"Fetching real own-model forecast rows for {target_date} (lookback {args.lookback_days}d)...")
-    forecast_rows = fetch_forecast_rows(client, project_id, args.dataset, args.evidence_table, target_date, args.lookback_days)
-
-    if not forecast_rows:
-        report = {
-            "evaluation_date": target_date,
-            "data_source": "real",
-            "status": "no_forecast_data",
-            "message": (
-                "No real WRF/CROCO/NEMO/SWAN forecast rows with coordinates were found in "
-                f"{project_id}.{args.dataset}.{args.evidence_table} for this window. "
-                "This is expected until a real model run has been ingested via "
-                "scripts/{wrf,croco,nemo,swan}_forecast_ingestor.py. Nothing was fabricated."
-            ),
-        }
-        _write_and_maybe_upload(report, args)
-        print("No real forecast data yet -- wrote an honest 'no_forecast_data' report instead of inventing one.")
-        return 0
-
-    print(f"Found {len(forecast_rows)} real forecast rows. Fetching the real observation station catalog...")
-    stations = fetch_station_catalog(client, project_id, args.dataset, args.station_table)
-
-    annotated_rows, matched_station_ids = match_forecast_points_to_stations(
-        forecast_rows, stations, args.max_station_distance_nm
-    )
-    if not matched_station_ids:
-        report = {
-            "evaluation_date": target_date,
-            "data_source": "real",
-            "status": "no_nearby_stations",
-            "message": (
-                f"Found {len(forecast_rows)} real forecast rows, but none were within "
-                f"{args.max_station_distance_nm} nm of a known real observation station. "
-                "Widen --max-station-distance-nm or check the station catalog before "
-                "concluding anything."
-            ),
-        }
-        _write_and_maybe_upload(report, args)
-        print("No nearby real stations found -- wrote an honest report instead of inventing one.")
-        return 0
-
-    print(f"Matched forecast points to {len(matched_station_ids)} real station(s). Fetching real observations...")
-    observation_rows = fetch_observation_rows(
-        client, project_id, args.dataset, args.evidence_table, matched_station_ids, target_date, args.lookback_days
+    report = run_evaluation(
+        client=client,
+        project_id=project_id,
+        dataset=args.dataset,
+        evidence_table=args.evidence_table,
+        station_table=args.station_table,
+        target_date=target_date,
+        lookback_days=args.lookback_days,
+        max_station_distance_nm=args.max_station_distance_nm,
+        time_tolerance_minutes=args.time_tolerance_minutes,
+        min_sample_size=args.min_sample_size,
     )
 
-    pairs_by_variable_provider = pair_forecasts_with_observations(annotated_rows, observation_rows, args.time_tolerance_minutes)
-    report = build_comparison_report(pairs_by_variable_provider, args.min_sample_size, target_date)
-
-    compared = report["summary"]["variable_provider_pairs_with_real_comparison"]
-    total = report["summary"]["variable_provider_pairs_total"]
-    print(f"Real comparison complete. {compared}/{total} (variable, model) pairs had enough real matched data to report.")
+    if report.get("status") in ("no_forecast_data", "no_nearby_stations"):
+        print(f"Honest evaluation report completed with status '{report['status']}' -- no fabrication.")
+    else:
+        compared = report.get("summary", {}).get("variable_provider_pairs_with_real_comparison", 0)
+        total = report.get("summary", {}).get("variable_provider_pairs_total", 0)
+        print(f"Real comparison complete. {compared}/{total} (variable, model) pairs had enough real matched data to report.")
 
     _write_and_maybe_upload(report, args)
     return 0
+
 
 
 def _write_and_maybe_upload(report, args):

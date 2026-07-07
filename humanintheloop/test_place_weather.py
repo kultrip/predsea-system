@@ -52,6 +52,7 @@ def test_build_place_weather_record_uses_place_weather_fields():
         "wave_height_m": 0.4,
         "wave_from_direction_deg": 82.0,
         "wind_kn": 12.0,
+        "wind_gust_kn": 18.0,
         "wind_direction_deg": 70.0,
         "water_temperature_c": 22.4,
         "temperature_c": 23.1,
@@ -75,6 +76,7 @@ def test_build_place_weather_record_uses_place_weather_fields():
     assert record["swell_1_height_m"] == 0.5
     assert record["swell_2_height_m"] == 0.2
     assert record["wind_kn"] == 12.0
+    assert record["wind_gust_kn"] == 18.0
     assert record["water_temperature_c"] == 22.4
     assert record["air_temperature_c"] == 23.1
     assert record["freshness_status"] == "fresh"
@@ -97,6 +99,7 @@ def test_build_place_weather_record_converts_wind_speed_mps_to_knots():
         "station_name": "Alcudia",
         "observed_at_utc": "2026-06-12 07:30 UTC",
         "wind_speed_mps": 5.0,
+        "wind_gust": 8.0,
         "wind_direction_deg": 110.0,
     }
     record = build_place_weather_record(
@@ -109,6 +112,7 @@ def test_build_place_weather_record_converts_wind_speed_mps_to_knots():
     )
     assert record["wind_direction_deg"] == 110.0
     assert record["wind_kn"] == pytest.approx(5.0 * 1.94384)
+    assert record["wind_gust_kn"] == pytest.approx(8.0 * 1.94384)
 
 
 def test_available_place_ids_include_new_locations():

@@ -378,52 +378,12 @@ def maybe_generate_route_map(map_generator, route_dir, route, snapshot, waves_pa
     if skip_maps:
         return None
     output_path = route_dir / "route_decision_map.png"
-    
-    # Calculate dynamic extent from route coordinates
-    lat1 = float(route["origin"]["latitude"])
-    lon1 = float(route["origin"]["longitude"])
-    lat2 = float(route["destination"]["latitude"])
-    lon2 = float(route["destination"]["longitude"])
-    
-    lon_min = min(lon1, lon2)
-    lon_max = max(lon1, lon2)
-    lat_min = min(lat1, lat2)
-    lat_max = max(lat1, lat2)
-    
-    # Add padding to map boundaries
-    padding = 0.6
-    lon_min -= padding
-    lon_max += padding
-    lat_min -= padding
-    lat_max += padding
-    
-    # Keep minimum span of 1.8 degrees to look premium
-    min_span = 1.8
-    if (lon_max - lon_min) < min_span:
-        mid_lon = (lon_min + lon_max) / 2
-        lon_min = mid_lon - min_span / 2
-        lon_max = mid_lon + min_span / 2
-    if (lat_max - lat_min) < min_span:
-        mid_lat = (lat_min + lat_max) / 2
-        lat_min = mid_lat - min_span / 2
-        lat_max = mid_lat + min_span / 2
-        
-    extent = [lon_min, lon_max, lat_min, lat_max]
-    
-    publication_map = load_publication_map_generator()
-    publication_map.generate_ocean_conditions_map(
-        waves_path,
-        output_path,
+    map_generator.generate_route_decision_map(
+        waves_path=waves_path,
         currents_path=currents_path,
-        requested_time=snapshot.get("forecast", {}).get("wave_peak_time"),
-        title=f"PredSea Route Conditions: {route.get('name', 'Transit Route')}",
-        resolution_label=resolution_label,
-        coastline_resolution="10m",
-        extent=extent,
-        dpi=220,
-        arrow_density="normal",
-        arrow_color="black",
         route=route,
+        snapshot=snapshot,
+        output_path=output_path,
     )
     return output_path
 

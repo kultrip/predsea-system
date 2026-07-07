@@ -53,6 +53,39 @@ def infer_extent(wave, padding_degrees=0.08):
     ]
 
 
+def compute_map_extent(scalar_data, waypoints=None, extent=None, padding_degrees=0.08, wp_padding=0.6):
+    if extent is not None:
+        return extent
+
+    map_extent = infer_extent(scalar_data, padding_degrees=padding_degrees)
+    if waypoints:
+        lons = []
+        lats = []
+        for wp in waypoints:
+            if "lng" in wp:
+                lons.append(wp["lng"])
+            elif "longitude" in wp:
+                lons.append(wp["longitude"])
+            if "lat" in wp:
+                lats.append(wp["lat"])
+            elif "latitude" in wp:
+                lats.append(wp["latitude"])
+
+        if lons and lats:
+            wp_lon_min = min(lons) - wp_padding
+            wp_lon_max = max(lons) + wp_padding
+            wp_lat_min = min(lats) - wp_padding
+            wp_lat_max = max(lats) + wp_padding
+
+            map_extent = [
+                min(map_extent[0], wp_lon_min),
+                max(map_extent[1], wp_lon_max),
+                min(map_extent[2], wp_lat_min),
+                max(map_extent[3], wp_lat_max),
+            ]
+    return map_extent
+
+
 def quiver_steps(lon_count, lat_count, density="normal"):
     targets = {
         "sparse": (10, 7),
@@ -360,8 +393,13 @@ def generate_ocean_conditions_map(
                 vector_scale = 22.0
             vector_label = "10m wind direction"
 
+    # Resolve route waypoints early if provided, to ensure map extent fully encompasses them
+    waypoints = []
+    if route is not None:
+        waypoints = resolve_route_waypoints(route, waves_path=waves_path, currents_path=currents_path)
+
     # Step 3: Draw geography and coastline
-    map_extent = extent or infer_extent(scalar_data)
+    map_extent = compute_map_extent(scalar_data, waypoints=waypoints, extent=extent)
 
     projection = ccrs.PlateCarree()
     figure = plt.figure(figsize=(14, 11), dpi=dpi)
@@ -423,8 +461,6 @@ def generate_ocean_conditions_map(
 
     # Step 5b: Overlay route waypoints if provided
     if route is not None:
-        waypoints = resolve_route_waypoints(route, waves_path=waves_path, currents_path=currents_path)
-
         if waypoints:
             lons = []
             lats = []
