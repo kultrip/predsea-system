@@ -594,6 +594,50 @@
       "emodnet_monaco",
       "emodnet_nice"
     ]
+  },
+  {
+    "id": "st_tropez",
+    "name": "Saint-Tropez",
+    "type": "main_port",
+    "latitude": 43.2726,
+    "longitude": 6.6402,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "st tropez",
+      "saint tropez",
+      "st-tropez",
+      "saint-tropez",
+      "port of saint tropez",
+      "port of st tropez",
+      "sainttropez"
+    ],
+    "observation_candidates": [
+      "emodnet_st_tropez",
+      "emodnet_toulon"
+    ]
+  },
+  {
+    "id": "theoule_sur_mer",
+    "name": "Théoule-sur-Mer",
+    "type": "main_port",
+    "latitude": 43.5074,
+    "longitude": 6.9404,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "theoule",
+      "theoule-sur-mer",
+      "theoule sur mer",
+      "théoule",
+      "théoule-sur-mer",
+      "théoule sur mer"
+    ],
+    "observation_candidates": [
+      "emodnet_nice",
+      "emodnet_monaco",
+      "emodnet_st_tropez"
+    ]
   }
 ]
 

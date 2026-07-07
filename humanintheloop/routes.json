@@ -3063,5 +3063,983 @@
         "latitude": 44.2
       }
     ]
+  },
+  "marseille_st_tropez": {
+    "id": "marseille_st_tropez",
+    "name": "Marseille -> Saint-Tropez",
+    "origin": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.3
+    },
+    "destination": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Scenic transit along the beautiful Var coast; watch for Mistral gusts blowing out of the bays.",
+    "sample_points": [
+      {
+        "name": "Marseille departure",
+        "longitude": 5.45,
+        "latitude": 43.2
+      },
+      {
+        "name": "Toulon offshore passage",
+        "longitude": 5.95,
+        "latitude": 43.05
+      },
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      }
+    ]
+  },
+  "st_tropez_marseille": {
+    "id": "st_tropez_marseille",
+    "name": "Saint-Tropez -> Marseille",
+    "origin": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "destination": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.3
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Scenic transit along the beautiful Var coast; watch for Mistral gusts blowing out of the bays.",
+    "sample_points": [
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      },
+      {
+        "name": "Toulon offshore passage",
+        "longitude": 5.95,
+        "latitude": 43.05
+      },
+      {
+        "name": "Marseille departure",
+        "longitude": 5.45,
+        "latitude": 43.2
+      }
+    ]
+  },
+  "toulon_st_tropez": {
+    "id": "toulon_st_tropez",
+    "name": "Toulon -> Saint-Tropez",
+    "origin": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "destination": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Shorter coastal run around Cape Camarat; comfort depends on easterly swell.",
+    "sample_points": [
+      {
+        "name": "Toulon departure",
+        "longitude": 5.95,
+        "latitude": 43.05
+      },
+      {
+        "name": "Cap Camarat transit",
+        "longitude": 6.61,
+        "latitude": 43.18
+      },
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      }
+    ]
+  },
+  "st_tropez_toulon": {
+    "id": "st_tropez_toulon",
+    "name": "Saint-Tropez -> Toulon",
+    "origin": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "destination": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Shorter coastal run around Cape Camarat; comfort depends on easterly swell.",
+    "sample_points": [
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      },
+      {
+        "name": "Cap Camarat transit",
+        "longitude": 6.61,
+        "latitude": 43.18
+      },
+      {
+        "name": "Toulon departure",
+        "longitude": 5.95,
+        "latitude": 43.05
+      }
+    ]
+  },
+  "st_tropez_monaco": {
+    "id": "st_tropez_monaco",
+    "name": "Saint-Tropez -> Monaco",
+    "origin": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "destination": {
+      "name": "Monaco",
+      "longitude": 7.4197,
+      "latitude": 43.7325
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "High-class Riviera run past Cannes and Nice; highly sheltered but can see thermal breeze variations.",
+    "sample_points": [
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.68,
+        "latitude": 43.28
+      },
+      {
+        "name": "Cannes offshore",
+        "longitude": 7.05,
+        "latitude": 43.45
+      },
+      {
+        "name": "Monaco approach",
+        "longitude": 7.42,
+        "latitude": 43.68
+      }
+    ]
+  },
+  "monaco_st_tropez": {
+    "id": "monaco_st_tropez",
+    "name": "Monaco -> Saint-Tropez",
+    "origin": {
+      "name": "Monaco",
+      "longitude": 7.4197,
+      "latitude": 43.7325
+    },
+    "destination": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "High-class Riviera run past Cannes and Nice; highly sheltered but can see thermal breeze variations.",
+    "sample_points": [
+      {
+        "name": "Monaco approach",
+        "longitude": 7.42,
+        "latitude": 43.68
+      },
+      {
+        "name": "Cannes offshore",
+        "longitude": 7.05,
+        "latitude": 43.45
+      },
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.68,
+        "latitude": 43.28
+      }
+    ]
+  },
+  "st_tropez_palma": {
+    "id": "st_tropez_palma",
+    "name": "Saint-Tropez -> Palma",
+    "origin": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long crossing from the French Riviera to the Balearics; watch for Mistral and Tramontane wind accelerations in the Gulf of Lion.",
+    "sample_points": [
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      },
+      {
+        "name": "Mid Gulf of Lion crossing",
+        "longitude": 4.8,
+        "latitude": 41.5
+      },
+      {
+        "name": "Palma approach",
+        "longitude": 2.7,
+        "latitude": 39.6
+      }
+    ]
+  },
+  "palma_st_tropez": {
+    "id": "palma_st_tropez",
+    "name": "Palma -> Saint-Tropez",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long crossing from the French Riviera to the Balearics; watch for Mistral and Tramontane wind accelerations in the Gulf of Lion.",
+    "sample_points": [
+      {
+        "name": "Palma approach",
+        "longitude": 2.7,
+        "latitude": 39.6
+      },
+      {
+        "name": "Mid Gulf of Lion crossing",
+        "longitude": 4.8,
+        "latitude": 41.5
+      },
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      }
+    ]
+  },
+  "marseille_theoule_sur_mer": {
+    "id": "marseille_theoule_sur_mer",
+    "name": "Marseille -> Théoule-sur-Mer",
+    "origin": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.3
+    },
+    "destination": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Scenic transit past Toulon, St Tropez and the Esterel coast; watch for wind acceleration off the coastal capes.",
+    "sample_points": [
+      {
+        "name": "Marseille departure",
+        "longitude": 5.45,
+        "latitude": 43.2
+      },
+      {
+        "name": "Toulon offshore passage",
+        "longitude": 5.95,
+        "latitude": 43.05
+      },
+      {
+        "name": "Saint-Tropez offshore",
+        "longitude": 6.7,
+        "latitude": 43.2
+      },
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      }
+    ]
+  },
+  "theoule_sur_mer_marseille": {
+    "id": "theoule_sur_mer_marseille",
+    "name": "Théoule-sur-Mer -> Marseille",
+    "origin": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "destination": {
+      "name": "Marseille",
+      "longitude": 5.37,
+      "latitude": 43.3
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Scenic transit past Toulon, St Tropez and the Esterel coast; watch for wind acceleration off the coastal capes.",
+    "sample_points": [
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      },
+      {
+        "name": "Saint-Tropez offshore",
+        "longitude": 6.7,
+        "latitude": 43.2
+      },
+      {
+        "name": "Toulon offshore passage",
+        "longitude": 5.95,
+        "latitude": 43.05
+      },
+      {
+        "name": "Marseille departure",
+        "longitude": 5.45,
+        "latitude": 43.2
+      }
+    ]
+  },
+  "toulon_theoule_sur_mer": {
+    "id": "toulon_theoule_sur_mer",
+    "name": "Toulon -> Théoule-sur-Mer",
+    "origin": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "destination": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Var to Alpes-Maritimes transit around Cape Camarat and the Esterel; relatively sheltered but subject to swell variations.",
+    "sample_points": [
+      {
+        "name": "Toulon departure",
+        "longitude": 5.95,
+        "latitude": 43.05
+      },
+      {
+        "name": "Saint-Tropez offshore",
+        "longitude": 6.7,
+        "latitude": 43.2
+      },
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      }
+    ]
+  },
+  "theoule_sur_mer_toulon": {
+    "id": "theoule_sur_mer_toulon",
+    "name": "Théoule-sur-Mer -> Toulon",
+    "origin": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "destination": {
+      "name": "Toulon",
+      "longitude": 5.93,
+      "latitude": 43.12
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Var to Alpes-Maritimes transit around Cape Camarat and the Esterel; relatively sheltered but subject to swell variations.",
+    "sample_points": [
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      },
+      {
+        "name": "Saint-Tropez offshore",
+        "longitude": 6.7,
+        "latitude": 43.2
+      },
+      {
+        "name": "Toulon departure",
+        "longitude": 5.95,
+        "latitude": 43.05
+      }
+    ]
+  },
+  "theoule_sur_mer_monaco": {
+    "id": "theoule_sur_mer_monaco",
+    "name": "Théoule-sur-Mer -> Monaco",
+    "origin": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "destination": {
+      "name": "Monaco",
+      "longitude": 7.4197,
+      "latitude": 43.7325
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Nice, Cannes and Antibes coastal run; very scenic and mostly sheltered Riviera waters.",
+    "sample_points": [
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      },
+      {
+        "name": "Nice offshore",
+        "longitude": 7.25,
+        "latitude": 43.6
+      },
+      {
+        "name": "Monaco approach",
+        "longitude": 7.42,
+        "latitude": 43.68
+      }
+    ]
+  },
+  "monaco_theoule_sur_mer": {
+    "id": "monaco_theoule_sur_mer",
+    "name": "Monaco -> Théoule-sur-Mer",
+    "origin": {
+      "name": "Monaco",
+      "longitude": 7.4197,
+      "latitude": 43.7325
+    },
+    "destination": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Nice, Cannes and Antibes coastal run; very scenic and mostly sheltered Riviera waters.",
+    "sample_points": [
+      {
+        "name": "Monaco approach",
+        "longitude": 7.42,
+        "latitude": 43.68
+      },
+      {
+        "name": "Nice offshore",
+        "longitude": 7.25,
+        "latitude": 43.6
+      },
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      }
+    ]
+  },
+  "theoule_sur_mer_palma": {
+    "id": "theoule_sur_mer_palma",
+    "name": "Théoule-sur-Mer -> Palma",
+    "origin": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "destination": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Riviera to Balearics open crossing; watch for significant wave heights when crossing the Gulf of Lion.",
+    "sample_points": [
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      },
+      {
+        "name": "Mid Ligurian Sea crossing",
+        "longitude": 4.8,
+        "latitude": 41.5
+      },
+      {
+        "name": "Palma approach",
+        "longitude": 2.7,
+        "latitude": 39.6
+      }
+    ]
+  },
+  "palma_theoule_sur_mer": {
+    "id": "palma_theoule_sur_mer",
+    "name": "Palma -> Théoule-sur-Mer",
+    "origin": {
+      "name": "Palma",
+      "longitude": 2.6502,
+      "latitude": 39.5696
+    },
+    "destination": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Riviera to Balearics open crossing; watch for significant wave heights when crossing the Gulf of Lion.",
+    "sample_points": [
+      {
+        "name": "Palma approach",
+        "longitude": 2.7,
+        "latitude": 39.6
+      },
+      {
+        "name": "Mid Ligurian Sea crossing",
+        "longitude": 4.8,
+        "latitude": 41.5
+      },
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      }
+    ]
+  },
+  "st_tropez_theoule_sur_mer": {
+    "id": "st_tropez_theoule_sur_mer",
+    "name": "Saint-Tropez -> Théoule-sur-Mer",
+    "origin": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "destination": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Short and beautiful Esterel crossing; watch for red rock bay thermal winds.",
+    "sample_points": [
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.68,
+        "latitude": 43.28
+      },
+      {
+        "name": "Esterel coast transit",
+        "longitude": 6.85,
+        "latitude": 43.4
+      },
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      }
+    ]
+  },
+  "theoule_sur_mer_st_tropez": {
+    "id": "theoule_sur_mer_st_tropez",
+    "name": "Théoule-sur-Mer -> Saint-Tropez",
+    "origin": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "destination": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Short and beautiful Esterel crossing; watch for red rock bay thermal winds.",
+    "sample_points": [
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      },
+      {
+        "name": "Esterel coast transit",
+        "longitude": 6.85,
+        "latitude": 43.4
+      },
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.68,
+        "latitude": 43.28
+      }
+    ]
+  },
+  "barcelona_st_tropez": {
+    "id": "barcelona_st_tropez",
+    "name": "Barcelona -> Saint-Tropez",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long open crossing traversing the Gulf of Lion, famous for Mistral and Tramontane.",
+    "sample_points": [
+      {
+        "name": "Barcelona departure",
+        "longitude": 2.25,
+        "latitude": 41.4
+      },
+      {
+        "name": "Gulf of Lion west",
+        "longitude": 3.8,
+        "latitude": 42.1
+      },
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      }
+    ]
+  },
+  "st_tropez_barcelona": {
+    "id": "st_tropez_barcelona",
+    "name": "Saint-Tropez -> Barcelona",
+    "origin": {
+      "name": "Saint-Tropez",
+      "longitude": 6.6402,
+      "latitude": 43.2726
+    },
+    "destination": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long open crossing traversing the Gulf of Lion, famous for Mistral and Tramontane.",
+    "sample_points": [
+      {
+        "name": "Saint-Tropez approach",
+        "longitude": 6.55,
+        "latitude": 43.25
+      },
+      {
+        "name": "Gulf of Lion west",
+        "longitude": 3.8,
+        "latitude": 42.1
+      },
+      {
+        "name": "Barcelona departure",
+        "longitude": 2.25,
+        "latitude": 41.4
+      }
+    ]
+  },
+  "barcelona_theoule_sur_mer": {
+    "id": "barcelona_theoule_sur_mer",
+    "name": "Barcelona -> Théoule-sur-Mer",
+    "origin": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "destination": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long transit from Catalonia to the Riviera crossing the Gulf of Lion; check wave models before departing.",
+    "sample_points": [
+      {
+        "name": "Barcelona departure",
+        "longitude": 2.25,
+        "latitude": 41.4
+      },
+      {
+        "name": "Gulf of Lion west",
+        "longitude": 3.8,
+        "latitude": 42.1
+      },
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      }
+    ]
+  },
+  "theoule_sur_mer_barcelona": {
+    "id": "theoule_sur_mer_barcelona",
+    "name": "Théoule-sur-Mer -> Barcelona",
+    "origin": {
+      "name": "Théoule-sur-Mer",
+      "longitude": 6.9404,
+      "latitude": 43.5074
+    },
+    "destination": {
+      "name": "Barcelona",
+      "longitude": 2.1734,
+      "latitude": 41.3851
+    },
+    "validation": {
+      "truth_source": null,
+      "socib_platform_id": null,
+      "socib_instrument_id": null,
+      "socib_variable_id": null,
+      "socib_direction_variable_id": null,
+      "suitability": "forecast-only transit route until EMODnet wave platforms are fully configured"
+    },
+    "current_validation": {
+      "truth_source": null,
+      "suitability": "no route-specific current observation configured"
+    },
+    "route_note": "Long transit from Catalonia to the Riviera crossing the Gulf of Lion; check wave models before departing.",
+    "sample_points": [
+      {
+        "name": "Théoule approach",
+        "longitude": 6.95,
+        "latitude": 43.48
+      },
+      {
+        "name": "Gulf of Lion west",
+        "longitude": 3.8,
+        "latitude": 42.1
+      },
+      {
+        "name": "Barcelona departure",
+        "longitude": 2.25,
+        "latitude": 41.4
+      }
+    ]
   }
 }

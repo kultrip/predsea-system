@@ -364,7 +364,7 @@ def generate_route_decision_map(waves_path, currents_path, route, snapshot, outp
     if currents_drawn:
         caption += " · arrows: surface current"
 
-    draw.text((80 + 34, 350 + 30), caption, font=fonts["small"], fill=TEXT)
+    draw.text((80 + 84, 350 + 30), caption, font=fonts["small"], fill=TEXT)
 
     # 7. Draw outer chrome components
     draw_legend(draw, map_box, fonts)

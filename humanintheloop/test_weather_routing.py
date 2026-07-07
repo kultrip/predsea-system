@@ -46,10 +46,17 @@ def test_astar_weather_routing_palma_alcudia():
         assert 1.0 <= wp["lng"] <= 4.5
 
 
+class DummyRouteStore:
+    def ensure_loaded(self, *args, **kwargs):
+        return None
+    def get(self, *args, **kwargs):
+        return None
+
+
 def test_api_route_integration_astar(tmp_path):
     # Initialize the app with an empty temporary evidence store
     store = EvidenceStore(tmp_path)
-    app = create_app(store)
+    app = create_app(store, route_store=DummyRouteStore())
     client = TestClient(app)
 
     # Query route between Palma and Alcudia via API
@@ -111,7 +118,7 @@ def test_astar_routing_with_departure_offset():
 
 def test_api_route_departure_time(tmp_path):
     store = EvidenceStore(tmp_path)
-    app = create_app(store)
+    app = create_app(store, route_store=DummyRouteStore())
     client = TestClient(app)
 
     response = client.get("/places/route/palma/alcudia?departure_time=15:30&date=2026-06-29")
