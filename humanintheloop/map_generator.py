@@ -95,6 +95,28 @@ def resolve_route_waypoints(route, waves_path=None, currents_path=None):
             except Exception as e:
                 print(f"Warning: map_generator could not load waypoints from routes.json for {route_id}: {e}")
 
+    if not waypoints and waves_path and currents_path:
+        try:
+            import os
+            if os.path.exists(waves_path) and os.path.exists(currents_path):
+                from api.weather_routing import AStarWeatherRouter
+                lat1 = float(route["origin"]["latitude"])
+                lon1 = float(route["origin"]["longitude"])
+                lat2 = float(route["destination"]["latitude"])
+                lon2 = float(route["destination"]["longitude"])
+                
+                router = AStarWeatherRouter(waves_path=str(waves_path), currents_path=str(currents_path))
+                if router.in_bounds(lat1, lon1) and router.in_bounds(lat2, lon2):
+                    res = router.find_route(
+                        origin_lat=lat1,
+                        origin_lon=lon1,
+                        dest_lat=lat2,
+                        dest_lon=lon2
+                    )
+                    waypoints = res.get("waypoints", [])
+        except Exception as e:
+            print(f"Warning: map_generator could not resolve dynamic weather route: {e}")
+
     if not waypoints:
         try:
             # Add workspace path to resolve place_registry

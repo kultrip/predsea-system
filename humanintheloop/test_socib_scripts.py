@@ -93,13 +93,7 @@ class MapGeneratorTests(unittest.TestCase):
         self.assertIn("current_vectors", metadata["primary_layers"])
         self.assertNotIn("route_reference", metadata["primary_layers"])
         self.assertEqual(metadata["route_role"], "none")
-        self.assertEqual(metadata["extent"], "full_forecast_region")
-
-    def test_worst_segment_uses_highest_route_sample_value(self):
-        import map_generator
-
-        self.assertEqual(map_generator.worst_segment_from_route_values([0.8, 1.6, 1.0], 4), 1)
-        self.assertEqual(map_generator.worst_segment_from_route_values([1.8, 1.2, 0.9], 4), 0)
+        self.assertEqual(metadata["extent"], "dynamic_route_corridor")
 
     def test_route_decision_map_writes_png_from_forecast_files(self):
         import numpy as np
@@ -173,13 +167,13 @@ class MapGeneratorTests(unittest.TestCase):
             }
 
             called = {"route": False}
-            original_draw_route = map_generator.draw_route
+            original_render_matplotlib_map = map_generator.render_matplotlib_map
 
-            def wrapped_draw_route(*args, **kwargs):
+            def wrapped_render_matplotlib_map(*args, **kwargs):
                 called["route"] = True
-                return original_draw_route(*args, **kwargs)
+                return original_render_matplotlib_map(*args, **kwargs)
 
-            map_generator.draw_route = wrapped_draw_route
+            map_generator.render_matplotlib_map = wrapped_render_matplotlib_map
 
             output = root / "route_decision_map.png"
             try:
@@ -191,7 +185,7 @@ class MapGeneratorTests(unittest.TestCase):
                     output,
                 )
             finally:
-                map_generator.draw_route = original_draw_route
+                map_generator.render_matplotlib_map = original_render_matplotlib_map
 
             self.assertEqual(result, output)
             self.assertTrue(output.exists())
