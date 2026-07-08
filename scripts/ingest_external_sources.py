@@ -92,10 +92,10 @@ def download_copernicus_data(args) -> list:
             copernicusmarine.subset(
                 dataset_id=dataset_id,
                 variables=["VHM0"],
-                minimum_longitude=0.5,
-                maximum_longitude=4.5,
-                minimum_latitude=38.0,
-                maximum_latitude=41.5,
+                minimum_longitude=-2.0,
+                maximum_longitude=16.0,
+                minimum_latitude=35.0,
+                maximum_latitude=45.0,
                 start_datetime=chunk_start,
                 end_datetime=chunk_end,
                 output_directory=".",
@@ -150,8 +150,8 @@ def download_emodnet_data(args) -> list:
     start_year = int(args.start_date.split("-")[0])
     end_year = int(args.end_date.split("-")[0])
     
-    # Bounding box del Mar Balear expandido tolerante
-    geo_filter = "&latitude>=37.5&latitude<=42.5&longitude>=0.0&longitude<=5.0"
+    # Bounding box covering the entire Western Mediterranean (including Spain, France, and Italy)
+    geo_filter = "&latitude>=35.0&latitude<=45.0&longitude>=-2.0&longitude<=16.0"
     
     total_rows = []
     # Usamos end_year + 1 para que el bucle sea totalmente inclusivo con el año en curso
