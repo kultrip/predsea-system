@@ -35,6 +35,8 @@ def _normalized_latest_portus_observation(latest):
         normalized.setdefault("wind_speed_mps", normalized.get("wind_speed_mps"))
     if "wind_direction_deg" in normalized and normalized.get("wind_direction_deg") is not None:
         normalized.setdefault("wind_direction_deg", normalized.get("wind_direction_deg"))
+    if "wind_gust_mps" in normalized and normalized.get("wind_gust_mps") is not None:
+        normalized.setdefault("wind_gust_mps", normalized.get("wind_gust_mps"))
     if "current_speed_mps" in normalized and normalized.get("current_speed_mps") is not None:
         normalized.setdefault("current_speed_mps", normalized.get("current_speed_mps"))
     if "current_direction_deg" in normalized and normalized.get("current_direction_deg") is not None:

@@ -79,6 +79,17 @@
   "port de sete": "montpellier",
   "sete port": "montpellier",
   "sete/montpellier": "montpellier",
-  "sete montpellier": "montpellier"
+  "sete montpellier": "montpellier",
+  "st_tropez": "st_tropez",
+  "st tropez": "st_tropez",
+  "saint tropez": "st_tropez",
+  "saint-tropez": "st_tropez",
+  "st-tropez": "st_tropez",
+  "theoule_sur_mer": "theoule_sur_mer",
+  "theoule sur mer": "theoule_sur_mer",
+  "theoule": "theoule_sur_mer",
+  "théoule": "theoule_sur_mer",
+  "théoule-sur-mer": "theoule_sur_mer",
+  "théoule sur mer": "theoule_sur_mer"
 }
 

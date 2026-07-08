@@ -15,6 +15,8 @@ VARIABLE_ALIASES = {
     "wind_speed": "wind_speed_mps",
     "wind_direction": "wind_direction_deg",
     "wind_dir": "wind_direction_deg",
+    "wind_gust": "wind_gust_mps",
+    "gust": "wind_gust_mps",
     "current_speed": "current_speed_mps",
     "current_direction": "current_direction_deg",
     "current_dir": "current_direction_deg",

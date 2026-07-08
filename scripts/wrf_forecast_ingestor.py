@@ -296,6 +296,22 @@ def process_wrf_forecast(
                 wind_speed_knots = wind_speed_mps * MPS_TO_KNOTS
                 wind_dir_deg = (math.degrees(math.atan2(-u_val, -v_val)) + 360.0) % 360.0
                 
+                # Check for native wind gust, otherwise calculate programmatically
+                wind_gust_knots = None
+                gust_src_field = None
+                for g_var in ("WSPD10MAX", "WIND_GUST", "gust"):
+                    if g_var in ds:
+                        try:
+                            g_val = get_point_value(ds[g_var], j_idx, i_idx, t_idx)
+                            wind_gust_knots = g_val * MPS_TO_KNOTS
+                            gust_src_field = g_var
+                            break
+                        except Exception:
+                            pass
+                if wind_gust_knots is None:
+                    wind_gust_knots = wind_speed_knots * 1.3
+                    gust_src_field = "U10/V10 calculation"
+
                 # Kelvin to Celsius
                 air_temp_c = t2_val - 273.15
                 
@@ -307,6 +323,7 @@ def process_wrf_forecast(
                 variables = [
                     ("wind_speed", wind_speed_knots, "knots", "U10/V10"),
                     ("wind_direction", wind_dir_deg, "degree", "U10/V10"),
+                    ("wind_gust", wind_gust_knots, "knots", gust_src_field),
                     ("air_temperature", air_temp_c, "celsius", "T2"),
                     ("sea_level_pressure", pressure_hpa, "hPa", "PSFC"),
                 ]

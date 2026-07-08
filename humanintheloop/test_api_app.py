@@ -1418,6 +1418,37 @@ def test_places_route_endpoint_returns_waypoints(tmp_path, monkeypatch):
     assert payload["source_tag"] == "graph_sea_route_v1"
 
 
+def test_places_route_resolves_st_tropez_and_theoule_sur_mer(tmp_path, monkeypatch):
+    def fake_route_geometry(**kwargs):
+        return {
+            "origin_place_id": kwargs["origin_place_id"],
+            "origin_place_name": kwargs["origin_place_name"],
+            "destination_place_id": kwargs["destination_place_id"],
+            "destination_place_name": kwargs["destination_place_name"],
+            "distance_nm": 100.0,
+            "estimated_time_h": 6.67,
+            "waypoints": [
+                {"lat": kwargs["origin_latitude"], "lng": kwargs["origin_longitude"]},
+                {"lat": kwargs["destination_latitude"], "lng": kwargs["destination_longitude"]},
+            ],
+            "computed_at_local": "2026-06-17 14:00 CEST",
+            "source_tag": "graph_sea_route_v1",
+        }
+
+    def fake_checkpoints(*args, **kwargs):
+        return []
+
+    monkeypatch.setattr(place_registry, "coordinates_route_geometry_metrics", fake_route_geometry)
+    monkeypatch.setattr("api.app.build_route_checkpoints", fake_checkpoints)
+    client = TestClient(create_app(EvidenceStore(tmp_path), route_store=FakeRouteStore()))
+
+    response = client.get("/places/route/st_tropez/theoule_sur_mer?date=2026-06-17&run=latest&departure_time=08:30")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin_place_id"] == "st_tropez"
+    assert payload["destination_place_id"] == "theoule_sur_mer"
+
+
 def test_places_route_endpoint_uses_coordinate_overrides(tmp_path, monkeypatch):
     seen = {}
 
