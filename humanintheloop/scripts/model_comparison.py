@@ -78,15 +78,15 @@ COMPARISON_SPECS = [
     {"variable": "wind_speed",        "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_speed",        "units": "knots"},
     {"variable": "wind_direction",    "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_direction",    "units": "degree"},
     {"variable": "wind_gust",         "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_gust",         "units": "knots"},
-    {"variable": "current_speed",     "own_provider": "predsea_roms",  "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
-    {"variable": "current_speed",     "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
-    {"variable": "current_speed",     "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
-    {"variable": "water_temperature", "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
-    {"variable": "water_temperature", "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
-    {"variable": "sea_level",         "own_provider": "predsea_croco", "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
-    {"variable": "sea_level",         "own_provider": "predsea_nemo",  "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
-    {"variable": "wave_height",       "own_provider": "predsea_swan",  "cmems_equivalent": "cmems_swan", "obs_variable": "wave_height",       "units": "m"},
-    {"variable": "wave_direction",    "own_provider": "predsea_swan",  "cmems_equivalent": "cmems_swan", "obs_variable": "wave_direction",    "units": "degree"},
+    {"variable": "current_speed",     "own_provider": "predsea_roms",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
+    {"variable": "current_speed",     "own_provider": "predsea_croco", "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
+    {"variable": "current_speed",     "own_provider": "predsea_nemo",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
+    {"variable": "water_temperature", "own_provider": "predsea_croco", "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
+    {"variable": "water_temperature", "own_provider": "predsea_nemo",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "water_temperature", "units": "celsius"},
+    {"variable": "sea_level",         "own_provider": "predsea_croco", "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
+    {"variable": "sea_level",         "own_provider": "predsea_nemo",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "sea_level",         "units": "m"},
+    {"variable": "wave_height",       "own_provider": "predsea_swan",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_swan", "obs_variable": "wave_height",       "units": "m"},
+    {"variable": "wave_direction",    "own_provider": "predsea_swan",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_swan", "obs_variable": "wave_direction",    "units": "degree"},
 ]
 
 _SPEC_BY_VARIABLE_AND_PROVIDER = {}
@@ -457,7 +457,7 @@ def build_comparison_report(pairs_by_variable_provider, min_sample_size, target_
         baseline_provider = spec.get("baseline_provider")
         if baseline_provider:
             baseline_bucket = pairs_by_variable_provider.get((variable, baseline_provider))
-            baseline_key = "ecmwf_baseline"
+            baseline_key = "ecmwf_baseline" if baseline_provider == "ecmwf_open_data" else f"{baseline_provider}_baseline"
             if not baseline_bucket:
                 report["variables"][variable][baseline_key] = {
                     "units": spec["units"],
