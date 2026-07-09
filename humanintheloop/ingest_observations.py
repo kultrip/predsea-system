@@ -11,9 +11,10 @@ import fetch_emodnet
 import fetch_portus
 import socib_public
 import validation_archive
+import fetch_copernicus_insitu
 
 
-def fetch_all_observations(include_puertos=True, include_emodnet=True, include_portus=False, include_socib=True, dry_run=False):
+def fetch_all_observations(include_puertos=True, include_emodnet=True, include_portus=False, include_socib=True, include_copernicus=True, dry_run=False):
     """Fetch observations from all configured sources.
 
     Returns a merged dict of observations and a lineage record
@@ -86,6 +87,21 @@ def fetch_all_observations(include_puertos=True, include_emodnet=True, include_p
         except Exception as error:
             errors["socib_public"] = str(error)
 
+    # Copernicus Marine In-Situ observations (France & Italy coverage)
+    if include_copernicus and _copernicus_enabled():
+        try:
+            copernicus_result = fetch_copernicus_insitu.fetch_copernicus_insitu_bundle(dry_run=dry_run)
+            copernicus_obs = copernicus_result.get("observations", {})
+            for key, value in copernicus_obs.items():
+                all_observations[key] = value
+            if copernicus_obs:
+                lineage_sources.append("copernicus_insitu")
+            station_metadata_candidates.extend(copernicus_result.get("stations") or [])
+            if copernicus_result.get("errors"):
+                errors["copernicus_insitu"] = copernicus_result["errors"]
+        except Exception as error:
+            errors["copernicus_insitu"] = str(error)
+
     station_metadata = validation_archive.build_station_metadata_rows(
         all_observations,
         station_metadata=station_metadata_candidates,
@@ -130,6 +146,11 @@ def _socib_enabled():
     return os.environ.get("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "1") == "1"
 
 
+def _copernicus_enabled():
+    """Check if Copernicus Marine In-Situ ingestion is enabled."""
+    return os.environ.get("PREDSEA_ENABLE_COPERNICUS_OBSERVATIONS", "1") == "1"
+
+
 def _build_ground_truth_lineage(observations, sources, errors):
     """Build a ground-truth validation lineage record."""
     if not observations:
@@ -144,6 +165,7 @@ def _build_ground_truth_lineage(observations, sources, errors):
     portus_present = "puertos_portus" in sources
     puertos_present = "puertos_del_estado" in sources
     socib_present = "socib_public" in sources
+    copernicus_present = "copernicus_insitu" in sources
     present_sources = []
     if puertos_present:
         present_sources.append("puertos_del_estado")
@@ -153,6 +175,8 @@ def _build_ground_truth_lineage(observations, sources, errors):
         present_sources.append("puertos_portus")
     if socib_present:
         present_sources.append("socib_public")
+    if copernicus_present:
+        present_sources.append("copernicus_insitu")
 
     if present_sources:
         source = "_and_".join(present_sources)

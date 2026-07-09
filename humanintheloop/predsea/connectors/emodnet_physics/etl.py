@@ -19,7 +19,7 @@ from .common import (
 )
 
 
-ERDDAP_BASE = "https://data-erddap.emodnet-physics.eu/erddap"
+ERDDAP_BASE = "https://erddap.emodnet-physics.eu/erddap"
 TIMEOUT_SECONDS = 60
 LOOKBACK_DAYS = 45
 

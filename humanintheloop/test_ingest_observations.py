@@ -2,8 +2,18 @@
 
 import sys
 import types
+import pytest
 
 import ingest_observations
+
+
+@pytest.fixture(autouse=True)
+def mock_copernicus_default(monkeypatch):
+    monkeypatch.setattr(
+        ingest_observations.fetch_copernicus_insitu,
+        "fetch_copernicus_insitu_bundle",
+        lambda dry_run=False: {"observations": {}, "stations": [], "errors": {}}
+    )
 
 
 def test_fetch_all_observations_returns_puertos_first_bundle(monkeypatch):
@@ -239,4 +249,78 @@ def test_fetch_all_observations_handles_socib_failure_gracefully(monkeypatch):
     assert "API error simulator" in result["errors"]["socib_public"]
     assert result["ground_truth_lineage"]["source"] is None
     assert result["ground_truth_lineage"]["status"] == "unavailable"
+
+
+def test_copernicus_enabled_by_default(monkeypatch):
+    monkeypatch.delenv("PREDSEA_ENABLE_COPERNICUS_OBSERVATIONS", raising=False)
+    assert ingest_observations._copernicus_enabled()
+
+
+def test_copernicus_enabled_by_env_var(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_COPERNICUS_OBSERVATIONS", "1")
+    assert ingest_observations._copernicus_enabled()
+
+
+def test_copernicus_can_be_disabled_explicitly(monkeypatch):
+    monkeypatch.setenv("PREDSEA_ENABLE_COPERNICUS_OBSERVATIONS", "0")
+    assert not ingest_observations._copernicus_enabled()
+
+
+def test_fetch_all_observations_merges_copernicus(monkeypatch):
+    # Disable the mock_copernicus_default autouse mock by overriding it
+    monkeypatch.setenv("PREDSEA_ENABLE_COPERNICUS_OBSERVATIONS", "1")
+    monkeypatch.setenv("PREDSEA_ENABLE_PUERTOS_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_EMODNET_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_PORTUS_OBSERVATIONS", "0")
+    monkeypatch.setenv("PREDSEA_ENABLE_SOCIB_OBSERVATIONS", "0")
+
+    copernicus_result = {
+        "observations": {
+            "copernicus_insitu_6100196": {
+                "provider": "copernicus_insitu",
+                "source_system": "copernicus_insitu",
+                "source_label": "Copernicus In-Situ",
+                "station_id": "copernicus_insitu_6100196",
+                "station_name": "6100196",
+                "network": "copernicus_insitu",
+                "station_kind": "platform",
+                "latitude": 42.1,
+                "longitude": 4.5,
+                "water_temp_c": 19.5,
+                "measurements": [
+                    {
+                        "raw_key": "water_temp_c",
+                        "source_field": "TEMP",
+                        "variable": "water_temperature",
+                        "value": 19.5,
+                        "units": "celsius",
+                        "observed_at_utc": "2026-07-08T12:00:00Z",
+                        "sample_time_utc": "2026-07-08T12:00:00Z",
+                        "source_time_coordinate_utc": "2026-07-08T12:00:00Z",
+                    }
+                ],
+            }
+        },
+        "stations": [{"station_id": "copernicus_insitu_6100196", "station_name": "6100196"}],
+        "errors": {},
+    }
+
+    monkeypatch.setattr(
+        ingest_observations.fetch_copernicus_insitu,
+        "fetch_copernicus_insitu_bundle",
+        lambda dry_run=False: copernicus_result,
+    )
+
+    result = ingest_observations.fetch_all_observations(
+        include_puertos=False,
+        include_emodnet=False,
+        include_portus=False,
+        include_socib=False,
+        include_copernicus=True,
+    )
+    assert "copernicus_insitu_6100196" in result["observations"]
+    assert result["observations"]["copernicus_insitu_6100196"]["water_temp_c"] == 19.5
+    assert result["ground_truth_lineage"]["source"] == "copernicus_insitu"
+    assert result["ground_truth_lineage"]["status"] == "matched_successfully"
+
 
