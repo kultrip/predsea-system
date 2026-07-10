@@ -1,0 +1,20 @@
+[
+  {
+    "provider": "copernicus_insitu",
+    "network": "copernicus_insitu",
+    "station_id": "copernicus_insitu_62002",
+    "station_name": "Nice-Moor",
+    "latitude": 43.68,
+    "longitude": 7.31,
+    "observed_at_utc": "2026-07-10T11:00:00Z",
+    "measurements": [
+      {
+        "variable": "wave_height",
+        "raw_key": "VHM0",
+        "value": 0.41,
+        "units": "m",
+        "observed_at_utc": "2026-07-10T11:00:00Z"
+      }
+    ]
+  }
+]

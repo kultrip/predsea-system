@@ -1,0 +1,7 @@
+{
+  "route_id": "nice_eze",
+  "feasibility": "Manageable",
+  "wave_max_m": 0.45,
+  "current_max_kn": 0.22,
+  "briefing_markdown": "### Captain's Briefing: Nice to Èze-sur-Mer\n\n*   **Feasibility:** Manageable. Sea-states are very calm along this micro-passage.\n*   **Significant Swell:** Waves are stable under 0.5 meters, coming from the South-Southwest.\n*   **Current Dynamics:** Localized currents under 0.3 knots near the Cap-Ferrat passage; no tidal anomalies expected.\n*   **Wind Speed:** Warm sea breeze around 10-14 knots from 185° True."
+}

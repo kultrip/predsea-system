@@ -1,0 +1,187 @@
+{
+  "info": {
+    "_postman_id": "9b1c7fa1-32cb-469b-8e11-e2fc318ac20f",
+    "name": "PredSea API Collection",
+    "description": "Comprehensive Postman collection for PredSea marine forecast and routing services.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Healthy status', function () { pm.expect(pm.response.json().status).to.eql('healthy'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Canonical Places",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/places",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "places"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Response is a list', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resolve Place Alias (Èze)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/places/resolve?query=eze-sur-mer",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "places",
+            "resolve"
+          ],
+          "query": [
+            {
+              "key": "query",
+              "value": "eze-sur-mer"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Successfully resolved', function () { pm.expect(pm.response.json().place_id).to.eql('eze'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Place Weather (Palma)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/places/palma/weather",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "places",
+            "palma",
+            "weather"
+          ]
+        }
+      }
+    },
+    {
+      "name": "List Active Routes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/routes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "routes"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Route Briefing (Nice to Èze)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/routes/nice_eze/briefing",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "routes",
+            "nice_eze",
+            "briefing"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Route Question (Nice to Èze)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"query\": \"Is there any wind or current alert on this passage?\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/routes/nice_eze/question",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "routes",
+            "nice_eze",
+            "question"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://predsea-api-193957983101.europe-west1.run.app",
+      "type": "string"
+    }
+  ]
+}

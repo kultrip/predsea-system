@@ -1,0 +1,14 @@
+{
+  "validation_error": {
+    "detail": [
+      {
+        "loc": ["query", "origin"],
+        "msg": "field required",
+        "type": "value_error.missing"
+      }
+    ]
+  },
+  "not_found_error": {
+    "detail": "Unknown place ID 'eze-sur-mer'"
+  }
+}

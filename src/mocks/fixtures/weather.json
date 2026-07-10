@@ -1,0 +1,10 @@
+{
+  "place_id": "eze",
+  "name": "Èze-sur-Mer",
+  "temperature_c": 24.5,
+  "wind_speed_kn": 12.4,
+  "wind_direction_deg": 185.0,
+  "wave_height_m": 0.42,
+  "current_speed_kn": 0.15,
+  "source": "copernicus_nrt"
+}

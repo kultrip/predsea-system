@@ -1,0 +1,34 @@
+[
+  {
+    "id": "eze",
+    "name": "Èze-sur-Mer",
+    "latitude": 43.727,
+    "longitude": 7.361,
+    "type": "main_place",
+    "aliases": ["Eze", "Èze Village", "Èze-sur-Mer", "Eze-sur-Mer"]
+  },
+  {
+    "id": "palma",
+    "name": "Palma",
+    "latitude": 39.5696,
+    "longitude": 2.6502,
+    "type": "main_port",
+    "aliases": ["Palma de Mallorca"]
+  },
+  {
+    "id": "nice",
+    "name": "Nice",
+    "latitude": 43.696,
+    "longitude": 7.272,
+    "type": "main_port",
+    "aliases": ["Port of Nice"]
+  },
+  {
+    "id": "monaco",
+    "name": "Monaco",
+    "latitude": 43.733,
+    "longitude": 7.424,
+    "type": "main_port",
+    "aliases": ["Port Hercule"]
+  }
+]
