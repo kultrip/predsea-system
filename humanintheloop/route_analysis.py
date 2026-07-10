@@ -554,6 +554,47 @@ def relative_angle_deg(wave_from_direction_deg, route_bearing_deg):
     return ((float(wave_from_direction_deg) - float(route_bearing_deg) + 540.0) % 360.0) - 180.0
 
 
+def resolve_nearest_sea_coordinate(waves_dataset, point):
+    """Resolve coordinates snapping to the nearest valid sea cell if original is land-masked."""
+    import numpy as np
+    lon = float(point["longitude"])
+    lat = float(point["latitude"])
+    
+    # Try standard nearest first (Fast path)
+    try:
+        sample = waves_dataset["VHM0"].isel(time=0).sel(
+            longitude=lon,
+            latitude=lat,
+            method="nearest"
+        )
+        if not np.isnan(float(sample.values)):
+            return lon, lat
+    except Exception:
+        pass
+        
+    # Slow path: 2D coordinate search for nearest non-nan sea cell
+    try:
+        vhm0 = waves_dataset["VHM0"].isel(time=0)
+        lons_grid = vhm0.longitude.values
+        lats_grid = vhm0.latitude.values
+        
+        lon_grid, lat_grid = np.meshgrid(lons_grid, lats_grid)
+        dist = (lon_grid - lon)**2 + (lat_grid - lat)**2
+        
+        valid_mask = ~np.isnan(vhm0.values)
+        dist_masked = np.where(valid_mask, dist, np.inf)
+        
+        if np.any(valid_mask):
+            min_idx = np.unravel_index(np.argmin(dist_masked), dist_masked.shape)
+            snapped_lat = float(lats_grid[min_idx[0]])
+            snapped_lon = float(lons_grid[min_idx[1]])
+            return snapped_lon, snapped_lat
+    except Exception:
+        pass
+        
+    return lon, lat
+
+
 def forecast_summary_from_files(waves_path, currents_path, route=None):
     try:
         import xarray as xr
@@ -579,34 +620,39 @@ def forecast_summary_from_files(waves_path, currents_path, route=None):
         current_points_by_time = []
         current_direction_points_by_time = []
         for point in route_sample_points(route or load_route(DEFAULT_ROUTE_ID)):
+            snapped_lon, snapped_lat = resolve_nearest_sea_coordinate(waves, point)
+            snapped_point = {
+                "longitude": snapped_lon,
+                "latitude": snapped_lat
+            }
             wave_point = waves["VHM0"].sel(
-                longitude=point["longitude"],
-                latitude=point["latitude"],
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
                 method="nearest",
             )
             current_point = current_speed.sel(
-                longitude=point["longitude"],
-                latitude=point["latitude"],
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
                 method="nearest",
             )
             u_point = currents["uo"].sel(
-                longitude=point["longitude"],
-                latitude=point["latitude"],
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
                 method="nearest",
             )
             v_point = currents["vo"].sel(
-                longitude=point["longitude"],
-                latitude=point["latitude"],
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
                 method="nearest",
             )
             wave_direction_point = waves["VMDR"].sel(
-                longitude=point["longitude"],
-                latitude=point["latitude"],
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
                 method="nearest",
             )
             wave_points_by_time.append([float(value) for value in wave_point.values])
             wave_direction_points_by_time.append([float(value) for value in wave_direction_point.values])
-            append_wave_component_point_values(waves, component_series_by_name, point)
+            append_wave_component_point_values(waves, component_series_by_name, snapped_point)
             current_points_by_time.append([float(value) for value in current_point.values])
             current_direction_points_by_time.append(
                 [

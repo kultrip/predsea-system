@@ -1224,6 +1224,130 @@ def build_observation_stations_response(rows, lookback_days, variable_filter=Non
     }
 
 
+def save_artifact_to_store(store, route_id: str, artifact_name: str, run_date: str, run_id: str | None, content: bytes):
+    is_gcs = hasattr(store, "bucket_name") or store.__class__.__name__ == "GcsEvidenceStore"
+    if is_gcs:
+        try:
+            object_name = f"{store._base_prefix(run_date, run_id)}/{route_id}/{artifact_name}"
+            bucket = store.client.bucket(store.bucket_name)
+            blob = bucket.blob(object_name)
+            blob.upload_from_string(content, content_type="image/png")
+            logger.info("Successfully cached on-demand map to GCS: gs://%s/%s", store.bucket_name, object_name)
+            return
+        except Exception as gcs_err:
+            logger.warning("GCS caching failed (%s), falling back to local fallback store if available...", gcs_err)
+            if hasattr(store, "fallback_store") and store.fallback_store is not None:
+                store = store.fallback_store
+            else:
+                try:
+                    local_path = Path("predictions") / run_date / route_id / artifact_name
+                    local_path.parent.mkdir(parents=True, exist_ok=True)
+                    local_path.write_bytes(content)
+                    logger.info("Successfully cached on-demand map to default predictions directory: %s", local_path)
+                    return
+                except Exception:
+                    raise gcs_err
+
+    local_path = store._base_dir(run_date, run_id) / route_id / artifact_name
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(content)
+    logger.info("Successfully cached on-demand map to local filesystem: %s", local_path)
+
+
+def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, store) -> bytes:
+    import tempfile
+    import xarray as xr
+    import pandas as pd
+    import route_analysis
+    import map_generator
+    import fetch_data
+    
+    # 1. Load route config
+    route = route_analysis.load_route(route_id)
+    
+    # 2. Resolve waves and currents paths
+    paths = fetch_data.resolve_forecast_output_paths(fetch_data.OUTPUT_DIR)
+    waves_path = Path(paths["waves_path"])
+    currents_path = Path(paths["currents_path"])
+    
+    # 3. Slice NetCDF datasets for the target date
+    with xr.open_dataset(waves_path) as waves, xr.open_dataset(currents_path) as currents:
+        target_date = pd.to_datetime(run_date).date()
+        
+        # Check if target date exists in the datasets
+        waves_dates = pd.to_datetime(waves["time"].values).date
+        currents_dates = pd.to_datetime(currents["time"].values).date
+        
+        waves_mask = waves_dates == target_date
+        currents_mask = currents_dates == target_date
+        
+        if not waves_mask.any() or not currents_mask.any():
+            logger.warning(
+                "Requested date %s not found in forecast datasets. "
+                "Generating map using entire available forecast dataset.",
+                run_date
+            )
+            waves_sliced = waves
+            currents_sliced = currents
+        else:
+            waves_sliced = waves.sel(time=waves_mask)
+            currents_sliced = currents.sel(time=currents_mask)
+            
+        # 4. Save to temporary NetCDF files to ensure compat with unchanged map generator and route analysis
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_waves_path = Path(tmpdir) / "waves_subset.nc"
+            tmp_currents_path = Path(tmpdir) / "currents_subset.nc"
+            tmp_map_path = Path(tmpdir) / "route_decision_map.png"
+            
+            waves_sliced.to_netcdf(tmp_waves_path)
+            currents_sliced.to_netcdf(tmp_currents_path)
+            
+            # 5. Build forecast summary from the sliced files
+            forecast = route_analysis.forecast_summary_from_files(
+                tmp_waves_path,
+                tmp_currents_path,
+                route=route,
+            )
+            
+            # 6. Build snapshot
+            observations = {}
+            try:
+                observations = store.load_observations(run_date, run_id)
+            except Exception:
+                try:
+                    latest_date = store.latest_date()
+                    latest_run = store.latest_run(latest_date)
+                    observations = store.load_observations(latest_date, latest_run)
+                except Exception:
+                    pass
+            
+            snapshot = route_analysis.build_route_snapshot(
+                observations,
+                forecast,
+                route=route,
+                vessel_class="medium",
+            )
+            
+            # 7. Generate route decision map using map_generator
+            map_generator.generate_route_decision_map(
+                waves_path=tmp_waves_path,
+                currents_path=tmp_currents_path,
+                route=route,
+                snapshot=snapshot,
+                output_path=tmp_map_path,
+            )
+            
+            content = tmp_map_path.read_bytes()
+            
+            # 8. Cache/Save the generated artifact to the store
+            try:
+                save_artifact_to_store(store, route_id, "route_decision_map.png", run_date, run_id, content)
+            except Exception as cache_err:
+                logger.warning("Failed to cache generated map to store: %s", cache_err)
+                
+            return content
+
+
 def create_app(evidence_store=None, route_store=None):
     app = FastAPI(
         title="PredSea MVP API",
@@ -2096,11 +2220,28 @@ def create_app(evidence_store=None, route_store=None):
         try:
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
+        except Exception as error:
+            if error.__class__.__name__ == "EvidenceNotFoundError":
+                raise HTTPException(status_code=404, detail=str(error)) from error
+            raise
+
+        try:
             content = store.load_binary_artifact(route_id, artifact_name, run_date, run_id)
             headers = {"Cache-Control": "public, max-age=300"}
             return Response(content=content, media_type=media_type, headers=headers)
-        except EvidenceNotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
+        except Exception as error:
+            if error.__class__.__name__ == "EvidenceNotFoundError":
+                if artifact_name == "route_decision_map.png":
+                    try:
+                        logger.info("Artifact 'route_decision_map.png' not found in store for %s. Generating on-demand...", run_date)
+                        content = generate_on_demand_map(route_id, run_date, run_id, store)
+                        headers = {"Cache-Control": "public, max-age=300"}
+                        return Response(content=content, media_type=media_type, headers=headers)
+                    except Exception as gen_err:
+                        logger.exception("Failed to generate 'route_decision_map.png' on-demand: %s", gen_err)
+                        raise HTTPException(status_code=500, detail=f"On-demand map generation failed: {gen_err}") from gen_err
+                raise HTTPException(status_code=404, detail=str(error)) from error
+            raise
 
     @app.get("/routes/{route_id}/media")
     def route_media(
