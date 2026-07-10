@@ -4,7 +4,7 @@ import decision_engine
 def test_answer_uses_captain_knowledge_and_worst_segment():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "small",
         "vessel_profile": {"label": "under 15m", "manageable_m": 1.2, "restricted_m": 1.8},
         "forecast": {
@@ -65,7 +65,7 @@ def test_answer_uses_captain_knowledge_and_worst_segment():
 def test_tomorrow_answer_does_not_call_restricted_small_vessel_workable():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "small",
         "vessel_profile": {"label": "under 15m", "manageable_m": 1.2, "restricted_m": 1.8},
         "forecast": {
@@ -105,7 +105,7 @@ def test_tomorrow_answer_does_not_call_restricted_small_vessel_workable():
 def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
         "forecast": {
@@ -152,7 +152,7 @@ def test_today_departure_window_prefers_daylight_over_lowest_night_sample():
 def test_arome_lineage_adds_high_resolution_wind_context():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
         "data_lineage": {
@@ -190,7 +190,7 @@ def test_arome_lineage_adds_high_resolution_wind_context():
 def test_ecmwf_fallback_lineage_softens_coastal_specificity():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
         "data_lineage": {
@@ -228,7 +228,7 @@ def test_ecmwf_fallback_lineage_softens_coastal_specificity():
 def test_missing_confidence_is_omitted_from_answer():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
         "forecast": {
@@ -260,7 +260,7 @@ def test_answer_includes_operational_stance():
 
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
         "forecast": {
@@ -303,7 +303,7 @@ def test_answer_includes_operational_stance():
 def test_comfort_language_stays_conservative():
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "small",
         "vessel_profile": {"label": "under 15m", "manageable_m": 1.2, "restricted_m": 1.8},
         "forecast": {

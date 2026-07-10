@@ -138,7 +138,7 @@ class MapGeneratorTests(unittest.TestCase):
             currents.to_netcdf(currents_path)
 
             route = {
-                "id": "palma_ibiza",
+                "id": "ibiza_palma",
                 "name": "Palma -> Ibiza",
                 "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
                 "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
@@ -150,7 +150,7 @@ class MapGeneratorTests(unittest.TestCase):
             }
             snapshot = {
                 "route": "Palma -> Ibiza",
-                "route_id": "palma_ibiza",
+                "route_id": "ibiza_palma",
                 "vessel_profile": {"label": "15-24m"},
                 "forecast": {
                     "wave_min_m": 0.8,
@@ -411,53 +411,53 @@ class RouteAnalysisTests(unittest.TestCase):
             "ciutadella_fornells",
             "formentera_palma",
             "fornells_mahon",
-            "genoa_cagliari",
+            "cagliari_genoa",
             "genoa_marseille",
             "genoa_toulon",
-            "ibiza_cagliari",
-            "ibiza_formentera",
+            "cagliari_ibiza",
+            "formentera_ibiza",
             "ibiza_mahon",
             "ibiza_san_antonio",
             "ibiza_soller",
-            "marseille_cagliari",
+            "cagliari_marseille",
             "marseille_palma",
             "marseille_toulon",
-            "montpellier_barcelona",
-            "montpellier_genoa",
-            "montpellier_marseille",
+            "barcelona_montpellier",
+            "genoa_montpellier",
+            "marseille_montpellier",
             "montpellier_palma",
-            "naples_marseille",
-            "palermo_naples",
-            "palma_alcudia",
-            "palma_barcelona",
-            "palma_cabrera",
-            "palma_cagliari",
-            "palma_ciutadella",
-            "palma_ibiza",
-            "palma_mahon",
+            "marseille_naples",
+            "naples_palermo",
+            "alcudia_palma",
+            "barcelona_palma",
+            "cabrera_palma",
+            "cagliari_palma",
+            "ciutadella_palma",
+            "ibiza_palma",
+            "mahon_palma",
             "palma_san_antonio",
             "palma_soller",
             "palma_tarragona",
             "palma_valencia",
-            "san_antonio_palma",
-            "soller_palma",
-            "tarragona_palma",
+            "palma_san_antonio",
+            "palma_soller",
+            "palma_tarragona",
             "tarragona_valencia",
-            "toulon_cagliari",
-            "toulon_palma",
+            "cagliari_toulon",
+            "palma_toulon",
         ]
         for route_id in expected_subset:
             self.assertIn(route_id, routes)
 
-        self.assertEqual(routes["palma_ibiza"]["name"], "Palma -> Ibiza")
+        self.assertEqual(routes["ibiza_palma"]["name"], "Palma -> Ibiza")
         self.assertEqual(routes["alcudia_ciutadella"]["destination"]["name"], "Ciutadella")
         self.assertGreaterEqual(len(routes["alcudia_ciutadella"]["sample_points"]), 3)
-        self.assertEqual(routes["palma_cabrera"]["validation"]["truth_source"], "bahia_de_palma")
+        self.assertEqual(routes["cabrera_palma"]["validation"]["truth_source"], "bahia_de_palma")
         self.assertIsNone(routes["alcudia_ciutadella"]["validation"]["truth_source"])
-        self.assertEqual(routes["palma_barcelona"]["destination"]["name"], "Barcelona")
+        self.assertEqual(routes["barcelona_palma"]["destination"]["name"], "Barcelona")
         self.assertEqual(routes["palma_valencia"]["destination"]["name"], "Valencia")
-        self.assertEqual(routes["palma_ciutadella"]["destination"]["name"], "Ciutadella")
-        self.assertEqual(routes["palma_mahon"]["destination"]["name"], "Mahon")
+        self.assertEqual(routes["ciutadella_palma"]["destination"]["name"], "Ciutadella")
+        self.assertEqual(routes["mahon_palma"]["destination"]["name"], "Mahon")
         self.assertEqual(routes["ibiza_mahon"]["destination"]["name"], "Mahon")
         self.assertEqual(routes["andratx_ibiza"]["id"], "andratx_ibiza")
         self.assertEqual(routes["ciutadella_fornells"]["destination"]["name"], "Cala Fornells")
@@ -487,11 +487,11 @@ class RouteAnalysisTests(unittest.TestCase):
             "current_peak_time": "16:00",
         }
 
-        route = route_analysis.load_route("palma_ibiza")
+        route = route_analysis.load_route("ibiza_palma")
         snapshot = route_analysis.build_route_snapshot(observations, forecast, route=route, vessel_class="medium")
 
         self.assertEqual(snapshot["route"], "Palma -> Ibiza")
-        self.assertEqual(snapshot["route_id"], "palma_ibiza")
+        self.assertEqual(snapshot["route_id"], "ibiza_palma")
         self.assertEqual(snapshot["vessel_class"], "medium")
         self.assertEqual(snapshot["recommendation"]["best_window"], "before midday")
         self.assertEqual(snapshot["recommendation"]["confidence"], "medium")
@@ -1373,7 +1373,7 @@ class ValidationEngineTests(unittest.TestCase):
 
         snapshot = {
             "route": "Palma -> Ibiza",
-            "route_id": "palma_ibiza",
+            "route_id": "ibiza_palma",
             "forecast": {
                 "wave_peak_time": "15:00",
                 "hourly": [
@@ -1392,7 +1392,7 @@ class ValidationEngineTests(unittest.TestCase):
 
         result = validation_engine.validate_route_snapshot(snapshot, observations)
 
-        self.assertEqual(result["route_id"], "palma_ibiza")
+        self.assertEqual(result["route_id"], "ibiza_palma")
         self.assertEqual(result["truth_source"], "canal_de_ibiza")
         self.assertEqual(result["target_time"], "15:00")
         self.assertEqual(result["predsea_wave_m"], 1.6)
@@ -1405,7 +1405,7 @@ class ValidationEngineTests(unittest.TestCase):
 
         snapshot = {
             "route": "Palma -> Cabrera",
-            "route_id": "palma_cabrera",
+            "route_id": "cabrera_palma",
             "forecast": {"wave_peak_time": "12:00", "hourly": [{"time": "12:00", "wave_m": 0.7}]},
         }
         observations = {
@@ -1473,7 +1473,7 @@ class ValidationEngineTests(unittest.TestCase):
 
         validations = [
             {
-                "route_id": "palma_ibiza",
+                "route_id": "ibiza_palma",
                 "route": "Palma -> Ibiza",
                 "validation_status": "validated",
                 "marketing_win": True,
@@ -1488,7 +1488,7 @@ class ValidationEngineTests(unittest.TestCase):
             report = json.loads((root / "validation_report.json").read_text())
             wins = (root / "marketing_wins.txt").read_text()
 
-            self.assertEqual(report[0]["route_id"], "palma_ibiza")
+            self.assertEqual(report[0]["route_id"], "ibiza_palma")
             self.assertIn("Palma -> Ibiza", wins)
             self.assertIn("PredSea error 0.1 m", wins)
 

@@ -295,7 +295,7 @@
   },
   {
     "id": "mahon",
-    "name": "Mahón",
+    "name": "Mah\u00f3n",
     "type": "port",
     "latitude": 39.89,
     "longitude": 4.27,
@@ -432,7 +432,7 @@
     "children": [],
     "aliases": [
       "palamos",
-      "palamós"
+      "palam\u00f3s"
     ],
     "observation_candidates": [
       "barcelona",
@@ -556,7 +556,7 @@
   },
   {
     "id": "montpellier",
-    "name": "Montpellier (Sète)",
+    "name": "Montpellier (S\u00e8te)",
     "type": "main_port",
     "latitude": 43.4,
     "longitude": 3.69,
@@ -619,7 +619,7 @@
   },
   {
     "id": "theoule_sur_mer",
-    "name": "Théoule-sur-Mer",
+    "name": "Th\u00e9oule-sur-Mer",
     "type": "main_port",
     "latitude": 43.5074,
     "longitude": 6.9404,
@@ -629,9 +629,9 @@
       "theoule",
       "theoule-sur-mer",
       "theoule sur mer",
-      "théoule",
-      "théoule-sur-mer",
-      "théoule sur mer"
+      "th\u00e9oule",
+      "th\u00e9oule-sur-mer",
+      "th\u00e9oule sur mer"
     ],
     "observation_candidates": [
       "emodnet_nice",
@@ -690,7 +690,7 @@
   },
   {
     "id": "puerto_banus",
-    "name": "Puerto Banús",
+    "name": "Puerto Ban\u00fas",
     "type": "main_port",
     "latitude": 36.4868,
     "longitude": -4.953,
@@ -707,7 +707,7 @@
   },
   {
     "id": "malaga",
-    "name": "Málaga",
+    "name": "M\u00e1laga",
     "type": "main_port",
     "latitude": 36.7196,
     "longitude": -4.42,
@@ -723,7 +723,7 @@
   },
   {
     "id": "almeria",
-    "name": "Almería",
+    "name": "Almer\u00eda",
     "type": "main_port",
     "latitude": 36.834,
     "longitude": -2.4637,
@@ -771,7 +771,7 @@
   },
   {
     "id": "denia",
-    "name": "Dénia",
+    "name": "D\u00e9nia",
     "type": "main_port",
     "latitude": 38.84,
     "longitude": 0.105,
@@ -851,7 +851,7 @@
   },
   {
     "id": "santa_eularia",
-    "name": "Santa Eulària",
+    "name": "Santa Eul\u00e0ria",
     "type": "main_port",
     "latitude": 38.9847,
     "longitude": 1.534,
@@ -947,7 +947,7 @@
   },
   {
     "id": "eze",
-    "name": "Èze",
+    "name": "\u00c8ze",
     "type": "main_place",
     "latitude": 43.727,
     "longitude": 7.361,
@@ -955,11 +955,11 @@
     "children": [],
     "aliases": [
       "Eze",
-      "Èze Village",
+      "\u00c8ze Village",
       "Eze-sur-Mer",
-      "Èze-sur-Mer",
+      "\u00c8ze-sur-Mer",
       "eze-sur-mer",
-      "èze-sur-mer"
+      "\u00e8ze-sur-mer"
     ],
     "observation_candidates": [
       "emodnet_eze",
@@ -1278,5 +1278,218 @@
       "emodnet_6200201",
       "emodnet_62244"
     ]
+  },
+  {
+    "id": "portofino",
+    "name": "Portofino",
+    "type": "sub_port",
+    "latitude": 44.303,
+    "longitude": 9.209,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "portofino"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "isola_del_giglio",
+    "name": "Isola del Giglio",
+    "type": "main_place",
+    "latitude": 42.36,
+    "longitude": 10.92,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "isola del giglio",
+      "giglio"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "elba",
+    "name": "Elba",
+    "type": "main_place",
+    "latitude": 42.78,
+    "longitude": 10.26,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "elba",
+      "isola d'elba"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "isole_ponziane",
+    "name": "Isole Ponziane",
+    "type": "main_place",
+    "latitude": 40.9,
+    "longitude": 12.96,
+    "parent_place_id": null,
+    "children": [
+      "ponza"
+    ],
+    "aliases": [
+      "isole ponziane",
+      "isole pontine"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "ponza",
+    "name": "Ponza",
+    "type": "sub_place",
+    "latitude": 40.9,
+    "longitude": 12.96,
+    "parent_place_id": "isole_ponziane",
+    "children": [],
+    "aliases": [
+      "ponza"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "capri",
+    "name": "Capri",
+    "type": "main_place",
+    "latitude": 40.55,
+    "longitude": 14.24,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "capri",
+      "isola di capri"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "ischia",
+    "name": "Ischia",
+    "type": "main_place",
+    "latitude": 40.73,
+    "longitude": 13.9,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "ischia",
+      "isola d'ischia"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "aeolian_islands",
+    "name": "Aeolian Islands",
+    "type": "main_place",
+    "latitude": 38.47,
+    "longitude": 14.95,
+    "parent_place_id": null,
+    "children": [
+      "stromboli",
+      "vulcano",
+      "lipari"
+    ],
+    "aliases": [
+      "aeolian islands",
+      "isole eolie",
+      "aeolian"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "stromboli",
+    "name": "Stromboli",
+    "type": "sub_place",
+    "latitude": 38.79,
+    "longitude": 15.21,
+    "parent_place_id": "aeolian_islands",
+    "children": [],
+    "aliases": [
+      "stromboli"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "vulcano",
+    "name": "Vulcano",
+    "type": "sub_place",
+    "latitude": 38.4,
+    "longitude": 14.96,
+    "parent_place_id": "aeolian_islands",
+    "children": [],
+    "aliases": [
+      "vulcano"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "lipari",
+    "name": "Lipari",
+    "type": "sub_place",
+    "latitude": 38.47,
+    "longitude": 14.95,
+    "parent_place_id": "aeolian_islands",
+    "children": [],
+    "aliases": [
+      "lipari"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "egadi_islands",
+    "name": "Egadi Islands",
+    "type": "main_place",
+    "latitude": 37.93,
+    "longitude": 12.32,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "egadi islands",
+      "isole egadi",
+      "egadi"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "taormina",
+    "name": "Taormina",
+    "type": "main_place",
+    "latitude": 37.85,
+    "longitude": 15.28,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "taormina"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "riposto",
+    "name": "Riposto",
+    "type": "sub_port",
+    "latitude": 37.73,
+    "longitude": 15.21,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "riposto",
+      "porto dell'etna"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "siracusa",
+    "name": "Siracusa",
+    "type": "main_port",
+    "latitude": 37.07,
+    "longitude": 15.29,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "siracusa",
+      "syracuse",
+      "syracusa"
+    ],
+    "observation_candidates": []
   }
 ]

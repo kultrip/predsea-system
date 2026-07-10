@@ -81,7 +81,7 @@ class DummyDistanceResolver:
         }
 
 
-def write_snapshot(root, date_text="2026-05-29", route_id="palma_ibiza", run_id=None, source_summary=None):
+def write_snapshot(root, date_text="2026-05-29", route_id="ibiza_palma", run_id=None, source_summary=None):
     if run_id:
         route_dir = Path(root) / date_text / "runs" / run_id / route_id
     else:
@@ -182,7 +182,7 @@ def write_run_snapshot(
     root,
     date_text="2026-05-29",
     run_id="2026-05-29T0630Z",
-    route_id="palma_ibiza",
+    route_id="ibiza_palma",
     wave_max=0.5,
     created_at_utc="2026-05-29 06:30 UTC",
 ):
@@ -342,7 +342,7 @@ def write_place_weather(
     return payload
 
 
-def write_snapshot_data(route_id="palma_ibiza", wave_max=0.5, created_at_utc="2026-05-29 06:30 UTC"):
+def write_snapshot_data(route_id="ibiza_palma", wave_max=0.5, created_at_utc="2026-05-29 06:30 UTC"):
     return {
         "route": "Palma -> Ibiza",
         "route_id": route_id,
@@ -384,7 +384,7 @@ def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
     response = client.get("/routes?date=2026-05-29")
 
     assert response.status_code == 200
-    assert response.json() == {"date": "2026-05-29", "routes": ["palma_ibiza"]}
+    assert response.json() == {"date": "2026-05-29", "routes": ["ibiza_palma"]}
 
 
 def test_places_endpoint_lists_canonical_places(tmp_path):
@@ -411,9 +411,9 @@ def test_local_store_uses_latest_run_folder_when_available(tmp_path):
     store = EvidenceStore(tmp_path)
 
     assert store.latest_run("2026-05-29") == "2026-05-29T1230Z"
-    assert store.route_ids("2026-05-29") == ["palma_ibiza"]
-    assert store.load_snapshot("palma_ibiza", "2026-05-29")["forecast"]["wave_max_m"] == 0.8
-    assert store.load_snapshot("palma_ibiza", "2026-05-29", run_id="2026-05-29T0630Z")["forecast"]["wave_max_m"] == 0.5
+    assert store.route_ids("2026-05-29") == ["ibiza_palma"]
+    assert store.load_snapshot("ibiza_palma", "2026-05-29")["forecast"]["wave_max_m"] == 0.8
+    assert store.load_snapshot("ibiza_palma", "2026-05-29", run_id="2026-05-29T0630Z")["forecast"]["wave_max_m"] == 0.5
 
 
 def test_routes_endpoint_accepts_specific_run_id(tmp_path):
@@ -421,7 +421,7 @@ def test_routes_endpoint_accepts_specific_run_id(tmp_path):
     write_run_snapshot(tmp_path, run_id="2026-05-29T1230Z", wave_max=0.8)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/routes/palma_ibiza/evidence?date=2026-05-29&run=2026-05-29T0630Z")
+    response = client.get("/routes/ibiza_palma/evidence?date=2026-05-29&run=2026-05-29T0630Z")
 
     assert response.status_code == 200
     payload = response.json()
@@ -435,7 +435,7 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-05-29",
             "question": "How will the sea be this afternoon?",
@@ -447,7 +447,7 @@ def test_question_endpoint_answers_from_stored_evidence(tmp_path):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["route_id"] == "palma_ibiza"
+    assert payload["route_id"] == "ibiza_palma"
     assert payload["intent"] == "conditions_soon"
     assert payload["freshness_status"] == "current"
     assert payload["freshness_warning"] is None
@@ -488,9 +488,9 @@ def test_openapi_marks_location_question_coordinates_as_required(tmp_path):
 
 def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
     run_id = "2026-06-09T0630Z"
-    route_dir = Path(tmp_path) / "2026-06-09" / "runs" / run_id / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-09" / "runs" / run_id / "ibiza_palma"
     route_dir.mkdir(parents=True)
-    snapshot = write_snapshot_data("palma_ibiza", wave_max=1.3, created_at_utc="2026-06-09 06:30 UTC")
+    snapshot = write_snapshot_data("ibiza_palma", wave_max=1.3, created_at_utc="2026-06-09 06:30 UTC")
     snapshot["observations"]["canal_de_ibiza"]["wave_from_direction_deg"] = 82.0
     snapshot["forecast"].update(
         {
@@ -527,7 +527,7 @@ def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-09",
             "run": "latest",
@@ -563,7 +563,7 @@ def test_question_endpoint_exposes_wave_direction_evidence(tmp_path):
 
 
 def test_question_endpoint_reports_passage_evidence_availability(tmp_path):
-    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T0630Z" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T0630Z" / "ibiza_palma"
     route_dir.mkdir(parents=True)
     snapshot = write_snapshot_data(wave_max=1.5, created_at_utc="2026-06-07 06:30 UTC")
     snapshot["forecast"]["route_segments"] = {
@@ -601,9 +601,9 @@ def test_question_endpoint_reports_passage_evidence_availability(tmp_path):
     )
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    evidence_response = client.get("/routes/palma_ibiza/evidence?date=2026-06-07&run=latest")
+    evidence_response = client.get("/routes/ibiza_palma/evidence?date=2026-06-07&run=latest")
     question_response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-07",
             "run": "latest",
@@ -630,7 +630,7 @@ def test_question_endpoint_reports_passage_evidence_availability(tmp_path):
 
 
 def test_question_endpoint_refreshes_stale_passage_evidence_from_route_segments(tmp_path):
-    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "ibiza_palma"
     route_dir.mkdir(parents=True)
     snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
     snapshot["forecast"]["wave_peak_time"] = "17:00"
@@ -673,7 +673,7 @@ def test_question_endpoint_refreshes_stale_passage_evidence_from_route_segments(
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-07",
             "run": "latest",
@@ -691,7 +691,7 @@ def test_question_endpoint_refreshes_stale_passage_evidence_from_route_segments(
 
 
 def test_question_endpoint_uses_requested_departure_time_and_priority_for_passage_evidence(tmp_path):
-    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "ibiza_palma"
     route_dir.mkdir(parents=True)
     snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
     snapshot["forecast"]["wave_peak_time"] = "17:00"
@@ -717,7 +717,7 @@ def test_question_endpoint_uses_requested_departure_time_and_priority_for_passag
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-07",
             "run": "latest",
@@ -738,7 +738,7 @@ def test_question_endpoint_uses_requested_departure_time_and_priority_for_passag
 
 
 def test_question_endpoint_uses_current_position_for_remaining_passage_evidence(tmp_path):
-    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "ibiza_palma"
     route_dir.mkdir(parents=True)
     snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
     snapshot["forecast"]["route_segments"] = {
@@ -754,7 +754,7 @@ def test_question_endpoint_uses_current_position_for_remaining_passage_evidence(
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-07",
             "run": "latest",
@@ -777,7 +777,7 @@ def test_question_endpoint_uses_current_position_for_remaining_passage_evidence(
 
 
 def test_question_endpoint_warns_when_current_position_is_far_from_route(tmp_path):
-    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-07" / "runs" / "2026-06-07T1034Z" / "ibiza_palma"
     route_dir.mkdir(parents=True)
     snapshot = write_snapshot_data(wave_max=1.6, created_at_utc="2026-06-07 10:34 UTC")
     snapshot["forecast"]["route_segments"] = {
@@ -793,7 +793,7 @@ def test_question_endpoint_warns_when_current_position_is_far_from_route(tmp_pat
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-07",
             "run": "latest",
@@ -891,7 +891,7 @@ def test_question_endpoint_flags_last_night_evidence_and_avoids_repeated_window_
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-03",
             "run": "2026-06-03T1923Z",
@@ -921,9 +921,9 @@ def test_question_endpoint_flags_last_night_evidence_and_avoids_repeated_window_
 
 def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp_path):
     run_id = "2026-06-05T1622Z"
-    route_dir = Path(tmp_path) / "2026-06-05" / "runs" / run_id / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-05" / "runs" / run_id / "ibiza_palma"
     route_dir.mkdir(parents=True)
-    snapshot = write_snapshot_data("palma_ibiza", wave_max=1.9, created_at_utc="2026-06-05 16:23 UTC")
+    snapshot = write_snapshot_data("ibiza_palma", wave_max=1.9, created_at_utc="2026-06-05 16:23 UTC")
     snapshot["forecast"].update(
         {
             "wave_min_m": 0.5,
@@ -976,7 +976,7 @@ def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-05",
             "run": "latest",
@@ -1002,9 +1002,9 @@ def test_question_endpoint_filters_tomorrow_question_to_tomorrow_hourly_rows(tmp
 
 def test_question_endpoint_leave_window_tomorrow_does_not_use_late_today_message(tmp_path):
     run_id = "2026-06-05T1622Z"
-    route_dir = Path(tmp_path) / "2026-06-05" / "runs" / run_id / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-06-05" / "runs" / run_id / "ibiza_palma"
     route_dir.mkdir(parents=True)
-    snapshot = write_snapshot_data("palma_ibiza", wave_max=1.9, created_at_utc="2026-06-05 16:23 UTC")
+    snapshot = write_snapshot_data("ibiza_palma", wave_max=1.9, created_at_utc="2026-06-05 16:23 UTC")
     snapshot["forecast"].update(
         {
             "wave_min_m": 0.5,
@@ -1057,7 +1057,7 @@ def test_question_endpoint_leave_window_tomorrow_does_not_use_late_today_message
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-05",
             "run": "latest",
@@ -1085,7 +1085,7 @@ def test_briefing_endpoint_renders_text_from_stored_evidence(tmp_path):
     write_snapshot(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/routes/palma_ibiza/briefing?date=2026-05-29&format=whatsapp")
+    response = client.get("/routes/ibiza_palma/briefing?date=2026-05-29&format=whatsapp")
 
     assert response.status_code == 200
     payload = response.json()
@@ -1560,11 +1560,11 @@ def test_routes_optimal_status_reports_route_store_state(tmp_path):
 
 
 def test_route_question_includes_route_connection_metrics(tmp_path):
-    write_snapshot(tmp_path, date_text="2026-05-29", route_id="palma_ibiza")
+    write_snapshot(tmp_path, date_text="2026-05-29", route_id="ibiza_palma")
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-05-29",
             "run": "latest",
@@ -1585,7 +1585,7 @@ def test_route_question_includes_route_connection_metrics(tmp_path):
 def test_route_question_includes_reliability_block(tmp_path):
     run_date = "2026-06-20"
     run_id = "2026-06-20T0630Z"
-    write_snapshot(tmp_path, date_text=run_date, route_id="palma_ibiza", run_id=run_id)
+    write_snapshot(tmp_path, date_text=run_date, route_id="ibiza_palma", run_id=run_id)
     write_place_weather(
         tmp_path,
         run_date,
@@ -1611,7 +1611,7 @@ def test_route_question_includes_reliability_block(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": run_date,
             "run": "latest",
@@ -1633,7 +1633,7 @@ def test_route_question_uses_single_model_consistency_when_only_one_place_source
     run_date = "2026-06-20"
     current_run_id = "2026-06-20T0630Z"
     previous_run_id = "2026-06-20T0530Z"
-    write_snapshot(tmp_path, date_text=run_date, route_id="palma_ibiza", run_id=current_run_id)
+    write_snapshot(tmp_path, date_text=run_date, route_id="ibiza_palma", run_id=current_run_id)
     write_place_weather(
         tmp_path,
         run_date,
@@ -1659,7 +1659,7 @@ def test_route_question_uses_single_model_consistency_when_only_one_place_source
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": run_date,
             "run": "latest",
@@ -1685,20 +1685,20 @@ def test_route_question_uses_previous_day_snapshot_when_same_day_previous_run_mi
     current_snapshot = write_snapshot(
         tmp_path,
         date_text=current_date,
-        route_id="palma_ibiza",
+        route_id="ibiza_palma",
         run_id=current_run_id,
     )
     previous_snapshot = write_snapshot(
         tmp_path,
         date_text=previous_date,
-        route_id="palma_ibiza",
+        route_id="ibiza_palma",
         run_id=previous_run_id,
     )
     previous_snapshot["forecast"]["wave_max_m"] = 2.0
     current_snapshot["created_at_utc"] = utc_text(10)
     previous_snapshot["created_at_utc"] = utc_text(25)
-    current_dir = Path(tmp_path) / current_date / "runs" / current_run_id / "palma_ibiza"
-    previous_dir = Path(tmp_path) / previous_date / "runs" / previous_run_id / "palma_ibiza"
+    current_dir = Path(tmp_path) / current_date / "runs" / current_run_id / "ibiza_palma"
+    previous_dir = Path(tmp_path) / previous_date / "runs" / previous_run_id / "ibiza_palma"
     (current_dir / "daily_snapshot.json").write_text(json.dumps(current_snapshot), encoding="utf-8")
     (previous_dir / "daily_snapshot.json").write_text(json.dumps(previous_snapshot), encoding="utf-8")
     (Path(tmp_path) / current_date / "latest_run.json").write_text(
@@ -1712,7 +1712,7 @@ def test_route_question_uses_previous_day_snapshot_when_same_day_previous_run_mi
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": current_date,
             "run": "latest",
@@ -1740,19 +1740,19 @@ def test_route_question_penalizes_missing_route_source(tmp_path):
     current_snapshot = write_snapshot(
         tmp_path,
         date_text=current_date,
-        route_id="palma_ibiza",
+        route_id="ibiza_palma",
         run_id=current_run_id,
     )
     previous_snapshot = write_snapshot(
         tmp_path,
         date_text=previous_date,
-        route_id="palma_ibiza",
+        route_id="ibiza_palma",
         run_id=previous_run_id,
     )
     current_snapshot["created_at_utc"] = utc_text(10)
     previous_snapshot["created_at_utc"] = utc_text(25)
-    current_dir = Path(tmp_path) / current_date / "runs" / current_run_id / "palma_ibiza"
-    previous_dir = Path(tmp_path) / previous_date / "runs" / previous_run_id / "palma_ibiza"
+    current_dir = Path(tmp_path) / current_date / "runs" / current_run_id / "ibiza_palma"
+    previous_dir = Path(tmp_path) / previous_date / "runs" / previous_run_id / "ibiza_palma"
     (current_dir / "daily_snapshot.json").write_text(json.dumps(current_snapshot), encoding="utf-8")
     (previous_dir / "daily_snapshot.json").write_text(json.dumps(previous_snapshot), encoding="utf-8")
 
@@ -1786,7 +1786,7 @@ def test_route_question_penalizes_missing_route_source(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": current_date,
             "run": "latest",
@@ -1816,12 +1816,12 @@ def test_route_question_uses_source_breadth_when_previous_snapshot_missing(tmp_p
     current_snapshot = write_snapshot(
         tmp_path,
         date_text="2026-06-21",
-        route_id="palma_ibiza",
+        route_id="ibiza_palma",
         run_id="2026-06-21T0616Z",
         source_summary=source_summary,
     )
     current_snapshot["created_at_utc"] = utc_text(15)
-    current_dir = Path(tmp_path) / "2026-06-21" / "runs" / "2026-06-21T0616Z" / "palma_ibiza"
+    current_dir = Path(tmp_path) / "2026-06-21" / "runs" / "2026-06-21T0616Z" / "ibiza_palma"
     (current_dir / "daily_snapshot.json").write_text(json.dumps(current_snapshot), encoding="utf-8")
     (Path(tmp_path) / "2026-06-21" / "latest_run.json").write_text(
         json.dumps({"run_id": "2026-06-21T0616Z", "path": "runs/2026-06-21T0616Z"}),
@@ -1848,7 +1848,7 @@ def test_route_question_uses_source_breadth_when_previous_snapshot_missing(tmp_p
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
     response = client.post(
-        "/routes/palma_ibiza/question",
+        "/routes/ibiza_palma/question",
         json={
             "date": "2026-06-21",
             "run": "latest",
@@ -1897,7 +1897,7 @@ def test_artifact_endpoint_serves_latest_route_map(tmp_path):
     write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/routes/palma_ibiza/artifacts/route_decision_map.png?date=2026-05-29&run=latest")
+    response = client.get("/routes/ibiza_palma/artifacts/route_decision_map.png?date=2026-05-29&run=latest")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
@@ -1909,7 +1909,7 @@ def test_artifact_endpoint_rejects_non_public_artifacts(tmp_path):
     write_run_snapshot(tmp_path, run_id="2026-05-29T0630Z", wave_max=0.5)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/routes/palma_ibiza/artifacts/daily_snapshot.json?date=2026-05-29&run=latest")
+    response = client.get("/routes/ibiza_palma/artifacts/daily_snapshot.json?date=2026-05-29&run=latest")
 
     assert response.status_code == 404
 
@@ -1981,20 +1981,20 @@ class FakeGcsClient:
 def test_gcs_evidence_store_reads_latest_snapshot_from_bucket():
     snapshot = write_snapshot_data = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "forecast": {"hourly": []},
         "observations": {},
         "recommendation": {},
     }
     objects = {
-        "predictions/2026-05-30/palma_ibiza/daily_snapshot.json": json.dumps({"route_id": "old"}),
-        "predictions/2026-05-31/palma_ibiza/daily_snapshot.json": json.dumps(write_snapshot_data),
+        "predictions/2026-05-30/ibiza_palma/daily_snapshot.json": json.dumps({"route_id": "old"}),
+        "predictions/2026-05-31/ibiza_palma/daily_snapshot.json": json.dumps(write_snapshot_data),
     }
     store = GcsEvidenceStore("predsea-daily-outputs", client=FakeGcsClient(objects))
 
     assert store.latest_date() == "2026-05-31"
-    assert store.route_ids("2026-05-31") == ["palma_ibiza"]
-    assert store.load_snapshot("palma_ibiza") == snapshot
+    assert store.route_ids("2026-05-31") == ["ibiza_palma"]
+    assert store.load_snapshot("ibiza_palma") == snapshot
 
 
 def test_gcs_evidence_store_reads_latest_run_from_bucket():
@@ -2002,19 +2002,19 @@ def test_gcs_evidence_store_reads_latest_run_from_bucket():
         "predictions/2026-05-31/latest_run.json": json.dumps(
             {"run_id": "2026-05-31T1230Z", "path": "runs/2026-05-31T1230Z"}
         ),
-        "predictions/2026-05-31/runs/2026-05-31T0630Z/palma_ibiza/daily_snapshot.json": json.dumps(
+        "predictions/2026-05-31/runs/2026-05-31T0630Z/ibiza_palma/daily_snapshot.json": json.dumps(
             write_snapshot_data(wave_max=0.4)
         ),
-        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/daily_snapshot.json": json.dumps(
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/ibiza_palma/daily_snapshot.json": json.dumps(
             write_snapshot_data(wave_max=0.9)
         ),
     }
     store = GcsEvidenceStore("predsea-daily-outputs", client=FakeGcsClient(objects))
 
     assert store.latest_run("2026-05-31") == "2026-05-31T1230Z"
-    assert store.route_ids("2026-05-31") == ["palma_ibiza"]
-    assert store.load_snapshot("palma_ibiza", "2026-05-31")["forecast"]["wave_max_m"] == 0.9
-    assert store.load_snapshot("palma_ibiza", "2026-05-31", run_id="2026-05-31T0630Z")["forecast"]["wave_max_m"] == 0.4
+    assert store.route_ids("2026-05-31") == ["ibiza_palma"]
+    assert store.load_snapshot("ibiza_palma", "2026-05-31")["forecast"]["wave_max_m"] == 0.9
+    assert store.load_snapshot("ibiza_palma", "2026-05-31", run_id="2026-05-31T0630Z")["forecast"]["wave_max_m"] == 0.4
 
 
 def test_media_endpoint_returns_api_and_signed_urls_for_route_artifacts():
@@ -2022,22 +2022,22 @@ def test_media_endpoint_returns_api_and_signed_urls_for_route_artifacts():
         "predictions/2026-05-31/latest_run.json": json.dumps(
             {"run_id": "2026-05-31T1230Z", "path": "runs/2026-05-31T1230Z"}
         ),
-        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/daily_snapshot.json": json.dumps(
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/ibiza_palma/daily_snapshot.json": json.dumps(
             write_snapshot_data(wave_max=0.9)
         ),
-        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/route_decision_map.png": b"map",
-        "predictions/2026-05-31/runs/2026-05-31T1230Z/palma_ibiza/predsea_whatsapp_figure.png": b"chat",
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/ibiza_palma/route_decision_map.png": b"map",
+        "predictions/2026-05-31/runs/2026-05-31T1230Z/ibiza_palma/predsea_whatsapp_figure.png": b"chat",
     }
     client = TestClient(create_app(GcsEvidenceStore("predsea-daily-outputs", client=FakeGcsClient(objects))))
 
-    response = client.get("/routes/palma_ibiza/media?date=2026-05-31&run=latest")
+    response = client.get("/routes/ibiza_palma/media?date=2026-05-31&run=latest")
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["run"] == "2026-05-31T1230Z"
     route_map = payload["artifacts"]["route_decision_map.png"]
     assert route_map["api_url"].endswith(
-        "/routes/palma_ibiza/artifacts/route_decision_map.png?date=2026-05-31&run=2026-05-31T1230Z"
+        "/routes/ibiza_palma/artifacts/route_decision_map.png?date=2026-05-31&run=2026-05-31T1230Z"
     )
     assert route_map["signed_url"].startswith("https://signed.example/")
     assert route_map["download_url"] == route_map["signed_url"]
@@ -2126,11 +2126,11 @@ def test_map_inspect_endpoint_samples_nearest_grid_point(tmp_path):
 
 def test_media_endpoint_download_url_falls_back_to_api_url_for_local_store(tmp_path):
     write_run_snapshot(tmp_path, date_text="2026-05-31", run_id="2026-05-31T1230Z")
-    route_dir = Path(tmp_path) / "2026-05-31" / "runs" / "2026-05-31T1230Z" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-05-31" / "runs" / "2026-05-31T1230Z" / "ibiza_palma"
     (route_dir / "predsea_whatsapp_figure.png").write_bytes(b"chat")
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/routes/palma_ibiza/media?date=2026-05-31&run=latest")
+    response = client.get("/routes/ibiza_palma/media?date=2026-05-31&run=latest")
 
     assert response.status_code == 200
     route_map = response.json()["artifacts"]["route_decision_map.png"]
@@ -2140,10 +2140,10 @@ def test_media_endpoint_download_url_falls_back_to_api_url_for_local_store(tmp_p
 
 def test_health_reports_gcs_backend_when_gcs_store_is_injected():
     objects = {
-        "predictions/2026-05-31/palma_ibiza/daily_snapshot.json": json.dumps(
+        "predictions/2026-05-31/ibiza_palma/daily_snapshot.json": json.dumps(
             {
                 "route": "Palma -> Ibiza",
-                "route_id": "palma_ibiza",
+                "route_id": "ibiza_palma",
                 "forecast": {"hourly": []},
                 "observations": {},
                 "recommendation": {},
@@ -2187,7 +2187,7 @@ def test_warnings_endpoint_merges_sorts_and_counts_sources(tmp_path, monkeypatch
                     "issued_at_utc": "2026-06-21T08:00:00+00:00",
                     "valid_from_utc": "2026-06-21T08:00:00Z",
                     "valid_to_utc": None,
-                    "route": "palma_ibiza",
+                    "route": "ibiza_palma",
                     "aemet_event": None,
                     "aemet_area": None,
                     "extra": {},
@@ -2218,7 +2218,7 @@ def test_warnings_endpoint_merges_sorts_and_counts_sources(tmp_path, monkeypatch
                     "issued_at_utc": "2026-06-21T08:00:00+00:00",
                     "valid_from_utc": "2026-06-21T08:00:00Z",
                     "valid_to_utc": None,
-                    "route": "palma_ibiza",
+                    "route": "ibiza_palma",
                     "aemet_event": None,
                     "aemet_area": None,
                     "extra": {},
@@ -2249,7 +2249,7 @@ def test_warnings_endpoint_merges_sorts_and_counts_sources(tmp_path, monkeypatch
                     "issued_at_utc": "2026-06-21T08:00:00+00:00",
                     "valid_from_utc": "2026-06-21T10:00:00+00:00",
                     "valid_to_utc": "2026-06-21T22:00:00+00:00",
-                    "route": "palma_ibiza",
+                    "route": "ibiza_palma",
                     "aemet_event": "Viento costero",
                     "aemet_area": "Baleares - Costa Norte",
                     "extra": {},
@@ -2260,7 +2260,7 @@ def test_warnings_endpoint_merges_sorts_and_counts_sources(tmp_path, monkeypatch
     )
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/warnings/active?route=palma_ibiza")
+    response = client.get("/warnings/active?route=ibiza_palma")
 
     assert response.status_code == 200
     payload = response.json()

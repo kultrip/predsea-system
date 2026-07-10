@@ -1,0 +1,141 @@
+{
+  "evaluation_date": "2026-07-05",
+  "data_source": "real",
+  "variables": {
+    "wind_speed": {
+      "predsea_wrf": {
+        "cmems_equivalent": "arome_1km",
+        "units": "knots",
+        "status": "no_real_matched_pairs"
+      },
+      "ecmwf_baseline": {
+        "units": "knots",
+        "status": "no_real_matched_pairs"
+      }
+    },
+    "wind_direction": {
+      "predsea_wrf": {
+        "cmems_equivalent": "arome_1km",
+        "units": "degree",
+        "status": "no_real_matched_pairs"
+      },
+      "ecmwf_baseline": {
+        "units": "degree",
+        "status": "no_real_matched_pairs"
+      }
+    },
+    "wind_gust": {
+      "predsea_wrf": {
+        "cmems_equivalent": "arome_1km",
+        "units": "knots",
+        "status": "no_real_matched_pairs"
+      },
+      "ecmwf_baseline": {
+        "units": "knots",
+        "status": "no_real_matched_pairs"
+      }
+    },
+    "current_speed": {
+      "predsea_roms": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "m/s",
+        "status": "no_real_matched_pairs"
+      },
+      "copernicus_baseline": {
+        "units": "m/s",
+        "status": "no_real_matched_pairs"
+      },
+      "predsea_croco": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "m/s",
+        "status": "no_real_matched_pairs"
+      },
+      "predsea_nemo": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "m/s",
+        "status": "no_real_matched_pairs"
+      }
+    },
+    "water_temperature": {
+      "predsea_croco": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "celsius",
+        "status": "no_real_matched_pairs"
+      },
+      "copernicus_baseline": {
+        "units": "celsius",
+        "status": "no_real_matched_pairs"
+      },
+      "predsea_nemo": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "celsius",
+        "status": "no_real_matched_pairs"
+      }
+    },
+    "sea_level": {
+      "predsea_croco": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "m",
+        "status": "no_real_matched_pairs"
+      },
+      "copernicus_baseline": {
+        "units": "m",
+        "status": "no_real_matched_pairs"
+      },
+      "predsea_nemo": {
+        "cmems_equivalent": "cmems_nemo",
+        "units": "m",
+        "status": "no_real_matched_pairs"
+      }
+    },
+    "wave_height": {
+      "predsea_swan": {
+        "cmems_equivalent": "cmems_swan",
+        "units": "m",
+        "status": "no_real_matched_pairs"
+      },
+      "copernicus_baseline": {
+        "units": "m",
+        "status": "compared",
+        "stations_used": [
+          "bahia_de_palma",
+          "canal_de_ibiza"
+        ],
+        "metrics_baseline": {
+          "rmse": 0.2116,
+          "bias": 0.0716,
+          "correlation": 0.4159,
+          "mae": 0.1461,
+          "sample_size": 11855
+        }
+      }
+    },
+    "wave_direction": {
+      "predsea_swan": {
+        "cmems_equivalent": "cmems_swan",
+        "units": "degree",
+        "status": "no_real_matched_pairs"
+      },
+      "copernicus_baseline": {
+        "units": "degree",
+        "status": "compared",
+        "stations_used": [
+          "bahia_de_palma",
+          "canal_de_ibiza"
+        ],
+        "metrics_baseline": {
+          "rmse": 179.3249,
+          "bias": -129.1445,
+          "correlation": 0.112,
+          "mae": 162.077,
+          "sample_size": 11855
+        }
+      }
+    }
+  },
+  "summary": {
+    "variable_provider_pairs_with_real_comparison": 0,
+    "variable_provider_pairs_total": 12,
+    "note": "own_beats_cmems is intentionally not reported yet -- this version only validates each own model against real buoy observations. Comparing against a real CMEMS forecast pull is a follow-up, not something to guess at here. CROCO and NEMO are reported separately -- they are two different models the daily orchestrator runs in parallel, not two names for the same run."
+  }
+}

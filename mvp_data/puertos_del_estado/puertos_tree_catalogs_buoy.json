@@ -1,0 +1,6054 @@
+[
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "salinity",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "SALINITY",
+        "desc": "SALINITY",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "SALINITY",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  },
+  {
+    "Name": "Boya de Pasaia II",
+    "Xlink": "https://portus.puertos.es/?station=1101",
+    "portusLink": "https://portus.puertos.es/?station=1101",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.362850189208984,
+      "lon": -1.8889000415802002
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1101"
+  },
+  {
+    "Name": "Boya de Pasajes",
+    "Xlink": "https://portus.puertos.es/?station=1102",
+    "portusLink": "https://portus.puertos.es/?station=1102",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.37,
+      "lon": -1.89
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1102"
+  },
+  {
+    "Name": "Boya Costera de Bilbao II",
+    "Xlink": "https://portus.puertos.es/?station=1103",
+    "portusLink": "https://portus.puertos.es/?station=1103",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.397,
+      "lon": -3.13
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1103"
+  },
+  {
+    "Name": "Boya de Gijon",
+    "Xlink": "https://portus.puertos.es/?station=1117",
+    "portusLink": "https://portus.puertos.es/?station=1117",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.615,
+      "lon": -5.664
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1117"
+  },
+  {
+    "Name": "Boya de Ferrol 1",
+    "Xlink": "https://portus.puertos.es/?station=1231",
+    "portusLink": "https://portus.puertos.es/?station=1231",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.45545,
+      "lon": -8.32748
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1231"
+  },
+  {
+    "Name": "Boya de Ferrol 2",
+    "Xlink": "https://portus.puertos.es/?station=1232",
+    "portusLink": "https://portus.puertos.es/?station=1232",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.4486,
+      "lon": -8.319
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1232"
+  },
+  {
+    "Name": "Boya Costera de Langosteira I",
+    "Xlink": "https://portus.puertos.es/?station=1236",
+    "portusLink": "https://portus.puertos.es/?station=1236",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.355,
+      "lon": -8.533
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1236"
+  },
+  {
+    "Name": "Boya de Langosteira II",
+    "Xlink": "https://portus.puertos.es/?station=1239",
+    "portusLink": "https://portus.puertos.es/?station=1239",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.34791564941406,
+      "lon": -8.5625
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1239"
+  },
+  {
+    "Name": "Boya Costera de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=1320",
+    "portusLink": "https://portus.puertos.es/?station=1320",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.5,
+      "lon": -6.33
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1320"
+  },
+  {
+    "Name": "Boya de Las Palmas Este",
+    "Xlink": "https://portus.puertos.es/?station=1414",
+    "portusLink": "https://portus.puertos.es/?station=1414",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.05,
+      "lon": -15.39
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1414"
+  },
+  {
+    "Name": "Boya de Santa Cruz de Tenerife",
+    "Xlink": "https://portus.puertos.es/?station=1421",
+    "portusLink": "https://portus.puertos.es/?station=1421",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.46,
+      "lon": -16.23
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1421"
+  },
+  {
+    "Name": "Boya de Tarifa",
+    "Xlink": "https://portus.puertos.es/?station=1500",
+    "portusLink": "https://portus.puertos.es/?station=1500",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.0,
+      "lon": -5.59
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1500"
+  },
+  {
+    "Name": "Boya de Algeciras-Pta. Carnero",
+    "Xlink": "https://portus.puertos.es/?station=1504",
+    "portusLink": "https://portus.puertos.es/?station=1504",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.06624984741211,
+      "lon": -5.415830135345459
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1504"
+  },
+  {
+    "Name": "Boya de Ceuta",
+    "Xlink": "https://portus.puertos.es/?station=1512",
+    "portusLink": "https://portus.puertos.es/?station=1512",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 35.903,
+      "lon": -5.33
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1512"
+  },
+  {
+    "Name": "Boya de M\u00e1laga",
+    "Xlink": "https://portus.puertos.es/?station=1514",
+    "portusLink": "https://portus.puertos.es/?station=1514",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.657501220703125,
+      "lon": -4.415
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1514"
+  },
+  {
+    "Name": "Boya de Melilla",
+    "Xlink": "https://portus.puertos.es/?station=1560",
+    "portusLink": "https://portus.puertos.es/?station=1560",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 35.327,
+      "lon": -2.944
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1560"
+  },
+  {
+    "Name": "Boya Costera de Alicante",
+    "Xlink": "https://portus.puertos.es/?station=1616",
+    "portusLink": "https://portus.puertos.es/?station=1616",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 38.25,
+      "lon": -0.41
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1616"
+  },
+  {
+    "Name": "Boya Costera de Valencia II",
+    "Xlink": "https://portus.puertos.es/?station=1619",
+    "portusLink": "https://portus.puertos.es/?station=1619",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": -0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1619"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=1712",
+    "portusLink": "https://portus.puertos.es/?station=1712",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.07,
+      "lon": 1.19
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1712"
+  },
+  {
+    "Name": "Boya de Palamos",
+    "Xlink": "https://portus.puertos.es/?station=1718",
+    "portusLink": "https://portus.puertos.es/?station=1718",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.83,
+      "lon": 3.187
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1718"
+  },
+  {
+    "Name": "Boya de Barcelona II",
+    "Xlink": "https://portus.puertos.es/?station=1731",
+    "portusLink": "https://portus.puertos.es/?station=1731",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.32,
+      "lon": 2.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1731"
+  },
+  {
+    "Name": "Boya de Capdepera",
+    "Xlink": "https://portus.puertos.es/?station=1814",
+    "portusLink": "https://portus.puertos.es/?station=1814",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.651,
+      "lon": 3.485
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1814"
+  },
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "temperature",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "TEMPERATURE",
+        "desc": "TEMPERATURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "TEMPERATURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  },
+  {
+    "Name": "Boya de Pasajes",
+    "Xlink": "https://portus.puertos.es/?station=1102",
+    "portusLink": "https://portus.puertos.es/?station=1102",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.37,
+      "lon": -1.89
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1102"
+  },
+  {
+    "Name": "Boya Costera de Bilbao II",
+    "Xlink": "https://portus.puertos.es/?station=1103",
+    "portusLink": "https://portus.puertos.es/?station=1103",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.397,
+      "lon": -3.13
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1103"
+  },
+  {
+    "Name": "Boya Costera de Bilbao I",
+    "Xlink": "https://portus.puertos.es/?station=1113",
+    "portusLink": "https://portus.puertos.es/?station=1113",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.4,
+      "lon": -3.143
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1113"
+  },
+  {
+    "Name": "Boya de Gijon I",
+    "Xlink": "https://portus.puertos.es/?station=1115",
+    "portusLink": "https://portus.puertos.es/?station=1115",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.567,
+      "lon": -5.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1115"
+  },
+  {
+    "Name": "Boya Gijon II-Exterior",
+    "Xlink": "https://portus.puertos.es/?station=1116",
+    "portusLink": "https://portus.puertos.es/?station=1116",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.612,
+      "lon": -5.667
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1116"
+  },
+  {
+    "Name": "Boya de Gijon",
+    "Xlink": "https://portus.puertos.es/?station=1117",
+    "portusLink": "https://portus.puertos.es/?station=1117",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.615,
+      "lon": -5.664
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1117"
+  },
+  {
+    "Name": "Boya de La Coru\u00f1a",
+    "Xlink": "https://portus.puertos.es/?station=1213",
+    "portusLink": "https://portus.puertos.es/?station=1213",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.413,
+      "lon": -8.383
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1213"
+  },
+  {
+    "Name": "Boya Costera de Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=1218",
+    "portusLink": "https://portus.puertos.es/?station=1218",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.097,
+      "lon": -8.93
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1218"
+  },
+  {
+    "Name": "Boya Costera de Langosteira I",
+    "Xlink": "https://portus.puertos.es/?station=1236",
+    "portusLink": "https://portus.puertos.es/?station=1236",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.355,
+      "lon": -8.533
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1236"
+  },
+  {
+    "Name": "Boya de Langosteira II",
+    "Xlink": "https://portus.puertos.es/?station=1239",
+    "portusLink": "https://portus.puertos.es/?station=1239",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.34791564941406,
+      "lon": -8.5625
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1239"
+  },
+  {
+    "Name": "Boya de Sevilla",
+    "Xlink": "https://portus.puertos.es/?station=1314",
+    "portusLink": "https://portus.puertos.es/?station=1314",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.738,
+      "lon": -6.475
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1314"
+  },
+  {
+    "Name": "Boya Costera de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=1320",
+    "portusLink": "https://portus.puertos.es/?station=1320",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.5,
+      "lon": -6.33
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1320"
+  },
+  {
+    "Name": "Boya de Las Palmas Este",
+    "Xlink": "https://portus.puertos.es/?station=1414",
+    "portusLink": "https://portus.puertos.es/?station=1414",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.05,
+      "lon": -15.39
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1414"
+  },
+  {
+    "Name": "Boya de Las Palmas-Confital",
+    "Xlink": "https://portus.puertos.es/?station=1416",
+    "portusLink": "https://portus.puertos.es/?station=1416",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.138,
+      "lon": -15.455
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1416"
+  },
+  {
+    "Name": "Boya de Tenerife",
+    "Xlink": "https://portus.puertos.es/?station=1418",
+    "portusLink": "https://portus.puertos.es/?station=1418",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.455,
+      "lon": -16.248
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1418"
+  },
+  {
+    "Name": "Boya de Santa Cruz de Tenerife",
+    "Xlink": "https://portus.puertos.es/?station=1421",
+    "portusLink": "https://portus.puertos.es/?station=1421",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.46,
+      "lon": -16.23
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1421"
+  },
+  {
+    "Name": "Boya de Granadilla",
+    "Xlink": "https://portus.puertos.es/?station=1440",
+    "portusLink": "https://portus.puertos.es/?station=1440",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.09,
+      "lon": -16.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1440"
+  },
+  {
+    "Name": "Boya de Tarifa",
+    "Xlink": "https://portus.puertos.es/?station=1500",
+    "portusLink": "https://portus.puertos.es/?station=1500",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.0,
+      "lon": -5.59
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1500"
+  },
+  {
+    "Name": "Boya de Algeciras-Pta. Carnero",
+    "Xlink": "https://portus.puertos.es/?station=1504",
+    "portusLink": "https://portus.puertos.es/?station=1504",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.06624984741211,
+      "lon": -5.415830135345459
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1504"
+  },
+  {
+    "Name": "Boya de Algeciras-Campamento",
+    "Xlink": "https://portus.puertos.es/?station=1508",
+    "portusLink": "https://portus.puertos.es/?station=1508",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.161,
+      "lon": -5.388
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1508"
+  },
+  {
+    "Name": "Boya de Ceuta",
+    "Xlink": "https://portus.puertos.es/?station=1512",
+    "portusLink": "https://portus.puertos.es/?station=1512",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 35.903,
+      "lon": -5.33
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1512"
+  },
+  {
+    "Name": "Boya de M\u00e1laga",
+    "Xlink": "https://portus.puertos.es/?station=1514",
+    "portusLink": "https://portus.puertos.es/?station=1514",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.657501220703125,
+      "lon": -4.415
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1514"
+  },
+  {
+    "Name": "Boya Costera de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=1518",
+    "portusLink": "https://portus.puertos.es/?station=1518",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.713,
+      "lon": -2.203
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1518"
+  },
+  {
+    "Name": "Boya de Almer\u00eda",
+    "Xlink": "https://portus.puertos.es/?station=1537",
+    "portusLink": "https://portus.puertos.es/?station=1537",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.831,
+      "lon": -2.48
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1537"
+  },
+  {
+    "Name": "Boya de Melilla",
+    "Xlink": "https://portus.puertos.es/?station=1560",
+    "portusLink": "https://portus.puertos.es/?station=1560",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 35.327,
+      "lon": -2.944
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1560"
+  },
+  {
+    "Name": "Boya Costera de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=1613",
+    "portusLink": "https://portus.puertos.es/?station=1613",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.654,
+      "lon": -0.638
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1613"
+  },
+  {
+    "Name": "Boya de Alicante",
+    "Xlink": "https://portus.puertos.es/?station=1615",
+    "portusLink": "https://portus.puertos.es/?station=1615",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 38.25,
+      "lon": -0.417
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1615"
+  },
+  {
+    "Name": "Boya Costera de Alicante",
+    "Xlink": "https://portus.puertos.es/?station=1616",
+    "portusLink": "https://portus.puertos.es/?station=1616",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 38.25,
+      "lon": -0.41
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1616"
+  },
+  {
+    "Name": "Boya Costera de Valencia I",
+    "Xlink": "https://portus.puertos.es/?station=1617",
+    "portusLink": "https://portus.puertos.es/?station=1617",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.46,
+      "lon": -0.28
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1617"
+  },
+  {
+    "Name": "Boya Costera de Valencia II",
+    "Xlink": "https://portus.puertos.es/?station=1619",
+    "portusLink": "https://portus.puertos.es/?station=1619",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": -0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1619"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=1712",
+    "portusLink": "https://portus.puertos.es/?station=1712",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.07,
+      "lon": 1.19
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1712"
+  },
+  {
+    "Name": "Boya de Palamos",
+    "Xlink": "https://portus.puertos.es/?station=1718",
+    "portusLink": "https://portus.puertos.es/?station=1718",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.83,
+      "lon": 3.187
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1718"
+  },
+  {
+    "Name": "Boya Costera de Barcelona I",
+    "Xlink": "https://portus.puertos.es/?station=1720",
+    "portusLink": "https://portus.puertos.es/?station=1720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.29,
+      "lon": 2.15
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1720"
+  },
+  {
+    "Name": "Boya de Barcelona II",
+    "Xlink": "https://portus.puertos.es/?station=1731",
+    "portusLink": "https://portus.puertos.es/?station=1731",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.32,
+      "lon": 2.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1731"
+  },
+  {
+    "Name": "Boya de Capdepera",
+    "Xlink": "https://portus.puertos.es/?station=1814",
+    "portusLink": "https://portus.puertos.es/?station=1814",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.651,
+      "lon": 3.485
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1814"
+  },
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  },
+  {
+    "Name": "Boya de Ferrol 1",
+    "Xlink": "https://portus.puertos.es/?station=1231",
+    "portusLink": "https://portus.puertos.es/?station=1231",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.45545,
+      "lon": -8.32748
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1231"
+  },
+  {
+    "Name": "Boya de Ferrol 2",
+    "Xlink": "https://portus.puertos.es/?station=1232",
+    "portusLink": "https://portus.puertos.es/?station=1232",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.4486,
+      "lon": -8.319
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1232"
+  },
+  {
+    "Name": "Boya de Pasaia II",
+    "Xlink": "https://portus.puertos.es/?station=1101",
+    "portusLink": "https://portus.puertos.es/?station=1101",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wave",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WAVE",
+        "desc": "WAVE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WAVE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.362850189208984,
+      "lon": -1.8889000415802002
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1101"
+  },
+  {
+    "Name": "Boya de Langosteira II",
+    "Xlink": "https://portus.puertos.es/?station=1239",
+    "portusLink": "https://portus.puertos.es/?station=1239",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.34791564941406,
+      "lon": -8.5625
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1239"
+  },
+  {
+    "Name": "Boya de Algeciras-Pta. Carnero",
+    "Xlink": "https://portus.puertos.es/?station=1504",
+    "portusLink": "https://portus.puertos.es/?station=1504",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.06624984741211,
+      "lon": -5.415830135345459
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1504"
+  },
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "CURRENTS",
+        "desc": "CURRENTS",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "CURRENTS",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  },
+  {
+    "Name": "Boya de Langosteira II",
+    "Xlink": "https://portus.puertos.es/?station=1239",
+    "portusLink": "https://portus.puertos.es/?station=1239",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.34791564941406,
+      "lon": -8.5625
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1239"
+  },
+  {
+    "Name": "Boya de Algeciras-Pta. Carnero",
+    "Xlink": "https://portus.puertos.es/?station=1504",
+    "portusLink": "https://portus.puertos.es/?station=1504",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.06624984741211,
+      "lon": -5.415830135345459
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1504"
+  },
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "wind",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "WIND",
+        "desc": "WIND",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "WIND",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  },
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_presure",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_PRESURE",
+        "desc": "AIR_PRESURE",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_PRESURE",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  },
+  {
+    "Name": "Boya de Langosteira II",
+    "Xlink": "https://portus.puertos.es/?station=1239",
+    "portusLink": "https://portus.puertos.es/?station=1239",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.34791564941406,
+      "lon": -8.5625
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1239"
+  },
+  {
+    "Name": "Boya de Algeciras-Pta. Carnero",
+    "Xlink": "https://portus.puertos.es/?station=1504",
+    "portusLink": "https://portus.puertos.es/?station=1504",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.06624984741211,
+      "lon": -5.415830135345459
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=1504"
+  },
+  {
+    "Name": "Boya de Bilbao-Vizcaya",
+    "Xlink": "https://portus.puertos.es/?station=2136",
+    "portusLink": "https://portus.puertos.es/?station=2136",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.63,
+      "lon": -3.03
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2136"
+  },
+  {
+    "Name": "Boya de Cabo de Pe\u00f1as",
+    "Xlink": "https://portus.puertos.es/?station=2242",
+    "portusLink": "https://portus.puertos.es/?station=2242",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.75,
+      "lon": -6.18
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2242"
+  },
+  {
+    "Name": "Boya de Estaca de Bares",
+    "Xlink": "https://portus.puertos.es/?station=2244",
+    "portusLink": "https://portus.puertos.es/?station=2244",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 44.12,
+      "lon": -7.68
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2244"
+  },
+  {
+    "Name": "Boya de Villano-Sisargas",
+    "Xlink": "https://portus.puertos.es/?station=2246",
+    "portusLink": "https://portus.puertos.es/?station=2246",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 43.5,
+      "lon": -9.21
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2246"
+  },
+  {
+    "Name": "Boya de Cabo Silleiro",
+    "Xlink": "https://portus.puertos.es/?station=2248",
+    "portusLink": "https://portus.puertos.es/?station=2248",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 42.12,
+      "lon": -9.43
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2248"
+  },
+  {
+    "Name": "Boya de Golfo de C\u00e1diz",
+    "Xlink": "https://portus.puertos.es/?station=2342",
+    "portusLink": "https://portus.puertos.es/?station=2342",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.49,
+      "lon": -6.96
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2342"
+  },
+  {
+    "Name": "Boya de Gran Canaria",
+    "Xlink": "https://portus.puertos.es/?station=2442",
+    "portusLink": "https://portus.puertos.es/?station=2442",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.2,
+      "lon": -15.8
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2442"
+  },
+  {
+    "Name": "Boya de Tenerife Sur",
+    "Xlink": "https://portus.puertos.es/?station=2446",
+    "portusLink": "https://portus.puertos.es/?station=2446",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 28.0,
+      "lon": -16.61
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2446"
+  },
+  {
+    "Name": "Boya de Albor\u00e1n",
+    "Xlink": "https://portus.puertos.es/?station=2542",
+    "portusLink": "https://portus.puertos.es/?station=2542",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.267,
+      "lon": -5.033
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2542"
+  },
+  {
+    "Name": "Boya de Cabo de Gata",
+    "Xlink": "https://portus.puertos.es/?station=2548",
+    "portusLink": "https://portus.puertos.es/?station=2548",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 36.57,
+      "lon": -2.34
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2548"
+  },
+  {
+    "Name": "Boya de Cabo de Palos",
+    "Xlink": "https://portus.puertos.es/?station=2610",
+    "portusLink": "https://portus.puertos.es/?station=2610",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 37.65,
+      "lon": -0.31
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2610"
+  },
+  {
+    "Name": "Boya de Valencia",
+    "Xlink": "https://portus.puertos.es/?station=2630",
+    "portusLink": "https://portus.puertos.es/?station=2630",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.51,
+      "lon": 0.2
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2630"
+  },
+  {
+    "Name": "Boya de Tarragona",
+    "Xlink": "https://portus.puertos.es/?station=2720",
+    "portusLink": "https://portus.puertos.es/?station=2720",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 40.69,
+      "lon": 1.47
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2720"
+  },
+  {
+    "Name": "Boya de Cabo Begur",
+    "Xlink": "https://portus.puertos.es/?station=2798",
+    "portusLink": "https://portus.puertos.es/?station=2798",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 41.9,
+      "lon": 3.65
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2798"
+  },
+  {
+    "Name": "Boya de Dragonera",
+    "Xlink": "https://portus.puertos.es/?station=2820",
+    "portusLink": "https://portus.puertos.es/?station=2820",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.56330108642578,
+      "lon": 2.0966999530792236
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2820"
+  },
+  {
+    "Name": "Boya de Mah\u00f3n",
+    "Xlink": "https://portus.puertos.es/?station=2838",
+    "portusLink": "https://portus.puertos.es/?station=2838",
+    "categories": {
+      "dataType": "measure",
+      "variable": "air_temp",
+      "device": "buoy"
+    },
+    "variablesInfo": [
+      {
+        "name": "AIR_TEMP",
+        "desc": "AIR_TEMP",
+        "vocabulary_name": null,
+        "units": null,
+        "id": null,
+        "description": "AIR_TEMP",
+        "vocabularyName": null,
+        "vocabularyId": null
+      }
+    ],
+    "bounds": null,
+    "coords": {
+      "lat": 39.71,
+      "lon": 4.42
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "isPoint": true,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "https://portus.puertos.es/?station=2838"
+  }
+]

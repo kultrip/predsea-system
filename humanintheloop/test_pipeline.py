@@ -38,7 +38,7 @@ def test_step_observations_dry_run(monkeypatch):
 def test_step_build_snapshot_attaches_lineage():
     import route_analysis
 
-    route = route_analysis.load_route("palma_ibiza")
+    route = route_analysis.load_route("ibiza_palma")
     atmo_result = {
         "wind_result": {"available": True, "source": "ecmwf_open_data"},
         "wind_lineage": {"source": "ecmwf_open_data", "resolution_km": 9.0, "status": "active", "tier": 3},
@@ -66,7 +66,7 @@ def test_step_build_snapshot_attaches_lineage():
 def test_step_build_snapshot_attaches_portus_lineage():
     import route_analysis
 
-    route = route_analysis.load_route("palma_ibiza")
+    route = route_analysis.load_route("ibiza_palma")
     atmo_result = {
         "wind_result": {"available": True, "source": "ecmwf_open_data"},
         "wind_lineage": {"source": "ecmwf_open_data", "resolution_km": 9.0, "status": "active", "tier": 3},
@@ -99,10 +99,10 @@ def test_evidence_package_preserves_pipeline_lineage():
     import evidence_package
     import route_analysis
 
-    route = route_analysis.load_route("palma_ibiza")
+    route = route_analysis.load_route("ibiza_palma")
     snapshot = {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
         "created_at_utc": "2026-06-08 10:00 UTC",

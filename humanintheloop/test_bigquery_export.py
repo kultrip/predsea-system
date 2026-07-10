@@ -31,7 +31,7 @@ def write_validation_archive(tmp_path):
             "record_type": "forecast",
             "run_date": "2026-06-10",
             "run_id": "2026-06-10T0600Z",
-            "route_id": "palma_ibiza",
+            "route_id": "ibiza_palma",
             "route_name": "Palma -> Ibiza",
             "forecast_created_at_utc": "2026-06-10 06:00 UTC",
             "forecast_source_id": "copernicus",
@@ -76,7 +76,7 @@ def test_build_normalized_rows_combines_forecast_and_observation(tmp_path):
     assert observation["sample_time_utc"] == "2026-06-10T06:00:00Z"
     assert observation["source_family"] == "observation"
     assert observation["row_hash"]
-    assert forecast["route_id"] == "palma_ibiza"
+    assert forecast["route_id"] == "ibiza_palma"
     assert forecast["reference_station_id"] == "canal_de_ibiza"
     assert forecast["sample_time_utc"] == "2026-06-10T16:00:00Z"
     assert forecast["lead_time_hours"] == 10.0
@@ -97,7 +97,7 @@ def test_normalize_observation_row_filters_unknown_fields():
         "observed_at_utc": "2026-06-18 06:00 UTC",
         "freshness_status": "live",
         "quality_score": 0.92,
-        "nearest_routes": ["alcudia_ciutadella", "palma_barcelona"],
+        "nearest_routes": ["alcudia_ciutadella", "barcelona_palma"],
         "distance_to_route_nm": 2.3,
         "resolution_km": 4.2,
         "unexpected_column": "should be dropped",
@@ -108,7 +108,7 @@ def test_normalize_observation_row_filters_unknown_fields():
     assert "unexpected_column" not in normalized
     assert normalized["row_hash"]
     assert normalized["provider"] == "puertos_del_estado"
-    assert normalized["nearest_routes"] == ["alcudia_ciutadella", "palma_barcelona"]
+    assert normalized["nearest_routes"] == ["alcudia_ciutadella", "barcelona_palma"]
     assert normalized["source_family"] == "observation"
 
 
@@ -126,7 +126,7 @@ def test_normalize_rows_sanitize_non_finite_floats():
         "distance_to_route_nm": -math.inf,
     }
     forecast_row = {
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "route_name": "Palma -> Ibiza",
         "variable": "wave_height",
         "value": math.nan,
@@ -223,7 +223,7 @@ def test_normalize_station_metadata_row_filters_unknown_fields():
         "longitude": 2.33,
         "depth_m": 0.0,
         "variables_supported": ["wave_height", "wind_speed"],
-        "nearest_routes": ["palma_ibiza"],
+        "nearest_routes": ["ibiza_palma"],
         "distance_to_route_nm": 1.7,
         "freshness_status": "live",
         "resolution_km": 4.2,

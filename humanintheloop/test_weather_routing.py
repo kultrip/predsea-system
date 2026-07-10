@@ -20,7 +20,7 @@ def test_weather_router_basic_functions():
     assert 20.0 < dist < 40.0  # Approx distance
 
 
-def test_astar_weather_routing_palma_alcudia():
+def test_astar_weather_routing_alcudia_palma():
     router = AStarWeatherRouter()
     
     # Run route calculation

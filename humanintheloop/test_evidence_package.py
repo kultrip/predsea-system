@@ -9,7 +9,7 @@ from api.evidence_store import EvidenceStore
 def sample_snapshot():
     return {
         "route": "Palma -> Ibiza",
-        "route_id": "palma_ibiza",
+        "route_id": "ibiza_palma",
         "route_note": "Exposed SW Mallorca to Ibiza crossing.",
         "vessel_class": "medium",
         "vessel_profile": {"label": "15-24m", "manageable_m": 1.5, "restricted_m": 2.2},
@@ -77,7 +77,7 @@ def sample_snapshot():
 
 def sample_route():
     return {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "name": "Palma -> Ibiza",
         "route_note": "Exposed SW Mallorca to Ibiza crossing.",
         "origin": {"name": "Palma", "longitude": 2.6502, "latitude": 39.5696},
@@ -101,7 +101,7 @@ def test_build_route_evidence_package_has_decision_ready_structure():
     package = evidence_package.build_route_evidence_package(sample_snapshot(), sample_route())
 
     assert package["schema_version"] == "predsea.evidence.v1"
-    assert package["evidence_package_id"] == "palma_ibiza_20260531T063000Z"
+    assert package["evidence_package_id"] == "ibiza_palma_20260531T063000Z"
     assert package["data_lineage"] == {
         "wind_forecast": {
             "source": None,
@@ -120,7 +120,7 @@ def test_build_route_evidence_package_has_decision_ready_structure():
     }
     assert package["subject"] == {
         "type": "route",
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "name": "Palma -> Ibiza",
         "note": "Exposed SW Mallorca to Ibiza crossing.",
         "origin": {"name": "Palma", "longitude": 2.6502, "latitude": 39.5696},
@@ -175,15 +175,15 @@ def test_write_outputs_writes_evidence_json_beside_daily_snapshot(tmp_path):
 
     assert evidence_path.exists()
     package = json.loads(evidence_path.read_text(encoding="utf-8"))
-    assert package["subject"]["id"] == "palma_ibiza"
+    assert package["subject"]["id"] == "ibiza_palma"
     assert package["decision_context"]["forecast"]["wave_max_m"] == 0.8
 
 
 def test_evidence_store_prefers_evidence_decision_context_over_daily_snapshot(tmp_path):
-    route_dir = Path(tmp_path) / "2026-05-31" / "palma_ibiza"
+    route_dir = Path(tmp_path) / "2026-05-31" / "ibiza_palma"
     route_dir.mkdir(parents=True)
     (route_dir / "daily_snapshot.json").write_text(
-        json.dumps({"route_id": "palma_ibiza", "forecast": {"wave_max_m": 9.9}}),
+        json.dumps({"route_id": "ibiza_palma", "forecast": {"wave_max_m": 9.9}}),
         encoding="utf-8",
     )
     (route_dir / "evidence.json").write_text(
@@ -191,7 +191,7 @@ def test_evidence_store_prefers_evidence_decision_context_over_daily_snapshot(tm
             {
                 "schema_version": "predsea.evidence.v1",
                 "decision_context": {
-                    "route_id": "palma_ibiza",
+                    "route_id": "ibiza_palma",
                     "forecast": {"wave_max_m": 0.8},
                 },
             }
@@ -199,6 +199,6 @@ def test_evidence_store_prefers_evidence_decision_context_over_daily_snapshot(tm
         encoding="utf-8",
     )
 
-    snapshot = EvidenceStore(tmp_path).load_snapshot("palma_ibiza", "2026-05-31")
+    snapshot = EvidenceStore(tmp_path).load_snapshot("ibiza_palma", "2026-05-31")
 
     assert snapshot["forecast"]["wave_max_m"] == 0.8

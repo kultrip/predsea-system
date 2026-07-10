@@ -17,8 +17,8 @@ def test_daily_generator_writes_manifest_and_latest_run_pointer(tmp_path):
     run_dir = day_dir / "runs" / run_id
     run_dir.mkdir(parents=True)
 
-    generator.write_manifest(run_dir, "2026-05-31", run_id, ["palma_ibiza"], "medium")
-    generator.write_latest_run(day_dir, "2026-05-31", run_id, ["palma_ibiza"], "medium")
+    generator.write_manifest(run_dir, "2026-05-31", run_id, ["ibiza_palma"], "medium")
+    generator.write_latest_run(day_dir, "2026-05-31", run_id, ["ibiza_palma"], "medium")
 
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     latest = json.loads((day_dir / "latest_run.json").read_text(encoding="utf-8"))
@@ -47,7 +47,7 @@ def test_daily_generator_writes_validation_manifest_pointer(tmp_path):
         run_dir,
         "2026-05-31",
         run_id,
-        ["palma_ibiza"],
+        ["ibiza_palma"],
         "medium",
         validation=validation_entry,
     )
@@ -55,7 +55,7 @@ def test_daily_generator_writes_validation_manifest_pointer(tmp_path):
         day_dir,
         "2026-05-31",
         run_id,
-        ["palma_ibiza"],
+        ["ibiza_palma"],
         "medium",
         validation=validation_entry,
     )
@@ -73,14 +73,14 @@ def test_web_demo_exporter_uses_latest_run_folder(tmp_path):
     exporter = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "export_web_demo_bundle.py")
     run_id = "2026-05-31T0630Z"
     run_dir = tmp_path / "outputs" / "2026-05-31" / "runs" / run_id
-    route_dir = run_dir / "palma_ibiza"
+    route_dir = run_dir / "ibiza_palma"
     route_dir.mkdir(parents=True)
     (tmp_path / "outputs" / "2026-05-31" / "latest_run.json").write_text(
         json.dumps({"run_id": run_id, "path": f"runs/{run_id}"}),
         encoding="utf-8",
     )
     (run_dir / "run_manifest.json").write_text(
-        json.dumps({"run_date": "2026-05-31", "run_id": run_id, "routes": ["palma_ibiza"]}),
+        json.dumps({"run_date": "2026-05-31", "run_id": run_id, "routes": ["ibiza_palma"]}),
         encoding="utf-8",
     )
     for name in exporter.ROUTE_ARTIFACTS:
@@ -89,7 +89,7 @@ def test_web_demo_exporter_uses_latest_run_folder(tmp_path):
     result = exporter.export_web_demo_bundle(
         tmp_path / "outputs",
         tmp_path / "web-demo",
-        featured_route="palma_ibiza",
+        featured_route="ibiza_palma",
     )
 
     manifest = json.loads((tmp_path / "web-demo" / "demo_manifest.json").read_text(encoding="utf-8"))
@@ -446,7 +446,7 @@ def test_daily_generator_writes_place_weather_outputs(tmp_path, monkeypatch):
         output_root=tmp_path / "outputs",
         run_date="2026-06-12",
         run_id="2026-06-12T0750Z",
-        route_ids=["palma_ibiza"],
+        route_ids=["ibiza_palma"],
         skip_figures=True,
         skip_maps=True,
     )

@@ -14,17 +14,17 @@ def load_backfill_module():
 def test_backfill_builds_archive_from_snapshots_and_history():
     backfill = load_backfill_module()
     routes = {
-        "palma_ibiza": {
-            "id": "palma_ibiza",
+        "ibiza_palma": {
+            "id": "ibiza_palma",
             "name": "Palma -> Ibiza",
             "validation": {"truth_source": "canal_de_ibiza"},
             "current_validation": {"truth_source": None},
         }
     }
     snapshots = {
-        "palma_ibiza": {
+        "ibiza_palma": {
             "route": "Palma -> Ibiza",
-            "route_id": "palma_ibiza",
+            "route_id": "ibiza_palma",
             "created_at_utc": "2026-06-09 16:00 UTC",
             "forecast_source": {"id": "copernicus"},
             "data_lineage": {"ocean_forecast": {"source": "copernicus_med", "resolution_km": 4.0}},
@@ -49,7 +49,7 @@ def test_backfill_builds_archive_from_snapshots_and_history():
     historical_rows = [
         {
             "run_id": "2026-06-09T0800Z",
-            "route_id": "palma_ibiza",
+            "route_id": "ibiza_palma",
             "route_name": "Palma -> Ibiza",
             "truth_station_id": "canal_de_ibiza",
             "target_time_utc": "2026-06-09T16:00:00Z",
@@ -69,7 +69,7 @@ def test_backfill_builds_archive_from_snapshots_and_history():
         "2026-06-09T1600Z",
         routes,
         snapshots,
-        snapshots["palma_ibiza"]["observations"],
+        snapshots["ibiza_palma"]["observations"],
         historical_rows,
     )
 
@@ -82,7 +82,7 @@ def test_backfill_builds_archive_from_snapshots_and_history():
 
 def test_backfill_updates_manifest_payload_with_validation_entry():
     backfill = load_backfill_module()
-    manifest = {"run_id": "2026-06-09T1600Z", "routes": ["palma_ibiza"]}
+    manifest = {"run_id": "2026-06-09T1600Z", "routes": ["ibiza_palma"]}
     entry = {
         "path": "validation/validation_summary.json",
         "matched_rows": 2,
@@ -119,7 +119,7 @@ def test_backfill_threads_bigquery_settings_through_apply(monkeypatch):
             return ["2026-06-09T1600Z"]
 
         def list_route_ids(self, run_date, run_id):
-            return ["palma_ibiza"]
+            return ["ibiza_palma"]
 
         def load_snapshot(self, run_date, run_id, route_id):
             return {
@@ -165,8 +165,8 @@ def test_backfill_threads_bigquery_settings_through_apply(monkeypatch):
 
     def fake_load_routes():
         return {
-            "palma_ibiza": {
-                "id": "palma_ibiza",
+            "ibiza_palma": {
+                "id": "ibiza_palma",
                 "name": "Palma -> Ibiza",
                 "validation": {"truth_source": "canal_de_ibiza"},
                 "current_validation": {"truth_source": None},

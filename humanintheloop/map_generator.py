@@ -267,8 +267,8 @@ def render_matplotlib_map(waves_path, currents_path, route, snapshot, target_tim
     gl.top_labels = False
     gl.right_labels = False
     gl.line_style = (0, (3, 5))
-    gl.xlabel_style = {'size': 13, 'color': '#6b573b', 'weight': 'semibold'}
-    gl.ylabel_style = {'size': 13, 'color': '#6b573b', 'weight': 'semibold'}
+    gl.xlabel_style = {'size': 16, 'color': '#6b573b', 'weight': 'semibold'}
+    gl.ylabel_style = {'size': 16, 'color': '#6b573b', 'weight': 'semibold'}
 
     # 10. Draw route casing and route graded segments
     if lons and lats:
@@ -318,13 +318,13 @@ def render_matplotlib_map(waves_path, currents_path, route, snapshot, target_tim
         # 10.5 Draw labels with distinct colored backgrounds
         axis.text(
             lons[0] + 0.12, lats[0] + 0.05, route["origin"]["name"],
-            color="#ffffff", weight="bold", size=13,
+            color="#ffffff", weight="bold", size=18,
             bbox=dict(facecolor="#2e7d5b", edgecolor="#2f2a20", boxstyle="round,pad=0.3", linewidth=1.5),
             transform=ccrs.PlateCarree(), zorder=11
         )
         axis.text(
             lons[-1] + 0.12, lats[-1] + 0.05, route["destination"]["name"],
-            color="#ffffff", weight="bold", size=13,
+            color="#ffffff", weight="bold", size=18,
             bbox=dict(facecolor=dest_color, edgecolor="#2f2a20", boxstyle="round,pad=0.3", linewidth=1.5),
             transform=ccrs.PlateCarree(), zorder=11
         )
@@ -335,7 +335,7 @@ def render_matplotlib_map(waves_path, currents_path, route, snapshot, target_tim
 
     # 12. Save to PIL image
     buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=100, bbox_inches="tight", pad_inches=0, transparent=True)
+    plt.savefig(buf, format="png", dpi=100, pad_inches=0, transparent=True)
     plt.close(fig)
     buf.seek(0)
     return Image.open(buf), wave_loaded, currents_drawn
@@ -568,12 +568,20 @@ def severity_color(severity):
 
 
 def load_fonts():
+    import matplotlib
+    import os
+    font_dir = os.path.join(matplotlib.get_data_path(), "fonts", "ttf")
+    regular_path = os.path.join(font_dir, "DejaVuSans.ttf")
+    bold_path = os.path.join(font_dir, "DejaVuSans-Bold.ttf")
+
     regular_candidates = [
+        regular_path,
         "/System/Library/Fonts/Supplemental/Arial.ttf",
         "/Library/Fonts/Arial.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ]
     bold_candidates = [
+        bold_path,
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
         "/Library/Fonts/Arial Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",

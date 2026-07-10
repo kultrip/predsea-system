@@ -41,7 +41,7 @@ def post_warnings_active_endpoint(
     ),
 )
 def warnings_active_endpoint(
-    route: str | None = Query(default=None, description="Optional route id, e.g. palma_ibiza"),
+    route: str | None = Query(default=None, description="Optional route id, e.g. ibiza_palma"),
     place: str | None = Query(default=None, description="Optional place id, e.g. palma"),
     date: str | None = Query(default=None, description="Optional ISO date YYYY-MM-DD"),
     z_threshold: float = Query(default=1.5, ge=0.0),

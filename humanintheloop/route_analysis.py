@@ -6,7 +6,7 @@ from pathlib import Path
 from place_registry import coordinates_connection_metrics, default_place_id_for_query, place_pair_metrics
 
 
-DEFAULT_ROUTE_ID = "palma_ibiza"
+DEFAULT_ROUTE_ID = "ibiza_palma"
 ROUTES_PATH = Path(__file__).with_name("routes.json")
 MPS_TO_KNOTS = 1.94384
 VESSEL_PROFILES = {

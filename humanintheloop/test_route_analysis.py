@@ -3,7 +3,7 @@ import route_analysis
 
 def test_summarize_route_point_series_adds_operational_segments():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "origin": {"longitude": 2.65, "latitude": 39.57},
         "destination": {"longitude": 1.43, "latitude": 38.91},
         "sample_points": [
@@ -48,7 +48,7 @@ def test_summarize_route_point_series_adds_operational_segments():
 
 def test_summarize_route_point_series_adds_segment_hourly_evidence():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "origin": {"longitude": 2.65, "latitude": 39.57},
         "destination": {"longitude": 1.43, "latitude": 38.91},
         "sample_points": [
@@ -99,7 +99,7 @@ def test_summarize_route_point_series_adds_segment_hourly_evidence():
 
 def test_build_passage_evidence_samples_segments_by_eta():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
         "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
         "sample_points": [
@@ -157,7 +157,7 @@ def test_build_passage_evidence_samples_segments_by_eta():
 
 def test_build_passage_evidence_filters_passed_segments_from_current_position():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
         "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
         "sample_points": [
@@ -190,7 +190,7 @@ def test_build_passage_evidence_filters_passed_segments_from_current_position():
 
 def test_build_passage_evidence_marks_far_position_off_route_without_filtering():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
         "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
         "sample_points": [
@@ -272,7 +272,7 @@ def test_closest_hourly_sample_with_full_datetimes():
 
 def test_build_route_snapshot_embeds_passage_evidence_when_segments_exist():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "name": "Palma -> Ibiza",
         "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
         "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
@@ -306,7 +306,7 @@ def test_build_route_snapshot_embeds_passage_evidence_when_segments_exist():
 
 def test_build_passage_evidence_falls_back_to_segment_summary_without_hourly():
     route = {
-        "id": "palma_ibiza",
+        "id": "ibiza_palma",
         "origin": {"name": "Palma", "longitude": 2.65, "latitude": 39.57},
         "destination": {"name": "Ibiza", "longitude": 1.43, "latitude": 38.91},
         "sample_points": [

@@ -1,0 +1,536 @@
+[
+  {
+    "Name": "Delta del Ebro",
+    "Xlink": "/thredds/catalog/radar_local_deltaebro/catalog.xml",
+    "portusLink": null,
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "radar"
+    },
+    "variablesInfo": [
+      {
+        "name": "cov",
+        "desc": "Covariance",
+        "vocabulary_name": "Covariance",
+        "units": "m\u00b2/s\u00b2",
+        "id": null,
+        "description": "Covariance",
+        "vocabularyName": "Covariance",
+        "vocabularyId": null
+      },
+      {
+        "name": "sea_water_velocity",
+        "desc": "Sea Water Velocity",
+        "vocabulary_name": "Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Sea Water Velocity",
+        "vocabularyName": "Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdu",
+        "desc": "Standard Deviation U",
+        "vocabulary_name": "Standard Deviation U",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation U",
+        "vocabularyName": "Standard Deviation U",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdv",
+        "desc": "Standard Deviation V",
+        "vocabulary_name": "Standard Deviation V",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation V",
+        "vocabularyName": "Standard Deviation V",
+        "vocabularyId": null
+      },
+      {
+        "name": "u",
+        "desc": "Eastward Sea Water Velocity",
+        "vocabulary_name": "Eastward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Eastward Sea Water Velocity",
+        "vocabularyName": "Eastward Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "v",
+        "desc": "Northward Sea Water Velocity",
+        "vocabulary_name": "Northward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Northward Sea Water Velocity",
+        "vocabularyName": "Northward Sea Water Velocity",
+        "vocabularyId": null
+      }
+    ],
+    "bounds": [
+      {
+        "limN": 41.2330017,
+        "limS": 39.5849991,
+        "limE": 2.07800007,
+        "limW": 0.064000003,
+        "zoom": 8
+      }
+    ],
+    "coords": null,
+    "dateFrom": "2013-12-01T11:00:38.693+00:00",
+    "dateTo": "2026-07-01T11:00:38.272+00:00",
+    "isPoint": false,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "radar_local_deltaebro"
+  },
+  {
+    "Name": "Estrecho de Gibraltar",
+    "Xlink": "/thredds/catalog/radar_local_gibraltar/catalog.xml",
+    "portusLink": null,
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "radar"
+    },
+    "variablesInfo": [
+      {
+        "name": "cov",
+        "desc": "Covariance",
+        "vocabulary_name": "Covariance",
+        "units": "m\u00b2/s\u00b2",
+        "id": null,
+        "description": "Covariance",
+        "vocabularyName": "Covariance",
+        "vocabularyId": null
+      },
+      {
+        "name": "sea_water_velocity",
+        "desc": "Sea Water Velocity",
+        "vocabulary_name": "Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Sea Water Velocity",
+        "vocabularyName": "Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdu",
+        "desc": "Standard Deviation U",
+        "vocabulary_name": "Standard Deviation U",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation U",
+        "vocabularyName": "Standard Deviation U",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdv",
+        "desc": "Standard Deviation V",
+        "vocabulary_name": "Standard Deviation V",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation V",
+        "vocabularyName": "Standard Deviation V",
+        "vocabularyId": null
+      },
+      {
+        "name": "u",
+        "desc": "Eastward Sea Water Velocity",
+        "vocabulary_name": "Eastward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Eastward Sea Water Velocity",
+        "vocabularyName": "Eastward Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "v",
+        "desc": "Northward Sea Water Velocity",
+        "vocabulary_name": "Northward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Northward Sea Water Velocity",
+        "vocabularyName": "Northward Sea Water Velocity",
+        "vocabularyId": null
+      }
+    ],
+    "bounds": [
+      {
+        "limN": 36.1971016,
+        "limS": 35.800499,
+        "limE": -4.98859978,
+        "limW": -5.85370016,
+        "zoom": 10
+      }
+    ],
+    "coords": null,
+    "dateFrom": "2011-05-01T11:00:38.739+00:00",
+    "dateTo": "2026-07-01T11:00:38.693+00:00",
+    "isPoint": false,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "radar_local_gibraltar"
+  },
+  {
+    "Name": "NW_Iberian",
+    "Xlink": "/thredds/catalog/radar_local_galicia/catalog.xml",
+    "portusLink": null,
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "radar"
+    },
+    "variablesInfo": [
+      {
+        "name": "cov",
+        "desc": "Covariance",
+        "vocabulary_name": "Covariance",
+        "units": "m\u00b2/s\u00b2",
+        "id": null,
+        "description": "Covariance",
+        "vocabularyName": "Covariance",
+        "vocabularyId": null
+      },
+      {
+        "name": "sea_water_velocity",
+        "desc": "Sea Water Velocity",
+        "vocabulary_name": "Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Sea Water Velocity",
+        "vocabularyName": "Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdu",
+        "desc": "Standard Deviation U",
+        "vocabulary_name": "Standard Deviation U",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation U",
+        "vocabularyName": "Standard Deviation U",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdv",
+        "desc": "Standard Deviation V",
+        "vocabulary_name": "Standard Deviation V",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation V",
+        "vocabularyName": "Standard Deviation V",
+        "vocabularyId": null
+      },
+      {
+        "name": "u",
+        "desc": "Eastward Sea Water Velocity",
+        "vocabulary_name": "Eastward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Eastward Sea Water Velocity",
+        "vocabularyName": "Eastward Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "v",
+        "desc": "Northward Sea Water Velocity",
+        "vocabulary_name": "Northward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Northward Sea Water Velocity",
+        "vocabularyName": "Northward Sea Water Velocity",
+        "vocabularyId": null
+      }
+    ],
+    "bounds": [
+      {
+        "limN": 44.6757011,
+        "limS": 40.354599,
+        "limE": -7.9691,
+        "limW": -11.3275995,
+        "zoom": 7
+      }
+    ],
+    "coords": null,
+    "dateFrom": "2009-02-01T11:00:39.086+00:00",
+    "dateTo": "2026-07-01T11:00:38.739+00:00",
+    "isPoint": false,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "radar_local_galicia"
+  },
+  {
+    "Name": "Golfo de C\u00e1diz",
+    "Xlink": "/thredds/catalog/radar_local_huelva/catalog.xml",
+    "portusLink": null,
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "radar"
+    },
+    "variablesInfo": [
+      {
+        "name": "cov",
+        "desc": "Covariance",
+        "vocabulary_name": "Covariance",
+        "units": "m\u00b2/s\u00b2",
+        "id": null,
+        "description": "Covariance",
+        "vocabularyName": "Covariance",
+        "vocabularyId": null
+      },
+      {
+        "name": "sea_water_velocity",
+        "desc": "Sea Water Velocity",
+        "vocabulary_name": "Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Sea Water Velocity",
+        "vocabularyName": "Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdu",
+        "desc": "Standard Deviation U",
+        "vocabulary_name": "Standard Deviation U",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation U",
+        "vocabularyName": "Standard Deviation U",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdv",
+        "desc": "Standard Deviation V",
+        "vocabulary_name": "Standard Deviation V",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation V",
+        "vocabularyName": "Standard Deviation V",
+        "vocabularyId": null
+      },
+      {
+        "name": "u",
+        "desc": "Eastward Sea Water Velocity",
+        "vocabulary_name": "Eastward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Eastward Sea Water Velocity",
+        "vocabularyName": "Eastward Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "v",
+        "desc": "Northward Sea Water Velocity",
+        "vocabulary_name": "Northward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Northward Sea Water Velocity",
+        "vocabularyName": "Northward Sea Water Velocity",
+        "vocabularyId": null
+      }
+    ],
+    "bounds": [
+      {
+        "limN": 37.2140007,
+        "limS": 35.9799995,
+        "limE": -6.33500004,
+        "limW": -9.2869997,
+        "zoom": 8
+      }
+    ],
+    "coords": null,
+    "dateFrom": "2013-05-01T11:00:39.550+00:00",
+    "dateTo": "2026-07-01T11:00:39.086+00:00",
+    "isPoint": false,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "radar_local_huelva"
+  },
+  {
+    "Name": "Vigo",
+    "Xlink": "/thredds/catalog/radar_local_vigo/catalog.xml",
+    "portusLink": null,
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "radar"
+    },
+    "variablesInfo": [
+      {
+        "name": "cov",
+        "desc": "Covariance",
+        "vocabulary_name": "Covariance",
+        "units": "m\u00b2/s\u00b2",
+        "id": null,
+        "description": "Covariance",
+        "vocabularyName": "Covariance",
+        "vocabularyId": null
+      },
+      {
+        "name": "sea_water_velocity",
+        "desc": "Sea Water Velocity",
+        "vocabulary_name": "Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Sea Water Velocity",
+        "vocabularyName": "Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdu",
+        "desc": "Standard Deviation U",
+        "vocabulary_name": "Standard Deviation U",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation U",
+        "vocabularyName": "Standard Deviation U",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdv",
+        "desc": "Standard Deviation V",
+        "vocabulary_name": "Standard Deviation V",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation V",
+        "vocabularyName": "Standard Deviation V",
+        "vocabularyId": null
+      },
+      {
+        "name": "u",
+        "desc": "Eastward Sea Water Velocity",
+        "vocabulary_name": "Eastward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Eastward Sea Water Velocity",
+        "vocabularyName": "Eastward Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "v",
+        "desc": "Northward Sea Water Velocity",
+        "vocabulary_name": "Northward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Northward Sea Water Velocity",
+        "vocabularyName": "Northward Sea Water Velocity",
+        "vocabularyId": null
+      }
+    ],
+    "bounds": [
+      {
+        "limN": 42.2999992,
+        "limS": 42.1199989,
+        "limE": -8.69999981,
+        "limW": -9.0,
+        "zoom": 11
+      }
+    ],
+    "coords": null,
+    "dateFrom": "2016-03-01T11:00:39.550+00:00",
+    "dateTo": "2024-12-01T11:00:39.550+00:00",
+    "isPoint": false,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "radar_local_vigo"
+  },
+  {
+    "Name": "Canarias-PLOCAN",
+    "Xlink": "/thredds/catalog/radar_local_plocan/catalog.xml",
+    "portusLink": null,
+    "categories": {
+      "dataType": "measure",
+      "variable": "currents",
+      "device": "radar"
+    },
+    "variablesInfo": [
+      {
+        "name": "cov",
+        "desc": "Covariance",
+        "vocabulary_name": "Covariance",
+        "units": "m\u00b2/s\u00b2",
+        "id": null,
+        "description": "Covariance",
+        "vocabularyName": "Covariance",
+        "vocabularyId": null
+      },
+      {
+        "name": "sea_water_velocity",
+        "desc": "Sea Water Velocity",
+        "vocabulary_name": "Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Sea Water Velocity",
+        "vocabularyName": "Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdu",
+        "desc": "Standard Deviation U",
+        "vocabulary_name": "Standard Deviation U",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation U",
+        "vocabularyName": "Standard Deviation U",
+        "vocabularyId": null
+      },
+      {
+        "name": "stdv",
+        "desc": "Standard Deviation V",
+        "vocabulary_name": "Standard Deviation V",
+        "units": "m/s",
+        "id": null,
+        "description": "Standard Deviation V",
+        "vocabularyName": "Standard Deviation V",
+        "vocabularyId": null
+      },
+      {
+        "name": "u",
+        "desc": "Eastward Sea Water Velocity",
+        "vocabulary_name": "Eastward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Eastward Sea Water Velocity",
+        "vocabularyName": "Eastward Sea Water Velocity",
+        "vocabularyId": null
+      },
+      {
+        "name": "v",
+        "desc": "Northward Sea Water Velocity",
+        "vocabulary_name": "Northward Sea Water Velocity",
+        "units": "m/s",
+        "id": null,
+        "description": "Northward Sea Water Velocity",
+        "vocabularyName": "Northward Sea Water Velocity",
+        "vocabularyId": null
+      }
+    ],
+    "bounds": [
+      {
+        "limN": 28.3400002,
+        "limS": 27.8500004,
+        "limE": -14.8900003,
+        "limW": -15.4200001,
+        "zoom": 9
+      }
+    ],
+    "coords": null,
+    "dateFrom": "2018-04-01T11:00:39.551+00:00",
+    "dateTo": "2026-07-01T11:00:39.550+00:00",
+    "isPoint": false,
+    "availableMean": null,
+    "hourStep": 1,
+    "netcdf4": false,
+    "catalogRefID": "radar_local_plocan"
+  }
+]

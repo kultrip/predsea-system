@@ -8,17 +8,17 @@ import validation_archive
 def test_validation_archive_matches_observation_to_forecast(tmp_path):
     run_dir = tmp_path / "outputs" / "2026-06-09" / "runs" / "2026-06-09T1200Z"
     routes = {
-        "palma_ibiza": {
-            "id": "palma_ibiza",
+        "ibiza_palma": {
+            "id": "ibiza_palma",
             "name": "Palma -> Ibiza",
             "validation": {"truth_source": "canal_de_ibiza"},
             "current_validation": {"truth_source": None},
         }
     }
     snapshots = {
-        "palma_ibiza": {
+        "ibiza_palma": {
             "route": "Palma -> Ibiza",
-            "route_id": "palma_ibiza",
+            "route_id": "ibiza_palma",
             "created_at_utc": "2026-06-09 12:00 UTC",
             "forecast_source": {"id": "copernicus", "label": "Copernicus"},
             "data_lineage": {
@@ -66,7 +66,7 @@ def test_validation_archive_matches_observation_to_forecast(tmp_path):
     assert summary["station_metadata_rows"] == 1
     assert json.loads((run_dir / "validation" / "observation_samples.jsonl").read_text(encoding="utf-8").splitlines()[0])["source_family"] == "observation"
     assert json.loads((run_dir / "validation" / "forecast_index.jsonl").read_text(encoding="utf-8").splitlines()[0])["source_family"] == "ocean_forecast"
-    assert matched[0]["route_id"] == "palma_ibiza"
+    assert matched[0]["route_id"] == "ibiza_palma"
     assert matched[0]["truth_station_id"] == "canal_de_ibiza"
     assert matched[0]["variable"] == "wave_height"
     assert matched[0]["forecast_value"] == 0.9
@@ -86,7 +86,7 @@ def test_validation_archive_links_new_observation_to_earlier_forecast(tmp_path):
         [
             {
                 "run_id": "2026-06-09T0800Z",
-                "route_id": "palma_ibiza",
+                "route_id": "ibiza_palma",
                 "route_name": "Palma -> Ibiza",
                 "truth_station_id": "canal_de_ibiza",
                 "target_time_utc": "2026-06-09T16:00:00Z",
