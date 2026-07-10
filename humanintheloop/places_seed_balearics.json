@@ -1245,5 +1245,38 @@
       "Tyrrhenian Sea"
     ],
     "observation_candidates": []
+  },
+  {
+    "id": "tuscany",
+    "name": "Tuscany",
+    "latitude": 42.5,
+    "longitude": 10.5,
+    "type": "coastal_area",
+    "aliases": [
+      "Toscana",
+      "Tuscany Coast",
+      "Elba Island"
+    ],
+    "observation_candidates": [
+      "emodnet_6200200",
+      "emodnet_62243"
+    ]
+  },
+  {
+    "id": "lazio",
+    "name": "Lazio",
+    "latitude": 41.5,
+    "longitude": 12.3,
+    "type": "coastal_area",
+    "aliases": [
+      "Latium",
+      "Lazio Coast",
+      "Civitavecchia",
+      "Ostia"
+    ],
+    "observation_candidates": [
+      "emodnet_6200201",
+      "emodnet_62244"
+    ]
   }
 ]

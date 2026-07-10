@@ -145,5 +145,14 @@
   "bonifacio strait": "bonifacio_strait",
   "tyrrhenian sea": "tyrrhenian_sea",
   "eze-sur-mer": "eze",
-  "èze-sur-mer": "eze"
+  "èze-sur-mer": "eze",
+  "tuscany": "tuscany",
+  "toscana": "tuscany",
+  "tuscany coast": "tuscany",
+  "elba island": "tuscany",
+  "lazio": "lazio",
+  "latium": "lazio",
+  "lazio coast": "lazio",
+  "civitavecchia": "lazio",
+  "ostia": "lazio"
 }
