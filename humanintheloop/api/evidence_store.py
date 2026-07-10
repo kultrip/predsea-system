@@ -1,7 +1,19 @@
 import json
 import os
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
+
+def current_local_date(timezone_name: str = "Europe/Madrid") -> str:
+    try:
+        if ZoneInfo:
+            return datetime.now(ZoneInfo(timezone_name)).date().isoformat()
+    except Exception:
+        pass
+    return datetime.now(timezone.utc).date().isoformat()
 
 import evidence_package
 
@@ -30,7 +42,7 @@ class EvidenceStore:
         )
 
     def latest_date(self):
-        dates = self.available_dates()
+        dates = [d for d in self.available_dates() if d <= current_local_date()]
         if not dates:
             raise EvidenceNotFoundError(f"No prediction dates found in {self.predictions_root}")
         return dates[-1]
@@ -197,7 +209,7 @@ class GcsEvidenceStore:
         return []
 
     def latest_date(self):
-        dates = self.available_dates()
+        dates = [d for d in self.available_dates() if d <= current_local_date()]
         if not dates:
             raise EvidenceNotFoundError(f"No prediction dates found in gs://{self.bucket_name}/{self.prefix}")
         return dates[-1]

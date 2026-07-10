@@ -1254,6 +1254,88 @@ def save_artifact_to_store(store, route_id: str, artifact_name: str, run_date: s
     logger.info("Successfully cached on-demand map to local filesystem: %s", local_path)
 
 
+def ensure_forecast_files_fresh(target_date_str: str) -> None:
+    """
+    Ensure the local forecast NC files cover the requested target date.
+    If not, dynamically pull from GCS or subset live from Copernicus Marine.
+    """
+    try:
+        from pathlib import Path
+        import xarray as xr
+        import pandas as pd
+        import os
+        from api.weather_routing import AStarWeatherRouter
+        import fetch_data
+        
+        base_dir = Path(__file__).resolve().parent.parent / "mvp_data"
+        waves_path = base_dir / "balearic_waves.nc"
+        currents_path = base_dir / "balearic_currents.nc"
+        
+        needs_download = False
+        if not waves_path.exists() or not currents_path.exists():
+            needs_download = True
+            logger.info("Forecast NC files do not exist locally. Triggering download.")
+        else:
+            try:
+                target_dt = pd.to_datetime(target_date_str).date()
+                with xr.open_dataset(waves_path) as ds_waves:
+                    waves_dates = pd.to_datetime(ds_waves["time"].values).date
+                    if target_dt not in waves_dates:
+                        needs_download = True
+                        logger.info("Target date %s is not covered by local waves NC file. Triggering update.", target_date_str)
+            except Exception as e:
+                needs_download = True
+                logger.warning("Error checking local NC files coverage for %s: %s. Triggering fallback update.", target_date_str, e)
+                
+        if needs_download:
+            # 1. Try fast download of latest forecast files from GCS
+            logger.info("Attempting fast download of latest forecast NC files from GCS...")
+            try:
+                from google.cloud import storage
+                bucket_name = os.environ.get("PREDSEA_GCS_BUCKET", "predsea-daily-outputs")
+                client = storage.Client()
+                bucket = client.bucket(bucket_name)
+                
+                waves_blob = bucket.blob("copernicus/waves_latest.nc")
+                currents_blob = bucket.blob("copernicus/currents_latest.nc")
+                
+                # Ensure local parent directory exists
+                waves_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                # Check if they exist on GCS first
+                if waves_blob.exists() and currents_blob.exists():
+                    logger.info("Found latest forecast NC files on GCS. Downloading...")
+                    waves_blob.download_to_filename(str(waves_path))
+                    currents_blob.download_to_filename(str(currents_path))
+                    logger.info("Successfully downloaded latest forecast NC files from GCS.")
+                    
+                    # Verify if GCS files covered target_date
+                    with xr.open_dataset(waves_path) as ds_waves:
+                        waves_dates = pd.to_datetime(ds_waves["time"].values).date
+                        if pd.to_datetime(target_date_str).date() in waves_dates:
+                            logger.info("Target date %s is covered by downloaded GCS forecast. Reloading router cache.", target_date_str)
+                            AStarWeatherRouter.clear_cache()
+                            return
+                        else:
+                            logger.info("Target date %s is NOT covered by downloaded GCS forecast. Falling back to Copernicus Marine live subsetting.", target_date_str)
+                else:
+                    logger.info("Latest forecast NC files not found at expected GCS location.")
+            except Exception as e:
+                logger.warning("Failed to download or verify forecast files from GCS: %s", e)
+                
+            # 2. Fallback to Copernicus Marine live subsetting (may take 1-2 minutes)
+            try:
+                logger.info("Triggering live Copernicus Marine subsetting download...")
+                fetch_data.get_balearic_forecast(dry_run=False)
+                logger.info("Successfully fetched latest forecast files from Copernicus Marine.")
+                AStarWeatherRouter.clear_cache()
+            except Exception as e:
+                logger.error("Live Copernicus Marine subsetting failed: %s", e)
+                
+    except Exception as e:
+        logger.exception("Unhandled error in ensure_forecast_files_fresh: %s", e)
+
+
 def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, store, target_date: str | None = None) -> bytes:
     import tempfile
     import xarray as xr
@@ -1266,6 +1348,8 @@ def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, sto
     route = route_analysis.load_route(route_id)
     
     # 2. Resolve waves and currents paths
+    if os.getenv("PREDSEA_AUTO_DOWNLOAD", "false").lower() == "true":
+        ensure_forecast_files_fresh(target_date or run_date)
     paths = fetch_data.resolve_forecast_output_paths(fetch_data.OUTPUT_DIR)
     waves_path = Path(paths["waves_path"])
     currents_path = Path(paths["currents_path"])
@@ -1999,6 +2083,9 @@ def create_app(evidence_store=None, route_store=None):
         max_wave_height_tolerance_m: float | None = Query(None, ge=0.5, description="Max wave height tolerance"),
     ):
         try:
+            from api.evidence_store import current_local_date
+            if os.getenv("PREDSEA_AUTO_DOWNLOAD", "false").lower() == "true":
+                ensure_forecast_files_fresh(date or current_local_date())
             refresh_route_store(route_store)
             try:
                 run_date = store.resolve_date(date)
@@ -2219,6 +2306,10 @@ def create_app(evidence_store=None, route_store=None):
             raise HTTPException(status_code=404, detail=f"Artifact '{artifact_name}' is not public")
 
         try:
+            import re
+            if date is None and run is not None and re.match(r"^\d{4}-\d{2}-\d{2}$", run):
+                date = run
+                run = None
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
         except Exception as error:
@@ -2318,6 +2409,10 @@ def create_app(evidence_store=None, route_store=None):
         time: str | None = None,
     ):
         try:
+            import re
+            if date is None and run is not None and re.match(r"^\d{4}-\d{2}-\d{2}$", run):
+                date = run
+                run = None
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             index = store.load_map_index(variable, run_date, run_id)
@@ -2356,6 +2451,10 @@ def create_app(evidence_store=None, route_store=None):
         if variable not in MAP_VARIABLES or "/" in filename:
             raise HTTPException(status_code=404, detail="Map overlay not found")
         try:
+            import re
+            if date is None and run is not None and re.match(r"^\d{4}-\d{2}-\d{2}$", run):
+                date = run
+                run = None
             run_date = store.resolve_date(date)
             run_id = store.resolve_run(run_date, run)
             content = store.load_map_overlay(variable, filename, run_date, run_id)
