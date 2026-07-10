@@ -477,7 +477,7 @@
     "id": "marseille",
     "name": "Marseille",
     "type": "main_port",
-    "latitude": 43.30,
+    "latitude": 43.3,
     "longitude": 5.37,
     "parent_place_id": null,
     "children": [],
@@ -558,7 +558,7 @@
     "id": "montpellier",
     "name": "Montpellier (Sète)",
     "type": "main_port",
-    "latitude": 43.40,
+    "latitude": 43.4,
     "longitude": 3.69,
     "parent_place_id": null,
     "children": [],
@@ -638,6 +638,612 @@
       "emodnet_monaco",
       "emodnet_st_tropez"
     ]
+  },
+  {
+    "id": "gibraltar",
+    "name": "Gibraltar",
+    "type": "main_port",
+    "latitude": 36.1408,
+    "longitude": -5.3536,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Gibraltar",
+      "The Rock"
+    ],
+    "observation_candidates": [
+      "puertos_gibraltar",
+      "gibraltar"
+    ]
+  },
+  {
+    "id": "sotogrande",
+    "name": "Sotogrande",
+    "type": "sub_port",
+    "latitude": 36.2898,
+    "longitude": -5.2764,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Puerto Sotogrande"
+    ],
+    "observation_candidates": [
+      "puertos_sotogrande",
+      "sotogrande"
+    ]
+  },
+  {
+    "id": "marbella",
+    "name": "Marbella",
+    "type": "main_place",
+    "latitude": 36.507,
+    "longitude": -4.8856,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Marbella"
+    ],
+    "observation_candidates": [
+      "puertos_marbella",
+      "marbella"
+    ]
+  },
+  {
+    "id": "puerto_banus",
+    "name": "Puerto Banús",
+    "type": "main_port",
+    "latitude": 36.4868,
+    "longitude": -4.953,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Puerto Banus",
+      "Banus"
+    ],
+    "observation_candidates": [
+      "puertos_puerto_banus",
+      "puerto_banus"
+    ]
+  },
+  {
+    "id": "malaga",
+    "name": "Málaga",
+    "type": "main_port",
+    "latitude": 36.7196,
+    "longitude": -4.42,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Malaga"
+    ],
+    "observation_candidates": [
+      "puertos_malaga",
+      "malaga"
+    ]
+  },
+  {
+    "id": "almeria",
+    "name": "Almería",
+    "type": "main_port",
+    "latitude": 36.834,
+    "longitude": -2.4637,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Almeria"
+    ],
+    "observation_candidates": [
+      "puertos_almeria",
+      "almeria"
+    ]
+  },
+  {
+    "id": "cartagena",
+    "name": "Cartagena",
+    "type": "main_port",
+    "latitude": 37.6,
+    "longitude": -0.987,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Cartagena"
+    ],
+    "observation_candidates": [
+      "puertos_cartagena",
+      "cartagena"
+    ]
+  },
+  {
+    "id": "alicante",
+    "name": "Alicante",
+    "type": "main_port",
+    "latitude": 38.3452,
+    "longitude": -0.481,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Alicante"
+    ],
+    "observation_candidates": [
+      "puertos_alicante",
+      "alicante"
+    ]
+  },
+  {
+    "id": "denia",
+    "name": "Dénia",
+    "type": "main_port",
+    "latitude": 38.84,
+    "longitude": 0.105,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Denia"
+    ],
+    "observation_candidates": [
+      "puertos_denia",
+      "denia"
+    ]
+  },
+  {
+    "id": "port_vell",
+    "name": "Port Vell",
+    "type": "sub_port",
+    "latitude": 41.3766,
+    "longitude": 2.1828,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Marina Port Vell"
+    ],
+    "observation_candidates": [
+      "puertos_port_vell",
+      "port_vell"
+    ]
+  },
+  {
+    "id": "roses",
+    "name": "Roses",
+    "type": "main_port",
+    "latitude": 42.262,
+    "longitude": 3.174,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Roses"
+    ],
+    "observation_candidates": [
+      "puertos_roses",
+      "roses"
+    ]
+  },
+  {
+    "id": "cala_dor",
+    "name": "Cala d'Or",
+    "type": "sub_port",
+    "latitude": 39.378,
+    "longitude": 3.231,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "Cala Dor"
+    ],
+    "observation_candidates": [
+      "puertos_cala_dor",
+      "cala_dor"
+    ]
+  },
+  {
+    "id": "porto_cristo",
+    "name": "Porto Cristo",
+    "type": "main_port",
+    "latitude": 39.5397,
+    "longitude": 3.3338,
+    "parent_place_id": "palma",
+    "children": [],
+    "aliases": [
+      "Porto Cristo"
+    ],
+    "observation_candidates": [
+      "puertos_porto_cristo",
+      "porto_cristo"
+    ]
+  },
+  {
+    "id": "santa_eularia",
+    "name": "Santa Eulària",
+    "type": "main_port",
+    "latitude": 38.9847,
+    "longitude": 1.534,
+    "parent_place_id": "ibiza",
+    "children": [],
+    "aliases": [
+      "Santa Eularia"
+    ],
+    "observation_candidates": [
+      "puertos_santa_eularia",
+      "santa_eularia"
+    ]
+  },
+  {
+    "id": "la_ciotat",
+    "name": "La Ciotat",
+    "type": "main_port",
+    "latitude": 43.1745,
+    "longitude": 5.605,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "La Ciotat"
+    ],
+    "observation_candidates": [
+      "emodnet_la_ciotat",
+      "la_ciotat"
+    ]
+  },
+  {
+    "id": "cannes",
+    "name": "Cannes",
+    "type": "main_port",
+    "latitude": 43.5513,
+    "longitude": 7.0128,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Cannes"
+    ],
+    "observation_candidates": [
+      "emodnet_cannes",
+      "cannes"
+    ]
+  },
+  {
+    "id": "antibes",
+    "name": "Antibes",
+    "type": "main_port",
+    "latitude": 43.5804,
+    "longitude": 7.1251,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Port Vauban"
+    ],
+    "observation_candidates": [
+      "emodnet_antibes",
+      "antibes"
+    ]
+  },
+  {
+    "id": "nice",
+    "name": "Nice",
+    "type": "main_port",
+    "latitude": 43.695,
+    "longitude": 7.285,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Nice"
+    ],
+    "observation_candidates": [
+      "emodnet_nice",
+      "nice"
+    ]
+  },
+  {
+    "id": "villefranche_sur_mer",
+    "name": "Villefranche-sur-Mer",
+    "type": "sub_port",
+    "latitude": 43.7038,
+    "longitude": 7.3118,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Villefranche"
+    ],
+    "observation_candidates": [
+      "emodnet_villefranche_sur_mer",
+      "villefranche_sur_mer"
+    ]
+  },
+  {
+    "id": "eze",
+    "name": "Èze",
+    "type": "main_place",
+    "latitude": 43.727,
+    "longitude": 7.361,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Eze",
+      "Èze Village",
+      "Eze-sur-Mer",
+      "Èze-sur-Mer",
+      "eze-sur-mer",
+      "èze-sur-mer"
+    ],
+    "observation_candidates": [
+      "emodnet_eze",
+      "eze"
+    ]
+  },
+  {
+    "id": "ajaccio",
+    "name": "Ajaccio",
+    "type": "main_port",
+    "latitude": 41.9192,
+    "longitude": 8.7386,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Ajaccio"
+    ],
+    "observation_candidates": [
+      "emodnet_ajaccio",
+      "ajaccio"
+    ]
+  },
+  {
+    "id": "bonifacio",
+    "name": "Bonifacio",
+    "type": "main_port",
+    "latitude": 41.387,
+    "longitude": 9.159,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Bonifacio"
+    ],
+    "observation_candidates": [
+      "emodnet_bonifacio",
+      "bonifacio"
+    ]
+  },
+  {
+    "id": "porto_vecchio",
+    "name": "Porto Vecchio",
+    "type": "main_port",
+    "latitude": 41.591,
+    "longitude": 9.279,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Porto Vecchio"
+    ],
+    "observation_candidates": [
+      "emodnet_porto_vecchio",
+      "porto_vecchio"
+    ]
+  },
+  {
+    "id": "bastia",
+    "name": "Bastia",
+    "type": "main_port",
+    "latitude": 42.6973,
+    "longitude": 9.4509,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Bastia"
+    ],
+    "observation_candidates": [
+      "emodnet_bastia",
+      "bastia"
+    ]
+  },
+  {
+    "id": "calvi",
+    "name": "Calvi",
+    "type": "main_port",
+    "latitude": 42.5675,
+    "longitude": 8.757,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Calvi"
+    ],
+    "observation_candidates": [
+      "emodnet_calvi",
+      "calvi"
+    ]
+  },
+  {
+    "id": "arbatax",
+    "name": "Arbatax",
+    "type": "main_port",
+    "latitude": 39.94,
+    "longitude": 9.705,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Arbatax"
+    ],
+    "observation_candidates": [
+      "emodnet_arbatax",
+      "arbatax"
+    ]
+  },
+  {
+    "id": "olbia",
+    "name": "Olbia",
+    "type": "main_port",
+    "latitude": 40.923,
+    "longitude": 9.503,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Olbia"
+    ],
+    "observation_candidates": [
+      "emodnet_olbia",
+      "olbia"
+    ]
+  },
+  {
+    "id": "porto_rotondo",
+    "name": "Porto Rotondo",
+    "type": "main_port",
+    "latitude": 41.026,
+    "longitude": 9.538,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Porto Rotondo"
+    ],
+    "observation_candidates": [
+      "emodnet_porto_rotondo",
+      "porto_rotondo"
+    ]
+  },
+  {
+    "id": "porto_cervo",
+    "name": "Porto Cervo",
+    "type": "main_port",
+    "latitude": 41.137,
+    "longitude": 9.531,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Porto Cervo"
+    ],
+    "observation_candidates": [
+      "emodnet_porto_cervo",
+      "porto_cervo"
+    ]
+  },
+  {
+    "id": "santa_teresa_gallura",
+    "name": "Santa Teresa Gallura",
+    "type": "main_port",
+    "latitude": 41.242,
+    "longitude": 9.188,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Santa Teresa Gallura"
+    ],
+    "observation_candidates": [
+      "emodnet_santa_teresa_gallura",
+      "santa_teresa_gallura"
+    ]
+  },
+  {
+    "id": "alghero",
+    "name": "Alghero",
+    "type": "main_port",
+    "latitude": 40.558,
+    "longitude": 8.318,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Alghero"
+    ],
+    "observation_candidates": [
+      "emodnet_alghero",
+      "alghero"
+    ]
+  },
+  {
+    "id": "western_mediterranean",
+    "name": "Western Mediterranean",
+    "type": "coastal_area",
+    "latitude": 38.0,
+    "longitude": 4.0,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Western Mediterranean"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "balearic_sea",
+    "name": "Balearic Sea",
+    "type": "coastal_area",
+    "latitude": 39.5,
+    "longitude": 1.5,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Balearic Sea"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "gulf_of_lion",
+    "name": "Gulf of Lion",
+    "type": "coastal_area",
+    "latitude": 42.5,
+    "longitude": 4.0,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Gulf of Lion"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "costa_brava",
+    "name": "Costa Brava",
+    "type": "coastal_area",
+    "latitude": 42.0,
+    "longitude": 3.3,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Costa Brava"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "french_riviera",
+    "name": "French Riviera",
+    "type": "coastal_area",
+    "latitude": 43.4,
+    "longitude": 7.2,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "French Riviera"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "ligurian_sea",
+    "name": "Ligurian Sea",
+    "type": "coastal_area",
+    "latitude": 43.5,
+    "longitude": 9.0,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Ligurian Sea"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "bonifacio_strait",
+    "name": "Bonifacio Strait",
+    "type": "coastal_area",
+    "latitude": 41.33,
+    "longitude": 9.2,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Bonifacio Strait"
+    ],
+    "observation_candidates": []
+  },
+  {
+    "id": "tyrrhenian_sea",
+    "name": "Tyrrhenian Sea",
+    "type": "coastal_area",
+    "latitude": 40.0,
+    "longitude": 11.5,
+    "parent_place_id": null,
+    "children": [],
+    "aliases": [
+      "Tyrrhenian Sea"
+    ],
+    "observation_candidates": []
   }
 ]
-

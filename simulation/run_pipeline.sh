@@ -61,8 +61,8 @@ python3 /opt/predsea/setup_domain.py \
 cp "${PREDSEA_BIN}/real.exe" .
 cp "${PREDSEA_BIN}/wrf.exe" .
 
-mpirun --allow-run-as-root -np "${MPI_PROCS}" "${PREDSEA_BIN}/real.exe"
-mpirun --allow-run-as-root -np "${MPI_PROCS}" "${PREDSEA_BIN}/wrf.exe"
+mpirun --oversubscribe --allow-run-as-root -np "${MPI_PROCS}" "${PREDSEA_BIN}/real.exe"
+mpirun --oversubscribe --allow-run-as-root -np "${MPI_PROCS}" "${PREDSEA_BIN}/wrf.exe"
 
 echo "WRF output files:"
 ls -1 wrfout_d0*

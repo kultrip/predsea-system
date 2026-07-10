@@ -147,7 +147,7 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
         r"(\be_sn\s*=)[^!\n/]+": f"\\1 {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn}, {domain.d04_e_sn}, {domain.d05_e_sn}, {domain.d06_e_sn}, {domain.d07_e_sn},",
         r"(\be_vert\s*=)[^!\n/]+": f"\\1 45, 45, 45, 45, 45, 45, 45,",
         r"(\bnum_metgrid_levels\s*=)[^!\n/]+": f"\\1 13,",
-        r"(\bnum_metgrid_soil_levels\s*=)[^!\n/]+": f"\\1 0,",
+        r"(\bnum_metgrid_soil_levels\s*=)[^!\n/]+": f"\\1 4,",
         r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9},",
         r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9},",
         r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 1, 2, 3, 4, 5, 6, 7,",
