@@ -1254,7 +1254,7 @@ def save_artifact_to_store(store, route_id: str, artifact_name: str, run_date: s
     logger.info("Successfully cached on-demand map to local filesystem: %s", local_path)
 
 
-def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, store) -> bytes:
+def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, store, target_date: str | None = None) -> bytes:
     import tempfile
     import xarray as xr
     import pandas as pd
@@ -1272,20 +1272,20 @@ def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, sto
     
     # 3. Slice NetCDF datasets for the target date
     with xr.open_dataset(waves_path) as waves, xr.open_dataset(currents_path) as currents:
-        target_date = pd.to_datetime(run_date).date()
+        target_dt = pd.to_datetime(target_date or run_date).date()
         
         # Check if target date exists in the datasets
         waves_dates = pd.to_datetime(waves["time"].values).date
         currents_dates = pd.to_datetime(currents["time"].values).date
         
-        waves_mask = waves_dates == target_date
-        currents_mask = currents_dates == target_date
+        waves_mask = waves_dates == target_dt
+        currents_mask = currents_dates == target_dt
         
         if not waves_mask.any() or not currents_mask.any():
             logger.warning(
                 "Requested date %s not found in forecast datasets. "
                 "Generating map using entire available forecast dataset.",
-                run_date
+                target_date or run_date
             )
             waves_sliced = waves
             currents_sliced = currents
@@ -1339,9 +1339,10 @@ def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, sto
             
             content = tmp_map_path.read_bytes()
             
-            # 8. Cache/Save the generated artifact to the store
+            # 8. Cache/Save the generated artifact to the store using target_date
+            cache_run_date = target_date or run_date
             try:
-                save_artifact_to_store(store, route_id, "route_decision_map.png", run_date, run_id, content)
+                save_artifact_to_store(store, route_id, "route_decision_map.png", cache_run_date, run_id, content)
             except Exception as cache_err:
                 logger.warning("Failed to cache generated map to store: %s", cache_err)
                 
@@ -2222,6 +2223,17 @@ def create_app(evidence_store=None, route_store=None):
             run_id = store.resolve_run(run_date, run)
         except Exception as error:
             if error.__class__.__name__ == "EvidenceNotFoundError":
+                if artifact_name == "route_decision_map.png" and date is not None:
+                    try:
+                        latest_run_date = store.resolve_date(None)
+                        latest_run_id = store.resolve_run(latest_run_date, None)
+                        logger.info("Artifact 'route_decision_map.png' future date fallback: requested '%s', using latest run date '%s'.", date, latest_run_date)
+                        content = generate_on_demand_map(route_id, latest_run_date, latest_run_id, store, target_date=date)
+                        headers = {"Cache-Control": "public, max-age=300"}
+                        return Response(content=content, media_type=media_type, headers=headers)
+                    except Exception as gen_err:
+                        logger.exception("Failed to generate 'route_decision_map.png' for future date on-demand: %s", gen_err)
+                        raise HTTPException(status_code=500, detail=f"On-demand future map generation failed: {gen_err}") from gen_err
                 raise HTTPException(status_code=404, detail=str(error)) from error
             raise
 
@@ -2252,8 +2264,17 @@ def create_app(evidence_store=None, route_store=None):
         expires_minutes: int = Query(30, ge=1, le=1440),
     ):
         try:
-            run_date = store.resolve_date(date)
-            run_id = store.resolve_run(run_date, run)
+            try:
+                run_date = store.resolve_date(date)
+                run_id = store.resolve_run(run_date, run)
+            except Exception as error:
+                if error.__class__.__name__ == "EvidenceNotFoundError" and date is not None:
+                    latest_run_date = store.resolve_date(None)
+                    latest_run_id = store.resolve_run(latest_run_date, None)
+                    run_date = date
+                    run_id = latest_run_id
+                else:
+                    raise
             artifacts = {}
             base_url = public_base_url(request)
             for artifact_name in PUBLIC_MEDIA_ARTIFACTS:
