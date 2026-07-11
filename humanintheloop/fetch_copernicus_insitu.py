@@ -3,6 +3,34 @@ import sys
 from datetime import datetime, timezone, timedelta
 import pandas as pd
 import copernicusmarine
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+
+def is_retryable_error(exception):
+    """Check if the error is a transient network or SSL issue."""
+    msg = str(exception).lower()
+    return any(marker in msg for marker in [
+        "ssl", "connection", "timeout", "eof", "503", "502", "504", "429"
+    ])
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=20),
+    retry=retry_if_exception(is_retryable_error),
+    reraise=True
+)
+def _read_copernicus_dataframe(dataset_id, variables, lon_min, lon_max, lat_min, lat_max, start_time, now):
+    """Helper to perform the actual read with retries."""
+    return copernicusmarine.read_dataframe(
+        dataset_id=dataset_id,
+        dataset_part="latest",
+        variables=variables,
+        minimum_longitude=lon_min,
+        maximum_longitude=lon_max,
+        minimum_latitude=lat_min,
+        maximum_latitude=lat_max,
+        start_datetime=start_time.strftime("%Y-%m-%dT%H:%M:%S"),
+        end_datetime=now.strftime("%Y-%m-%dT%H:%M:%S"),
+    )
 
 def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
     """
@@ -10,8 +38,8 @@ def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
     and the broader Western Mediterranean from Copernicus Marine.
     """
     # 1. Bounding box coordinates for France & Italy nested grid (the entire Western Med)
-    lat_min, lat_max = 35.0, 45.0
-    lon_min, lon_max = -2.0, 16.0
+    lat_min, lat_max = 35.0, 44.5
+    lon_min, lon_max = -6.0, 15.6
 
     # 2. Time range (lookback_hours to now)
     now = datetime.now(timezone.utc)
@@ -42,15 +70,18 @@ def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
             copernicusmarine.login(username=user, password=pwd, force_service_selection=True)
 
         print(f"📡 Downloading Copernicus In-Situ MED observations from {start_time.isoformat()} to {now.isoformat()}...")
-        df = copernicusmarine.read_dataframe(
+        df = _read_copernicus_dataframe(
             dataset_id="cmems_obs-ins_med_phybgcwav_mynrt_na_irr",
-            variables=["TEMP", "VHM0"],
-            minimum_longitude=lon_min,
-            maximum_longitude=lon_max,
-            minimum_latitude=lat_min,
-            maximum_latitude=lat_max,
-            start_datetime=start_time.strftime("%Y-%m-%dT%H:%M:%S"),
-            end_datetime=now.strftime("%Y-%m-%dT%H:%M:%S"),
+            variables=[
+                "TEMP", "VHM0", "VMDR", "WSPD", "WDIR", 
+                "DRYT", "PSAL", "SLEV", "VHM0_SW1", "VMDR_SW1"
+            ],
+            lon_min=lon_min,
+            lon_max=lon_max,
+            lat_min=lat_min,
+            lat_max=lat_max,
+            start_time=start_time,
+            now=now,
         )
 
         if df is None or df.empty:
@@ -89,6 +120,38 @@ def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
                 raw_key = "wave_height_m"
                 variable = "wave_height"
                 units = "m"
+            elif var_name == "VMDR":
+                raw_key = "wave_direction_deg"
+                variable = "wave_direction"
+                units = "degree"
+            elif var_name == "WSPD":
+                raw_key = "wind_speed_mps"
+                variable = "wind_speed"
+                units = "m/s"
+            elif var_name == "WDIR":
+                raw_key = "wind_direction_deg"
+                variable = "wind_direction"
+                units = "degree"
+            elif var_name == "DRYT":
+                raw_key = "air_temperature_c"
+                variable = "air_temperature"
+                units = "celsius"
+            elif var_name == "PSAL":
+                raw_key = "salinity_psu"
+                variable = "salinity"
+                units = "psu"
+            elif var_name == "SLEV":
+                raw_key = "sea_level_m"
+                variable = "sea_level"
+                units = "m"
+            elif var_name == "VHM0_SW1":
+                raw_key = "swell_1_height_m"
+                variable = "swell_1_height"
+                units = "m"
+            elif var_name == "VMDR_SW1":
+                raw_key = "swell_1_direction_deg"
+                variable = "swell_1_direction"
+                units = "degree"
             else:
                 continue
 
@@ -167,6 +230,11 @@ def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
 
             # Store flat attribute + nested measurements
             observations[station_id][raw_key] = float(val)
+            
+            # Add knot conversion for wind speed to align with validation_archive schema
+            if raw_key == "wind_speed_mps":
+                observations[station_id]["wind_speed_kn"] = float(val) * 1.94384
+
             observations[station_id]["measurements"].append(measurement_item)
             measurements[station_id].append(measurement_item)
 
@@ -207,3 +275,12 @@ def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
         "errors": errors,
         "lineage": {"source": "copernicus_insitu", "status": "completed" if not errors else "error"}
     }
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    
+    res = fetch_copernicus_insitu_bundle(dry_run=args.dry_run, lookback_hours=6)
+    print(f"Fetch Result: Available={res['available']}, Stations={len(res['stations'])}")

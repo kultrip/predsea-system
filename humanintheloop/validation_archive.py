@@ -24,6 +24,7 @@ OBSERVATION_VARIABLES = {
     "swell_1_height_m": ("swell_1_height", "m"),
     "swell_2_height_m": ("swell_2_height", "m"),
     "wind_speed_mps": ("wind_speed", "m/s"),
+    "wind_speed_kn": ("wind_speed", "knots"),
     "wind_direction_deg": ("wind_direction", "degree"),
     "wind_gust_mps": ("wind_gust", "m/s"),
     "wind_gust_kn": ("wind_gust", "knots"),
@@ -38,6 +39,12 @@ OBSERVATION_VARIABLES = {
     "salinity_psu": ("salinity", "psu"),
     "sea_level_pressure_hpa": ("sea_level_pressure", "hPa"),
     "air_pressure_hpa": ("air_pressure", "hPa"),
+    "WSPD": ("wind_speed", "m/s"),
+    "WDIR": ("wind_direction", "degree"),
+    "DRYT": ("air_temperature", "celsius"),
+    "PSAL": ("salinity", "psu"),
+    "VHM0_SW1": ("swell_1_height", "m"),
+    "VMDR_SW1": ("swell_1_direction", "degree"),
     "current_speed_mps": ("current_speed", "m/s"),
     "current_direction_deg": ("current_direction", "degree"),
     "current_u_mps": ("current_u", "m/s"),
@@ -74,6 +81,9 @@ FORECAST_VARIABLES = {
     "swell_2_direction_deg": ("swell_2_direction", "degree"),
     "wind_wave_height_m": ("wind_wave_height", "m"),
     "wind_wave_direction_deg": ("wind_wave_direction", "degree"),
+    "wind_speed_kn": ("wind_speed", "knots"),
+    "wind_direction_deg": ("wind_direction", "degree"),
+    "wind_gust_kn": ("wind_gust", "knots"),
 }
 
 

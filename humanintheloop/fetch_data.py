@@ -240,12 +240,21 @@ def get_balearic_forecast(dry_run=False, forecast_run_date=None):
             validate_copernicus_credentials_available()
 
         # subset() downloads a bounded region/time/variable slice.
-        subset_balearic_forecast(
-            dataset_id=PHY_ID,
-            variables=["uo", "vo"],
-            output_filename="balearic_currents.nc",
-            dry_run=dry_run,
-        )
+        try:
+            subset_balearic_forecast(
+                dataset_id=PHY_ID,
+                variables=["uo", "vo", "zos", "tos", "sos"],
+                output_filename="balearic_currents.nc",
+                dry_run=dry_run,
+            )
+        except Exception as error:
+            print(f"Extended physics download unavailable ({error}); retrying with core variables.")
+            subset_balearic_forecast(
+                dataset_id=PHY_ID,
+                variables=["uo", "vo", "zos"],
+                output_filename="balearic_currents.nc",
+                dry_run=dry_run,
+            )
 
         print("Fetching Balearic Waves (4.2km resolution)...")
         fetch_wave_forecast(dry_run=dry_run)
