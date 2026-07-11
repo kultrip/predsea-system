@@ -224,6 +224,13 @@ class PlaceResolutionResponse(BaseModel):
     resolved_via: Optional[str] = None
 
 
+class PlaceMinimalSummary(BaseModel):
+    place_id: str
+    place_name: str
+    type: Optional[str] = None
+    latitude: float
+    longitude: float
+
 class PlaceSummary(BaseModel):
     place_id: str
     place_name: str
@@ -236,6 +243,15 @@ class PlaceSummary(BaseModel):
     observation_candidates: List[str] = Field(default_factory=list)
     observation_sources: List[str] = Field(default_factory=list)
 
+class PlaceDetail(PlaceSummary):
+    pass
+
+class PaginatedPlacesResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    next_page: Optional[str] = None
+    places: List[PlaceMinimalSummary] = Field(default_factory=list)
 
 class PlacesResponse(BaseModel):
     places: List[PlaceSummary] = Field(default_factory=list)

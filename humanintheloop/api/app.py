@@ -21,6 +21,9 @@ from api.schemas import (
     PlaceConnectionMetricsResponse,
     PlaceResolutionResponse,
     PlacesResponse,
+    PlaceMinimalSummary,
+    PlaceDetail,
+    PaginatedPlacesResponse,
     PlaceWeatherResponse,
     QuestionRequest,
     QuestionResponse,
@@ -1527,16 +1530,35 @@ def create_app(evidence_store=None, route_store=None):
 
     @app.get(
         "/places",
-        response_model=PlacesResponse,
-        summary="List canonical places",
+        response_model=PaginatedPlacesResponse,
+        summary="List canonical places with pagination",
         description=(
-            "Return the canonical place registry used by PredSea for weather "
-            "lookups, route planning, and coordinate resolution."
+            "Return a paginated list of canonical places used by PredSea. "
+            "Includes lightweight summaries for performance."
         ),
     )
-    def places():
+    def places(
+        limit: int = Query(100, ge=1, le=5000),
+        offset: int = Query(0, ge=0),
+        type: str | None = None,
+    ):
+        all_ids = sorted(place_registry.available_place_ids())
+        
+        # Filtering (simple type filter)
+        if type:
+            filtered_ids = [
+                pid for pid in all_ids 
+                if place_registry.place_definition(pid).get("type") == type 
+                or place_registry.place_definition(pid).get("kind") == type
+            ]
+        else:
+            filtered_ids = all_ids
+
+        total = len(filtered_ids)
+        page_ids = filtered_ids[offset : offset + limit]
+        
         summaries = []
-        for place_id in place_registry.available_place_ids():
+        for place_id in page_ids:
             place = place_registry.place_definition(place_id)
             summaries.append(
                 {
@@ -1545,14 +1567,22 @@ def create_app(evidence_store=None, route_store=None):
                     "type": place.get("type") or place.get("kind"),
                     "latitude": place["latitude"],
                     "longitude": place["longitude"],
-                    "parent_place_id": place.get("parent_place_id"),
-                    "children": list(place.get("children") or ()),
-                    "aliases": list(place.get("aliases") or ()),
-                    "observation_candidates": list(place.get("observation_candidates") or ()),
-                    "observation_sources": place_observation_sources(store, place_id),
                 }
             )
-        return {"places": summaries}
+        
+        next_page = None
+        if offset + limit < total:
+            next_page = f"/places?limit={limit}&offset={offset + limit}"
+            if type:
+                next_page += f"&type={type}"
+
+        return {
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "next_page": next_page,
+            "places": summaries
+        }
 
     @app.get("/places/resolve", response_model=PlaceResolutionResponse)
     def resolve_place_endpoint(query: str):
@@ -2298,6 +2328,33 @@ def create_app(evidence_store=None, route_store=None):
             }
         except ValueError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get(
+        "/places/{place_id}",
+        response_model=PlaceDetail,
+        summary="Get full place details",
+        description="Return complete metadata and sensor sources for a specific place."
+    )
+    def get_place_detail(place_id: str):
+        try:
+            place = place_registry.place_definition(place_id)
+            if not place:
+                raise HTTPException(status_code=404, detail=f"Place '{place_id}' not found")
+            
+            return {
+                "place_id": place_id,
+                "place_name": place["name"],
+                "type": place.get("type") or place.get("kind"),
+                "latitude": place["latitude"],
+                "longitude": place["longitude"],
+                "parent_place_id": place.get("parent_place_id"),
+                "children": list(place.get("children") or ()),
+                "aliases": list(place.get("aliases") or ()),
+                "observation_candidates": list(place.get("observation_candidates") or ()),
+                "observation_sources": place_observation_sources(store, place_id),
+            }
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error))
 
     @app.get("/routes/{route_id}/artifacts/{artifact_name}")
     def route_artifact(route_id: str, artifact_name: str, date: str | None = None, run: str | None = None):

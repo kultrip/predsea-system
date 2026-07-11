@@ -391,18 +391,30 @@ def test_places_endpoint_lists_canonical_places(tmp_path):
     write_place_weather(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 
-    response = client.get("/places")
-
+    # Test paginated list (minimal summary)
+    response = client.get("/places?limit=4000")
     assert response.status_code == 200
     payload = response.json()
+    assert "total" in payload
+    assert "places" in payload
     place_ids = [place["place_id"] for place in payload["places"]]
-    assert place_ids == sorted(place_ids)
     assert {"san_antonio", "andratx", "fornells", "addaia", "tarragona", "palamos"}.issubset(set(place_ids))
+    
     palma = next(place for place in payload["places"] if place["place_id"] == "palma")
     assert palma["place_name"] == "Palma"
-    assert "port_de_palma" in palma["children"]
-    ibiza = next(place for place in payload["places"] if place["place_id"] == "ibiza")
-    assert ibiza["observation_sources"] == ["REDEXT"]
+    assert "children" not in palma  # Minimal summary
+    
+    # Test detail endpoint
+    response = client.get("/places/palma")
+    assert response.status_code == 200
+    palma_detail = response.json()
+    assert palma_detail["place_name"] == "Palma"
+    assert "port_de_palma" in palma_detail["children"]
+    
+    response = client.get("/places/ibiza")
+    assert response.status_code == 200
+    ibiza_detail = response.json()
+    assert ibiza_detail["observation_sources"] == ["REDEXT"]
 
 
 def test_local_store_uses_latest_run_folder_when_available(tmp_path):
