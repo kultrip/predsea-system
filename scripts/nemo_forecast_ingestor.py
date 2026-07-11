@@ -191,9 +191,9 @@ def process_nemo_forecast(
         # Verify required variables
         u_name = _first_existing(ds, NEMO_U_NAMES, required=True)
         v_name = _first_existing(ds, NEMO_V_NAMES, required=True)
-        temp_name = _first_existing(ds, NEMO_TEMP_NAMES, required=False)
-        salt_name = _first_existing(ds, NEMO_SALT_NAMES, required=False)
-        zeta_name = _first_existing(ds, NEMO_ZETA_NAMES, required=False)
+        temp_name = _first_existing(ds, NEMO_TEMP_NAMES, required=True)
+        salt_name = _first_existing(ds, NEMO_SALT_NAMES, required=True)
+        zeta_name = _first_existing(ds, NEMO_ZETA_NAMES, required=True)
         
         # Check time dimension
         time_dim = next((d for d in ("Time", "time", "ocean_time", "time_counter") if d in ds.sizes), None)

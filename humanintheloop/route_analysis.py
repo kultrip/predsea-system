@@ -1,5 +1,6 @@
 import json
 import math
+import numpy as np
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -54,6 +55,12 @@ def default_forecast_summary():
         "wave_peak_time": "N/A",
         "current_max_kn": None,
         "current_peak_time": "N/A",
+        "wind_speed_kn": None,
+        "wind_direction_deg": None,
+        "wind_gust_kn": None,
+        "water_temperature_c": None,
+        "salinity_psu": None,
+        "sea_level_m": None,
         "wave_peak_direction_deg": None,
         "wave_peak_sea_state": None,
         "wave_peak_relative_angle_deg": None,
@@ -231,6 +238,12 @@ def summarize_forecast_series(
     current_speeds_mps,
     wave_directions_deg=None,
     current_directions_deg=None,
+    wind_speeds_kn=None,
+    wind_directions_deg=None,
+    wind_gusts_kn=None,
+    water_temperatures_c=None,
+    salinities_psu=None,
+    sea_levels_m=None,
     time_utc_values=None,
     route_bearing_deg=None,
     component_series=None,
@@ -270,6 +283,18 @@ def summarize_forecast_series(
             row["current_kn"] = round(current_speeds_mps[index] * MPS_TO_KNOTS, 1)
         if current_directions_deg and index < len(current_directions_deg):
             row["current_direction_deg"] = round(current_directions_deg[index], 1)
+        if wind_speeds_kn and index < len(wind_speeds_kn):
+            row["wind_speed_kn"] = round(wind_speeds_kn[index], 1)
+        if wind_directions_deg and index < len(wind_directions_deg):
+            row["wind_direction_deg"] = round(wind_directions_deg[index], 1)
+        if wind_gusts_kn and index < len(wind_gusts_kn):
+            row["wind_gust_kn"] = round(wind_gusts_kn[index], 1)
+        if water_temperatures_c and index < len(water_temperatures_c):
+            row["water_temperature_c"] = round(water_temperatures_c[index], 1)
+        if salinities_psu and index < len(salinities_psu):
+            row["salinity_psu"] = round(salinities_psu[index], 1)
+        if sea_levels_m and index < len(sea_levels_m):
+            row["sea_level_m"] = round(sea_levels_m[index], 2)
         if component_series:
             for component_name, component in component_series.items():
                 heights = component.get("height") or []
@@ -287,6 +312,12 @@ def summarize_forecast_series(
         "wave_peak_direction_deg": round(wave_directions_deg[wave_peak_index], 1) if wave_directions_deg else None,
         "current_max_kn": current_max_kn,
         "current_peak_time": current_peak_time,
+        "wind_speed_kn": round(np.mean(wind_speeds_kn), 1) if wind_speeds_kn else None,
+        "wind_direction_deg": round(np.mean(wind_directions_deg), 1) if wind_directions_deg else None,
+        "wind_gust_kn": round(max(wind_gusts_kn), 1) if wind_gusts_kn else None,
+        "water_temperature_c": round(np.mean(water_temperatures_c), 1) if water_temperatures_c else None,
+        "salinity_psu": round(np.mean(salinities_psu), 1) if salinities_psu else None,
+        "sea_level_m": round(np.mean(sea_levels_m), 2) if sea_levels_m else None,
         "hourly": hourly,
     }
     if route_bearing_deg is not None:
@@ -312,18 +343,42 @@ def summarize_route_point_series(
     current_points_by_time,
     wave_direction_points_by_time=None,
     current_direction_points_by_time=None,
+    wind_speed_points_by_time=None,
+    wind_direction_points_by_time=None,
+    wind_gust_points_by_time=None,
+    water_temperature_points_by_time=None,
+    salinity_points_by_time=None,
+    sea_level_points_by_time=None,
     time_utc_values=None,
     component_points_by_time=None,
     route=None,
 ):
     wave_heights = []
     wave_directions = []
+    wind_speeds = []
+    wind_directions = []
+    wind_gusts = []
+    water_temperatures = []
+    salinities = []
+    sea_levels = []
     component_series = initialize_component_series(component_points_by_time)
     for index, points in enumerate(wave_points_by_time):
         wave_heights.append(max_valid(points))
         exposed_index = index_of_max_valid(points)
         if wave_direction_points_by_time:
             wave_directions.append(wave_direction_points_by_time[index][exposed_index])
+        if wind_speed_points_by_time:
+            wind_speeds.append(wind_speed_points_by_time[index][exposed_index])
+        if wind_direction_points_by_time:
+            wind_directions.append(wind_direction_points_by_time[index][exposed_index])
+        if wind_gust_points_by_time:
+            wind_gusts.append(wind_gust_points_by_time[index][exposed_index])
+        if water_temperature_points_by_time:
+            water_temperatures.append(water_temperature_points_by_time[index][exposed_index])
+        if salinity_points_by_time:
+            salinities.append(salinity_points_by_time[index][exposed_index])
+        if sea_level_points_by_time:
+            sea_levels.append(sea_level_points_by_time[index][exposed_index])
         append_component_values(component_series, component_points_by_time, index, exposed_index)
     current_speeds = []
     current_directions = []
@@ -337,9 +392,15 @@ def summarize_route_point_series(
         times,
         wave_heights,
         current_speeds,
-        wave_directions or None,
-        current_directions or None,
-        time_utc_values,
+        wave_directions_deg=wave_directions or None,
+        current_directions_deg=current_directions or None,
+        wind_speeds_kn=wind_speeds or None,
+        wind_directions_deg=wind_directions or None,
+        wind_gusts_kn=wind_gusts or None,
+        water_temperatures_c=water_temperatures or None,
+        salinities_psu=salinities or None,
+        sea_levels_m=sea_levels or None,
+        time_utc_values=time_utc_values,
         route_bearing_deg=route_bearing_deg,
         component_series=component_series or None,
     )
@@ -361,6 +422,9 @@ def build_route_segments(
     wave_points_by_time,
     current_points_by_time=None,
     wave_direction_points_by_time=None,
+    wind_speed_points_by_time=None,
+    wind_direction_points_by_time=None,
+    wind_gust_points_by_time=None,
     route_bearing_deg=None,
     route=None,
     time_utc_values=None,
@@ -376,6 +440,9 @@ def build_route_segments(
         wave_series = series_for_point(wave_points_by_time, point_index)
         current_series = series_for_point(current_points_by_time or [], point_index)
         direction_series = series_for_point(wave_direction_points_by_time or [], point_index)
+        wind_speed_series = series_for_point(wind_speed_points_by_time or [], point_index)
+        wind_direction_series = series_for_point(wind_direction_points_by_time or [], point_index)
+        wind_gust_series = series_for_point(wind_gust_points_by_time or [], point_index)
         segments[segment_id] = summarize_route_segment(
             segment_id,
             point.get("name", segment_id.replace("_", " ")),
@@ -384,6 +451,9 @@ def build_route_segments(
             current_series,
             direction_series,
             route_bearing_deg,
+            wind_speed_series=wind_speed_series,
+            wind_direction_series=wind_direction_series,
+            wind_gust_series=wind_gust_series,
             time_utc_values=time_utc_values,
         )
 
@@ -415,7 +485,7 @@ def series_for_point(values_by_time, point_index):
     return series
 
 
-def summarize_route_segment(segment_id, name, times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None, time_utc_values=None):
+def summarize_route_segment(segment_id, name, times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None, wind_speed_series=None, wind_direction_series=None, wind_gust_series=None, time_utc_values=None):
     peak_index = index_of_max_valid(wave_series)
     max_wave = wave_series[peak_index] if peak_index < len(wave_series) else float("nan")
     direction = direction_series[peak_index] if direction_series and peak_index < len(direction_series) else None
@@ -430,18 +500,30 @@ def summarize_route_segment(segment_id, name, times, wave_series, current_series
     }
     if current is not None and current == current:
         segment["current_kn"] = round(current * MPS_TO_KNOTS, 1)
+    if wind_speed_series and peak_index < len(wind_speed_series):
+        val = wind_speed_series[peak_index]
+        segment["wind_speed_kn"] = round(val, 1) if val == val else None
+    if wind_direction_series and peak_index < len(wind_direction_series):
+        val = wind_direction_series[peak_index]
+        segment["wind_direction_deg"] = round(val, 1) if val == val else None
+    if wind_gust_series and peak_index < len(wind_gust_series):
+        val = wind_gust_series[peak_index]
+        segment["wind_gust_kn"] = round(val, 1) if val == val else None
     segment["hourly"] = segment_hourly_evidence(
         times,
         wave_series,
         current_series=current_series,
         direction_series=direction_series,
         route_bearing_deg=route_bearing_deg,
+        wind_speed_series=wind_speed_series,
+        wind_direction_series=wind_direction_series,
+        wind_gust_series=wind_gust_series,
         time_utc_values=time_utc_values,
     )
     return segment
 
 
-def segment_hourly_evidence(times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None, time_utc_values=None):
+def segment_hourly_evidence(times, wave_series, current_series=None, direction_series=None, route_bearing_deg=None, wind_speed_series=None, wind_direction_series=None, wind_gust_series=None, time_utc_values=None):
     hourly = []
     for index, time in enumerate(times):
         row = {"time": time}
@@ -457,6 +539,12 @@ def segment_hourly_evidence(times, wave_series, current_series=None, direction_s
                 row["wave_sea_state"] = sea_state["label"]
         if current_series and index < len(current_series) and current_series[index] == current_series[index]:
             row["current_kn"] = round(current_series[index] * MPS_TO_KNOTS, 1)
+        if wind_speed_series and index < len(wind_speed_series) and wind_speed_series[index] == wind_speed_series[index]:
+            row["wind_speed_kn"] = round(wind_speed_series[index], 1)
+        if wind_direction_series and index < len(wind_direction_series) and wind_direction_series[index] == wind_direction_series[index]:
+            row["wind_direction_deg"] = round(wind_direction_series[index], 1)
+        if wind_gust_series and index < len(wind_gust_series) and wind_gust_series[index] == wind_gust_series[index]:
+            row["wind_gust_kn"] = round(wind_gust_series[index], 1)
         hourly.append(row)
     return hourly
 
@@ -595,7 +683,7 @@ def resolve_nearest_sea_coordinate(waves_dataset, point):
     return lon, lat
 
 
-def forecast_summary_from_files(waves_path, currents_path, route=None):
+def forecast_summary_from_files(waves_path, currents_path, wind_path=None, route=None):
     try:
         import xarray as xr
     except ImportError:
@@ -619,6 +707,21 @@ def forecast_summary_from_files(waves_path, currents_path, route=None):
         }
         current_points_by_time = []
         current_direction_points_by_time = []
+        water_temp_points_by_time = []
+        salinity_points_by_time = []
+        sea_level_points_by_time = []
+        
+        wind_speed_points_by_time = []
+        wind_direction_points_by_time = []
+        wind_gust_points_by_time = []
+        
+        wind_ds = None
+        if wind_path and Path(wind_path).exists():
+            try:
+                wind_ds = xr.open_dataset(wind_path)
+            except Exception:
+                pass
+
         for point in route_sample_points(route or load_route(DEFAULT_ROUTE_ID)):
             snapped_lon, snapped_lat = resolve_nearest_sea_coordinate(waves, point)
             snapped_point = {
@@ -650,6 +753,25 @@ def forecast_summary_from_files(waves_path, currents_path, route=None):
                 latitude=snapped_point["latitude"],
                 method="nearest",
             )
+            # Oceanographic variables (sea level, temp, salt)
+            sea_level_point = currents["zos"].sel(
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
+                method="nearest",
+            ) if "zos" in currents else None
+            temp_var = "thetao" if "thetao" in currents else ("tos" if "tos" in currents else None)
+            water_temp_point = currents[temp_var].sel(
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
+                method="nearest",
+            ) if temp_var else None
+            salt_var = "so" if "so" in currents else ("sos" if "sos" in currents else None)
+            salinity_point = currents[salt_var].sel(
+                longitude=snapped_point["longitude"],
+                latitude=snapped_point["latitude"],
+                method="nearest",
+            ) if salt_var else None
+
             wave_points_by_time.append([float(value) for value in wave_point.values])
             wave_direction_points_by_time.append([float(value) for value in wave_direction_point.values])
             append_wave_component_point_values(waves, component_series_by_name, snapped_point)
@@ -660,20 +782,67 @@ def forecast_summary_from_files(waves_path, currents_path, route=None):
                     for u, v in zip(u_point.values, v_point.values)
                 ]
             )
+            if sea_level_point is not None:
+                sea_level_points_by_time.append([float(value) for value in sea_level_point.values])
+            if water_temp_point is not None:
+                water_temp_points_by_time.append([float(value) for value in water_temp_point.values])
+            if salinity_point is not None:
+                salinity_points_by_time.append([float(value) for value in salinity_point.values])
+
+            if wind_ds:
+                # WRF uses U10, V10; ECMWF uses 10u, 10v
+                u_var = next((v for v in ["U10", "u10", "10u"] if v in wind_ds), None)
+                v_var = next((v for v in ["V10", "v10", "10v"] if v in wind_ds), None)
+                g_var = next((v for v in ["WSPD10MAX", "WIND_GUST", "gust", "10fg"] if v in wind_ds), None)
+                
+                if u_var and v_var:
+                    u_wind = wind_ds[u_var].sel(longitude=snapped_point["longitude"], latitude=snapped_point["latitude"], method="nearest")
+                    v_wind = wind_ds[v_var].sel(longitude=snapped_point["longitude"], latitude=snapped_point["latitude"], method="nearest")
+                    
+                    # Convert to knots (WRF is m/s, ECMWF is m/s)
+                    u_vals = u_wind.values * MPS_TO_KNOTS
+                    v_vals = v_wind.values * MPS_TO_KNOTS
+                    
+                    wind_speed_points_by_time.append([float((u**2 + v**2)**0.5) for u, v in zip(u_vals, v_vals)])
+                    wind_direction_points_by_time.append([float(current_direction_deg(u, v)) for u, v in zip(u_vals, v_vals)])
+                    
+                    if g_var:
+                        g_wind = wind_ds[g_var].sel(longitude=snapped_point["longitude"], latitude=snapped_point["latitude"], method="nearest")
+                        wind_gust_points_by_time.append([float(val * MPS_TO_KNOTS) for val in g_wind.values])
+                    else:
+                        # Estimate gust as 1.3x speed
+                        wind_gust_points_by_time.append([float((u**2 + v**2)**0.5 * 1.3) for u, v in zip(u_vals, v_vals)])
+
+        if wind_ds:
+            wind_ds.close()
 
     wave_by_time = transpose_points(wave_points_by_time)
     wave_direction_by_time = transpose_points(wave_direction_points_by_time)
     component_by_time = transpose_component_points(component_series_by_name)
     current_by_time = transpose_points(current_points_by_time)
     current_direction_by_time = transpose_points(current_direction_points_by_time)
+    water_temp_by_time = transpose_points(water_temp_points_by_time)
+    salinity_by_time = transpose_points(salinity_points_by_time)
+    sea_level_by_time = transpose_points(sea_level_points_by_time)
+    
+    wind_speed_by_time = transpose_points(wind_speed_points_by_time)
+    wind_direction_by_time = transpose_points(wind_direction_points_by_time)
+    wind_gust_by_time = transpose_points(wind_gust_points_by_time)
+    
     return summarize_route_point_series(
         times,
         wave_by_time,
         current_by_time,
-        wave_direction_by_time,
-        current_direction_by_time,
-        time_utc_values,
-        component_by_time or None,
+        wave_direction_points_by_time=wave_direction_by_time,
+        current_direction_points_by_time=current_direction_by_time,
+        wind_speed_points_by_time=wind_speed_by_time or None,
+        wind_direction_points_by_time=wind_direction_by_time or None,
+        wind_gust_points_by_time=wind_gust_by_time or None,
+        water_temperature_points_by_time=water_temp_by_time or None,
+        salinity_points_by_time=salinity_by_time or None,
+        sea_level_points_by_time=sea_level_by_time or None,
+        time_utc_values=time_utc_values,
+        component_points_by_time=component_by_time or None,
         route=route or load_route(DEFAULT_ROUTE_ID),
     )
 

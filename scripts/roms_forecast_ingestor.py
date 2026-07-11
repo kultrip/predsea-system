@@ -191,9 +191,9 @@ def process_roms_forecast(
         # Verify required variables
         u_name = _first_existing(ds, ROMS_U_NAMES, required=True)
         v_name = _first_existing(ds, ROMS_V_NAMES, required=True)
-        temp_name = _first_existing(ds, ROMS_TEMP_NAMES, required=False)
-        salt_name = _first_existing(ds, ROMS_SALT_NAMES, required=False)
-        zeta_name = _first_existing(ds, ROMS_ZETA_NAMES, required=False)
+        temp_name = _first_existing(ds, ROMS_TEMP_NAMES, required=True)
+        salt_name = _first_existing(ds, ROMS_SALT_NAMES, required=True)
+        zeta_name = _first_existing(ds, ROMS_ZETA_NAMES, required=True)
         
         # Check time dimension
         time_dim = next((d for d in ("Time", "time", "ocean_time", "time_counter") if d in ds.sizes), None)

@@ -26,11 +26,12 @@ def load_observation_bundle():
     return ingest_observations.fetch_all_observations(include_puertos=True, include_portus=True)
 
 
-def build_forecast_summary(route):
+def build_forecast_summary(route, wind_path=None):
     fetch_data.get_balearic_forecast(dry_run=False)
     return route_analysis.forecast_summary_from_files(
         OUTPUT_DIR / "balearic_waves.nc",
         OUTPUT_DIR / "balearic_currents.nc",
+        wind_path=wind_path,
         route=route,
     )
 
@@ -92,10 +93,13 @@ def build_daily_briefing_summary(snapshot):
         "valid_for": "24h",
         "issued_at_utc": created_at,
         "issued_at_local": _to_local_time(created_at),
-        "wind_trend": _trend_text(forecast, "current_max_kn"),
-        "wave_trend": _trend_text(forecast, "wave_max_m"),
+        "wind_speed_kn": forecast.get("wind_speed_kn"),
+        "wind_direction_deg": forecast.get("wind_direction_deg"),
+        "wind_gust_kn": forecast.get("wind_gust_kn"),
+        "wind_trend": _trend_text(forecast, "wind_speed_kn"),
+        "wave_trend": _trend_text(forecast, "wave_m"),
         "swell_direction": forecast.get("wave_peak_direction_deg"),
-        "current_trend": _trend_text(forecast, "current_max_kn"),
+        "current_trend": _trend_text(forecast, "current_kn"),
         "thunderstorm_probability": forecast.get("thunderstorm_probability"),
         "sunrise": forecast.get("sunrise_local"),
         "sunset": forecast.get("sunset_local"),
@@ -115,13 +119,20 @@ def _to_local_time(value):
 
 def _trend_text(forecast, key):
     hourly = forecast.get("hourly") or []
-    values = [row.get("wave_m") if key == "wave_max_m" else row.get("current_kn") for row in hourly]
+    values = [row.get(key) for row in hourly]
     values = [value for value in values if isinstance(value, (int, float))]
     if len(values) < 2:
         return "steady"
-    if values[-1] > values[0] + 0.2:
+    
+    threshold = 0.2
+    if "wind" in key:
+        threshold = 3.0
+    elif "current" in key:
+        threshold = 0.2
+        
+    if values[-1] > values[0] + threshold:
         return "building"
-    if values[-1] < values[0] - 0.2:
+    if values[-1] < values[0] - threshold:
         return "easing"
     return "steady"
 

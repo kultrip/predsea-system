@@ -23,6 +23,9 @@ TARGET_VARIABLES = {
     "sea_water_practical_salinity": "Salinity",
     "air_pressure": "Air Pressure",
     "air_pressure_at_sea_level": "Sea-level Pressure",
+    "wind_speed": "Wind Speed",
+    "wind_from_direction": "Wind Direction",
+    "wind_speed_of_gust": "Wind Gust",
 }
 NUMERIC_VARIABLES = {
     "sea_surface_wave_significant_height": "wave_height_m",
@@ -31,6 +34,9 @@ NUMERIC_VARIABLES = {
     "sea_water_practical_salinity": "salinity_psu",
     "air_pressure": "air_pressure_hpa",
     "air_pressure_at_sea_level": "sea_level_pressure_hpa",
+    "wind_speed": "wind_speed_mps",
+    "wind_from_direction": "wind_direction_deg",
+    "wind_speed_of_gust": "wind_gust_mps",
 }
 MAX_OBSERVATION_AGE_HOURS = 48
 DEFAULT_TIMEOUT_SECONDS = 60

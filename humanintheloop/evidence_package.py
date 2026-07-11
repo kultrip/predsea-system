@@ -78,6 +78,19 @@ def build_route_evidence_package(snapshot, route):
                         for row in forecast.get("hourly", [])
                     ],
                 },
+                "wind_speed_kn": {
+                    "mean": forecast.get("wind_speed_kn"),
+                    "gust_max": forecast.get("wind_gust_kn"),
+                    "direction_deg": forecast.get("wind_direction_deg"),
+                    "hourly": [
+                        {
+                            key: row[key]
+                            for key in ("time", "time_utc", "wind_speed_kn", "wind_direction_deg", "wind_gust_kn")
+                            if key in row
+                        }
+                        for row in forecast.get("hourly", [])
+                    ],
+                },
             },
         },
         "operational_interpretation": {

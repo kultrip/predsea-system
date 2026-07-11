@@ -31,6 +31,18 @@ def _soften_clock_times(text, replacement="the relevant window"):
     return re.sub(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", replacement, str(text))
 
 
+def _cardinal_direction(deg):
+    if deg is None:
+        return "N/A"
+    try:
+        deg = float(deg)
+    except (TypeError, ValueError):
+        return "N/A"
+    dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    ix = int((deg + 22.5) / 45) % 8
+    return dirs[ix]
+
+
 def render_linkedin(snapshot):
     canal = _canal(snapshot)
     forecast = _forecast(snapshot)
@@ -41,6 +53,7 @@ def render_linkedin(snapshot):
         f"PredSea Mediterranean Corridor Briefing | {snapshot['route']}",
         "",
         f"Current: {canal.get('name', 'SOCIB buoy')} reports {canal.get('wave_height_m', 'N/A')} m significant wave height and {canal.get('water_temp_c', 'N/A')} C water.",
+        f"Wind: {briefing.get('wind_speed_kn', 'N/A')} kn from {_cardinal_direction(briefing.get('wind_direction_deg'))}, gusts to {briefing.get('wind_gust_kn', 'N/A')} kn ({briefing.get('wind_trend', 'steady')}).",
         f"Trend: {briefing.get('wave_trend', 'steady')} seas, with swell direction {briefing.get('swell_direction', 'N/A')}.",
     ]
     if source_text:
@@ -69,6 +82,7 @@ def render_whatsapp(snapshot):
         "PredSea Captain's Briefing",
         f"Route: {snapshot['route']}",
         f"Current: {canal.get('wave_height_m', 'N/A')} m waves, water {canal.get('water_temp_c', 'N/A')} C.",
+        f"Wind: {briefing.get('wind_speed_kn', 'N/A')} kn from {_cardinal_direction(briefing.get('wind_direction_deg'))}, gusts to {briefing.get('wind_gust_kn', 'N/A')} kn.",
         f"Trend: {briefing.get('wave_trend', 'steady')} seas; swell direction {briefing.get('swell_direction', 'N/A')}.",
     ]
     if source_text:

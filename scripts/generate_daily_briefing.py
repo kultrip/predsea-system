@@ -776,26 +776,39 @@ def atmospheric_ingestion_enabled():
 
 
 def fetch_atmospheric_context(modules, run_dir):
-    if not atmospheric_ingestion_enabled():
+    """
+    Fetch atmospheric wind data.
+    First, try to find a local WRF file or download from GCS.
+    Then, fall back to external providers if enabled.
+    """
+    # 1. Try WRF (Tier 0)
+    wrf_result = _fetch_wrf_wind_context(modules, run_dir)
+    if wrf_result.get("available"):
+        print(f"✅ WRF Wind data available: {wrf_result.get('dataset_path')}")
         return {
-            "enabled": False,
-            "wind_result": {"available": False, "source": None},
-            "wind_lineage": {
-                "source": None,
-                "resolution_km": None,
-                "status": "not_configured",
-                "tier": None,
-            },
+            "enabled": True,
+            "wind_result": wrf_result,
+            "wind_lineage": modules.ingest_atmosphere.lineage_for_wind_result(wrf_result),
+            "atmospheric_sources": [wrf_result],
         }
 
+    # 2. Fallback to external providers
+    if os.environ.get("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION") != "true" and os.environ.get("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION") != "1":
+        return {
+            "enabled": False,
+            "wind_result": {"available": False, "error": "atmospheric ingestion disabled; WRF also unavailable"},
+            "wind_lineage": {"source": None, "resolution_km": None, "status": "not_configured"},
+            "atmospheric_sources": [],
+        }
+
+    output_dir = run_dir / "atmosphere"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Fetching atmospheric wind data to {output_dir}...")
     try:
-        atmosphere_dir = Path(run_dir) / "atmosphere"
-        result = modules.ingest_atmosphere.run_atmospheric_ingestion(
-            output_dir=atmosphere_dir,
-            dry_run=False,
-        )
-        result["enabled"] = True
-        return result
+        context = modules.ingest_atmosphere.run_atmospheric_ingestion(output_dir=output_dir)
+        context["enabled"] = True
+        return context
     except Exception as error:
         return {
             "enabled": True,
@@ -806,7 +819,55 @@ def fetch_atmospheric_context(modules, run_dir):
                 "status": "error",
                 "tier": None,
             },
+            "atmospheric_sources": [],
         }
+
+
+def _fetch_wrf_wind_context(modules, run_dir):
+    """Attempt to find WRF wind data locally or download from GCS."""
+    from datetime import datetime
+    run_date = os.environ.get("PREDSEA_RUN_DATE") or datetime.utcnow().strftime("%Y-%m-%d")
+    run_id = os.environ.get("PREDSEA_RUN_ID") or datetime.utcnow().strftime("%Y-%m-%dT%H%MZ")
+    bucket_name = os.environ.get("PREDSEA_GCS_BUCKET")
+    
+    output_dir = run_dir / "atmosphere"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    wrf_local_path = output_dir / "wrf_wind.nc"
+    
+    # If already exists (e.g. from previous attempt or orchestrator), use it
+    if wrf_local_path.exists():
+        return {
+            "available": True,
+            "id": "predsea_wrf",
+            "source": "predsea_wrf",
+            "label": "PredSea WRF 1km",
+            "tier": 0,
+            "resolution_km": 1.0,
+            "dataset_path": str(wrf_local_path),
+        }
+        
+    if not bucket_name:
+        return {"available": False, "error": "no GCS bucket configured for WRF fetch"}
+        
+    try:
+        import wrf_forecast_ingestor
+        success = wrf_forecast_ingestor.download_wrf_file_from_gcs(
+            bucket_name, run_date, run_id, str(wrf_local_path)
+        )
+        if success:
+            return {
+                "available": True,
+                "id": "predsea_wrf",
+                "source": "predsea_wrf",
+                "label": "PredSea WRF 1km",
+                "tier": 0,
+                "resolution_km": 1.0,
+                "dataset_path": str(wrf_local_path),
+            }
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to download WRF from GCS: {e}")
+        
+    return {"available": False, "error": "WRF data not found locally or on GCS"}
 
 
 def ocean_lineage_for_source(source):
@@ -923,9 +984,11 @@ def generate_route_artifacts_for_source(
 
     for route_id in selected_route_ids:
         route = routes[route_id]
+        wind_path = (atmospheric_context or {}).get("wind_result", {}).get("dataset_path")
         forecast = modules.route_analysis.forecast_summary_from_files(
             waves_path,
             currents_path,
+            wind_path=wind_path,
             route=route,
         )
         validate_forecast_available(forecast, route_id)
