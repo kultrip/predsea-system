@@ -16,7 +16,7 @@ __pycache__/
 *-key.json
 observations/
 humanintheloop/artifacts/
-# humanintheloop/mvp_data/
+humanintheloop/mvp_data/
 humanintheloop/mvp_data/copernicus/
 humanintheloop/mvp_data/portus/
 humanintheloop/mvp_data/puertos_del_estado/

@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 PLACE_SEED_PATH = Path(__file__).with_name("places_seed_balearics.json")
 PLACE_ALIASES_PATH = Path(__file__).with_name("aliases_balearics.json")
+OSM_PLACES_PATH = Path(__file__).with_name("osm_maritime_destinations.json")
 
 
 def _normalize_query_text(text):
@@ -44,24 +45,47 @@ def _normalize_catalog_record(place_id, record):
 
 
 def _load_place_catalog_from_file():
-    raw_catalog = _load_json_file(PLACE_SEED_PATH)
-    if not raw_catalog:
-        return None
-    if isinstance(raw_catalog, dict):
-        raw_records = []
-        for place_id, record in raw_catalog.items():
-            normalized_record = dict(record)
-            normalized_record.setdefault("id", place_id)
-            raw_records.append(normalized_record)
-    else:
-        raw_records = list(raw_catalog)
     catalog = {}
-    for record in raw_records:
-        place_id = record.get("id")
-        if not place_id:
-            raise ValueError(f"Invalid place seed record without id: {record!r}")
-        catalog[place_id] = _normalize_catalog_record(place_id, record)
-    return catalog
+    
+    # 1. Load primary seeds
+    raw_catalog = _load_json_file(PLACE_SEED_PATH)
+    if raw_catalog:
+        if isinstance(raw_catalog, dict):
+            raw_records = []
+            for place_id, record in raw_catalog.items():
+                normalized_record = dict(record)
+                normalized_record.setdefault("id", place_id)
+                raw_records.append(normalized_record)
+        else:
+            raw_records = list(raw_catalog)
+            
+        for record in raw_records:
+            place_id = record.get("id")
+            if not place_id:
+                continue
+            catalog[place_id] = _normalize_catalog_record(place_id, record)
+            
+    # 2. Load OSM destinations
+    osm_data = _load_json_file(OSM_PLACES_PATH)
+    if osm_data and isinstance(osm_data, dict):
+        osm_places = osm_data.get("places") or []
+        for p in osm_places:
+            pid = p.get("place_id")
+            if pid and pid not in catalog:
+                catalog[pid] = {
+                    "name": p["name"],
+                    "latitude": float(p["latitude"]),
+                    "longitude": float(p["longitude"]),
+                    "kind": p.get("category") or "maritime_destination",
+                    "type": p.get("category") or "maritime_destination",
+                    "parent_place_id": None,
+                    "children": (),
+                    "aliases": (),
+                    "observation_candidates": (),
+                    "source": "openstreetmap"
+                }
+                
+    return catalog if catalog else None
 
 
 def _load_place_aliases_from_file(catalog):
