@@ -824,7 +824,7 @@ def fetch_atmospheric_context(modules, run_dir):
 
 
 def _fetch_wrf_wind_context(modules, run_dir):
-    """Attempt to find WRF wind data locally or download from GCS."""
+    """Attempt to find WRF wind data for all domains (d03-d07) locally or download from GCS."""
     from datetime import datetime
     run_date = os.environ.get("PREDSEA_RUN_DATE") or datetime.utcnow().strftime("%Y-%m-%d")
     run_id = os.environ.get("PREDSEA_RUN_ID") or datetime.utcnow().strftime("%Y-%m-%dT%H%MZ")
@@ -832,42 +832,76 @@ def _fetch_wrf_wind_context(modules, run_dir):
     
     output_dir = run_dir / "atmosphere"
     output_dir.mkdir(parents=True, exist_ok=True)
-    wrf_local_path = output_dir / "wrf_wind.nc"
     
-    # If already exists (e.g. from previous attempt or orchestrator), use it
-    if wrf_local_path.exists():
-        return {
-            "available": True,
-            "id": "predsea_wrf",
-            "source": "predsea_wrf",
-            "label": "PredSea WRF 1km",
-            "tier": 0,
-            "resolution_km": 1.0,
-            "dataset_path": str(wrf_local_path),
-        }
-        
-    if not bucket_name:
-        return {"available": False, "error": "no GCS bucket configured for WRF fetch"}
-        
-    try:
-        import wrf_forecast_ingestor
-        success = wrf_forecast_ingestor.download_wrf_file_from_gcs(
-            bucket_name, run_date, run_id, str(wrf_local_path)
-        )
-        if success:
-            return {
+    # We check for domains d03 (Balearics) to d07 (Sicily)
+    available_domains = []
+    
+    domains_meta = {
+        "d03": {"label": "PredSea Balearic 1km", "region": "Balearics"},
+        "d04": {"label": "PredSea French Coast 1km", "region": "France"},
+        "d05": {"label": "PredSea Corsica/Sardinia 1km", "region": "Corsica/Sardinia"},
+        "d06": {"label": "PredSea Ligurian/Tuscan 1km", "region": "Italy North"},
+        "d07": {"label": "PredSea Tyrrhenian 1km", "region": "Italy South"},
+    }
+
+    # Helper to download specific domain
+    def get_domain(dom_id):
+        local_path = output_dir / f"wrf_{dom_id}.nc"
+        if local_path.exists():
+            return local_path
+        if not bucket_name:
+            return None
+            
+        try:
+            import wrf_forecast_ingestor
+            # We use a custom search here since the ingestor might not expose a single-domain download easily
+            from google.cloud import storage
+            client = storage.Client()
+            bucket = client.bucket(bucket_name)
+            prefix = f"predictions/{run_date}/runs/{run_id}/"
+            blobs = list(bucket.list_blobs(prefix=prefix))
+            if not blobs:
+                prefix = f"predictions/{run_date}/"
+                blobs = list(bucket.list_blobs(prefix=prefix))
+            
+            # Find the best match for this domain
+            target_blob = None
+            for b in blobs:
+                if b.name.endswith(".nc") and dom_id in b.name:
+                    target_blob = b
+                    break
+            
+            if target_blob:
+                print(f"📥 Downloading WRF {dom_id} ({domains_meta[dom_id]['region']}): gs://{bucket_name}/{target_blob.name}")
+                target_blob.download_to_filename(str(local_path))
+                return local_path
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to download WRF {dom_id} from GCS: {e}")
+        return None
+
+    # Try to fetch all domains
+    for dom_id, meta in domains_meta.items():
+        path = get_domain(dom_id)
+        if path:
+            available_domains.append({
                 "available": True,
-                "id": "predsea_wrf",
-                "source": "predsea_wrf",
-                "label": "PredSea WRF 1km",
+                "id": f"predsea_wrf_{dom_id}",
+                "source": f"predsea_wrf_{dom_id}",
+                "label": meta["label"],
                 "tier": 0,
                 "resolution_km": 1.0,
-                "dataset_path": str(wrf_local_path),
-            }
-    except Exception as e:
-        print(f"⚠️ Warning: Failed to download WRF from GCS: {e}")
+                "dataset_path": str(path),
+                "domain": dom_id,
+            })
+            
+    if available_domains:
+        # For backward compatibility with single-wind-result logic, 
+        # we return the first one as primary but keep the list
+        primary = available_domains[0]
+        primary["all_domains"] = available_domains
+        return primary
         
-    return {"available": False, "error": "WRF data not found locally or on GCS"}
+    return {"available": False, "error": "No high-res WRF domains found"}
 
 
 def ocean_lineage_for_source(source):
@@ -954,6 +988,44 @@ def resolution_label_for(source):
     return "Copernicus Med forecast grid"
 
 
+def select_best_wrf_domain_for_route(route, atmospheric_context):
+    """
+    Given a route and the available WRF domains, return the best domain path.
+    Uses the highest resolution domain that spatially contains the route points.
+    """
+    if not atmospheric_context or not atmospheric_context.get("enabled"):
+        return None
+        
+    wind_result = atmospheric_context.get("wind_result", {})
+    all_domains = wind_result.get("all_domains", [])
+    if not all_domains:
+        return wind_result.get("dataset_path") # Fallback to primary
+
+    # For each domain, we check if it covers the route points.
+    # For now, we use a simple heuristic: d04 is France, d06/d07 is Italy.
+    # In the future, we can open the file and check coordinates.
+    route_name_lower = route.get("name", "").lower()
+    
+    # Heuristic mapping based on names if we don't want to open every NetCDF file here
+    if any(k in route_name_lower for k in ["marseille", "cannes", "nice", "st tropez", "saint-tropez", "eze", "antibes", "toulon", "monaco"]):
+        target_dom = "d04"
+    elif any(k in route_name_lower for k in ["portofino", "genoa", "savona", "la spezia", "livorno", "tuscany", "elba"]):
+        target_dom = "d06"
+    elif any(k in route_name_lower for k in ["capri", "amalfi", "naples", "ischia", "procida", "salerno", "sicily", "lipari", "vulcano", "stromboli", "palermo", "messina"]):
+        target_dom = "d07"
+    elif any(k in route_name_lower for k in ["corsica", "sardinia", "ajaccio", "bonifacio", "olbia", "porto cervo"]):
+        target_dom = "d05"
+    else:
+        target_dom = "d03" # Balearics default
+        
+    for dom in all_domains:
+        if dom.get("domain") == target_dom:
+            return dom.get("dataset_path")
+            
+    # If target not found, return the first one available
+    return all_domains[0].get("dataset_path") if all_domains else wind_result.get("dataset_path")
+
+
 def copy_preferred_route_artifacts(source_route_dir, preferred_route_dir):
     if preferred_route_dir.exists():
         shutil.rmtree(preferred_route_dir)
@@ -984,7 +1056,7 @@ def generate_route_artifacts_for_source(
 
     for route_id in selected_route_ids:
         route = routes[route_id]
-        wind_path = (atmospheric_context or {}).get("wind_result", {}).get("dataset_path")
+        wind_path = select_best_wrf_domain_for_route(route, atmospheric_context)
         forecast = modules.route_analysis.forecast_summary_from_files(
             waves_path,
             currents_path,

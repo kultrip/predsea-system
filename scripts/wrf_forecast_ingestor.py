@@ -43,7 +43,9 @@ from bigquery_export import (
 MPS_TO_KNOTS = 1.9438444924406
 
 PROVIDER = "predsea_wrf"
-NETWORK = "WRF_d03"
+# The default network for backward compatibility, 
+# but we now dynamically set this per domain (WRF_d01, WRF_d03, etc.)
+DEFAULT_NETWORK = "WRF_d03"
 
 
 def load_bias_corrections(project_id: str | None, dataset: str, provider: str) -> dict[tuple[str, str, int, int], float]:
@@ -123,8 +125,8 @@ def utc_to_local_str(utc_dt: datetime.datetime) -> str:
             return utc_dt.strftime("%H:%M")
 
 
-def download_wrf_file_from_gcs(bucket_name: str, run_date: str, run_id: str, local_path: str) -> bool:
-    """Find and download the WRF NetCDF file from GCS daily runs prefix."""
+def download_wrf_files_from_gcs(bucket_name: str, run_date: str, run_id: str, local_dir: Path) -> list[tuple[str, Path]]:
+    """Find and download all WRF NetCDF files from GCS daily runs prefix."""
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     
@@ -140,20 +142,29 @@ def download_wrf_file_from_gcs(bucket_name: str, run_date: str, run_id: str, loc
         blobs = list(bucket.list_blobs(prefix=prefix_fallback))
         
     nc_blobs = [b for b in blobs if b.name.endswith((".nc", ".nc4"))]
-    wrf_blobs = [b for b in nc_blobs if "d03" in b.name or "wrfout" in b.name]
+    # Filter for domains d03 to d07 (high res nests)
+    # We also include d01/d02 as fallbacks if nests are missing
+    domains = {}
+    for b in nc_blobs:
+        # Extract domain from filename like wrfout_d03_2026-05-04_00:00:00 or wrf_d03.nc
+        import re
+        match = re.search(r"d0([1-7])", b.name)
+        if match:
+            dom_id = f"d0{match.group(1)}"
+            # Keep the first/most relevant one for this domain
+            if dom_id not in domains:
+                domains[dom_id] = b
+
+    downloaded = []
+    local_dir.mkdir(parents=True, exist_ok=True)
     
-    selected_blob = None
-    if wrf_blobs:
-        selected_blob = wrf_blobs[0]
-    elif nc_blobs:
-        selected_blob = nc_blobs[0]
+    for dom_id, blob in domains.items():
+        local_path = local_dir / f"wrf_{dom_id}.nc"
+        print(f"📥 Downloading WRF {dom_id} output: gs://{bucket_name}/{blob.name} -> {local_path}")
+        blob.download_to_filename(str(local_path))
+        downloaded.append((dom_id, local_path))
         
-    if selected_blob:
-        print(f"📥 Downloading WRF output: gs://{bucket_name}/{selected_blob.name} -> {local_path}")
-        selected_blob.download_to_filename(local_path)
-        return True
-        
-    return False
+    return downloaded
 
 
 def get_nearest_grid_indices(lats: xr.DataArray, lons: xr.DataArray, target_lat: float, target_lon: float) -> tuple[int, int]:
@@ -191,10 +202,12 @@ def process_wrf_forecast(
     wrf_path: str,
     run_date: str,
     run_id: str,
+    domain_id: str = "d03",
     bias_map: dict | None = None,
 ) -> list[dict]:
     """Parse WRF NetCDF and sample canonical locations and offshore routes."""
-    print(f"📖 Opening WRF dataset: {wrf_path}")
+    print(f"📖 Opening WRF dataset for {domain_id}: {wrf_path}")
+    network_id = f"WRF_{domain_id}"
     
     with xr.open_dataset(wrf_path) as ds:
         # Verify required coordinates
@@ -349,10 +362,10 @@ def process_wrf_forecast(
                         "run_id": run_id,
                         "forecast_created_at_utc": run_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "forecast_source_id": PROVIDER,
-                        "forecast_source_label": "PredSea WRF 1km",
+                        "forecast_source_label": f"PredSea {domain_id.upper()} 1km" if "d0" in domain_id and int(domain_id[2]) >= 3 else "PredSea WRF",
                         "ocean_source": PROVIDER,
                         "provider": PROVIDER,
-                        "network": NETWORK,
+                        "network": network_id,
                         "route_id": target["route_id"],
                         "route_name": target["route_name"],
                         "truth_station_id": target["id"],
@@ -389,51 +402,53 @@ def main(argv=None) -> int:
     print(f"🛠️ Dry-run: {args.dry_run}")
     print("=================================================================")
     
-    temp_nc_path = None
+    temp_dir_obj = tempfile.TemporaryDirectory()
+    temp_dir = Path(temp_dir_obj.name)
     
-    if args.local_file:
-        nc_path = args.local_file
-        print(f"📂 Utilizing specified local file: {nc_path}")
-    else:
-        # Setup temporary file path to download GCS output
-        temp_fd, temp_nc_path = tempfile.mkstemp(suffix=".nc")
-        os.close(temp_fd)
-        nc_path = temp_nc_path
-        
-        try:
-            success = download_wrf_file_from_gcs(args.gcs_bucket, run_date, run_id, nc_path)
-            if not success:
+    try:
+        if args.local_file:
+            # If local file provided, we assume d03 by default or try to guess
+            dom_id = "d03"
+            import re
+            match = re.search(r"d0([1-7])", args.local_file)
+            if match:
+                dom_id = f"d0{match.group(1)}"
+            wrf_files = [(dom_id, Path(args.local_file))]
+            print(f"📂 Utilizing specified local file: {args.local_file} as {dom_id}")
+        else:
+            wrf_files = download_wrf_files_from_gcs(args.gcs_bucket, run_date, run_id, temp_dir)
+            if not wrf_files:
                 if args.dry_run:
                     print("⚠️ [DRY RUN] No WRF NetCDF outputs could be located in GCS, but continuing dry-run.")
                     return 0
                 print(f"❌ Error: No WRF NetCDF outputs could be located in GCS for {run_date} ({run_id}). Exiting Ingestion.")
-                if temp_nc_path and os.path.exists(temp_nc_path):
-                    os.unlink(temp_nc_path)
                 return 1
-        except Exception as e:
-            if args.dry_run:
-                print(f"⚠️ [DRY RUN] Error downloading WRF file from GCS: {e}. Continuing dry-run.")
-                return 0
-            print(f"❌ Error downloading WRF file from GCS: {e}")
-            if temp_nc_path and os.path.exists(temp_nc_path):
-                os.unlink(temp_nc_path)
-            return 1
             
-    try:
         # Load bias map if available
         bias_map = {}
         if not args.dry_run:
             bias_map = load_bias_corrections(args.project, args.dataset, PROVIDER)
 
-        # Extract and format forecast rows
-        raw_rows = process_wrf_forecast(nc_path, run_date, run_id, bias_map=bias_map)
+        all_normalized_rows = []
+        for dom_id, nc_path in wrf_files:
+            try:
+                # Extract and format forecast rows for THIS domain
+                raw_rows = process_wrf_forecast(str(nc_path), run_date, run_id, domain_id=dom_id, bias_map=bias_map)
+                
+                # Build normalized BigQuery rows using standard helper
+                normalized_rows = build_normalized_rows(observation_rows=[], forecast_rows=raw_rows)
+                print(f"📊 {dom_id}: Standardized {len(normalized_rows)} rows.")
+                all_normalized_rows.extend(normalized_rows)
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to process domain {dom_id}: {e}")
+                continue
         
-        # Build normalized BigQuery rows using standard helper (sets row hashes and filters allowed schema fields)
-        normalized_rows = build_normalized_rows(observation_rows=[], forecast_rows=raw_rows)
-        print(f"📊 Standardized and normalized {len(normalized_rows)} rows against target BQ schema.")
-        
+        if not all_normalized_rows:
+            print("❌ Error: No rows were successfully processed from any domain. Exiting.")
+            return 1
+
         if args.dry_run:
-            print(f"⚡ [DRY RUN] Ingestion skipped. Sample formatted row:\n{json.dumps(normalized_rows[0], indent=2) if normalized_rows else 'None'}")
+            print(f"⚡ [DRY RUN] Ingestion skipped. Total rows to ingest: {len(all_normalized_rows)}. Sample row:\n{json.dumps(all_normalized_rows[0], indent=2) if all_normalized_rows else 'None'}")
             return 0
             
         # Load config and session
@@ -446,12 +461,12 @@ def main(argv=None) -> int:
             print("❌ Error: BigQuery configuration resolution failed. Ensure GOOGLE_CLOUD_PROJECT is set. Exiting.")
             return 1
             
-        print(f"📡 Writing rows to BigQuery table: {config.project_id}.{config.dataset_id}.{config.table_id}...")
+        print(f"📡 Writing {len(all_normalized_rows)} total rows to BigQuery table: {config.project_id}.{config.dataset_id}.{config.table_id}...")
         session = authorized_bigquery_session()
-        result = insert_rows(session, config, normalized_rows)
+        result = insert_rows(session, config, all_normalized_rows)
         
         if result.get("status") in ("written", "success"):
-            print(f"🏆 Ingestion successful! Exported {len(normalized_rows)} WRF forecast rows to BigQuery.")
+            print(f"🏆 Ingestion successful! Exported {len(all_normalized_rows)} total WRF forecast rows to BigQuery.")
         else:
             print(f"❌ BigQuery Insertion failed: {result.get('error_messages') or result.get('reason')}")
             return 1
@@ -462,9 +477,7 @@ def main(argv=None) -> int:
         traceback.print_exc()
         return 1
     finally:
-        # Cleanup temp file
-        if temp_nc_path and os.path.exists(temp_nc_path):
-            os.unlink(temp_nc_path)
+        temp_dir_obj.cleanup()
             
     return 0
 
