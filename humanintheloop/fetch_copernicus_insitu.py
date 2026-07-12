@@ -34,10 +34,11 @@ def _read_copernicus_dataframe(dataset_id, variables, lon_min, lon_max, lat_min,
 
 def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
     """
-    Fetches real-time in-situ waves (VHM0) and temperatures (TEMP) for France, Italy, 
-    and the broader Western Mediterranean from Copernicus Marine.
+    Fetches real-time in-situ observations for the entire Western Mediterranean from Copernicus Marine.
+    Bounding Box: [35.0, 44.5, -6.0, 15.6]
+    Dataset: cmems_obs-ins_med_phybgcwav_mynrt_na_irrlatest
     """
-    # 1. Bounding box coordinates for France & Italy nested grid (the entire Western Med)
+    # 1. Bounding box coordinates for the entire Western Mediterranean (Gibraltar to Messina)
     lat_min, lat_max = 35.0, 44.5
     lon_min, lon_max = -6.0, 15.6
 
@@ -69,13 +70,16 @@ def fetch_copernicus_insitu_bundle(dry_run=False, lookback_hours=36):
         if user and pwd:
             copernicusmarine.login(username=user, password=pwd, force_service_selection=True)
 
+        dataset_id = "cmems_obs-ins_med_phybgcwav_mynrt_na_irrlatest"
+        variables = [
+            "TEMP", "VHM0", "VMDR", "WSPD", "WDIR", 
+            "DRYT", "PSAL", "SLEV", "VHM0_SW1", "VMDR_SW1"
+        ]
+
         print(f"📡 Downloading Copernicus In-Situ MED observations from {start_time.isoformat()} to {now.isoformat()}...")
         df = _read_copernicus_dataframe(
-            dataset_id="cmems_obs-ins_med_phybgcwav_mynrt_na_irr",
-            variables=[
-                "TEMP", "VHM0", "VMDR", "WSPD", "WDIR", 
-                "DRYT", "PSAL", "SLEV", "VHM0_SW1", "VMDR_SW1"
-            ],
+            dataset_id=dataset_id,
+            variables=variables,
             lon_min=lon_min,
             lon_max=lon_max,
             lat_min=lat_min,
@@ -280,7 +284,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--lookback", type=int, default=36)
     args = parser.parse_args()
     
-    res = fetch_copernicus_insitu_bundle(dry_run=args.dry_run, lookback_hours=6)
+    res = fetch_copernicus_insitu_bundle(dry_run=args.dry_run, lookback_hours=args.lookback)
     print(f"Fetch Result: Available={res['available']}, Stations={len(res['stations'])}")

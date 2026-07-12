@@ -166,9 +166,22 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Perform dry-run for boundaries and simulation checks")
     parser.add_argument("--poll-interval", type=int, default=30, help="GCE status polling interval in seconds")
     parser.add_argument("--timeout-hours", type=float, default=4.0, help="Maximum execution wait time for the GCE Spot VM")
-    parser.add_argument("--boot-disk-size", default="100GB", help="Boot disk size for GCE VM (e.g. 100GB)")
+    parser.add_argument("--boot-disk-size", default="200GB", help="Boot disk size for GCE VM (e.g. 100GB)")
 
     args = parser.parse_args()
+    
+    # Propagate GOOGLE_CLOUD_PROJECT to sub-processes if explicitly provided
+    if args.project:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = args.project
+    elif not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        # Attempt to auto-detect if not set, to help sub-processes
+        try:
+            import google.auth
+            _, project_id = google.auth.default()
+            if project_id:
+                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+        except Exception:
+            pass
 
     # Dates calculation matching daily briefing timezone defaults
     now_utc = datetime.datetime.now(datetime.timezone.utc)
@@ -199,6 +212,7 @@ def main():
         python_bin, str(SCRIPTS_DIR / "fetch_ecmwf_forcing.py"),
         f"--run-date={run_date}",
         f"--gcs-bucket={args.gcs_bucket}",
+        "--skip-if-exists",
     ]
     if args.dry_run:
         ecmwf_cmd.append("--dry-run")
@@ -212,6 +226,7 @@ def main():
         python_bin, str(SCRIPTS_DIR / "fetch_cmems_forcing.py"),
         f"--run-date={run_date}",
         f"--gcs-bucket={args.gcs_bucket}",
+        "--skip-if-exists",
     ]
     if args.dry_run:
         cmems_cmd.append("--dry-run")

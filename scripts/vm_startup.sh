@@ -25,6 +25,11 @@ cleanup() {
   if [ -d /workspace/outputs ] && [ -n "${GCS_BUCKET:-}" ] && [ -n "${RUN_DATE:-}" ] && [ -n "${RUN_ID:-}" ]; then
     echo "Syncing final /workspace/outputs/ to GCS..."
     gsutil -m rsync -r /workspace/outputs/ "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/" || true
+    
+    # Explicit fallback for startup log to ensure we see why it failed
+    if [ -f /workspace/outputs/startup.log ]; then
+      gsutil cp /workspace/outputs/startup.log "gs://${GCS_BUCKET}/predictions/${RUN_DATE}/runs/${RUN_ID}/startup.log" || true
+    fi
   fi
 
   if [[ "${NAME}" == *debug* ]]; then
@@ -52,6 +57,9 @@ mkdir -p /workspace/outputs/wrf
 mkdir -p /workspace/outputs/roms
 mkdir -p /workspace/outputs/swan
 
+# Redirect all output to a log file as well as stdout for debugging
+exec > >(tee -a /workspace/outputs/startup.log) 2>&1
+
 # Download forcing data if available
 echo "Downloading atmospheric boundary conditions from GCS..."
 gsutil -m rsync -r "gs://${GCS_BUCKET}/forcing/ecmwf/${RUN_DATE}/" /workspace/inputs/ || echo "⚠️ Warning: Atmospheric boundary forcing not found."
@@ -71,11 +79,17 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
     echo "Installing Docker..."
     apt-get update
     apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+    
+    DISTRO_CODENAME=$(lsb_release -cs 2>/dev/null || echo "bullseye")
+    DISTRO_ID=$(lsb_release -is 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "debian")
+    
     mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    curl -fsSL https://download.docker.com/linux/${DISTRO_ID}/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg || true
+    
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${DISTRO_ID} ${DISTRO_CODENAME} stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
     apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io
+    apt-get install -y docker-ce docker-ce-cli containerd.io || apt-get install -y docker.io
   fi
 
   # Configure Docker credential helper for Artifact Registry

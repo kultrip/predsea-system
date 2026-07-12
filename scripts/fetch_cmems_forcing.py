@@ -149,16 +149,16 @@ def parse_args() -> argparse.Namespace:
         help="Local output directory",
     )
     parser.add_argument(
-        "--lon-min", type=float, default=-3.0, help="Minimum longitude"
+        "--lon-min", type=float, default=-6.0, help="Minimum longitude"
     )
     parser.add_argument(
-        "--lon-max", type=float, default=11.0, help="Maximum longitude"
+        "--lon-max", type=float, default=15.6, help="Maximum longitude"
     )
     parser.add_argument(
         "--lat-min", type=float, default=35.0, help="Minimum latitude"
     )
     parser.add_argument(
-        "--lat-max", type=float, default=45.0, help="Maximum latitude"
+        "--lat-max", type=float, default=44.5, help="Maximum latitude"
     )
     parser.add_argument(
         "--run-date",
@@ -181,6 +181,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Dry run without downloading",
     )
+    parser.add_argument(
+        "--skip-if-exists",
+        action="store_true",
+        help="Skip download if local file already exists",
+    )
     return parser.parse_args()
 
 
@@ -197,20 +202,30 @@ def main() -> None:
     start_time = base_date.replace(hour=0, minute=0, second=0)
     end_time = start_time + datetime.timedelta(hours=args.lead_hours)
 
+    target_path = Path(args.output_dir) / args.output_filename
+    if args.skip_if_exists and target_path.exists() and target_path.stat().st_size > 0:
+        print(f"✅ {target_path.name} already exists locally. Skipping download due to --skip-if-exists.")
+        path = target_path
+    else:
+        try:
+            path = download_cmems_forcing(
+                dataset_id=args.dataset_id,
+                variables=args.variables,
+                output_filename=args.output_filename,
+                output_dir=args.output_dir,
+                lon_min=args.lon_min,
+                lon_max=args.lon_max,
+                lat_min=args.lat_min,
+                lat_max=args.lat_max,
+                start_time=start_time,
+                end_time=end_time,
+                dry_run=args.dry_run,
+            )
+        except Exception as e:
+            print(f"❌ CMEMS download failed: {e}", file=sys.stderr)
+            sys.exit(1)
+
     try:
-        path = download_cmems_forcing(
-            dataset_id=args.dataset_id,
-            variables=args.variables,
-            output_filename=args.output_filename,
-            output_dir=args.output_dir,
-            lon_min=args.lon_min,
-            lon_max=args.lon_max,
-            lat_min=args.lat_min,
-            lat_max=args.lat_max,
-            start_time=start_time,
-            end_time=end_time,
-            dry_run=args.dry_run,
-        )
 
         if args.gcs_bucket and not args.dry_run:
             gcs_path = f"forcing/cmems/{args.run_date}/{path.name}"

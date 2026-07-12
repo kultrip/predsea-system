@@ -78,11 +78,20 @@ def resolve_config(
                 env = "test"
             dataset_id = os.environ.get("PREDSEA_BIGQUERY_DATASET") or f"{DEFAULT_DATASET}_{env}"
     table_id = table_id or os.environ.get("PREDSEA_BIGQUERY_TABLE") or DEFAULT_TABLE
-    project_id = (
-        project_id
-        or os.environ.get("PREDSEA_BIGQUERY_PROJECT")
-        or os.environ.get("GOOGLE_CLOUD_PROJECT")
-    )
+    
+    if not project_id:
+        project_id = (
+            os.environ.get("PREDSEA_BIGQUERY_PROJECT")
+            or os.environ.get("GOOGLE_CLOUD_PROJECT")
+        )
+        if not project_id:
+            try:
+                # Fallback to default project from credentials
+                _, auth_project = google_auth_default_project()
+                project_id = auth_project
+            except Exception:
+                pass
+
     if not project_id or not dataset_id or not table_id:
         return None
     return BigQueryConfig(
@@ -206,6 +215,82 @@ def export_station_metadata_to_bigquery(
         return {
             "status": "skipped",
             "reason": "no station metadata rows were found",
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": 0,
+        }
+
+    if config is None:
+        return {
+            "status": "skipped",
+            "reason": "bigquery configuration is incomplete",
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": 0,
+        }
+
+    try:
+        if dry_run:
+            return {
+                "status": "dry_run",
+                "project_id": config.project_id,
+                "dataset_id": config.dataset_id,
+                "table_id": config.table_id,
+                "station_metadata_rows": len(metadata_rows),
+                "exported_rows": len(rows),
+            }
+
+        session = client or authorized_bigquery_session()
+        ensure_dataset(session, config)
+        ensure_station_metadata_table(session, config)
+        insert_result = insert_rows(session, config, rows)
+        return {
+            "status": insert_result["status"],
+            "project_id": config.project_id,
+            "dataset_id": config.dataset_id,
+            "table_id": config.table_id,
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": len(rows),
+            "failed_rows": insert_result.get("failed_rows", 0),
+            "insert_errors": insert_result.get("insert_errors", []),
+            "failed_row_samples": insert_result.get("failed_row_samples", []),
+            "error_messages": insert_result.get("error_messages", []),
+            "response_status": insert_result.get("response_status"),
+            "response_body": insert_result.get("response_body"),
+        }
+    except Exception as error:
+        return {
+            "status": "error",
+            "reason": str(error),
+            "traceback": traceback.format_exc(),
+            "project_id": config.project_id,
+            "dataset_id": config.dataset_id,
+            "table_id": config.table_id,
+            "station_metadata_rows": len(metadata_rows),
+            "exported_rows": len(rows),
+        }
+
+
+def export_station_metadata_to_bigquery_from_rows(
+    metadata_rows: list[dict],
+    project_id: str | None = None,
+    dataset_id: str | None = None,
+    table_id: str | None = None,
+    location: str | None = None,
+    client=None,
+    dry_run: bool = False,
+):
+    """Export station metadata rows that are already in memory to BigQuery."""
+    rows = build_station_metadata_rows(metadata_rows)
+    config = resolve_config(
+        project_id=project_id,
+        dataset_id=dataset_id,
+        table_id=table_id or os.environ.get("PREDSEA_BIGQUERY_STATION_METADATA_TABLE") or "station_metadata",
+        location=location,
+    )
+
+    if not rows:
+        return {
+            "status": "skipped",
+            "reason": "no station metadata rows were provided",
             "station_metadata_rows": len(metadata_rows),
             "exported_rows": 0,
         }
