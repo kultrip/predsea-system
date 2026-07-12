@@ -34,19 +34,32 @@ mkdir -p ./geo_em
 mkdir -p ./met_em
 
 ln -sf "${Vtable}" Vtable
-./link_grib.csh "${GRIB_DIR}"/*.grib2
+if [[ -f "./metgrid/METGRID.TBL.ECMWF" ]]; then
+  echo "Using METGRID.TBL.ECMWF..."
+  (cd metgrid && ln -sf METGRID.TBL.ECMWF METGRID.TBL)
+  ls -l metgrid/METGRID.TBL
+fi
+
+# 3. Link GRIB files
+echo "Linking GRIB files from ${GRIB_DIR}..."
+grib_ls "${GRIB_DIR}"/ecmwf_*.grib2 || echo "grib_ls failed"
+./link_grib.csh "${GRIB_DIR}"/ecmwf_*.grib2
 
 echo "Running ungrib..."
-"${PREDSEA_BIN}/ungrib.exe" > ungrib_stdout.log 2>&1 || true
+"${PREDSEA_BIN}/ungrib.exe" > ungrib_stdout.log 2>&1
 cp ungrib.log ungrib_stdout.log "${RUN_DIR}/" || true
 
 echo "Running geogrid..."
-"${PREDSEA_BIN}/geogrid.exe" > geogrid_stdout.log 2>&1 || true
+"${PREDSEA_BIN}/geogrid.exe" > geogrid_stdout.log 2>&1
 cp geogrid.log geogrid_stdout.log "${RUN_DIR}/" || true
 
 echo "Running metgrid..."
-"${PREDSEA_BIN}/metgrid.exe" > metgrid_stdout.log 2>&1 || true
+"${PREDSEA_BIN}/metgrid.exe" > metgrid_stdout.log 2>&1
 cp metgrid.log metgrid_stdout.log "${RUN_DIR}/" || true
+
+# Set MPI environment variables for container stability
+export OMPI_MCA_btl_vader_single_copy_mechanism=none
+export OMPI_MCA_btl_tcp_if_include=lo,eth0
 
 # Re-enable strict error checking
 set -e

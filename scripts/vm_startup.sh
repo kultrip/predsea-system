@@ -130,6 +130,8 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
   fi
 
   docker run --rm \
+    --network=host \
+    --shm-size=8gb \
     -v /workspace/inputs:/data \
     -v /workspace/outputs:/workspace/run \
     -v /workspace/WPS_GEOG:/opt/WPS_GEOG \
