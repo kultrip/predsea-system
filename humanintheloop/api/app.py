@@ -1822,8 +1822,8 @@ def create_app(evidence_store=None, route_store=None):
 
     @app.get("/warnings/gmdss")
     def position_gmdss_warnings(
-        lat: float = Query(..., ge=-90.0, le=90.0, description="Vessel GPS latitude"),
-        lon: float = Query(..., ge=-180.0, le=180.0, description="Vessel GPS longitude"),
+        latitude: float = Query(..., ge=-90.0, le=90.0, description="Vessel GPS latitude"),
+        longitude: float = Query(..., ge=-180.0, le=180.0, description="Vessel GPS longitude"),
         radius: float = Query(60.0, ge=0.0, le=500.0, description="Max proximity distance threshold in Nautical Miles"),
         date: str | None = Query(None, description="Optional run date YYYY-MM-DD"),
         run: str | None = Query(None, description="Optional run ID"),
@@ -1833,7 +1833,7 @@ def create_app(evidence_store=None, route_store=None):
             
             gmdss_file = resolve_gmdss_warnings_file(store, date=date, run=run)
             try:
-                matched_alerts = gmdss_aggregator.filter_alerts_by_position(lat, lon, max_distance_nm=radius, filepath=gmdss_file)
+                matched_alerts = gmdss_aggregator.filter_alerts_by_position(latitude, longitude, max_distance_nm=radius, filepath=gmdss_file)
             finally:
                 if gmdss_file and "tmp" in gmdss_file:
                     try:
@@ -1857,8 +1857,8 @@ def create_app(evidence_store=None, route_store=None):
             markdown_summary = gmdss_aggregator.render_markdown_summary(matched_alerts)
             
             return {
-                "latitude": lat,
-                "longitude": lon,
+                "latitude": latitude,
+                "longitude": longitude,
                 "safety_threshold_nm": radius,
                 "disclaimer": gmdss_aggregator.GMDSS_DISCLAIMER,
                 "alerts_count": len(alerts_list),
@@ -2628,8 +2628,8 @@ def create_app(evidence_store=None, route_store=None):
         run: str | None = None,
         variable: str = Query("wave_height", pattern=MAP_VARIABLE_PATTERN),
         time: str | None = None,
-        lat: float = Query(..., ge=-90, le=90),
-        lon: float = Query(..., ge=-180, le=180),
+        latitude: float = Query(..., ge=-90, le=90),
+        longitude: float = Query(..., ge=-180, le=180),
     ):
         try:
             run_date = store.resolve_date(date)
@@ -2640,7 +2640,7 @@ def create_app(evidence_store=None, route_store=None):
             if not grid_filename:
                 raise EvidenceNotFoundError("Selected map overlay has no inspection grid")
             grid = store.load_map_grid(variable, grid_filename, run_date, run_id)
-            sample = sample_grid(grid, lat, lon)
+            sample = sample_grid(grid, latitude, longitude)
             return {
                 "status": "ready",
                 "date": run_date,
@@ -2648,15 +2648,11 @@ def create_app(evidence_store=None, route_store=None):
                 "variable": variable,
                 "requested_time": time,
                 "time": selected["time"],
-                "requested_lat": lat,
-                "requested_lon": lon,
-                "sampled_lat": sample["sampled_lat"],
-                "sampled_lon": sample["sampled_lon"],
-                "grid_indices": sample["grid_indices"],
-                "inside_domain": sample["inside_domain"],
-                "value": sample["value"],
-                "units": index["units"],
-                "color_scale": index["color_scale"],
+                "latitude": latitude,
+                "longitude": longitude,
+                "value": sample,
+                "units": index.get("units"),
+                "color_scale": index.get("color_scale"),
             }
         except EvidenceNotFoundError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
