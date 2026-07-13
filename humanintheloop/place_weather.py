@@ -31,7 +31,18 @@ def available_place_ids():
     return sorted(PLACE_CATALOG)
 
 
-def place_definition(place_id):
+def place_definition(place_id, latitude=None, longitude=None):
+    if place_id == "current_position":
+        lat = float(latitude) if latitude is not None else 0.0
+        lon = float(longitude) if longitude is not None else 0.0
+        return {
+            "id": "current_position",
+            "name": f"Coordinate ({lat}, {lon})",
+            "latitude": lat,
+            "longitude": lon,
+            "kind": "coordinate",
+            "observation_candidates": (),
+        }
     canonical_place_id = default_place_id_for_query(place_id) or place_id
     try:
         return PLACE_CATALOG[canonical_place_id]
@@ -40,8 +51,8 @@ def place_definition(place_id):
         raise ValueError(f"Unknown place '{place_id}'. Available places: {available}") from error
 
 
-def place_route(place_id):
-    place = place_definition(place_id)
+def place_route(place_id, latitude=None, longitude=None):
+    place = place_definition(place_id, latitude=latitude, longitude=longitude)
     point = {
         "name": place["name"],
         "latitude": place["latitude"],
@@ -85,6 +96,20 @@ def place_sample_points(place):
 
 
 def resolve_place(place_id, latitude=None, longitude=None):
+    if place_id == "current_position" and latitude is not None and longitude is not None:
+        return {
+            "requested_place_id": place_id,
+            "place_id": "current_position",
+            "place_name": f"Coordinate ({latitude}, {longitude})",
+            "latitude": latitude,
+            "longitude": longitude,
+            "requested_latitude": latitude,
+            "requested_longitude": longitude,
+            "distance_to_place_nm": 0.0,
+            "matched": True,
+            "confidence": "high",
+        }
+    
     resolution = resolve_place_query(place_id)
     canonical_place_id = resolution["place_id"] or default_place_id_for_query(place_id) or place_id
     if latitude is None or longitude is None:
@@ -146,9 +171,12 @@ def build_place_weather_record(
     requested_latitude=None,
     requested_longitude=None,
 ):
-    place = place_definition(place_id)
-    hourly = list(forecast.get("hourly") or [])
-    sample = select_hourly_sample(hourly, time_text) or {}
+    place = place_definition(place_id, latitude=requested_latitude, longitude=requested_longitude)
+    hourly = forecast.get("hourly") or []
+    sample = select_hourly_sample(hourly, time_text=time_text, run_date=run_date)
+    if not sample:
+        # Fallback to a placeholder if no data matches
+        sample = {}
     generated_at = generated_at_utc or current_timestamp_utc()
     observation = normalize_observation(observation, generated_at_utc=generated_at)
     observation_age_minutes = observation_age(observation, generated_at)
@@ -186,11 +214,11 @@ def build_place_weather_record(
         "wind_wave_direction_deg": sample.get("wind_wave_direction_deg"),
         "current_kn": sample.get("current_kn"),
         "current_direction_deg": sample.get("current_direction_deg"),
-        "wind_kn": observation.get("wind_kn"),
-        "wind_gust_kn": observation.get("wind_gust_kn"),
-        "wind_direction_deg": observation.get("wind_direction_deg"),
-        "water_temperature_c": observation.get("water_temperature_c") or observation.get("water_temp_c"),
-        "air_temperature_c": observation.get("air_temperature_c") or observation.get("temperature_c"),
+        "wind_kn": observation.get("wind_kn") or sample.get("wind_speed_kn"),
+        "wind_gust_kn": observation.get("wind_gust_kn") or sample.get("wind_gust_kn"),
+        "wind_direction_deg": observation.get("wind_direction_deg") or sample.get("wind_direction_deg"),
+        "water_temperature_c": observation.get("water_temperature_c") or observation.get("water_temp_c") or sample.get("water_temperature_c"),
+        "air_temperature_c": observation.get("air_temperature_c") or observation.get("temperature_c") or sample.get("air_temperature_c"),
         "source": "copernicus_med",
         "source_system": "place_weather",
         "freshness_status": freshness_status,
@@ -219,6 +247,7 @@ def build_place_weather_outputs(
     run_id,
     waves_path,
     currents_path,
+    wind_path=None,
     observations=None,
     station_metadata=None,
     place_ids=None,
@@ -267,6 +296,7 @@ def build_place_weather_outputs(
             place_id,
             waves_path,
             currents_path,
+            wind_path=wind_path,
             observations=observations,
             run_date=run_date,
             run_id=run_id,
@@ -300,6 +330,7 @@ def write_place_weather_outputs(
     run_id,
     waves_path,
     currents_path,
+    wind_path=None,
     observations=None,
     station_metadata=None,
     place_ids=None,
@@ -313,6 +344,7 @@ def write_place_weather_outputs(
         run_id,
         waves_path,
         currents_path,
+        wind_path=wind_path,
         observations=observations,
         station_metadata=station_metadata,
         place_ids=place_ids,
@@ -325,12 +357,15 @@ def build_place_weather_bundle_from_files(
     place_id,
     waves_path,
     currents_path,
+    wind_path=None,
     observations=None,
     station_metadata=None,
     run_date=None,
     run_id=None,
     time_text=None,
     timezone_name=LOCAL_TIMEZONE,
+    latitude=None,
+    longitude=None,
 ):
     """Build a complete place weather record from data files.
     
@@ -353,15 +388,21 @@ def build_place_weather_bundle_from_files(
         Time for hourly sample selection
     timezone_name : str
         Timezone for local time conversion
+    latitude : float, optional
+        Manual latitude for coordinate sampling
+    longitude : float, optional
+        Manual longitude for coordinate sampling
     
     Returns
     -------
     dict
         Complete place weather payload with observations included
     """
-    route = place_route(place_id)
-    forecast = route_analysis.forecast_summary_from_files(waves_path, currents_path, route=route)
-    observation = select_observation_for_place(place_id, observations or {})
+    route = place_route(place_id, latitude=latitude, longitude=longitude)
+    forecast = route_analysis.forecast_summary_from_files(
+        waves_path, currents_path, wind_path=wind_path, route=route
+    )
+    observation = select_observation_for_place(place_id, observations or {}, latitude=latitude, longitude=longitude)
     return build_place_weather_record(
         place_id,
         forecast,
@@ -371,18 +412,28 @@ def build_place_weather_bundle_from_files(
         run_id=run_id,
         time_text=time_text,
         timezone_name=timezone_name,
+        requested_latitude=latitude,
+        requested_longitude=longitude,
     )
 
 
-def select_hourly_sample(hourly, time_text=None):
+def select_hourly_sample(hourly, time_text=None, run_date=None):
     if not hourly:
         return None
+    
+    # If we have a run_date, try to find the first hour of that date
+    if run_date and not time_text:
+        for sample in hourly:
+            sample_time_utc = sample.get("time_utc", "")
+            if sample_time_utc.startswith(run_date):
+                return sample
+                
     if not time_text:
         return hourly[0]
     return route_analysis.closest_hourly_sample(hourly, time_text)
 
 
-def select_observation_for_place(place_id, observations):
+def select_observation_for_place(place_id, observations, latitude=None, longitude=None):
     """Select the best observation for a given place.
     
     Tries to match observations by:
@@ -402,8 +453,8 @@ def select_observation_for_place(place_id, observations):
     dict
         Normalized observation record, or empty dict if no match found
     """
-    place = place_definition(place_id)
-    observation_keys = list(station_candidates_for_place(place_id)) + [place_id]
+    place = place_definition(place_id, latitude=latitude, longitude=longitude)
+    observation_keys = list(station_candidates_for_place(place_id, latitude=latitude, longitude=longitude)) + [place_id]
     lowered_aliases = [alias.lower() for alias in place.get("aliases") or ()]
 
     # First: try exact key matches from observation_keys
@@ -564,7 +615,7 @@ def in_supported_domain(latitude, longitude):
         return True
     bbox = getattr(ingest_atmosphere, "WESTMED_BBOX", None)
     if bbox is None:
-        bbox = getattr(ingest_atmosphere, "BALEARIC_BBOX", {"south": 38.0, "north": 41.5, "west": 0.5, "east": 4.5})
+        bbox = {"south": 35.0, "north": 44.5, "west": -6.5, "east": 16.5}
     return bbox["south"] <= latitude <= bbox["north"] and bbox["west"] <= longitude <= bbox["east"]
 
 

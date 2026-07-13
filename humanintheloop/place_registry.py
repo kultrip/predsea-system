@@ -543,14 +543,25 @@ class PlaceDistanceResolver:
 
 PLACE_DISTANCE_RESOLVER = PlaceDistanceResolver()
 
-
 def available_place_ids():
     return sorted(PLACE_CATALOG)
 
 
-def place_definition(place_id):
+def place_definition(place_id, latitude=None, longitude=None):
+    if place_id == "current_position":
+        lat = float(latitude) if latitude is not None else 0.0
+        lon = float(longitude) if longitude is not None else 0.0
+        return {
+            "id": "current_position",
+            "name": f"Coordinate ({lat}, {lon})",
+            "latitude": lat,
+            "longitude": lon,
+            "kind": "coordinate",
+            "observation_candidates": (),
+        }
+    canonical_place_id = default_place_id_for_query(place_id) or place_id
     try:
-        return PLACE_CATALOG[place_id]
+        return PLACE_CATALOG[canonical_place_id]
     except KeyError as error:
         available = ", ".join(available_place_ids())
         raise ValueError(f"Unknown place '{place_id}'. Available places: {available}") from error
@@ -611,9 +622,14 @@ def default_place_id_for_query(query):
     return resolve_place_query(query)["place_id"] if query is not None else None
 
 
-def station_candidates_for_place(place_id):
-    place = place_definition(place_id)
-    return list(place.get("observation_candidates") or ())
+def station_candidates_for_place(place_id, latitude=None, longitude=None):
+    if place_id == "current_position":
+        return ()
+    try:
+        place = place_definition(place_id, latitude=latitude, longitude=longitude)
+        return tuple(place.get("observation_candidates") or ())
+    except Exception:
+        return ()
 
 
 def place_pair_metrics(origin_place_id, destination_place_id):

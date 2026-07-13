@@ -598,34 +598,75 @@ def load_place_weather_response(
     lon=None,
     requested_place_id_override=_REQUESTED_PLACE_ID_UNSET,
 ):
-    resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
-    payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
-    response = dict(payload)
+    # Determine if we should perform high-precision coordinate sampling
+    use_coordinate_sampling = False
+    if lat is not None and lon is not None:
+        if place_id == "current_position":
+            use_coordinate_sampling = True
+        else:
+            # Check proximity to the nearest place
+            _, dist_nm = place_weather.nearest_place_id(lat, lon)
+            if dist_nm > 2.0:
+                use_coordinate_sampling = True
+
+    if use_coordinate_sampling:
+        try:
+            import fetch_data
+            paths = fetch_data.resolve_forecast_output_paths(fetch_data.OUTPUT_DIR)
+            waves_path = paths["waves_path"]
+            currents_path = paths["currents_path"]
+            wind_path = Path(fetch_data.OUTPUT_DIR) / "ecmwf_wind.nc"
+            if not wind_path.exists():
+                wind_path = None
+            
+            payload = place_weather.build_place_weather_bundle_from_files(
+                place_id=place_id,
+                waves_path=waves_path,
+                currents_path=currents_path,
+                wind_path=wind_path,
+                run_date=run_date,
+                run_id=run_id,
+                latitude=lat,
+                longitude=lon
+            )
+            response = dict(payload)
+        except Exception as e:
+            logger.warning("On-demand coordinate sampling failed for (%s, %s): %s. Falling back to nearest place.", lat, lon, e)
+            resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
+            payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
+            response = dict(payload)
+    else:
+        resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
+        payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
+        response = dict(payload)
     
     # Apply hybrid blending to the hourly list
     if "hourly" in response:
+        # For coordinate-based requests, we use the requested lat/lon for blending too
+        resolved_lat = response.get("resolved_latitude") or lat
+        resolved_lon = response.get("resolved_longitude") or lon
+        
         response["hourly"] = blend_hourly_forecasts(
             store,
             response["hourly"],
-            place_id=resolved["place_id"],
+            place_id=response.get("place_id"),
             run_date=run_date,
             run_id=run_id,
-            latitude=resolved.get("latitude") or lat,
-            longitude=resolved.get("longitude") or lon,
+            latitude=resolved_lat,
+            longitude=resolved_lon,
         )
 
     response["requested_place_id"] = (
-        resolved["requested_place_id"]
+        response.get("requested_place_id") or place_id
         if requested_place_id_override is _REQUESTED_PLACE_ID_UNSET
         else requested_place_id_override
     )
-    response["place_id"] = resolved["place_id"]
-    response["place_name"] = resolved["place_name"]
-    response["resolved_latitude"] = resolved["latitude"]
-    response["resolved_longitude"] = resolved["longitude"]
-    response["distance_to_place_nm"] = resolved.get("distance_to_place_nm")
-    response["requested_latitude"] = resolved.get("requested_latitude")
-    response["requested_longitude"] = resolved.get("requested_longitude")
+    # Ensure requested coordinates are preserved in the response
+    if lat is not None:
+        response["requested_latitude"] = lat
+    if lon is not None:
+        response["requested_longitude"] = lon
+        
     return response
 
 
