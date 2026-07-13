@@ -40,22 +40,43 @@ if [[ -f "./metgrid/METGRID.TBL.ECMWF" ]]; then
   ls -l metgrid/METGRID.TBL
 fi
 
+run_wps_stage() {
+  local stage="$1"
+  local exe="${PREDSEA_BIN}/${stage}.exe"
+  local stdout_log="${stage}_stdout.log"
+  local native_log="${stage}.log"
+
+  echo "Running ${stage}..."
+  set +e
+  "${exe}" > "${stdout_log}" 2>&1
+  local rc=$?
+  set -e
+
+  cp "${native_log}" "${stdout_log}" "${RUN_DIR}/" || true
+  if [[ ${rc} -ne 0 ]]; then
+    echo "❌ ${stage}.exe failed with exit code ${rc}."
+    echo "Last lines from ${stdout_log}:"
+    tail -n 80 "${stdout_log}" || true
+    if [[ -f "${native_log}" ]]; then
+      echo "Last lines from ${native_log}:"
+      tail -n 80 "${native_log}" || true
+    fi
+    exit "${rc}"
+  fi
+}
+
 # 3. Link GRIB files
 echo "Linking GRIB files from ${GRIB_DIR}..."
-grib_ls "${GRIB_DIR}"/ecmwf_*.grib2 || echo "grib_ls failed"
-./link_grib.csh "${GRIB_DIR}"/ecmwf_*.grib2
+if ls "${GRIB_DIR}"/ecmwf_*.grib2 1> /dev/null 2>&1; then
+    ./link_grib.csh "${GRIB_DIR}"/ecmwf_*.grib2
+else
+    echo "❌ Error: No GRIB files found in ${GRIB_DIR}"
+    exit 1
+fi
 
-echo "Running ungrib..."
-"${PREDSEA_BIN}/ungrib.exe" > ungrib_stdout.log 2>&1
-cp ungrib.log ungrib_stdout.log "${RUN_DIR}/" || true
-
-echo "Running geogrid..."
-"${PREDSEA_BIN}/geogrid.exe" > geogrid_stdout.log 2>&1
-cp geogrid.log geogrid_stdout.log "${RUN_DIR}/" || true
-
-echo "Running metgrid..."
-"${PREDSEA_BIN}/metgrid.exe" > metgrid_stdout.log 2>&1
-cp metgrid.log metgrid_stdout.log "${RUN_DIR}/" || true
+run_wps_stage ungrib
+run_wps_stage geogrid
+run_wps_stage metgrid
 
 # Set MPI environment variables for container stability
 export OMPI_MCA_btl_vader_single_copy_mechanism=none

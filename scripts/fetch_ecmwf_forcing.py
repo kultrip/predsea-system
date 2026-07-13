@@ -43,6 +43,59 @@ SOIL_VARS = ["sot", "vsw"]
 SOIL_LEVELS = [1, 2, 3, 4]
 
 
+def expected_valid_times(run_date: str, run_time: int, steps: list[int]) -> set[tuple[int, int]]:
+    base = datetime.datetime.strptime(f"{run_date} {run_time:02d}", "%Y-%m-%d %H")
+    expected = set()
+    for step in steps:
+        valid = base + datetime.timedelta(hours=int(step))
+        expected.add((int(valid.strftime("%Y%m%d")), int(valid.strftime("%H%M"))))
+    return expected
+
+
+def grib_valid_times(path: Path) -> set[tuple[int, int]]:
+    if eccodes is None:
+        raise RuntimeError("eccodes is required to validate ECMWF forcing times.")
+    valid_times = set()
+    with path.open("rb") as file_obj:
+        while True:
+            gid = eccodes.codes_grib_new_from_file(file_obj)
+            if gid is None:
+                break
+            try:
+                valid_times.add(
+                    (
+                        int(eccodes.codes_get(gid, "validityDate")),
+                        int(eccodes.codes_get(gid, "validityTime")),
+                    )
+                )
+            finally:
+                eccodes.codes_release(gid)
+    return valid_times
+
+
+def validate_forcing_file(path: Path, run_date: str, run_time: int, steps: list[int]) -> None:
+    if not path.exists():
+        raise RuntimeError(f"Missing forcing file: {path}")
+    expected = expected_valid_times(run_date, run_time, steps)
+    observed = grib_valid_times(path)
+    missing = sorted(expected - observed)
+    if missing:
+        preview = ", ".join(f"{date}:{time:04d}" for date, time in missing[:8])
+        suffix = "" if len(missing) <= 8 else f", ... ({len(missing)} missing)"
+        raise RuntimeError(
+            f"{path.name} is missing required forecast valid times: {preview}{suffix}"
+        )
+    print(
+        f"✅ Validated {path.name}: {len(observed)} valid times, "
+        f"{len(expected)} required times present."
+    )
+
+
+def validate_forcing_files(paths: dict[str, Path], run_date: str, run_time: int, steps: list[int]) -> None:
+    validate_forcing_file(paths["pl_path"], run_date, run_time, steps)
+    validate_forcing_file(paths["sfc_path"], run_date, run_time, steps)
+
+
 def get_latest_run_time() -> int:
     """Determine the latest available ECMWF run (00, 12, etc.)."""
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -74,56 +127,79 @@ def upload_to_gcs(bucket_name: str, local_path: Path, gcs_blob_path: str) -> Non
 
 
 def repack_grib_file(input_path: Path) -> None:
-    """Convert GRIB2 packing from grid_ccsds to grid_simple using eccodes."""
-    if eccodes is None:
-        print(f"ℹ️ Skipping repacking for {input_path.name} (eccodes not installed).")
+    """
+    Ensure GRIB2 file uses simple packing instead of CCSDS.
+    WPS/ungrib often fails to decode CCSDS-packed ECMWF open data.
+    Uses 'grib_set' CLI if available, otherwise falls back to eccodes-python.
+    """
+    if not input_path.exists():
         return
 
-    temp_output = input_path.with_suffix(".repacked")
-    
-    found_ccsds = False
-    count = 0
+    # Try using grib_set CLI first (much faster and more robust)
+    import subprocess
     try:
-        # First pass: check if any message is CCSDS
-        with open(input_path, "rb") as f_in:
+        temp_output = input_path.with_suffix(".repacked.tmp")
+        # -s packingType=grid_simple: change packing
+        # -w packingType=grid_ccsds: only process CCSDS messages (optimization)
+        # But for simplicity, we'll just set all to simple.
+        cmd = ["grib_set", "-s", "packingType=grid_simple", str(input_path), str(temp_output)]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0 and temp_output.exists():
+            temp_output.replace(input_path)
+            print(f"✅ Repacked {input_path.name} using grib_set CLI.")
+            return
+        else:
+            print(f"⚠️ grib_set CLI failed or not found. Falling back to Python API. Error: {result.stderr}")
+    except Exception as e:
+        print(f"⚠️ grib_set CLI error: {e}. Falling back to Python API.")
+
+    # Fallback to Python API
+    if eccodes is None:
+        print(f"⚠️ eccodes not available. Skipping repacking for {input_path.name}.")
+        return
+
+    temp_output = input_path.with_suffix(".repack_py.tmp")
+    try:
+        # First pass: check if we actually need repacking (any CCSDS messages?)
+        needs_repack = False
+        with open(input_path, "rb") as f:
             while True:
-                gid = eccodes.codes_grib_new_from_file(f_in)
+                gid = eccodes.codes_grib_new_from_file(f)
                 if gid is None:
                     break
-                
-                count += 1
                 try:
-                    packing_type = eccodes.codes_get(gid, "packingType")
-                    if packing_type == "grid_ccsds":
-                        found_ccsds = True
+                    if eccodes.codes_get(gid, "packingType") == "grid_ccsds":
+                        needs_repack = True
+                        eccodes.codes_release(gid)
                         break
                 except Exception:
                     pass
-                finally:
-                    eccodes.codes_release(gid)
+                eccodes.codes_release(gid)
 
-        if not found_ccsds:
-            print(f"ℹ️ No CCSDS packing found in {input_path.name} ({count} messages). No repacking needed.")
+        if not needs_repack:
+            print(f"ℹ️ No CCSDS packing found in {input_path.name}. No repacking needed.")
             return
 
-        # Second pass: actual repacking
-        print(f"🔄 Repacking {input_path.name} (found CCSDS, converting to simple packing)...")
+        print(f"🔄 Repacking {input_path.name} via Python API (CCSDS -> Simple)...")
+        msg_count = 0
+        repack_count = 0
         with open(input_path, "rb") as f_in, open(temp_output, "wb") as f_out:
             while True:
                 gid = eccodes.codes_grib_new_from_file(f_in)
                 if gid is None:
                     break
+                msg_count += 1
                 try:
-                    packing_type = eccodes.codes_get(gid, "packingType")
-                    if packing_type == "grid_ccsds":
+                    if eccodes.codes_get(gid, "packingType") == "grid_ccsds":
                         eccodes.codes_set(gid, "packingType", "grid_simple")
+                        repack_count += 1
                 except Exception:
                     pass
                 eccodes.codes_write(gid, f_out)
                 eccodes.codes_release(gid)
-        
+
         temp_output.replace(input_path)
-        print(f"✅ Repacked {input_path.name}.")
+        print(f"✅ Repacked {input_path.name} via Python ({msg_count} messages, {repack_count} modified).")
 
     finally:
         if temp_output.exists():
@@ -142,6 +218,7 @@ def fetch_ecmwf_data(
         raise RuntimeError("ecmwf-opendata client is not installed.")
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Target filenames include the specific date and time to avoid collisions during fallbacks
     pl_file = output_dir / f"ecmwf_pl_{run_date}_{run_time:02d}Z.grib2"
     sfc_file = output_dir / f"ecmwf_sfc_{run_date}_{run_time:02d}Z.grib2"
 
@@ -162,29 +239,29 @@ def fetch_ecmwf_data(
     print(f"📡 Downloading pressure level variables {PL_VARS}...")
     try:
         client.retrieve(
+            date=run_date,
+            time=run_time,
             type="fc",
             levtype="pl",
             levelist=PRESSURE_LEVELS,
             param=PL_VARS,
-            time=run_time,
             step=steps,
             target=str(pl_file),
         )
         print(f"✅ Pressure levels saved to: {pl_file} ({pl_file.stat().st_size / 1024 / 1024:.1f} MB)")
     except Exception as e:
-        print(f"❌ Pressure levels download failed: {e}", file=sys.stderr)
+        print(f"❌ Pressure levels download failed for {run_date} {run_time:02d}Z: {e}", file=sys.stderr)
         raise
 
-    # 2. Retrieve Surface Parameters (including basic soil if available in sfc)
+    # 2. Retrieve Surface Parameters
     print(f"📡 Downloading surface variables {SFC_VARS}...")
     try:
-        # We try to get everything we can in one go.
-        # Note: If st/swvl fail here, we catch and retry with sol levtype.
         client.retrieve(
+            date=run_date,
+            time=run_time,
             type="fc",
             levtype="sfc",
             param=SFC_VARS,
-            time=run_time,
             step=steps,
             target=str(sfc_file),
         )
@@ -193,24 +270,26 @@ def fetch_ecmwf_data(
         # Fallback: Get core SFC vars only
         CORE_SFC = ["10u", "10v", "2t", "2d", "sp", "msl", "skt", "lsm", "sd"]
         client.retrieve(
+            date=run_date,
+            time=run_time,
             type="fc",
             levtype="sfc",
             param=CORE_SFC,
-            time=run_time,
             step=steps,
             target=str(sfc_file),
         )
-    
-    # 3. Retrieve Soil Parameters (Explicitly as levtype="sol" to ensure WRF has soil data)
+
+    # 3. Retrieve Soil Parameters
     print(f"📡 Downloading soil variables {SOIL_VARS} for layers {SOIL_LEVELS}...")
     soil_tmp = output_dir / "soil_temp.grib2"
     try:
         client.retrieve(
+            date=run_date,
+            time=run_time,
             type="fc",
             levtype="sol",
             levelist=SOIL_LEVELS,
             param=SOIL_VARS,
-            time=run_time,
             step=steps,
             target=str(soil_tmp),
         )
@@ -221,14 +300,14 @@ def fetch_ecmwf_data(
         print(f"✅ Soil layers appended to surface file.")
     except Exception as e:
         print(f"⚠️ Soil layers download failed: {e}. Checking alternative names...")
-        # Some catalogs use 'st' and 'swvl' even in levtype sol
         try:
             client.retrieve(
+                date=run_date,
+                time=run_time,
                 type="fc",
                 levtype="sol",
                 levelist=SOIL_LEVELS,
                 param=["st", "swvl"],
-                time=run_time,
                 step=steps,
                 target=str(soil_tmp),
             )
@@ -246,7 +325,7 @@ def fetch_ecmwf_data(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download ECMWF Open Data forcing for WRF.")
     parser.add_argument("--run-date", default=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
-    parser.add_argument("--run-time", type=int, choices=[0, 6, 12, 18], default=get_latest_run_time())
+    parser.add_argument("--run-time", type=int, choices=[0, 6, 12, 18], default=0, help="Target run time. Defaults to 00Z for daily forecast start.")
     parser.add_argument("--lead-hours", type=int, default=120)
     parser.add_argument("--output-dir", type=Path, default=Path("simulation/inputs"))
     parser.add_argument("--gcs-bucket", default=os.environ.get("PREDSEA_GCS_BUCKET", "predsea-daily-outputs"))
@@ -257,42 +336,100 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    steps = get_forecast_steps(args.lead_hours)
 
-    try:
-        # Check if files already exist if --skip-if-exists is set
-        pl_target = args.output_dir / f"ecmwf_pl_{args.run_date}_{args.run_time:02d}Z.grib2"
-        sfc_target = args.output_dir / f"ecmwf_sfc_{args.run_date}_{args.run_time:02d}Z.grib2"
-        
+    # Define primary target run
+    target_date = args.run_date
+    target_time = args.run_time
+    lead_hours = args.lead_hours
+
+    attempts = [
+        # Primary attempt: requested date and time
+        (target_date, target_time, lead_hours),
+    ]
+
+    # Fallback logic: if today's 00Z is not ready, try yesterday's 12Z or 18Z
+    if target_time == 0:
+        dt = datetime.datetime.strptime(target_date, "%Y-%m-%d")
+        yesterday = (dt - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        # Fallback to yesterday 12Z (most likely available) or 18Z
+        # We add 12h or 6h to lead_hours to ensure we cover the same future window
+        attempts.append((yesterday, 12, lead_hours + 12))
+        attempts.append((yesterday, 18, lead_hours + 6))
+    elif target_time == 12:
+        # Fallback to today 00Z
+        attempts.append((target_date, 0, lead_hours + 12))
+
+    last_error = None
+    for attempt_date, attempt_time, attempt_lead in attempts:
+        steps = get_forecast_steps(attempt_lead)
+        pl_target = args.output_dir / f"ecmwf_pl_{attempt_date}_{attempt_time:02d}Z.grib2"
+        sfc_target = args.output_dir / f"ecmwf_sfc_{attempt_date}_{attempt_time:02d}Z.grib2"
+
         if args.skip_if_exists and pl_target.exists() and sfc_target.exists():
-            print(f"✅ Files already exist locally. Skipping download due to --skip-if-exists.")
             paths = {"pl_path": pl_target, "sfc_path": sfc_target}
-        else:
+            try:
+                validate_forcing_files(paths, attempt_date, attempt_time, steps)
+                print(f"✅ Files already exist for {attempt_date} {attempt_time:02d}Z and passed validation. Skipping.")
+                break
+            except Exception as e:
+                print(f"⚠️ Existing files for {attempt_date} {attempt_time:02d}Z failed validation: {e}")
+                for stale_path in (pl_target, sfc_target):
+                    try:
+                        stale_path.unlink()
+                        print(f"🧹 Removed stale forcing file: {stale_path}")
+                    except FileNotFoundError:
+                        pass
+
+        print(f"🚀 Attempting fetch for {attempt_date} {attempt_time:02d}Z (Lead: {attempt_lead}h)...")
+        try:
             paths = fetch_ecmwf_data(
-                run_date=args.run_date,
-                run_time=args.run_time,
+                run_date=attempt_date,
+                run_time=attempt_time,
                 steps=steps,
                 output_dir=args.output_dir,
                 dry_run=args.dry_run,
             )
-
-        if not args.dry_run:
-            # 4. Repack files to ensure WPS/ungrib compatibility (CCSDS -> Simple)
-            repack_grib_file(paths["pl_path"])
-            repack_grib_file(paths["sfc_path"])
-
-        if args.gcs_bucket and not args.dry_run:
-            gcs_pl_path = f"forcing/ecmwf/{args.run_date}/{paths['pl_path'].name}"
-            upload_to_gcs(args.gcs_bucket, paths["pl_path"], gcs_pl_path)
-
-            gcs_sfc_path = f"forcing/ecmwf/{args.run_date}/{paths['sfc_path'].name}"
-            upload_to_gcs(args.gcs_bucket, paths["sfc_path"], gcs_sfc_path)
-
-            print(f"🎉 All files successfully archived in GCS.")
-
-    except Exception as e:
-        print(f"❌ Execution failed: {e}", file=sys.stderr)
+            break # Success!
+        except Exception as e:
+            print(f"⚠️ Fetch failed for {attempt_date} {attempt_time:02d}Z: {e}")
+            last_error = e
+            continue
+    else:
+        # All attempts failed
+        print(f"❌ All fetch attempts failed. Last error: {last_error}", file=sys.stderr)
         sys.exit(1)
+
+    if not args.dry_run:
+        # 4. Repack files to ensure WPS/ungrib compatibility (CCSDS -> Simple)
+        repack_grib_file(paths["pl_path"])
+        repack_grib_file(paths["sfc_path"])
+        validate_forcing_files(paths, attempt_date, attempt_time, steps)
+
+    if args.gcs_bucket and not args.dry_run:
+        # We always upload using the ATTEMPT date/time to the GCS folder of the RUN date
+        # to ensure the simulation scripts find the files they expect.
+        gcs_pl_path = f"forcing/ecmwf/{args.run_date}/{paths['pl_path'].name}"
+        upload_to_gcs(args.gcs_bucket, paths["pl_path"], gcs_pl_path)
+
+        gcs_sfc_path = f"forcing/ecmwf/{args.run_date}/{paths['sfc_path'].name}"
+        upload_to_gcs(args.gcs_bucket, paths["sfc_path"], gcs_sfc_path)
+
+        # Write a metadata file to GCS explaining which run was actually used
+        metadata_file = args.output_dir / "forcing_metadata.json"
+        import json
+        with open(metadata_file, "w") as f:
+            json.dump({
+                "requested_date": args.run_date,
+                "requested_time": args.run_time,
+                "actual_date": attempt_date,
+                "actual_time": attempt_time,
+                "actual_lead_hours": attempt_lead,
+                "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }, f, indent=2)
+
+        upload_to_gcs(args.gcs_bucket, metadata_file, f"forcing/ecmwf/{args.run_date}/forcing_metadata.json")
+
+        print(f"🎉 Forcing data ({attempt_date} {attempt_time:02d}Z) successfully archived in GCS.")
 
 
 if __name__ == "__main__":

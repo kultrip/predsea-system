@@ -169,7 +169,7 @@ def main():
     parser.add_argument("--boot-disk-size", default="200GB", help="Boot disk size for GCE VM (e.g. 100GB)")
 
     args = parser.parse_args()
-    
+
     # Propagate GOOGLE_CLOUD_PROJECT to sub-processes if explicitly provided
     if args.project:
         os.environ["GOOGLE_CLOUD_PROJECT"] = args.project
@@ -204,265 +204,227 @@ def main():
 
     # Define paths to scripts
     python_bin = sys.executable
+    notification_script = SCRIPTS_DIR / "notify_status.py"
 
-    # Step 1: Download boundaries and upload raw forcing to GCS
-    log_step("1. Fetching boundaries (ECMWF & CMEMS)")
-    
-    ecmwf_cmd = [
-        python_bin, str(SCRIPTS_DIR / "fetch_ecmwf_forcing.py"),
-        f"--run-date={run_date}",
-        f"--gcs-bucket={args.gcs_bucket}",
-        "--skip-if-exists",
-    ]
-    if args.dry_run:
-        ecmwf_cmd.append("--dry-run")
-    
-    ecmwf_rc = run_subprocess(ecmwf_cmd)
-    if ecmwf_rc != 0:
-        print("❌ Error: Boundary condition download failed (ECMWF). Exiting.")
+    def notify(msg: str):
+        """Helper to trigger the notification script."""
+        n_cmd = [python_bin, str(notification_script), msg]
+        if os.getenv("PREDSEA_NOTIFICATION_WEBHOOK"):
+            run_subprocess(n_cmd)
+        # Always log to stdout for GCP Log-based Alert
+        print(f"📢 NOTIFICATION: {msg}")
+
+    try:
+        # Step 1: Download boundaries and upload raw forcing to GCS
+        log_step("1. Fetching boundaries (ECMWF & CMEMS)")
+
+        # Safety: Purge old forcing files to avoid mixing different runs or using corrupted old data
+        if not args.dry_run:
+            print(f"🧹 Cleaning old forcing files from gs://{args.gcs_bucket}/forcing/ecmwf/{run_date}/...")
+            purge_cmd = ["gcloud", "storage", "rm", f"gs://{args.gcs_bucket}/forcing/ecmwf/{run_date}/*.grib2"]
+            # We don't fail if this fails (might be empty)
+            subprocess.run(purge_cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            local_inputs_dir = PROJECT_ROOT / "simulation" / "inputs"
+            for stale_path in local_inputs_dir.glob("ecmwf_*.grib2"):
+                try:
+                    stale_path.unlink()
+                    print(f"🧹 Removed local stale forcing file: {stale_path}")
+                except FileNotFoundError:
+                    pass
+
+        ecmwf_cmd = [
+            python_bin, str(SCRIPTS_DIR / "fetch_ecmwf_forcing.py"),
+            f"--run-date={run_date}",
+            f"--gcs-bucket={args.gcs_bucket}",
+            "--skip-if-exists",
+        ]
+        if args.dry_run:
+            ecmwf_cmd.append("--dry-run")
+
+        ecmwf_rc = run_subprocess(ecmwf_cmd)
+        if ecmwf_rc != 0:
+            raise RuntimeError("Boundary condition download failed (ECMWF)")
+
+        cmems_cmd = [
+            python_bin, str(SCRIPTS_DIR / "fetch_cmems_forcing.py"),
+            f"--run-date={run_date}",
+            f"--gcs-bucket={args.gcs_bucket}",
+            "--skip-if-exists",
+        ]
+        if args.dry_run:
+            cmems_cmd.append("--dry-run")
+
+        cmems_rc = run_subprocess(cmems_cmd)
+        if cmems_rc != 0:
+            raise RuntimeError("Boundary condition download failed (CMEMS)")
+
+        # Step 1.5: Pre-generate namelist.wps and upload to forcing directory
+        log_step("1.5. Pre-generating namelist.wps for simulation run")
+        run_date_dt = datetime.datetime.strptime(run_date, "%Y-%m-%d")
+        end_date_dt = run_date_dt + datetime.timedelta(days=1)
+        end_date_str = end_date_dt.strftime("%Y-%m-%d")
+
+        # Create tmp directory in the workspace if it doesn't exist
+        tmp_dir = PROJECT_ROOT / "tmp"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        namelist_local_path = tmp_dir / "namelist.wps"
+
+        setup_domain_cmd = [
+            python_bin, str(PROJECT_ROOT / "simulation" / "setup_domain.py"),
+            f"--output={namelist_local_path}",
+            f"--start-date={run_date}_00:00:00",
+            f"--end-date={end_date_str}_00:00:00",
+        ]
+
+        setup_rc = run_subprocess(setup_domain_cmd, dry_run=args.dry_run)
+        if setup_rc != 0:
+            raise RuntimeError("Generating namelist.wps locally failed")
+
+        gcs_namelist_path = f"forcing/ecmwf/{run_date}/namelist.wps"
+        upload_file_to_gcs(args.gcs_bucket, namelist_local_path, gcs_namelist_path, dry_run=args.dry_run)
+
+        # Upload modified run_pipeline.sh to avoid expensive docker image rebuilds
+        run_pipeline_local_path = PROJECT_ROOT / "simulation" / "run_pipeline.sh"
+        gcs_run_pipeline_path = f"forcing/ecmwf/{run_date}/run_pipeline.sh"
+        upload_file_to_gcs(args.gcs_bucket, run_pipeline_local_path, gcs_run_pipeline_path, dry_run=args.dry_run)
+
+        # Upload updated setup_domain.py to allow dynamic patching inside the container
+        setup_domain_local_path = PROJECT_ROOT / "simulation" / "setup_domain.py"
+        gcs_setup_domain_path = f"forcing/ecmwf/{run_date}/setup_domain.py"
+        upload_file_to_gcs(args.gcs_bucket, setup_domain_local_path, gcs_setup_domain_path, dry_run=args.dry_run)
+
+        # Upload GRIB2 compatible Vtable to avoid missing Vtable or decoding failures
+        vtable_local_path = PROJECT_ROOT / "simulation" / "Vtable.ECMWF_grib2"
+        vtable_gcs_path = f"forcing/ecmwf/{run_date}/Vtable.ECMWF_grib2"
+        upload_file_to_gcs(args.gcs_bucket, vtable_local_path, vtable_gcs_path, dry_run=args.dry_run)
+
+        # Step 2: Trigger GCE Spot VM WRF/ROMS simulation
+        log_step("2. Launching GCE Spot VM")
+        orchestrator_cmd = [
+            python_bin, str(SCRIPTS_DIR / "gcp_orchestrator.py"),
+            f"--instance-name={instance_name}",
+            f"--run-date={run_date}",
+            f"--run-id={run_id}",
+            f"--gcs-bucket={args.gcs_bucket}",
+            f"--zone={args.zone}",
+            f"--machine-type={args.machine_type}",
+            f"--image-tag={args.image_tag}",
+            f"--boot-disk-size={args.boot_disk_size}",
+        ]
+        if args.project:
+            orchestrator_cmd.append(f"--project={args.project}")
+
+        # Launch instance request
+        launch_rc = run_subprocess(orchestrator_cmd, dry_run=args.dry_run)
+        if launch_rc != 0:
+            raise RuntimeError("Spot VM launch script returned exit code failure")
+
+        # Step 3: Monitor Spot VM Execution Tracking
+        log_step("3. Polling Spot VM status until self-termination")
+        if args.dry_run:
+            print("⚡ [DRY RUN] Simulating Spot VM completion successfully.")
+        else:
+            # Give GCE a small moment to register the VM creation
+            time.sleep(5)
+
+            start_time = time.time()
+            timeout_seconds = args.timeout_hours * 3600
+            completed_normally = False
+
+            while True:
+                elapsed = time.time() - start_time
+                if elapsed > timeout_seconds:
+                    print(f"🚨 Timeout: Spot VM execution exceeded limit of {args.timeout_hours} hours.")
+                    # delete_gce_instance(instance_name, args.zone, args.project)
+                    raise RuntimeError(f"Simulation timed out after {args.timeout_hours} hours")
+
+                exists = check_gce_instance_exists(instance_name, args.zone, args.project)
+                if not exists:
+                    print(f"ℹ️ Spot VM '{instance_name}' no longer exists. Verifying workload completion in GCS...")
+                    success_gcs_path = f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/SUCCESS"
+                    if check_gcs_object_exists(success_gcs_path):
+                        print(f"🎉 SUCCESS: Workload completion marker found at {success_gcs_path}.")
+                        completed_normally = True
+                    else:
+                        print(f"❌ ERROR: Spot VM '{instance_name}' terminated, but NO completion marker was found at {success_gcs_path}.")
+                        completed_normally = False
+                    break
+
+                print(f"⏳ Still running... Elapsed time: {elapsed/60:.1f} minutes. Checking again in {args.poll_interval}s...")
+                time.sleep(args.poll_interval)
+
+            if not completed_normally:
+                raise RuntimeError("GCE Spot VM terminated unexpectedly or encountered error during run")
+
+        # Step 3b: Ingest high-resolution simulations to BigQuery
+        log_step("3b. Ingesting high-resolution simulations to BigQuery")
+
+        for ingest_script in ["wrf_forecast_ingestor.py", "croco_forecast_ingestor.py", "nemo_forecast_ingestor.py", "swan_forecast_ingestor.py"]:
+            cmd = [
+                python_bin, str(SCRIPTS_DIR / ingest_script),
+                f"--run-date={run_date}",
+                f"--run-id={run_id}",
+                f"--gcs-bucket={args.gcs_bucket}",
+            ]
+            if args.project:
+                cmd.append(f"--project={args.project}")
+            if args.dry_run:
+                cmd.append("--dry-run")
+
+            rc = run_subprocess(cmd)
+            if rc != 0:
+                print(f"⚠️ Warning: {ingest_script} failed, but continuing pipeline...")
+
+        # Step 4: Observation Ingestion & BigQuery Validation Export
+        log_step("4. Observation Ingestion & BigQuery Validation Export")
+        briefing_cmd = [
+            python_bin, str(SCRIPTS_DIR / "generate_daily_briefing.py"),
+            f"--date={run_date}",
+            f"--run-id={run_id}",
+            "--skip-figures",
+        ]
+
+        briefing_rc = run_subprocess(briefing_cmd, dry_run=args.dry_run)
+        if briefing_rc != 0:
+            raise RuntimeError("Daily briefing / Ingestion pipeline failed")
+
+        # Step 5: Execute BigQuery Climatology Anomaly Checker
+        log_step("5. BigQuery Climatology Anomaly Check & Warnings Dispatch")
+        anomaly_cmd = [
+            python_bin, str(SCRIPTS_DIR / "climatology_anomaly_check.py"),
+            f"--api-url={args.api_url}",
+        ]
+        if args.project:
+            anomaly_cmd.append(f"--project={args.project}")
+        if args.dry_run:
+            anomaly_cmd.append("--dry-run")
+
+        anomaly_rc = run_subprocess(anomaly_cmd)
+        if anomaly_rc != 0:
+            print("⚠️ Warning: Climatology Anomaly Check failed.")
+
+        # Step 6: Real model-vs-observation validation
+        log_step("6. Real Model Comparison")
+        comparison_cmd = [
+            python_bin, str(HUMANINTHELOOP_DIR / "scripts" / "model_comparison.py"),
+            f"--date={run_date}",
+        ]
+        if args.project:
+            comparison_cmd.append(f"--project={args.project}")
+        run_subprocess(comparison_cmd, dry_run=args.dry_run)
+
+        print("\n🌟 =================================================================")
+        print("🏆 PredSea end-to-end daily forecasting orchestrator run successfully!")
+        print(f"Run date {run_date} completed successfully.")
+        print("=================================================================\n")
+
+        notify(f"✅ PredSea Pipeline Success: Run {run_date} ({run_id}) finished normally.")
+
+    except Exception as e:
+        error_msg = f"🚨 PREDSEA_PIPELINE_CRITICAL_FAILURE: {str(e)}"
+        print(f"\n{'!'*60}\n{error_msg}\n{'!'*60}\n")
+        notify(f"❌ PredSea Pipeline Failure: Run {run_date} failed. Error: {str(e)}")
         sys.exit(1)
-
-    cmems_cmd = [
-        python_bin, str(SCRIPTS_DIR / "fetch_cmems_forcing.py"),
-        f"--run-date={run_date}",
-        f"--gcs-bucket={args.gcs_bucket}",
-        "--skip-if-exists",
-    ]
-    if args.dry_run:
-        cmems_cmd.append("--dry-run")
-
-    cmems_rc = run_subprocess(cmems_cmd)
-    if cmems_rc != 0:
-        print("❌ Error: Boundary condition download failed (CMEMS). Exiting.")
-        sys.exit(1)
-
-    # Step 1.5: Pre-generate namelist.wps and upload to forcing directory
-    log_step("1.5. Pre-generating namelist.wps for simulation run")
-    run_date_dt = datetime.datetime.strptime(run_date, "%Y-%m-%d")
-    end_date_dt = run_date_dt + datetime.timedelta(days=1)
-    end_date_str = end_date_dt.strftime("%Y-%m-%d")
-
-    # Create tmp directory in the workspace if it doesn't exist
-    tmp_dir = PROJECT_ROOT / "tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    namelist_local_path = tmp_dir / "namelist.wps"
-
-    setup_domain_cmd = [
-        python_bin, str(PROJECT_ROOT / "simulation" / "setup_domain.py"),
-        f"--output={namelist_local_path}",
-        f"--start-date={run_date}_00:00:00",
-        f"--end-date={end_date_str}_00:00:00",
-    ]
-    
-    setup_rc = run_subprocess(setup_domain_cmd, dry_run=args.dry_run)
-    if setup_rc != 0:
-        print("❌ Error: Generating namelist.wps locally failed. Exiting.")
-        sys.exit(1)
-        
-    gcs_namelist_path = f"forcing/ecmwf/{run_date}/namelist.wps"
-    upload_file_to_gcs(args.gcs_bucket, namelist_local_path, gcs_namelist_path, dry_run=args.dry_run)
-
-    # Upload modified run_pipeline.sh to avoid expensive docker image rebuilds
-    run_pipeline_local_path = PROJECT_ROOT / "simulation" / "run_pipeline.sh"
-    gcs_run_pipeline_path = f"forcing/ecmwf/{run_date}/run_pipeline.sh"
-    upload_file_to_gcs(args.gcs_bucket, run_pipeline_local_path, gcs_run_pipeline_path, dry_run=args.dry_run)
-
-    # Upload updated setup_domain.py to allow dynamic patching inside the container
-    setup_domain_local_path = PROJECT_ROOT / "simulation" / "setup_domain.py"
-    gcs_setup_domain_path = f"forcing/ecmwf/{run_date}/setup_domain.py"
-    upload_file_to_gcs(args.gcs_bucket, setup_domain_local_path, gcs_setup_domain_path, dry_run=args.dry_run)
-
-    # Upload GRIB2 compatible Vtable to avoid missing Vtable or decoding failures
-    vtable_local_path = PROJECT_ROOT / "simulation" / "Vtable.ECMWF_grib2"
-    gcs_vtable_path = f"forcing/ecmwf/{run_date}/Vtable.ECMWF_grib2"
-    upload_file_to_gcs(args.gcs_bucket, vtable_local_path, gcs_vtable_path, dry_run=args.dry_run)
-
-    # Step 2: Trigger GCE Spot VM WRF/ROMS simulation
-    log_step("2. Launching GCE Spot VM")
-    orchestrator_cmd = [
-        python_bin, str(SCRIPTS_DIR / "gcp_orchestrator.py"),
-        f"--instance-name={instance_name}",
-        f"--run-date={run_date}",
-        f"--run-id={run_id}",
-        f"--gcs-bucket={args.gcs_bucket}",
-        f"--zone={args.zone}",
-        f"--machine-type={args.machine_type}",
-        f"--image-tag={args.image_tag}",
-        f"--boot-disk-size={args.boot_disk_size}",
-    ]
-    if args.project:
-        orchestrator_cmd.append(f"--project={args.project}")
-
-    # Launch instance request
-    launch_rc = run_subprocess(orchestrator_cmd, dry_run=args.dry_run)
-    if launch_rc != 0:
-        print("❌ Error: Spot VM launch script returned exit code failure. Exiting.")
-        sys.exit(1)
-
-    # Step 3: Monitor Spot VM Execution Tracking
-    log_step("3. Polling Spot VM status until self-termination")
-    if args.dry_run:
-        print("⚡ [DRY RUN] Simulating Spot VM completion successfully.")
-    else:
-        # Give GCE a small moment to register the VM creation
-        time.sleep(5)
-        
-        start_time = time.time()
-        timeout_seconds = args.timeout_hours * 3600
-        completed_normally = False
-
-        while True:
-            elapsed = time.time() - start_time
-            if elapsed > timeout_seconds:
-                print(f"🚨 Timeout: Spot VM execution exceeded limit of {args.timeout_hours} hours.")
-                delete_gce_instance(instance_name, args.zone, args.project)
-                sys.exit(1)
-
-            exists = check_gce_instance_exists(instance_name, args.zone, args.project)
-            if not exists:
-                print(f"ℹ️ Spot VM '{instance_name}' no longer exists. Verifying workload completion in GCS...")
-                success_gcs_path = f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/SUCCESS"
-                if check_gcs_object_exists(success_gcs_path):
-                    print(f"🎉 SUCCESS: Workload completion marker found at {success_gcs_path}.")
-                    completed_normally = True
-                else:
-                    print(f"❌ ERROR: Spot VM '{instance_name}' terminated, but NO completion marker was found at {success_gcs_path}.")
-                    print("This indicates the simulation workload failed, ran out of disk, or the VM was preempted.")
-                    completed_normally = False
-                break
-
-            print(f"⏳ Still running... Elapsed time: {elapsed/60:.1f} minutes. Checking again in {args.poll_interval}s...")
-            time.sleep(args.poll_interval)
-
-        if not completed_normally:
-            print("❌ GCE Spot VM terminated unexpectedly or encountered error during run. Exiting.")
-            sys.exit(1)
-
-    # Step 3b: Ingest high-resolution simulations to BigQuery (WRF, ROMS, NEMO, SWAN)
-    log_step("3b. Ingesting high-resolution simulations to BigQuery (WRF, ROMS, NEMO, SWAN)")
-    
-    wrf_cmd = [
-        python_bin, str(SCRIPTS_DIR / "wrf_forecast_ingestor.py"),
-        f"--run-date={run_date}",
-        f"--run-id={run_id}",
-        f"--gcs-bucket={args.gcs_bucket}",
-    ]
-    if args.project:
-        wrf_cmd.append(f"--project={args.project}")
-    if args.dry_run:
-        wrf_cmd.append("--dry-run")
-        
-    wrf_rc = run_subprocess(wrf_cmd)
-    if wrf_rc != 0:
-        print("❌ Error: WRF forecast ingestion failed. Exiting.")
-        sys.exit(1)
-        
-    croco_cmd = [
-        python_bin, str(SCRIPTS_DIR / "croco_forecast_ingestor.py"),
-        f"--run-date={run_date}",
-        f"--run-id={run_id}",
-        f"--gcs-bucket={args.gcs_bucket}",
-    ]
-    if args.project:
-        croco_cmd.append(f"--project={args.project}")
-    if args.dry_run:
-        croco_cmd.append("--dry-run")
-        
-    croco_rc = run_subprocess(croco_cmd)
-    if croco_rc != 0:
-        print("❌ Error: CROCO forecast ingestion failed. Exiting.")
-        sys.exit(1)
-
-    nemo_cmd = [
-        python_bin, str(SCRIPTS_DIR / "nemo_forecast_ingestor.py"),
-        f"--run-date={run_date}",
-        f"--run-id={run_id}",
-        f"--gcs-bucket={args.gcs_bucket}",
-    ]
-    if args.project:
-        nemo_cmd.append(f"--project={args.project}")
-    if args.dry_run:
-        nemo_cmd.append("--dry-run")
-        
-    nemo_rc = run_subprocess(nemo_cmd)
-    if nemo_rc != 0:
-        print("❌ Error: NEMO forecast ingestion failed. Exiting.")
-        sys.exit(1)
-
-    swan_cmd = [
-        python_bin, str(SCRIPTS_DIR / "swan_forecast_ingestor.py"),
-        f"--run-date={run_date}",
-        f"--run-id={run_id}",
-        f"--gcs-bucket={args.gcs_bucket}",
-    ]
-    if args.project:
-        swan_cmd.append(f"--project={args.project}")
-    if args.dry_run:
-        swan_cmd.append("--dry-run")
-        
-    swan_rc = run_subprocess(swan_cmd)
-    if swan_rc != 0:
-        print("❌ Error: SWAN forecast ingestion failed. Exiting.")
-        sys.exit(1)
-
-    # Step 4: After VM termination, trigger observation ingestion & BigQuery export
-    log_step("4. Observation Ingestion & BigQuery Validation Export")
-    
-    # We use generate_daily_briefing.py to fetch observations, compare them to the newly generated runs on GCS, 
-    # write the validation archives locally/GCS, and push to BigQuery!
-    briefing_cmd = [
-        python_bin, str(SCRIPTS_DIR / "generate_daily_briefing.py"),
-        f"--date={run_date}",
-        f"--run-id={run_id}",
-        "--skip-figures",  # Lighten execution in orchestrator runs
-    ]
-    
-    briefing_rc = run_subprocess(briefing_cmd, dry_run=args.dry_run)
-    if briefing_rc != 0:
-        print("❌ Error: Daily briefing / Ingestion pipeline failed. Exiting.")
-        sys.exit(1)
-
-    # Step 5: Execute BigQuery Climatology Anomaly Checker
-    log_step("5. BigQuery Climatology Anomaly Check & Warnings Dispatch")
-    
-    anomaly_cmd = [
-        python_bin, str(SCRIPTS_DIR / "climatology_anomaly_check.py"),
-        f"--api-url={args.api_url}",
-    ]
-    if args.project:
-        anomaly_cmd.append(f"--project={args.project}")
-    if args.dry_run:
-        anomaly_cmd.append("--dry-run")
-
-    anomaly_rc = run_subprocess(anomaly_cmd)
-    if anomaly_rc != 0:
-        print("❌ Error: Climatology Anomaly Check script returned an execution failure.")
-        sys.exit(1)
-
-    # Step 6: Real model-vs-observation validation (non-fatal -- validation reporting
-    # must never block the core forecast pipeline from completing, same philosophy as
-    # the rest of this ETL: e.g. BigQuery export failures don't break ingestion).
-    log_step("6. Real Model Comparison (WRF/CROCO/NEMO/SWAN vs. real buoy observations)")
-
-    comparison_cmd = [
-        python_bin, str(HUMANINTHELOOP_DIR / "scripts" / "model_comparison.py"),
-        f"--date={run_date}",
-    ]
-    if args.project:
-        comparison_cmd.append(f"--project={args.project}")
-
-    comparison_rc = run_subprocess(comparison_cmd, dry_run=args.dry_run)
-    if comparison_rc != 0:
-        print(
-            "⚠️ Warning: model_comparison.py returned a non-zero exit code. This does NOT "
-            "fail the daily run -- validation reporting is best-effort, same as the rest "
-            "of this pipeline. Check logs for this step separately if the report looks stale."
-        )
-
-    print("\n🌟 =================================================================")
-    print("🏆 PredSea end-to-end daily forecasting orchestrator run successfully!")
-    print(f"Run date {run_date} completed successfully.")
-    print("=================================================================\n")
 
 
 if __name__ == "__main__":
