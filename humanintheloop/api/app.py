@@ -594,57 +594,101 @@ def load_place_weather_response(
     place_id,
     run_date,
     run_id,
-    lat=None,
-    lon=None,
+    latitude=None,
+    longitude=None,
     requested_place_id_override=_REQUESTED_PLACE_ID_UNSET,
 ):
     # Determine if we should perform high-precision coordinate sampling
     use_coordinate_sampling = False
-    if lat is not None and lon is not None:
+    if latitude is not None and longitude is not None:
         if place_id == "current_position":
             use_coordinate_sampling = True
         else:
             # Check proximity to the nearest place
-            _, dist_nm = place_weather.nearest_place_id(lat, lon)
+            _, dist_nm = place_weather.nearest_place_id(latitude, longitude)
             if dist_nm > 2.0:
                 use_coordinate_sampling = True
 
     if use_coordinate_sampling:
         try:
             import fetch_data
+            import tempfile
+            
+            # Resolve forecast output paths (looking locally first)
             paths = fetch_data.resolve_forecast_output_paths(fetch_data.OUTPUT_DIR)
-            waves_path = paths["waves_path"]
-            currents_path = paths["currents_path"]
+            waves_path = paths.get("waves_path")
+            currents_path = paths.get("currents_path")
             wind_path = Path(fetch_data.OUTPUT_DIR) / "ecmwf_wind.nc"
-            if not wind_path.exists():
+            if not (wind_path and wind_path.exists()):
                 wind_path = None
             
-            payload = place_weather.build_place_weather_bundle_from_files(
-                place_id=place_id,
-                waves_path=waves_path,
-                currents_path=currents_path,
-                wind_path=wind_path,
-                run_date=run_date,
-                run_id=run_id,
-                latitude=lat,
-                longitude=lon
-            )
-            response = dict(payload)
+            # If files don't exist locally and we have GCS enabled, try to download them
+            if (not waves_path or not currents_path) and getattr(store, "storage_backend", None) == "gcs":
+                logger.info("Local NetCDF files missing; attempting to resolve from GCS for coordinate sampling.")
+                bucket_name = store.bucket_name
+                # Try to find latest or specific run NetCDF files in GCS
+                # Structure: gs://bucket/copernicus/waves_latest.nc
+                try:
+                    from google.cloud import storage
+                    client = storage.Client()
+                    bucket = client.bucket(bucket_name)
+                    
+                    temp_dir = Path(tempfile.gettempdir()) / "predsea_forecasts"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Download waves
+                    if not waves_path:
+                        waves_blob = bucket.blob("copernicus/waves_latest.nc")
+                        if waves_blob.exists():
+                            waves_path = temp_dir / "waves_latest.nc"
+                            waves_blob.download_to_filename(str(waves_path))
+                    
+                    # Download currents
+                    if not currents_path:
+                        currents_blob = bucket.blob("copernicus/currents_latest.nc")
+                        if currents_blob.exists():
+                            currents_path = temp_dir / "currents_latest.nc"
+                            currents_blob.download_to_filename(str(currents_path))
+                    
+                    # Download wind (optional)
+                    if not wind_path:
+                        wind_blob = bucket.blob("ecmwf/wind_latest.nc")
+                        if wind_blob.exists():
+                            wind_path = temp_dir / "wind_latest.nc"
+                            wind_blob.download_to_filename(str(wind_path))
+                except Exception as gcs_err:
+                    logger.warning("Failed to download NetCDF files from GCS: %s", gcs_err)
+
+            if waves_path and currents_path:
+                payload = place_weather.build_place_weather_bundle_from_files(
+                    place_id=place_id,
+                    waves_path=waves_path,
+                    currents_path=currents_path,
+                    wind_path=wind_path,
+                    run_date=run_date,
+                    run_id=run_id,
+                    latitude=latitude,
+                    longitude=longitude
+                )
+                response = dict(payload)
+            else:
+                raise FileNotFoundError("Could not resolve NetCDF data files for coordinate sampling.")
+
         except Exception as e:
-            logger.warning("On-demand coordinate sampling failed for (%s, %s): %s. Falling back to nearest place.", lat, lon, e)
-            resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
+            logger.warning("On-demand coordinate sampling failed for (%s, %s): %s. Falling back to nearest place.", latitude, longitude, e)
+            resolved = place_weather.resolve_place(place_id, latitude=latitude, longitude=longitude)
             payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
             response = dict(payload)
     else:
-        resolved = place_weather.resolve_place(place_id, latitude=lat, longitude=lon)
+        resolved = place_weather.resolve_place(place_id, latitude=latitude, longitude=longitude)
         payload = load_place_weather_with_fallback(store, resolved["place_id"], run_date, run_id)
         response = dict(payload)
     
     # Apply hybrid blending to the hourly list
     if "hourly" in response:
         # For coordinate-based requests, we use the requested lat/lon for blending too
-        resolved_lat = response.get("resolved_latitude") or lat
-        resolved_lon = response.get("resolved_longitude") or lon
+        resolved_lat = response.get("resolved_latitude") or latitude
+        resolved_lon = response.get("resolved_longitude") or longitude
         
         response["hourly"] = blend_hourly_forecasts(
             store,
@@ -662,10 +706,10 @@ def load_place_weather_response(
         else requested_place_id_override
     )
     # Ensure requested coordinates are preserved in the response
-    if lat is not None:
-        response["requested_latitude"] = lat
-    if lon is not None:
-        response["requested_longitude"] = lon
+    if latitude is not None:
+        response["requested_latitude"] = latitude
+    if longitude is not None:
+        response["requested_longitude"] = longitude
         
     return response
 
@@ -1849,8 +1893,8 @@ def create_app(evidence_store=None, route_store=None):
                 place_id="current_position",
                 run_date=run_date,
                 run_id=run_id,
-                lat=latitude,
-                lon=longitude,
+                latitude=latitude,
+                longitude=longitude,
                 requested_place_id_override=None,
             )
             response["requested_latitude"] = latitude
@@ -1870,8 +1914,8 @@ def create_app(evidence_store=None, route_store=None):
         date: str | None = None,
         run: str | None = None,
         time: str | None = None,
-        lat: float | None = Query(default=None, ge=-90, le=90),
-        lon: float | None = Query(default=None, ge=-180, le=180),
+        latitude: float | None = Query(default=None, ge=-90, le=90),
+        longitude: float | None = Query(default=None, ge=-180, le=180),
     ):
         try:
             refresh_route_store(route_store)
@@ -1882,10 +1926,10 @@ def create_app(evidence_store=None, route_store=None):
                 place_id=place_id,
                 run_date=run_date,
                 run_id=run_id,
-                lat=lat,
-                lon=lon,
+                latitude=latitude,
+                longitude=longitude,
             )
-            if lat is not None and lon is not None:
+            if latitude is not None and longitude is not None:
                 response["inside_domain"] = response.get("distance_to_place_nm", 0) <= 0.1
                 response["domain_warning"] = (
                     None
@@ -1895,6 +1939,23 @@ def create_app(evidence_store=None, route_store=None):
             return response
         except (EvidenceNotFoundError, ValueError) as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    @app.get(
+        "/weather/{place_id}",
+        response_model=PlaceWeatherResponse,
+        summary="Alias for /places/{place_id}/weather",
+    )
+    def weather_alias_endpoint(
+        place_id: str,
+        date: str | None = None,
+        run: str | None = None,
+        time: str | None = None,
+        latitude: float | None = Query(default=None, ge=-90, le=90),
+        longitude: float | None = Query(default=None, ge=-180, le=180),
+    ):
+        return place_weather_endpoint(
+            place_id, date, run, time, latitude, longitude
+        )
 
     @app.get("/routes/optimal/{origin}/{destination}")
     def optimal_route(
