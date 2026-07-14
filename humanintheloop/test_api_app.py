@@ -387,6 +387,18 @@ def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
     assert response.json() == {"date": "2026-05-29", "routes": ["ibiza_palma"]}
 
 
+def test_routes_endpoint_falls_back_to_configured_catalog_without_predictions(tmp_path):
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"] == "configured_catalog"
+    assert payload["date"] is None
+    assert "ibiza_palma" in payload["routes"]
+
+
 def test_places_endpoint_lists_canonical_places(tmp_path):
     write_place_weather(tmp_path)
     client = TestClient(create_app(EvidenceStore(tmp_path)))

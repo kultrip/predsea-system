@@ -1610,8 +1610,14 @@ def create_app(evidence_store=None, route_store=None):
             if run_id:
                 response["run"] = run_id
             return response
-        except EvidenceNotFoundError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
+        except EvidenceNotFoundError:
+            # Route discovery is independent from daily prediction artifacts.
+            # Keep the configured catalog available while a run is unavailable.
+            return {
+                "date": date,
+                "routes": sorted(route_analysis.load_routes()),
+                "source": "configured_catalog",
+            }
 
     @app.get(
         "/places",

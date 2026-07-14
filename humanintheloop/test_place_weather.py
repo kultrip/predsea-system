@@ -168,7 +168,7 @@ def test_place_pair_metrics_are_precomputed_and_accessible_from_place_weather():
 
 def test_station_candidates_are_explicit_and_ordered_for_portocolom():
     candidates = station_candidates_for_place("portocolom")
-    assert candidates[:2] == ["porto_colom", "puertos_mallorca"]
+    assert candidates[:2] == ("porto_colom", "puertos_mallorca")
 
 
 def test_portocolom_is_supported_and_prefers_its_observation_key():

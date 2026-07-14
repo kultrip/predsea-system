@@ -65,16 +65,39 @@ run_wps_stage() {
   fi
 }
 
-# 3. Link GRIB files
-echo "Linking GRIB files from ${GRIB_DIR}..."
+# 3. Sort and link GRIB files. Pressure and surface downloads each start at
+# 00Z; feeding them sequentially makes the stream restart in time.
+echo "Preparing chronologically ordered GRIB input from ${GRIB_DIR}..."
 if ls "${GRIB_DIR}"/ecmwf_*.grib2 1> /dev/null 2>&1; then
-    ./link_grib.csh "${GRIB_DIR}"/ecmwf_*.grib2
+    ORDERED_GRIB="${RUN_DIR}/ecmwf_wps_ordered.grib2"
+    grib_copy -B 'dataDate:i,dataTime:i' "${GRIB_DIR}"/ecmwf_*.grib2 "${ORDERED_GRIB}"
+    ./link_grib.csh "${ORDERED_GRIB}"
 else
     echo "❌ Error: No GRIB files found in ${GRIB_DIR}"
     exit 1
 fi
 
 run_wps_stage ungrib
+
+# Fail with an explicit missing-time report before metgrid emits a misleading
+# mandatory-field error.
+missing_intermediate_times=()
+expected_time="${START_DATE:-2026-05-04_00:00:00}"
+end_time="${END_DATE:-2026-05-05_00:00:00}"
+while [[ "${expected_time}" != "${end_time}" ]]; do
+  intermediate="ECMWF:${expected_time:0:10}_${expected_time:11:2}"
+  [[ -f "${intermediate}" ]] || missing_intermediate_times+=("${intermediate}")
+  expected_time="$(date -u -d "${expected_time:0:10} ${expected_time:11:8} +3 hours" '+%Y-%m-%d_%H:%M:%S')"
+done
+final_intermediate="ECMWF:${end_time:0:10}_${end_time:11:2}"
+[[ -f "${final_intermediate}" ]] || missing_intermediate_times+=("${final_intermediate}")
+if (( ${#missing_intermediate_times[@]} > 0 )); then
+  echo "❌ ungrib did not create all required WPS intermediate files."
+  printf 'Missing: %s\n' "${missing_intermediate_times[@]}"
+  exit 98
+fi
+echo "✅ ungrib created the complete WPS intermediate time sequence."
+
 run_wps_stage geogrid
 run_wps_stage metgrid
 

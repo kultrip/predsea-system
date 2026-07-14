@@ -84,7 +84,7 @@ def render_namelist(domain: BalearicDomain) -> str:
 
 &ungrib
  out_format = 'WPS',
- ordered_by_date = .false.,
+ ordered_by_date = .true.,
  prefix = '{domain.forcing_prefix}',
 /
 

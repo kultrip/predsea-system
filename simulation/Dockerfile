@@ -109,6 +109,7 @@ ENV WRF_DIR=/opt/WRF \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     csh \
+    libeccodes-tools \
     libgfortran5 \
     libnetcdf-dev \
     libnetcdff-dev \

@@ -19,7 +19,7 @@ def test_render_namelist_defines_one_km_balearic_nested_domain():
     assert "j_parent_start = 1, 20, 35, 180, 60, 180, 10" in namelist
     assert "e_we = 160, 277, 151, 301, 151, 151, 253" in namelist
     assert "e_sn = 120, 271, 151, 100, 400, 202, 301" in namelist
-    assert "ordered_by_date = .false." in namelist
+    assert "ordered_by_date = .true." in namelist
 
 
 
@@ -56,6 +56,7 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "libnetcdff-dev" in dockerfile
     assert "libnetcdf15" not in dockerfile
     assert "netcdf-bin" in dockerfile
+    assert "libeccodes-tools" in dockerfile
     assert "libjasper-dev" not in dockerfile
     assert "jasper-software/jasper" in dockerfile
     assert "CMAKE_INSTALL_PREFIX=/usr/local" in dockerfile
@@ -69,6 +70,10 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "link_grib.csh" in pipeline
     assert "run_wps_stage ungrib" in pipeline
     assert "run_wps_stage metgrid" in pipeline
+    assert "grib_copy -B 'dataDate:i,dataTime:i'" in pipeline
+    assert "ungrib created the complete WPS intermediate time sequence" in pipeline
+    assert pipeline.index("run_wps_stage ungrib") < pipeline.index("missing_intermediate_times=()")
+    assert pipeline.index("missing_intermediate_times=()") < pipeline.index("run_wps_stage metgrid")
     assert '"${exe}" > "${stdout_log}" 2>&1' in pipeline
     assert 'PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"' in pipeline
     assert '"${PREDSEA_BIN}/real.exe"' in pipeline
