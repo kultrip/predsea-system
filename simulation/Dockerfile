@@ -77,7 +77,7 @@ RUN git clone --branch v${WRF_VERSION} --depth 1 https://github.com/wrf-model/WR
 WORKDIR /opt/WRF
 
 RUN printf "%s\n1\n" "${WRF_CONFIGURE_OPTION}" | ./configure \
-    && ./compile -j 2 em_real \
+    && ./compile -j 1 em_real \
     && test -x run/real.exe \
     && test -x run/wrf.exe
 
