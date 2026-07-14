@@ -18,7 +18,13 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPTS_DIR.parent
 DEFAULT_FALLBACK_ZONES = ("europe-west1-b", "europe-west1-c", "europe-west1-d")
-DEFAULT_FALLBACK_MACHINE_TYPES = ("c2d-standard-56", "c2d-standard-32")
+DEFAULT_FALLBACK_MACHINE_TYPES = (
+    "c2d-standard-56",
+    "c2d-standard-32",
+    "c2d-standard-16",
+    "c2-standard-16",
+)
+DEFAULT_ON_DEMAND_MACHINE_TYPE = "c2-standard-16"
 
 
 def log_step(name: str):
@@ -63,28 +69,76 @@ def ordered_unique(primary: str, fallbacks: str, defaults: tuple[str, ...]) -> l
     return list(dict.fromkeys(values))
 
 
-def launch_spot_vm_with_fallback(
+def launch_vm_with_fallback(
     base_cmd: list[str],
     zones: list[str],
     machine_types: list[str],
     *,
     dry_run: bool = False,
-) -> tuple[str, str]:
-    """Try the preferred machine across zones before smaller machine types."""
-    attempts = [(zone, machine_type) for machine_type in machine_types for zone in zones]
-    for attempt_number, (zone, machine_type) in enumerate(attempts, start=1):
+) -> tuple[str, str, str]:
+    """Try Spot candidates, then one regular on-demand VM as the final fallback."""
+    attempts = [
+        (zone, machine_type, "SPOT")
+        for machine_type in machine_types
+        for zone in zones
+    ]
+    attempts.append((zones[0], DEFAULT_ON_DEMAND_MACHINE_TYPE, "STANDARD"))
+    for attempt_number, (zone, machine_type, provisioning_model) in enumerate(attempts, start=1):
         print(
-            f"🚀 Spot VM launch attempt {attempt_number}/{len(attempts)}: "
-            f"zone={zone}, machine={machine_type}"
+            f"🚀 VM launch attempt {attempt_number}/{len(attempts)}: "
+            f"zone={zone}, machine={machine_type}, model={provisioning_model}"
         )
-        cmd = [*base_cmd, f"--zone={zone}", f"--machine-type={machine_type}"]
+        cmd = [
+            *base_cmd,
+            f"--zone={zone}",
+            f"--machine-type={machine_type}",
+            f"--provisioning-model={provisioning_model}",
+        ]
         if run_subprocess(cmd, dry_run=dry_run) == 0:
-            print(f"✅ Spot VM selected: zone={zone}, machine={machine_type}")
-            return zone, machine_type
+            print(
+                f"✅ VM selected: zone={zone}, machine={machine_type}, "
+                f"model={provisioning_model}"
+            )
+            return zone, machine_type, provisioning_model
         print(f"⚠️ Launch unavailable in {zone} with {machine_type}; trying next fallback.")
 
-    attempted = ", ".join(f"{zone}/{machine}" for zone, machine in attempts)
-    raise RuntimeError(f"Spot VM launch failed for all configured candidates: {attempted}")
+    attempted = ", ".join(
+        f"{zone}/{machine}/{model}" for zone, machine, model in attempts
+    )
+    raise RuntimeError(f"VM launch failed for all configured candidates: {attempted}")
+
+
+def was_instance_preempted(
+    instance_name: str,
+    zone: str,
+    project_id: str,
+) -> bool:
+    """Return whether Compute Engine recorded a Spot preemption audit event."""
+    resource_name = f"projects/{project_id}/zones/{zone}/instances/{instance_name}"
+    log_filter = (
+        'protoPayload.methodName="compute.instances.preempted" AND '
+        f'protoPayload.resourceName="{resource_name}"'
+    )
+    cmd = [
+        "gcloud", "logging", "read", log_filter,
+        f"--project={project_id}",
+        "--freshness=1h",
+        "--limit=1",
+        "--format=value(protoPayload.status.message)",
+        "--quiet",
+    ]
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as error:
+        print(f"⚠️ Unable to check preemption audit log: {error.stderr.strip()}")
+        return False
+    return "preempted" in result.stdout.lower()
 
 
 def check_gce_instance_exists(instance_name: str, zone: str, project_id: str | None = None) -> bool:
@@ -211,6 +265,12 @@ def main():
     parser.add_argument("--poll-interval", type=int, default=30, help="GCE status polling interval in seconds")
     parser.add_argument("--timeout-hours", type=float, default=4.0, help="Maximum execution wait time for the GCE Spot VM")
     parser.add_argument("--boot-disk-size", default="200GB", help="Boot disk size for GCE VM (e.g. 100GB)")
+    parser.add_argument(
+        "--preemption-retries",
+        type=int,
+        default=2,
+        help="Number of whole-VM retries after confirmed Spot preemption",
+    )
 
     args = parser.parse_args()
 
@@ -342,70 +402,109 @@ def main():
         vtable_gcs_path = f"forcing/ecmwf/{run_date}/Vtable.ECMWF_grib2"
         upload_file_to_gcs(args.gcs_bucket, vtable_local_path, vtable_gcs_path, dry_run=args.dry_run)
 
-        # Step 2: Trigger GCE Spot VM WRF/ROMS simulation
-        log_step("2. Launching GCE Spot VM")
-        orchestrator_cmd = [
-            python_bin, str(SCRIPTS_DIR / "gcp_orchestrator.py"),
-            f"--instance-name={instance_name}",
-            f"--run-date={run_date}",
-            f"--run-id={run_id}",
-            f"--gcs-bucket={args.gcs_bucket}",
-            f"--image-tag={args.image_tag}",
-            f"--boot-disk-size={args.boot_disk_size}",
-        ]
-        if args.project:
-            orchestrator_cmd.append(f"--project={args.project}")
-
-        # Launch instance request
+        # Steps 2-3: launch and monitor the simulation. A confirmed Spot
+        # preemption restarts only this section; forcing and configuration are
+        # already archived in GCS and are reused by the replacement VM.
+        log_step("2. Launching simulation VM")
         zones = ordered_unique(args.zone, args.zones, DEFAULT_FALLBACK_ZONES)
         machine_types = ordered_unique(
             args.machine_type,
             args.machine_types,
             DEFAULT_FALLBACK_MACHINE_TYPES,
         )
-        selected_zone, selected_machine_type = launch_spot_vm_with_fallback(
-            orchestrator_cmd,
-            zones,
-            machine_types,
-            dry_run=args.dry_run,
-        )
+        project_id = args.project or os.environ.get("GOOGLE_CLOUD_PROJECT")
+        completed_normally = False
+        simulation_attempt = 0
 
-        # Step 3: Monitor Spot VM Execution Tracking
-        log_step("3. Polling Spot VM status until self-termination")
         if args.dry_run:
             print("⚡ [DRY RUN] Simulating Spot VM completion successfully.")
+            completed_normally = True
         else:
-            # Give GCE a small moment to register the VM creation
-            time.sleep(5)
+            while simulation_attempt <= args.preemption_retries:
+                attempt_instance_name = (
+                    instance_name
+                    if simulation_attempt == 0
+                    else f"{instance_name}-r{simulation_attempt}"
+                )
+                print(
+                    f"♻️ Simulation VM attempt {simulation_attempt + 1}/"
+                    f"{args.preemption_retries + 1}; reusing forcing from GCS."
+                )
+                orchestrator_cmd = [
+                    python_bin, str(SCRIPTS_DIR / "gcp_orchestrator.py"),
+                    f"--instance-name={attempt_instance_name}",
+                    f"--run-date={run_date}",
+                    f"--run-id={run_id}",
+                    f"--gcs-bucket={args.gcs_bucket}",
+                    f"--image-tag={args.image_tag}",
+                    f"--boot-disk-size={args.boot_disk_size}",
+                ]
+                if args.project:
+                    orchestrator_cmd.append(f"--project={args.project}")
 
-            start_time = time.time()
-            timeout_seconds = args.timeout_hours * 3600
-            completed_normally = False
+                selected_zone, selected_machine_type, provisioning_model = launch_vm_with_fallback(
+                    orchestrator_cmd,
+                    zones,
+                    machine_types,
+                )
+                log_step(
+                    "3. Polling simulation VM until self-termination "
+                    f"({provisioning_model}/{selected_machine_type})"
+                )
+                time.sleep(5)
+                start_time = time.time()
+                timeout_seconds = args.timeout_hours * 3600
 
-            while True:
-                elapsed = time.time() - start_time
-                if elapsed > timeout_seconds:
-                    print(f"🚨 Timeout: Spot VM execution exceeded limit of {args.timeout_hours} hours.")
-                    # delete_gce_instance(instance_name, args.zone, args.project)
-                    raise RuntimeError(f"Simulation timed out after {args.timeout_hours} hours")
+                while True:
+                    elapsed = time.time() - start_time
+                    if elapsed > timeout_seconds:
+                        raise RuntimeError(
+                            f"Simulation timed out after {args.timeout_hours} hours"
+                        )
 
-                exists = check_gce_instance_exists(instance_name, selected_zone, args.project)
-                if not exists:
-                    print(f"ℹ️ Spot VM '{instance_name}' no longer exists. Verifying workload completion in GCS...")
-                    success_gcs_path = f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/SUCCESS"
-                    if check_gcs_object_exists(success_gcs_path):
-                        print(f"🎉 SUCCESS: Workload completion marker found at {success_gcs_path}.")
-                        completed_normally = True
-                    else:
-                        print(f"❌ ERROR: Spot VM '{instance_name}' terminated, but NO completion marker was found at {success_gcs_path}.")
-                        completed_normally = False
+                    exists = check_gce_instance_exists(
+                        attempt_instance_name,
+                        selected_zone,
+                        args.project,
+                    )
+                    if not exists:
+                        break
+                    print(
+                        f"⏳ Still running... Elapsed time: {elapsed/60:.1f} minutes. "
+                        f"Checking again in {args.poll_interval}s..."
+                    )
+                    time.sleep(args.poll_interval)
+
+                success_gcs_path = (
+                    f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/SUCCESS"
+                )
+                if check_gcs_object_exists(success_gcs_path):
+                    print(f"🎉 SUCCESS: Workload completion marker found at {success_gcs_path}.")
+                    completed_normally = True
                     break
 
-                print(f"⏳ Still running... Elapsed time: {elapsed/60:.1f} minutes. Checking again in {args.poll_interval}s...")
-                time.sleep(args.poll_interval)
+                preempted = bool(project_id) and provisioning_model == "SPOT" and was_instance_preempted(
+                    attempt_instance_name,
+                    selected_zone,
+                    project_id,
+                )
+                if preempted and simulation_attempt < args.preemption_retries:
+                    simulation_attempt += 1
+                    print(
+                        f"⚠️ Confirmed Spot preemption of {attempt_instance_name}; "
+                        "launching a replacement VM with the existing GCS inputs."
+                    )
+                    continue
+                if preempted:
+                    raise RuntimeError(
+                        f"Simulation exhausted {args.preemption_retries} retries after Spot preemption"
+                    )
+                raise RuntimeError(
+                    "Simulation VM terminated without SUCCESS and was not preempted"
+                )
 
-            if not completed_normally:
-                raise RuntimeError("GCE Spot VM terminated unexpectedly or encountered error during run")
+        if not completed_normally:
+            raise RuntimeError("Simulation did not complete normally")
 
         # Step 3b: Ingest high-resolution simulations to BigQuery
         log_step("3b. Ingesting high-resolution simulations to BigQuery")

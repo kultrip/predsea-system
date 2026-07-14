@@ -13,6 +13,18 @@ daily briefing, the climatology anomaly check, and now a real model-comparison
 step. So most of this runbook describes what happens automatically and how to
 check it worked — not manual steps you need to run every day.
 
+The simulation launcher tries Spot capacity across `europe-west1-b/c/d` using
+`c2d-standard-56`, `c2d-standard-32`, `c2d-standard-16`, and
+`c2-standard-16`. If every Spot candidate is unavailable, its final candidate
+is a regular on-demand `c2-standard-16` VM. A confirmed Compute Engine Spot
+preemption retries the whole VM workload twice by default. Replacement VMs use
+the same run ID and reuse the ECMWF/CMEMS forcing and runtime configuration
+already archived in GCS; WRF computation itself restarts from the beginning.
+Override the retry count with `--preemption-retries`.
+The deployment scripts give the Cloud Run job a 14-hour task envelope so the
+default three-attempt policy can complete while retaining the four-hour limit
+for each individual VM attempt.
+
 `hpc_cost_summary.py` is deliberately **not** wired into the automatic run (your
 call) — run it manually per Section 5 if/when you want a cost report.
 
@@ -58,10 +70,11 @@ Monitor the VM (this is the exact command the script itself prints):
 gcloud compute instances get-serial-port-output <instance-name> --zone=europe-west1-b --project=<your-project-id>
 ```
 
-You already hit one real failure mode here once ("premature GCE Spot VM
-termination", fixed June 25) — watch the serial log for early exits, not just the
-final "instance deleted" state, since a Spot preemption or an early script exit both
-end with the VM disappearing.
+Watch the serial log for early exits, not just the final "instance deleted"
+state. The orchestrator distinguishes a preemption from an application exit by
+querying the `compute.instances.preempted` audit event: only a confirmed
+preemption is retried automatically. An application failure without `SUCCESS`
+still fails immediately so deterministic model errors are not repeated.
 
 ## 2. Confirm real output landed in GCS
 

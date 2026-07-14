@@ -52,7 +52,7 @@ def get_gcp_project() -> str:
 
 
 
-def launch_spot_vm(args):
+def launch_vm(args):
     project = args.project or get_gcp_project()
     zone = args.zone
     gcs_bucket = args.gcs_bucket
@@ -72,7 +72,8 @@ def launch_spot_vm(args):
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
     startup_script = os.path.join(scripts_dir, "vm_startup.sh")
 
-    print(f"🚀 Preparing to launch Spot VM: {instance_name}")
+    provisioning_model = args.provisioning_model.upper()
+    print(f"🚀 Preparing to launch {provisioning_model} VM: {instance_name}")
     print(f"📍 Zone: {zone}")
     print(f"💻 Machine Type: {args.machine_type}")
     print(f"🪧 Startup Script: {startup_script}")
@@ -90,13 +91,14 @@ def launch_spot_vm(args):
         f"--image-project=debian-cloud",
         f"--boot-disk-size={args.boot_disk_size}",
         "--subnet=default",
-        "--provisioning-model=SPOT",
-        "--instance-termination-action=DELETE",
+        f"--provisioning-model={provisioning_model}",
         "--scopes=https://www.googleapis.com/auth/cloud-platform",
         f"--metadata-from-file=startup-script={startup_script}",
         f"--metadata=gcs-bucket={gcs_bucket},run-date={run_date},run-id={run_id},image-tag={image_tag},execution-mode={args.execution_mode}",
         "--quiet"
     ]
+    if provisioning_model == "SPOT":
+        cmd.insert(-4, "--instance-termination-action=DELETE")
 
     try:
         output = run_command(cmd)
@@ -127,7 +129,7 @@ def main():
             env = "test"
         PREDSEA_GCS_BUCKET = os.environ.get("PREDSEA_GCS_BUCKET") or f"predsea-daily-outputs-{env}"
 
-    parser = argparse.ArgumentParser(description="Launch ephemeral Spot VMs for high-resolution WRF/ROMS runs.")
+    parser = argparse.ArgumentParser(description="Launch ephemeral VMs for high-resolution WRF/ROMS runs.")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
     parser.add_argument("--machine-type", default="c2d-standard-56", help="GCP Machine Type (e.g. c2d-standard-56, c2d-standard-32)")
@@ -138,9 +140,15 @@ def main():
     parser.add_argument("--instance-name", help="GCE Instance name (defaults to auto-generated)")
     parser.add_argument("--execution-mode", choices=["container", "bare-metal"], default="container", help="Model execution mode on GCE VM")
     parser.add_argument("--boot-disk-size", default="200GB", help="Boot disk size for GCE VM (e.g. 100GB)")
+    parser.add_argument(
+        "--provisioning-model",
+        choices=["SPOT", "STANDARD"],
+        default="SPOT",
+        help="Use Spot capacity or a regular on-demand VM",
+    )
 
     args = parser.parse_args()
-    launch_spot_vm(args)
+    launch_vm(args)
 
 
 if __name__ == "__main__":

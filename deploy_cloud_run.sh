@@ -90,7 +90,7 @@ gcloud run jobs deploy daily-orchestrator \
     --args "scripts/daily_orchestrator.py" \
     --region "${REGION}" \
     --max-retries 0 \
-    --task-timeout 4h \
+    --task-timeout 14h \
     --cpu 2 \
     --memory 8Gi \
     ${ENV_VARS:+--set-env-vars="$ENV_VARS"} \
