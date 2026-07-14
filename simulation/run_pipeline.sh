@@ -67,16 +67,31 @@ run_wps_stage() {
   fi
 }
 
-# 3. Sort and link GRIB files. Pressure and surface downloads each start at
-# 00Z; feeding them sequentially makes the stream restart in time.
-echo "Preparing chronologically ordered GRIB input from ${GRIB_DIR}..."
+# 3. Split GRIB input into one physical file per valid time. WPS 4.5 computes
+# one hdate from the first message in each GRIBFILE and assumes every message
+# in that file belongs to that time. A multi-time ECMWF file therefore
+# collapses to its first (00Z) timestamp even when every forecast step is
+# encoded correctly.
+echo "Preparing one GRIB file per ECMWF valid time from ${GRIB_DIR}..."
 if ls "${GRIB_DIR}"/ecmwf_*.grib2 1> /dev/null 2>&1; then
     COMBINED_GRIB="${RUN_DIR}/ecmwf_wps_combined_unsorted.grib2"
-    ORDERED_GRIB="${RUN_DIR}/ecmwf_wps_ordered.grib2"
+    SPLIT_GRIB_DIR="${RUN_DIR}/grib_by_valid_time"
+    mkdir -p "${SPLIT_GRIB_DIR}"
+    rm -f "${SPLIT_GRIB_DIR}"/ecmwf_*.grib2
     cat "${GRIB_DIR}"/ecmwf_*.grib2 > "${COMBINED_GRIB}"
-    grib_copy -B 'validityDate:i asc,validityTime:i asc' \
-      "${COMBINED_GRIB}" "${ORDERED_GRIB}"
-    ./link_grib.csh "${ORDERED_GRIB}"
+    grib_copy "${COMBINED_GRIB}" \
+      "${SPLIT_GRIB_DIR}/ecmwf_[validityDate]_[validityTime].grib2"
+
+    mapfile -d '' -t WPS_GRIB_FILES < <(
+      find "${SPLIT_GRIB_DIR}" -maxdepth 1 -type f \
+        -name 'ecmwf_*.grib2' -print0 | sort -zV
+    )
+    if (( ${#WPS_GRIB_FILES[@]} < 2 )); then
+      echo "❌ Error: GRIB split produced fewer than two valid-time files."
+      exit 97
+    fi
+    echo "Prepared ${#WPS_GRIB_FILES[@]} chronologically ordered GRIB time files."
+    ./link_grib.csh "${WPS_GRIB_FILES[@]}"
 else
     echo "❌ Error: No GRIB files found in ${GRIB_DIR}"
     exit 1
