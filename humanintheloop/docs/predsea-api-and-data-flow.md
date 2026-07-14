@@ -36,6 +36,14 @@ planning workflow.
 The ETL is the hourly production loop that turns raw forecast and observation
 sources into the artifacts the API reads.
 
+Daily publication is progressive. Once external forecast and observation
+sources are ready, the orchestrator publishes the run as `preliminary` while
+WRF continues independently. The same run ID is promoted to
+`high_resolution` after WRF completes and its outputs are ingested. A WRF
+failure does not remove the preliminary artifacts. `GET /routes` exposes the
+current `publication_phase`, `wrf_status`, update timestamp, and status message
+in its `publication` object when that metadata is available.
+
 ```mermaid
 flowchart TD
   A["External sources"] --> B["Fetchers and connectors"]

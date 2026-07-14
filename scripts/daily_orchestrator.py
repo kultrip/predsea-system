@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 import os
 import subprocess
 import sys
@@ -210,6 +211,45 @@ def upload_file_to_gcs(bucket_name: str, local_path: Path, gcs_blob_path: str, d
             raise
 
 
+def publish_run_status(
+    bucket_name: str,
+    run_date: str,
+    run_id: str,
+    publication_phase: str,
+    wrf_status: str,
+    message: str,
+    *,
+    dry_run: bool = False,
+) -> dict:
+    """Publish lightweight progressive-release status for API consumers."""
+    payload = {
+        "run_date": run_date,
+        "run_id": run_id,
+        "publication_phase": publication_phase,
+        "wrf_status": wrf_status,
+        "message": message,
+        "updated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    print(
+        f"📡 Publication status: phase={publication_phase}, wrf={wrf_status} — {message}"
+    )
+    if dry_run:
+        return payload
+
+    from google.cloud import storage
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    content = json.dumps(payload, indent=2)
+    bucket.blob(
+        f"predictions/{run_date}/runs/{run_id}/publication_status.json"
+    ).upload_from_string(content, content_type="application/json")
+    bucket.blob(
+        f"predictions/{run_date}/latest_status.json"
+    ).upload_from_string(content, content_type="application/json")
+    return payload
+
+
 def delete_gce_instance(instance_name: str, zone: str, project_id: str | None = None):
     """Explicitly delete a GCE instance to avoid runaway costs."""
     print(f"⚠️ Safety Cleanup: Forcing deletion of GCE instance {instance_name} in {zone}...")
@@ -291,6 +331,8 @@ def main():
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     run_date = args.run_date or now_utc.strftime("%Y-%m-%d")
     run_id = args.run_id or now_utc.strftime("%Y-%m-%dT%H%MZ")
+    os.environ["PREDSEA_RUN_DATE"] = run_date
+    os.environ["PREDSEA_RUN_ID"] = run_id
 
     # Generate a safe deterministic GCE instance name
     instance_name = f"predsea-sim-{run_date.replace('-', '')}-{now_utc.strftime('%H%M%S')}"
@@ -317,6 +359,8 @@ def main():
             run_subprocess(n_cmd)
         # Always log to stdout for GCP Log-based Alert
         print(f"📢 NOTIFICATION: {msg}")
+
+    preliminary_published = False
 
     try:
         # Step 1: Download boundaries and upload raw forcing to GCS
@@ -447,6 +491,33 @@ def main():
                     zones,
                     machine_types,
                 )
+                if simulation_attempt == 0:
+                    log_step("2b. Publishing preliminary forecast while WRF runs")
+                    preliminary_cmd = [
+                        python_bin, str(SCRIPTS_DIR / "generate_daily_briefing.py"),
+                        f"--date={run_date}",
+                        f"--run-id={run_id}",
+                        "--publication-phase=preliminary",
+                        "--wrf-status=running",
+                        "--skip-figures",
+                        "--skip-maps",
+                    ]
+                    preliminary_rc = run_subprocess(preliminary_cmd)
+                    if preliminary_rc == 0:
+                        preliminary_published = True
+                        publish_run_status(
+                            args.gcs_bucket,
+                            run_date,
+                            run_id,
+                            "preliminary",
+                            "running",
+                            "External-source forecast is online; WRF refinement is running.",
+                        )
+                    else:
+                        print(
+                            "⚠️ Preliminary publication failed; WRF continues and the final "
+                            "publication will still be attempted."
+                        )
                 log_step(
                     "3. Polling simulation VM until self-termination "
                     f"({provisioning_model}/{selected_machine_type})"
@@ -490,6 +561,15 @@ def main():
                 )
                 if preempted and simulation_attempt < args.preemption_retries:
                     simulation_attempt += 1
+                    if preliminary_published:
+                        publish_run_status(
+                            args.gcs_bucket,
+                            run_date,
+                            run_id,
+                            "preliminary",
+                            "retrying",
+                            "External-source forecast remains online; WRF was preempted and is retrying.",
+                        )
                     print(
                         f"⚠️ Confirmed Spot preemption of {attempt_instance_name}; "
                         "launching a replacement VM with the existing GCS inputs."
@@ -505,6 +585,17 @@ def main():
 
         if not completed_normally:
             raise RuntimeError("Simulation did not complete normally")
+
+        if preliminary_published:
+            publish_run_status(
+                args.gcs_bucket,
+                run_date,
+                run_id,
+                "preliminary",
+                "complete",
+                "WRF completed; high-resolution artifacts are being published.",
+                dry_run=args.dry_run,
+            )
 
         # Step 3b: Ingest high-resolution simulations to BigQuery
         log_step("3b. Ingesting high-resolution simulations to BigQuery")
@@ -532,11 +623,22 @@ def main():
             f"--date={run_date}",
             f"--run-id={run_id}",
             "--skip-figures",
+            "--publication-phase=high_resolution",
+            "--wrf-status=complete",
         ]
 
         briefing_rc = run_subprocess(briefing_cmd, dry_run=args.dry_run)
         if briefing_rc != 0:
             raise RuntimeError("Daily briefing / Ingestion pipeline failed")
+        publish_run_status(
+            args.gcs_bucket,
+            run_date,
+            run_id,
+            "high_resolution",
+            "complete",
+            "High-resolution WRF-enhanced forecast is online.",
+            dry_run=args.dry_run,
+        )
 
         # Step 5: Execute BigQuery Climatology Anomaly Checker
         log_step("5. BigQuery Climatology Anomaly Check & Warnings Dispatch")
@@ -571,6 +673,19 @@ def main():
         notify(f"✅ PredSea Pipeline Success: Run {run_date} ({run_id}) finished normally.")
 
     except Exception as e:
+        if preliminary_published:
+            try:
+                publish_run_status(
+                    args.gcs_bucket,
+                    run_date,
+                    run_id,
+                    "preliminary",
+                    "failed",
+                    "External-source forecast remains online; WRF refinement failed.",
+                    dry_run=args.dry_run,
+                )
+            except Exception as status_error:
+                print(f"⚠️ Failed to publish terminal forecast status: {status_error}")
         error_msg = f"🚨 PREDSEA_PIPELINE_CRITICAL_FAILURE: {str(e)}"
         print(f"\n{'!'*60}\n{error_msg}\n{'!'*60}\n")
         notify(f"❌ PredSea Pipeline Failure: Run {run_date} failed. Error: {str(e)}")

@@ -17,8 +17,24 @@ def test_daily_generator_writes_manifest_and_latest_run_pointer(tmp_path):
     run_dir = day_dir / "runs" / run_id
     run_dir.mkdir(parents=True)
 
-    generator.write_manifest(run_dir, "2026-05-31", run_id, ["ibiza_palma"], "medium")
-    generator.write_latest_run(day_dir, "2026-05-31", run_id, ["ibiza_palma"], "medium")
+    generator.write_manifest(
+        run_dir,
+        "2026-05-31",
+        run_id,
+        ["ibiza_palma"],
+        "medium",
+        publication_phase="preliminary",
+        wrf_status="running",
+    )
+    generator.write_latest_run(
+        day_dir,
+        "2026-05-31",
+        run_id,
+        ["ibiza_palma"],
+        "medium",
+        publication_phase="preliminary",
+        wrf_status="running",
+    )
 
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     latest = json.loads((day_dir / "latest_run.json").read_text(encoding="utf-8"))
@@ -27,6 +43,9 @@ def test_daily_generator_writes_manifest_and_latest_run_pointer(tmp_path):
     assert manifest["run_id"] == run_id
     assert latest["run_id"] == run_id
     assert latest["path"] == f"runs/{run_id}"
+    assert manifest["publication_phase"] == "preliminary"
+    assert manifest["wrf_status"] == "running"
+    assert latest["publication_phase"] == "preliminary"
 
 
 def test_daily_generator_writes_validation_manifest_pointer(tmp_path):

@@ -92,3 +92,19 @@ def test_was_instance_preempted_reads_compute_audit_event(monkeypatch):
         "predsea-api",
     )
     assert commands[0][:3] == ["gcloud", "logging", "read"]
+
+
+def test_publish_run_status_dry_run_describes_preliminary_release():
+    payload = orchestrator.publish_run_status(
+        "predsea-daily-outputs",
+        "2026-07-14",
+        "2026-07-14T1400Z",
+        "preliminary",
+        "running",
+        "Forecast online",
+        dry_run=True,
+    )
+
+    assert payload["publication_phase"] == "preliminary"
+    assert payload["wrf_status"] == "running"
+    assert payload["message"] == "Forecast online"

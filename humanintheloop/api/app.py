@@ -1609,6 +1609,10 @@ def create_app(evidence_store=None, route_store=None):
             response = {"date": run_date, "routes": route_ids}
             if run_id:
                 response["run"] = run_id
+            try:
+                response["publication"] = store.load_publication_status(run_date, run_id)
+            except (EvidenceNotFoundError, AttributeError):
+                pass
             return response
         except EvidenceNotFoundError:
             # Route discovery is independent from daily prediction artifacts.

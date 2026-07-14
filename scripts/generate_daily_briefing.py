@@ -499,7 +499,7 @@ def load_preferred_snapshots(run_dir, route_ids):
     return snapshots
 
 
-def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None, regional_evidence=None, validation=None):
+def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sources=None, regional_evidence=None, validation=None, publication_phase="high_resolution", wrf_status="complete"):
     manifest = {
         "run_date": run_date,
         "run_id": run_id,
@@ -509,13 +509,15 @@ def write_manifest(run_dir, run_date, run_id, routes, vessel_class, forecast_sou
         "forecast_sources": forecast_sources or [],
         "regional_evidence": regional_evidence,
         "validation": validation,
+        "publication_phase": publication_phase,
+        "wrf_status": wrf_status,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
-def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_evidence=None, validation=None):
+def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_evidence=None, validation=None, publication_phase="high_resolution", wrf_status="complete"):
     latest = {
         "run_date": run_date,
         "run_id": run_id,
@@ -525,10 +527,43 @@ def write_latest_run(day_dir, run_date, run_id, routes, vessel_class, regional_e
         "vessel_class": vessel_class,
         "regional_evidence": regional_evidence,
         "validation": validation,
+        "publication_phase": publication_phase,
+        "wrf_status": wrf_status,
         "created_at_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
     (day_dir / "latest_run.json").write_text(json.dumps(latest, indent=2), encoding="utf-8")
     return latest
+
+
+def publish_run_to_gcs(run_dir, day_dir, run_date, run_id, bucket_name=None):
+    """Publish a generated run and its latest pointer for the online API."""
+    bucket_name = bucket_name or os.environ.get("PREDSEA_GCS_BUCKET")
+    if not bucket_name:
+        print("No PREDSEA_GCS_BUCKET configured; keeping briefing artifacts local.", flush=True)
+        return []
+
+    from google.cloud import storage
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    uploaded = []
+    for local_path in sorted(Path(run_dir).rglob("*")):
+        if not local_path.is_file():
+            continue
+        relative_path = local_path.relative_to(run_dir).as_posix()
+        object_name = f"predictions/{run_date}/runs/{run_id}/{relative_path}"
+        bucket.blob(object_name).upload_from_filename(str(local_path))
+        uploaded.append(object_name)
+
+    latest_path = Path(day_dir) / "latest_run.json"
+    latest_object = f"predictions/{run_date}/latest_run.json"
+    bucket.blob(latest_object).upload_from_filename(str(latest_path))
+    uploaded.append(latest_object)
+    print(
+        f"Published {len(uploaded)} briefing artifacts to gs://{bucket_name}/predictions/{run_date}/",
+        flush=True,
+    )
+    return uploaded
 
 
 def write_bigquery_export_diagnostics(run_dir, name, result):
@@ -1115,6 +1150,8 @@ def generate_daily_briefings(
     logo_path=None,
     skip_figures=False,
     skip_maps=False,
+    publication_phase="high_resolution",
+    wrf_status="complete",
 ):
     modules = load_mvp_modules()
     run_date = run_date or today_local()
@@ -1286,6 +1323,8 @@ def generate_daily_briefings(
         forecast_sources=forecast_source_entries,
         regional_evidence=regional_manifest_entry,
         validation=validation_entry,
+        publication_phase=publication_phase,
+        wrf_status=wrf_status,
     )
     write_latest_run(
         day_dir,
@@ -1295,7 +1334,12 @@ def generate_daily_briefings(
         vessel_class,
         regional_evidence=regional_manifest_entry,
         validation=validation_entry,
+        publication_phase=publication_phase,
+        wrf_status=wrf_status,
     )
+
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        publish_run_to_gcs(run_dir, day_dir, run_date, run_id)
 
     if not os.environ.get("PYTEST_CURRENT_TEST"):
         try:
@@ -1329,6 +1373,18 @@ def parse_args():
     )
     parser.add_argument("--skip-figures", action="store_true", help="Only generate text/JSON artifacts.")
     parser.add_argument("--skip-maps", action="store_true", help="Do not generate route Decision Map artifacts.")
+    parser.add_argument(
+        "--publication-phase",
+        choices=["preliminary", "high_resolution"],
+        default="high_resolution",
+        help="Publication phase recorded in run metadata",
+    )
+    parser.add_argument(
+        "--wrf-status",
+        choices=["queued", "running", "retrying", "complete", "failed"],
+        default="complete",
+        help="WRF lifecycle state recorded in run metadata",
+    )
     return parser.parse_args()
 
 
@@ -1346,6 +1402,8 @@ def main():
         logo_path=args.logo_path,
         skip_figures=args.skip_figures,
         skip_maps=args.skip_maps,
+        publication_phase=args.publication_phase,
+        wrf_status=args.wrf_status,
     )
     print(f"Wrote PredSea daily briefing artifacts to {result.output_dir}")
     print(f"Run ID: {result.run_id}")

@@ -387,6 +387,31 @@ def test_routes_endpoint_lists_routes_from_prediction_artifacts(tmp_path):
     assert response.json() == {"date": "2026-05-29", "routes": ["ibiza_palma"]}
 
 
+def test_routes_endpoint_exposes_progressive_publication_status(tmp_path):
+    write_run_snapshot(tmp_path)
+    status = {
+        "run_date": "2026-05-29",
+        "run_id": "2026-05-29T0630Z",
+        "publication_phase": "preliminary",
+        "wrf_status": "running",
+        "message": "External-source forecast is online; WRF refinement is running.",
+    }
+    status_path = (
+        Path(tmp_path)
+        / "2026-05-29"
+        / "runs"
+        / "2026-05-29T0630Z"
+        / "publication_status.json"
+    )
+    status_path.write_text(json.dumps(status), encoding="utf-8")
+    client = TestClient(create_app(EvidenceStore(tmp_path)))
+
+    response = client.get("/routes?date=2026-05-29&run=latest")
+
+    assert response.status_code == 200
+    assert response.json()["publication"] == status
+
+
 def test_routes_endpoint_falls_back_to_configured_catalog_without_predictions(tmp_path):
     client = TestClient(create_app(EvidenceStore(tmp_path)))
 

@@ -148,6 +148,26 @@ class EvidenceStore:
             raise EvidenceNotFoundError(f"No place weather package for '{place_id}' on {date_text}")
         return json.loads(weather_path.read_text(encoding="utf-8"))
 
+    def load_publication_status(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        resolved_run = self.resolve_run(date_text, run_id)
+        candidates = []
+        if resolved_run:
+            candidates.append(
+                self.predictions_root
+                / date_text
+                / "runs"
+                / resolved_run
+                / "publication_status.json"
+            )
+        candidates.append(self.predictions_root / date_text / "latest_status.json")
+        for status_path in candidates:
+            if status_path.exists():
+                payload = json.loads(status_path.read_text(encoding="utf-8"))
+                if not resolved_run or payload.get("run_id") == resolved_run:
+                    return payload
+        raise EvidenceNotFoundError(f"No publication status found for {date_text}")
+
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
         return None
 
@@ -364,6 +384,31 @@ class GcsEvidenceStore:
             if self.fallback_store is not None:
                 return self.fallback_store.load_place_weather(place_id, date_text, run_id)
             raise
+
+    def load_publication_status(self, run_date=None, run_id=None):
+        date_text = self.resolve_date(run_date)
+        resolved_run = self.resolve_run(date_text, run_id)
+        candidates = []
+        if resolved_run:
+            candidates.append(
+                self._object_name(
+                    date_text,
+                    "runs",
+                    resolved_run,
+                    "publication_status.json",
+                )
+            )
+        candidates.append(self._object_name(date_text, "latest_status.json"))
+        for object_name in candidates:
+            try:
+                payload = json.loads(self._download_text(object_name))
+                if not resolved_run or payload.get("run_id") == resolved_run:
+                    return payload
+            except EvidenceNotFoundError:
+                continue
+        if self.fallback_store is not None:
+            return self.fallback_store.load_publication_status(date_text, resolved_run)
+        raise EvidenceNotFoundError(f"No publication status found for {date_text}")
 
     def signed_artifact_url(self, route_id, artifact_name, run_date=None, run_id=None, expires_minutes=30):
         date_text = self.resolve_date(run_date)
