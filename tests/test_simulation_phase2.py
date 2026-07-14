@@ -74,6 +74,9 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "grib_copy -B 'validityDate:i asc,validityTime:i asc'" in pipeline
     assert "timeout --signal=TERM --kill-after=30s" in pipeline
     assert "ungrib created the complete WPS intermediate time sequence" in pipeline
+    assert 'date -u -d "@${expected_epoch}"' in pipeline
+    assert "expected_epoch=$((expected_epoch + 3 * 60 * 60))" in pipeline
+    assert ' ${expected_time:11:8} +3 hours' not in pipeline
     assert pipeline.index("run_wps_stage ungrib") < pipeline.index("missing_intermediate_times=()")
     assert pipeline.index("missing_intermediate_times=()") < pipeline.index("run_wps_stage metgrid")
     assert '"${exe}" > "${stdout_log}" 2>&1' in pipeline

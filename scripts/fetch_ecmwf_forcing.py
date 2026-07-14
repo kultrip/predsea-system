@@ -424,6 +424,8 @@ def main() -> None:
             paths = {"pl_path": pl_target, "sfc_path": sfc_target}
             try:
                 validate_forcing_files(paths, attempt_date, attempt_time, steps)
+                validate_forecast_metadata(pl_target, attempt_date, attempt_time, steps)
+                validate_forecast_metadata(sfc_target, attempt_date, attempt_time, steps)
                 print(f"✅ Files already exist for {attempt_date} {attempt_time:02d}Z and passed validation. Skipping.")
                 break
             except Exception as e:

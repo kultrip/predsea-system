@@ -26,6 +26,50 @@ class FakeEccodes:
         return None
 
 
+def test_skip_if_exists_validates_forecast_metadata(monkeypatch, tmp_path):
+    """Cached valid-time files must not bypass the WPS metadata check."""
+    monkeypatch.setattr(
+        fetch_ecmwf_forcing,
+        "parse_args",
+        lambda: type(
+            "Args",
+            (),
+            {
+                "run_date": "2026-07-14",
+                "run_time": 0,
+                "lead_hours": 3,
+                "output_dir": tmp_path,
+                "gcs_bucket": "",
+                "dry_run": False,
+                "skip_if_exists": True,
+            },
+        )(),
+    )
+    for kind in ("pl", "sfc"):
+        (tmp_path / f"ecmwf_{kind}_2026-07-14_00Z.grib2").write_bytes(b"stale")
+
+    monkeypatch.setattr(fetch_ecmwf_forcing, "validate_forcing_files", lambda *args: None)
+    metadata_checks = []
+
+    def reject_stale(path, *args):
+        metadata_checks.append(path.name)
+        raise RuntimeError("step-zero metadata")
+
+    monkeypatch.setattr(fetch_ecmwf_forcing, "validate_forecast_metadata", reject_stale)
+
+    def stop_after_cache_rejection(**kwargs):
+        assert not (tmp_path / "ecmwf_pl_2026-07-14_00Z.grib2").exists()
+        assert not (tmp_path / "ecmwf_sfc_2026-07-14_00Z.grib2").exists()
+        raise RuntimeError("stop test")
+
+    monkeypatch.setattr(fetch_ecmwf_forcing, "fetch_ecmwf_data", stop_after_cache_rejection)
+
+    with pytest.raises(SystemExit):
+        fetch_ecmwf_forcing.main()
+
+    assert metadata_checks == ["ecmwf_pl_2026-07-14_00Z.grib2"]
+
+
 def test_validate_forecast_metadata_accepts_cycle_and_forecast_leads(
     monkeypatch, tmp_path
 ):

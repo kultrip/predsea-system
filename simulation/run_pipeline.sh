@@ -87,15 +87,16 @@ run_wps_stage ungrib
 # Fail with an explicit missing-time report before metgrid emits a misleading
 # mandatory-field error.
 missing_intermediate_times=()
-expected_time="${START_DATE:-2026-05-04_00:00:00}"
+start_time="${START_DATE:-2026-05-04_00:00:00}"
 end_time="${END_DATE:-2026-05-05_00:00:00}"
-while [[ "${expected_time}" != "${end_time}" ]]; do
+expected_epoch="$(date -u -d "${start_time/_/ } UTC" '+%s')"
+end_epoch="$(date -u -d "${end_time/_/ } UTC" '+%s')"
+while (( expected_epoch <= end_epoch )); do
+  expected_time="$(date -u -d "@${expected_epoch}" '+%Y-%m-%d_%H:%M:%S')"
   intermediate="ECMWF:${expected_time:0:10}_${expected_time:11:2}"
   [[ -f "${intermediate}" ]] || missing_intermediate_times+=("${intermediate}")
-  expected_time="$(date -u -d "${expected_time:0:10} ${expected_time:11:8} +3 hours" '+%Y-%m-%d_%H:%M:%S')"
+  expected_epoch=$((expected_epoch + 3 * 60 * 60))
 done
-final_intermediate="ECMWF:${end_time:0:10}_${end_time:11:2}"
-[[ -f "${final_intermediate}" ]] || missing_intermediate_times+=("${final_intermediate}")
 if (( ${#missing_intermediate_times[@]} > 0 )); then
   echo "❌ ungrib did not create all required WPS intermediate files."
   printf 'Missing: %s\n' "${missing_intermediate_times[@]}"
