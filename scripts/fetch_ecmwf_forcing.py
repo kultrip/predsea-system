@@ -139,6 +139,18 @@ def normalize_grib_times_for_wps(input_path: Path) -> None:
                     )
 
                     changed = False
+                    # Reset the forecast lead first. ecCodes aliases such as
+                    # stepRange/forecastTime may update the raw GRIB2 Section 1
+                    # reference timestamp as a side effect. WPS 4.5 reads that
+                    # raw timestamp, not ecCodes' derived validityDate alias.
+                    changed = set_grib_key_if_present(gid, "stepRange", "0") or changed
+                    changed = set_grib_key_if_present(gid, "startStep", 0) or changed
+                    changed = set_grib_key_if_present(gid, "endStep", 0) or changed
+                    changed = set_grib_key_if_present(gid, "forecastTime", 0) or changed
+                    changed = set_grib_key_if_present(gid, "step", 0) or changed
+
+                    # Write the valid time last, including the low-level
+                    # Section 1 components consumed by WPS' g2 decoder.
                     changed = set_grib_key_if_present(gid, "dataDate", valid_date) or changed
                     changed = set_grib_key_if_present(gid, "dataTime", valid_time) or changed
                     changed = set_grib_key_if_present(gid, "date", valid_date) or changed
@@ -150,12 +162,6 @@ def normalize_grib_times_for_wps(input_path: Path) -> None:
                     changed = set_grib_key_if_present(gid, "minute", valid_dt.minute) or changed
                     changed = set_grib_key_if_present(gid, "second", valid_dt.second) or changed
 
-                    changed = set_grib_key_if_present(gid, "stepRange", "0") or changed
-                    changed = set_grib_key_if_present(gid, "startStep", 0) or changed
-                    changed = set_grib_key_if_present(gid, "endStep", 0) or changed
-                    changed = set_grib_key_if_present(gid, "forecastTime", 0) or changed
-                    changed = set_grib_key_if_present(gid, "step", 0) or changed
-
                     if changed:
                         changed_count += 1
                     eccodes.codes_write(gid, f_out)
@@ -163,6 +169,7 @@ def normalize_grib_times_for_wps(input_path: Path) -> None:
                     eccodes.codes_release(gid)
 
         temp_output.replace(input_path)
+        validate_wps_reference_times(input_path)
         print(
             f"✅ Normalized {input_path.name} reference timestamps for WPS "
             f"({changed_count}/{msg_count} messages adjusted)."
@@ -170,6 +177,58 @@ def normalize_grib_times_for_wps(input_path: Path) -> None:
     finally:
         if temp_output.exists():
             temp_output.unlink()
+
+
+def validate_wps_reference_times(input_path: Path) -> None:
+    """Ensure raw GRIB2 reference times match valid times with zero lead.
+
+    WPS 4.5 derives intermediate filenames from the raw Section 1 timestamp.
+    Checking only validityDate/validityTime is insufficient because ecCodes can
+    report the expected derived valid time while WPS still sees the old cycle.
+    """
+    if eccodes is None:
+        raise RuntimeError("eccodes is required to validate WPS reference times.")
+
+    failures: list[str] = []
+    message_count = 0
+    with input_path.open("rb") as file_obj:
+        while True:
+            gid = eccodes.codes_grib_new_from_file(file_obj)
+            if gid is None:
+                break
+            message_count += 1
+            try:
+                valid_date = int(eccodes.codes_get(gid, "validityDate"))
+                valid_time = int(eccodes.codes_get(gid, "validityTime"))
+                reference_date = int(eccodes.codes_get(gid, "dataDate"))
+                reference_time = int(eccodes.codes_get(gid, "dataTime"))
+                forecast_time = int(eccodes.codes_get(gid, "forecastTime"))
+                if (
+                    reference_date != valid_date
+                    or reference_time != valid_time
+                    or forecast_time != 0
+                ):
+                    failures.append(
+                        f"message {message_count}: reference "
+                        f"{reference_date}:{reference_time:04d}, valid "
+                        f"{valid_date}:{valid_time:04d}, forecastTime={forecast_time}"
+                    )
+            finally:
+                eccodes.codes_release(gid)
+
+    if failures:
+        preview = "; ".join(failures[:5])
+        suffix = "" if len(failures) <= 5 else f"; ... ({len(failures)} failures)"
+        raise RuntimeError(
+            f"{input_path.name} is not normalized for WPS raw reference times: "
+            f"{preview}{suffix}"
+        )
+    if message_count == 0:
+        raise RuntimeError(f"{input_path.name} contains no GRIB messages.")
+    print(
+        f"✅ Validated {input_path.name} raw WPS reference times "
+        f"({message_count} messages at zero forecast lead)."
+    )
 
 
 def get_latest_run_time() -> int:
