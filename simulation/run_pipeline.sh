@@ -15,6 +15,7 @@ else
   Vtable="${WPS_DIR}/ungrib/Variable_Tables/Vtable.ECMWF"
 fi
 MPI_PROCS="${MPI_PROCS:-4}"
+WPS_STAGE_TIMEOUT_SECONDS="${WPS_STAGE_TIMEOUT_SECONDS:-1800}"
 
 mkdir -p "${RUN_DIR}"
 cd "${RUN_DIR}"
@@ -48,7 +49,8 @@ run_wps_stage() {
 
   echo "Running ${stage}..."
   set +e
-  "${exe}" > "${stdout_log}" 2>&1
+  timeout --signal=TERM --kill-after=30s "${WPS_STAGE_TIMEOUT_SECONDS}" \
+    "${exe}" > "${stdout_log}" 2>&1
   local rc=$?
   set -e
 
@@ -69,8 +71,11 @@ run_wps_stage() {
 # 00Z; feeding them sequentially makes the stream restart in time.
 echo "Preparing chronologically ordered GRIB input from ${GRIB_DIR}..."
 if ls "${GRIB_DIR}"/ecmwf_*.grib2 1> /dev/null 2>&1; then
+    COMBINED_GRIB="${RUN_DIR}/ecmwf_wps_combined_unsorted.grib2"
     ORDERED_GRIB="${RUN_DIR}/ecmwf_wps_ordered.grib2"
-    grib_copy -B 'dataDate:i,dataTime:i' "${GRIB_DIR}"/ecmwf_*.grib2 "${ORDERED_GRIB}"
+    cat "${GRIB_DIR}"/ecmwf_*.grib2 > "${COMBINED_GRIB}"
+    grib_copy -B 'validityDate:i asc,validityTime:i asc' \
+      "${COMBINED_GRIB}" "${ORDERED_GRIB}"
     ./link_grib.csh "${ORDERED_GRIB}"
 else
     echo "❌ Error: No GRIB files found in ${GRIB_DIR}"

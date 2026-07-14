@@ -26,7 +26,7 @@ class FakeEccodes:
         return None
 
 
-def test_validate_wps_reference_times_accepts_raw_valid_time_at_zero_lead(
+def test_validate_forecast_metadata_accepts_cycle_and_forecast_leads(
     monkeypatch, tmp_path
 ):
     path = tmp_path / "forcing.grib2"
@@ -42,19 +42,19 @@ def test_validate_wps_reference_times_accepts_raw_valid_time_at_zero_lead(
             },
             {
                 "dataDate": 20260714,
-                "dataTime": 300,
+                "dataTime": 0,
                 "validityDate": 20260714,
                 "validityTime": 300,
-                "forecastTime": 0,
+                "forecastTime": 3,
             },
         ]
     )
     monkeypatch.setattr(fetch_ecmwf_forcing, "eccodes", fake)
 
-    fetch_ecmwf_forcing.validate_wps_reference_times(path)
+    fetch_ecmwf_forcing.validate_forecast_metadata(path, "2026-07-14", 0, [0, 3])
 
 
-def test_validate_wps_reference_times_rejects_old_cycle_hidden_by_validity_alias(
+def test_validate_forecast_metadata_rejects_rewritten_step_zero_messages(
     monkeypatch, tmp_path
 ):
     path = tmp_path / "forcing.grib2"
@@ -62,15 +62,15 @@ def test_validate_wps_reference_times_rejects_old_cycle_hidden_by_validity_alias
     fake = FakeEccodes(
         [
             {
-                "dataDate": 20260713,
-                "dataTime": 1200,
+                "dataDate": 20260714,
+                "dataTime": 300,
                 "validityDate": 20260714,
-                "validityTime": 0,
-                "forecastTime": 12,
+                "validityTime": 300,
+                "forecastTime": 0,
             }
         ]
     )
     monkeypatch.setattr(fetch_ecmwf_forcing, "eccodes", fake)
 
-    with pytest.raises(RuntimeError, match="raw reference times"):
-        fetch_ecmwf_forcing.validate_wps_reference_times(path)
+    with pytest.raises(RuntimeError, match="preserve the ECMWF cycle reference"):
+        fetch_ecmwf_forcing.validate_forecast_metadata(path, "2026-07-14", 0, [0, 3])

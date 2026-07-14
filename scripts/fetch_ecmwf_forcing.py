@@ -96,101 +96,24 @@ def validate_forcing_files(paths: dict[str, Path], run_date: str, run_time: int,
     validate_forcing_file(paths["sfc_path"], run_date, run_time, steps)
 
 
-def set_grib_key_if_present(gid, key: str, value) -> bool:
-    try:
-        if not eccodes.codes_is_defined(gid, key):
-            return False
-        eccodes.codes_set(gid, key, value)
-        return True
-    except Exception:
-        return False
+def validate_forecast_metadata(
+    input_path: Path, run_date: str, run_time: int, steps: list[int]
+) -> None:
+    """Ensure WPS receives the original cycle reference and forecast leads.
 
-
-def normalize_grib_times_for_wps(input_path: Path) -> None:
-    """
-    Rewrite ECMWF forecast messages so WPS sees each valid time directly.
-
-    The WPS/ungrib build used by the simulation image ignores the forecast lead
-    metadata in ECMWF Open Data GRIB2 files and inventories every message at the
-    cycle reference time. Set both ecCodes aliases and low-level section-1 date
-    keys to the valid time before zeroing the step.
+    WPS' GRIB2 decoder combines the raw cycle timestamp with forecastTime.
+    Rewriting messages as step-zero analyses can look correct through ecCodes'
+    derived validity aliases while WPS still inventories every message at 00Z.
     """
     if eccodes is None:
-        raise RuntimeError("eccodes is required to normalize GRIB times for WPS.")
-    if not input_path.exists():
-        raise RuntimeError(f"Missing GRIB file for WPS normalization: {input_path}")
-
-    temp_output = input_path.with_suffix(".wps-times.tmp")
-    msg_count = 0
-    changed_count = 0
-    try:
-        with input_path.open("rb") as f_in, temp_output.open("wb") as f_out:
-            while True:
-                gid = eccodes.codes_grib_new_from_file(f_in)
-                if gid is None:
-                    break
-                msg_count += 1
-                try:
-                    valid_date = int(eccodes.codes_get(gid, "validityDate"))
-                    valid_time = int(eccodes.codes_get(gid, "validityTime"))
-                    valid_dt = datetime.datetime.strptime(
-                        f"{valid_date}{valid_time:04d}",
-                        "%Y%m%d%H%M",
-                    )
-
-                    changed = False
-                    # Reset the forecast lead first. ecCodes aliases such as
-                    # stepRange/forecastTime may update the raw GRIB2 Section 1
-                    # reference timestamp as a side effect. WPS 4.5 reads that
-                    # raw timestamp, not ecCodes' derived validityDate alias.
-                    changed = set_grib_key_if_present(gid, "stepRange", "0") or changed
-                    changed = set_grib_key_if_present(gid, "startStep", 0) or changed
-                    changed = set_grib_key_if_present(gid, "endStep", 0) or changed
-                    changed = set_grib_key_if_present(gid, "forecastTime", 0) or changed
-                    changed = set_grib_key_if_present(gid, "step", 0) or changed
-
-                    # Write the valid time last, including the low-level
-                    # Section 1 components consumed by WPS' g2 decoder.
-                    changed = set_grib_key_if_present(gid, "dataDate", valid_date) or changed
-                    changed = set_grib_key_if_present(gid, "dataTime", valid_time) or changed
-                    changed = set_grib_key_if_present(gid, "date", valid_date) or changed
-                    changed = set_grib_key_if_present(gid, "time", valid_time) or changed
-                    changed = set_grib_key_if_present(gid, "year", valid_dt.year) or changed
-                    changed = set_grib_key_if_present(gid, "month", valid_dt.month) or changed
-                    changed = set_grib_key_if_present(gid, "day", valid_dt.day) or changed
-                    changed = set_grib_key_if_present(gid, "hour", valid_dt.hour) or changed
-                    changed = set_grib_key_if_present(gid, "minute", valid_dt.minute) or changed
-                    changed = set_grib_key_if_present(gid, "second", valid_dt.second) or changed
-
-                    if changed:
-                        changed_count += 1
-                    eccodes.codes_write(gid, f_out)
-                finally:
-                    eccodes.codes_release(gid)
-
-        temp_output.replace(input_path)
-        validate_wps_reference_times(input_path)
-        print(
-            f"✅ Normalized {input_path.name} reference timestamps for WPS "
-            f"({changed_count}/{msg_count} messages adjusted)."
-        )
-    finally:
-        if temp_output.exists():
-            temp_output.unlink()
-
-
-def validate_wps_reference_times(input_path: Path) -> None:
-    """Ensure raw GRIB2 reference times match valid times with zero lead.
-
-    WPS 4.5 derives intermediate filenames from the raw Section 1 timestamp.
-    Checking only validityDate/validityTime is insufficient because ecCodes can
-    report the expected derived valid time while WPS still sees the old cycle.
-    """
-    if eccodes is None:
-        raise RuntimeError("eccodes is required to validate WPS reference times.")
+        raise RuntimeError("eccodes is required to validate forecast metadata.")
 
     failures: list[str] = []
     message_count = 0
+    expected_reference_date = int(run_date.replace("-", ""))
+    expected_reference_time = run_time * 100
+    expected_steps = set(steps)
+    observed_steps: set[int] = set()
     with input_path.open("rb") as file_obj:
         while True:
             gid = eccodes.codes_grib_new_from_file(file_obj)
@@ -198,20 +121,15 @@ def validate_wps_reference_times(input_path: Path) -> None:
                 break
             message_count += 1
             try:
-                valid_date = int(eccodes.codes_get(gid, "validityDate"))
-                valid_time = int(eccodes.codes_get(gid, "validityTime"))
                 reference_date = int(eccodes.codes_get(gid, "dataDate"))
                 reference_time = int(eccodes.codes_get(gid, "dataTime"))
                 forecast_time = int(eccodes.codes_get(gid, "forecastTime"))
-                if (
-                    reference_date != valid_date
-                    or reference_time != valid_time
-                    or forecast_time != 0
-                ):
+                observed_steps.add(forecast_time)
+                if reference_date != expected_reference_date or reference_time != expected_reference_time:
                     failures.append(
-                        f"message {message_count}: reference "
-                        f"{reference_date}:{reference_time:04d}, valid "
-                        f"{valid_date}:{valid_time:04d}, forecastTime={forecast_time}"
+                        f"message {message_count}: reference {reference_date}:"
+                        f"{reference_time:04d}, expected {expected_reference_date}:"
+                        f"{expected_reference_time:04d}, forecastTime={forecast_time}"
                     )
             finally:
                 eccodes.codes_release(gid)
@@ -220,15 +138,17 @@ def validate_wps_reference_times(input_path: Path) -> None:
         preview = "; ".join(failures[:5])
         suffix = "" if len(failures) <= 5 else f"; ... ({len(failures)} failures)"
         raise RuntimeError(
-            f"{input_path.name} is not normalized for WPS raw reference times: "
+            f"{input_path.name} does not preserve the ECMWF cycle reference: "
             f"{preview}{suffix}"
         )
     if message_count == 0:
         raise RuntimeError(f"{input_path.name} contains no GRIB messages.")
-    print(
-        f"✅ Validated {input_path.name} raw WPS reference times "
-        f"({message_count} messages at zero forecast lead)."
-    )
+    missing_steps = sorted(expected_steps - observed_steps)
+    if missing_steps:
+        raise RuntimeError(
+            f"{input_path.name} is missing forecastTime values: {missing_steps}"
+        )
+    print(f"✅ Validated {input_path.name}: preserved cycle and forecast steps.")
 
 
 def get_latest_run_time() -> int:
@@ -538,9 +458,9 @@ def main() -> None:
         # 4. Repack files to ensure WPS/ungrib compatibility (CCSDS -> Simple)
         repack_grib_file(paths["pl_path"])
         repack_grib_file(paths["sfc_path"])
-        normalize_grib_times_for_wps(paths["pl_path"])
-        normalize_grib_times_for_wps(paths["sfc_path"])
         validate_forcing_files(paths, attempt_date, attempt_time, steps)
+        validate_forecast_metadata(paths["pl_path"], attempt_date, attempt_time, steps)
+        validate_forecast_metadata(paths["sfc_path"], attempt_date, attempt_time, steps)
 
     if args.gcs_bucket and not args.dry_run:
         # We always upload using the ATTEMPT date/time to the GCS folder of the RUN date

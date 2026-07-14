@@ -70,7 +70,9 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "link_grib.csh" in pipeline
     assert "run_wps_stage ungrib" in pipeline
     assert "run_wps_stage metgrid" in pipeline
-    assert "grib_copy -B 'dataDate:i,dataTime:i'" in pipeline
+    assert 'cat "${GRIB_DIR}"/ecmwf_*.grib2 > "${COMBINED_GRIB}"' in pipeline
+    assert "grib_copy -B 'validityDate:i asc,validityTime:i asc'" in pipeline
+    assert "timeout --signal=TERM --kill-after=30s" in pipeline
     assert "ungrib created the complete WPS intermediate time sequence" in pipeline
     assert pipeline.index("run_wps_stage ungrib") < pipeline.index("missing_intermediate_times=()")
     assert pipeline.index("missing_intermediate_times=()") < pipeline.index("run_wps_stage metgrid")
