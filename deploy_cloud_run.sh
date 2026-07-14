@@ -24,7 +24,7 @@ log_err() {
 
 # 1. Identify GCP Project
 log_info "Identifying active Google Cloud Project..."
-PROJECT_ID=$(gcloud config get-value project 2>/dev/null || true)
+PROJECT_ID="${PREDSEA_GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}"
 
 if [ -z "${PROJECT_ID}" ]; then
     log_err "No active Google Cloud Project found. Please login and configure your project first:"
