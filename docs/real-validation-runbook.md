@@ -5,7 +5,7 @@ without your GCP credentials — it has to run on your machine (or CI) with real
 `gcloud`/`GOOGLE_APPLICATION_CREDENTIALS` access and will spend real credit.
 
 As of the second correction pass (also July 2), `scripts/daily_orchestrator.py` —
-the script actually wired to the `0 3 * * *` (03:00 Europe/Madrid) Cloud Scheduler
+the script actually wired to the `0 5 * * *` (05:00 Europe/Madrid) Cloud Scheduler
 job created by `infra/deploy.sh` — automatically runs the whole chain: boundary
 fetch, Spot VM launch, ingestion for **WRF, CROCO, NEMO, and SWAN** (not ROMS —
 `roms_forecast_ingestor.py` exists but isn't called by the scheduled job), the
@@ -36,7 +36,7 @@ call) — run it manually per Section 5 if/when you want a cost report.
 
 ## 1. Trigger a real run
 
-To exercise the exact path the 3am scheduler uses (boundaries → Spot VM → all four
+To exercise the exact path the 5am scheduler uses (boundaries → Spot VM → all four
 ingestors → briefing → anomaly check → model comparison):
 
 ```bash

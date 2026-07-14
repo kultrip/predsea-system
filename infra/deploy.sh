@@ -142,7 +142,7 @@ gcloud scheduler jobs delete "${TRIGGER_NAME}" --location="${REGION}" --quiet >/
 
 # Create new trigger
 gcloud scheduler jobs create http "${TRIGGER_NAME}" \
-    --schedule="0 3 * * *" \
+    --schedule="0 5 * * *" \
     --time-zone="Europe/Madrid" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
     --http-method=POST \
@@ -150,7 +150,7 @@ gcloud scheduler jobs create http "${TRIGGER_NAME}" \
     --location="${REGION}" \
     --quiet
 
-log_info "Cloud Scheduler Trigger '${TRIGGER_NAME}' successfully scheduled (03:00 AM Europe/Madrid time)!"
+log_info "Cloud Scheduler Trigger '${TRIGGER_NAME}' successfully scheduled (05:00 AM Europe/Madrid time)!"
 
 log_info "Deployment for [${ENV}] completed successfully! 🎉"
 echo "========================================================="

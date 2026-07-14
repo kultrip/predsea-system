@@ -22,6 +22,15 @@ Param| Type |Level1|Level2| Name     | Units    | Description                   
   34 |  1   |   0  |      | SST      | K        | Sea-Surface Temperature                  |  0  |  3  |  0  |   1 |
  141 |  1   |   0  |      | SNOW_EC  | m        |                                          |  0  |  1  | 60  |   1 |
      |  1   |   0  |      | SNOW     | kg m-2   |Water Equivalent of Accumulated Snow Depth|  0  |  1  | 60  |   1 |
+     |  1   |   0  |      | SNOW_EC  | m        | ECMWF Open Data snow depth               |  0  |  1  |254  |   1 |
+     | 106  |   0  |   7  | ST000007 | K        | T of 0-7 cm ground layer                 |  2  |  3  | 18  | 106 |
+     | 106  |   7  |  28  | ST007028 | K        | T of 7-28 cm ground layer                |  2  |  3  | 18  | 106 |
+     | 106  |  28  | 100  | ST028100 | K        | T of 28-100 cm ground layer              |  2  |  3  | 18  | 106 |
+     | 106  | 100  | 289  | ST100289 | K        | T of 100-289 cm ground layer             |  2  |  3  | 18  | 106 |
+     | 106  |   0  |   7  | SM000007 | fraction | Soil moisture of 0-7 cm ground layer     |  2  |  0  | 25  | 106 |
+     | 106  |   7  |  28  | SM007028 | fraction | Soil moisture of 7-28 cm ground layer    |  2  |  0  | 25  | 106 |
+     | 106  |  28  | 100  | SM028100 | fraction | Soil moisture of 28-100 cm ground layer  |  2  |  0  | 25  | 106 |
+     | 106  | 100  | 289  | SM100289 | fraction | Soil moisture of 100-289 cm ground layer |  2  |  0  | 25  | 106 |
  139 | 112  |   0  |   7  | ST000007 | K        | T of 0-7 cm ground layer                 |  0  |  0  |  0  | 106 | 
  170 | 112  |   7  |  28  | ST007028 | K        | T of 7-28 cm ground layer                |  0  |  0  |  0  | 106 | 
  183 | 112  |  28  | 100  | ST028100 | K        | T of 28-100 cm ground layer              |  0  |  0  |  0  | 106 | 

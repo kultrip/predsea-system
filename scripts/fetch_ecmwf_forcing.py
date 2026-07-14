@@ -42,6 +42,18 @@ SFC_VARS = [
 SOIL_VARS = ["sot", "vsw"]
 SOIL_LEVELS = [1, 2, 3, 4]
 
+# ECMWF Open Data encodes current sot/vsw messages on local numeric soil
+# levels (fixed-surface code 151). WPS 4.5 cannot decode that level code; it
+# expects depth-below-land-surface (code 106), expressed in metres. These are
+# the physical IFS layer interfaces, stored as centimetres for exact integer
+# GRIB scaling below.
+SOIL_LAYER_BOUNDS_CM = {
+    1: (0, 7),
+    2: (7, 28),
+    3: (28, 100),
+    4: (100, 289),
+}
+
 
 def expected_valid_times(run_date: str, run_time: int, steps: list[int]) -> set[tuple[int, int]]:
     base = datetime.datetime.strptime(f"{run_date} {run_time:02d}", "%Y-%m-%d %H")
@@ -94,6 +106,37 @@ def validate_forcing_file(path: Path, run_date: str, run_time: int, steps: list[
 def validate_forcing_files(paths: dict[str, Path], run_date: str, run_time: int, steps: list[int]) -> None:
     validate_forcing_file(paths["pl_path"], run_date, run_time, steps)
     validate_forcing_file(paths["sfc_path"], run_date, run_time, steps)
+
+
+def validate_decodable_grib_payload(input_path: Path) -> None:
+    """Decode every GRIB message so packing/header mismatches fail early."""
+    if eccodes is None:
+        raise RuntimeError("eccodes is required to validate GRIB payloads.")
+
+    message_count = 0
+    with input_path.open("rb") as file_obj:
+        while True:
+            gid = eccodes.codes_grib_new_from_file(file_obj)
+            if gid is None:
+                break
+            message_count += 1
+            try:
+                values = eccodes.codes_get_values(gid)
+                if len(values) == 0:
+                    raise RuntimeError(
+                        f"{input_path.name} message {message_count} has no values."
+                    )
+            except Exception as exc:
+                raise RuntimeError(
+                    f"{input_path.name} message {message_count} has an undecodable "
+                    f"GRIB payload: {exc}"
+                ) from exc
+            finally:
+                eccodes.codes_release(gid)
+
+    if message_count == 0:
+        raise RuntimeError(f"{input_path.name} contains no GRIB messages.")
+    print(f"✅ Decoded all {message_count} payloads in {input_path.name}.")
 
 
 def validate_forecast_metadata(
@@ -197,7 +240,17 @@ def repack_grib_file(input_path: Path) -> None:
         # -s packingType=grid_simple: change packing
         # -w packingType=grid_ccsds: only process CCSDS messages (optimization)
         # But for simplicity, we'll just set all to simple.
-        cmd = ["grib_set", "-s", "packingType=grid_simple", str(input_path), str(temp_output)]
+        # -r forces ecCodes to decode and repack the data values. Without it,
+        # only the Section 5 packing template is changed and the original
+        # CCSDS payload is left behind under a simple-packing header.
+        cmd = [
+            "grib_set",
+            "-r",
+            "-s",
+            "packingType=grid_simple",
+            str(input_path),
+            str(temp_output),
+        ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0 and temp_output.exists():
             temp_output.replace(input_path)
@@ -246,7 +299,13 @@ def repack_grib_file(input_path: Path) -> None:
                 msg_count += 1
                 try:
                     if eccodes.codes_get(gid, "packingType") == "grid_ccsds":
+                        # Changing only the packingType metadata leaves the
+                        # CCSDS payload bytes untouched under a simple-packing
+                        # header, producing an unreadable GRIB. Decode first,
+                        # switch templates, and explicitly re-encode values.
+                        values = eccodes.codes_get_values(gid)
                         eccodes.codes_set(gid, "packingType", "grid_simple")
+                        eccodes.codes_set_values(gid, values)
                         repack_count += 1
                 except Exception:
                     pass
@@ -256,6 +315,74 @@ def repack_grib_file(input_path: Path) -> None:
         temp_output.replace(input_path)
         print(f"✅ Repacked {input_path.name} via Python ({msg_count} messages, {repack_count} modified).")
 
+    finally:
+        if temp_output.exists():
+            temp_output.unlink()
+
+
+def normalize_soil_metadata_for_wps(input_path: Path) -> None:
+    """Translate ECMWF numeric soil levels into WPS-readable depth layers.
+
+    Current ECMWF Open Data uses fixed-surface code 151 with numeric layer
+    indices 1..4 for ``sot`` and ``vsw``. WPS 4.5 does not support code 151,
+    but it does support code 106 and converts its metre-scaled boundaries to
+    the centimetre boundaries used by the Vtable.
+    """
+    if eccodes is None:
+        raise RuntimeError("eccodes is required to normalize ECMWF soil metadata.")
+    if not input_path.exists():
+        raise RuntimeError(f"Missing forcing file: {input_path}")
+
+    temp_output = input_path.with_suffix(".soil_wps.tmp")
+    observed_layers: set[tuple[str, int]] = set()
+    normalized_count = 0
+    try:
+        with input_path.open("rb") as file_in, temp_output.open("wb") as file_out:
+            while True:
+                gid = eccodes.codes_grib_new_from_file(file_in)
+                if gid is None:
+                    break
+                try:
+                    short_name = str(eccodes.codes_get(gid, "shortName"))
+                    if short_name in SOIL_VARS:
+                        level = int(eccodes.codes_get(gid, "level"))
+                        if level not in SOIL_LAYER_BOUNDS_CM:
+                            raise RuntimeError(
+                                f"Unsupported ECMWF {short_name} soil level {level}."
+                            )
+                        lower_cm, upper_cm = SOIL_LAYER_BOUNDS_CM[level]
+                        observed_layers.add((short_name, level))
+
+                        # Code 106 is depth below land surface in metres. A
+                        # scale factor of 2 represents the centimetre bounds
+                        # exactly: 7 -> 0.07 m, 289 -> 2.89 m.
+                        eccodes.codes_set(gid, "typeOfFirstFixedSurface", 106)
+                        eccodes.codes_set(gid, "scaleFactorOfFirstFixedSurface", 2)
+                        eccodes.codes_set(gid, "scaledValueOfFirstFixedSurface", lower_cm)
+                        eccodes.codes_set(gid, "typeOfSecondFixedSurface", 106)
+                        eccodes.codes_set(gid, "scaleFactorOfSecondFixedSurface", 2)
+                        eccodes.codes_set(gid, "scaledValueOfSecondFixedSurface", upper_cm)
+                        normalized_count += 1
+                    eccodes.codes_write(gid, file_out)
+                finally:
+                    eccodes.codes_release(gid)
+
+        expected_layers = {
+            (short_name, level)
+            for short_name in SOIL_VARS
+            for level in SOIL_LAYER_BOUNDS_CM
+        }
+        missing_layers = sorted(expected_layers - observed_layers)
+        if missing_layers:
+            raise RuntimeError(
+                f"{input_path.name} is missing required ECMWF soil layers: "
+                f"{missing_layers}"
+            )
+        temp_output.replace(input_path)
+        print(
+            f"✅ Normalized {normalized_count} ECMWF soil messages for WPS "
+            f"across {len(observed_layers)} variable/layer combinations."
+        )
     finally:
         if temp_output.exists():
             temp_output.unlink()
@@ -460,6 +587,9 @@ def main() -> None:
         # 4. Repack files to ensure WPS/ungrib compatibility (CCSDS -> Simple)
         repack_grib_file(paths["pl_path"])
         repack_grib_file(paths["sfc_path"])
+        normalize_soil_metadata_for_wps(paths["sfc_path"])
+        validate_decodable_grib_payload(paths["pl_path"])
+        validate_decodable_grib_payload(paths["sfc_path"])
         validate_forcing_files(paths, attempt_date, attempt_time, steps)
         validate_forecast_metadata(paths["pl_path"], attempt_date, attempt_time, steps)
         validate_forecast_metadata(paths["sfc_path"], attempt_date, attempt_time, steps)

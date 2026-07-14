@@ -83,7 +83,8 @@ To proceed with final operationalization and scaling:
 Establish a daily Cloud Scheduler trigger to automate the orchestrator launch:
 ```bash
 gcloud scheduler jobs create http daily-forecaster-trigger \
-  --schedule="0 3 * * *" \
+  --schedule="0 5 * * *" \
+  --time-zone="Europe/Madrid" \
   --uri="https://europe-west1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/predsea-api/jobs/daily-orchestrator:run" \
   --http-method=POST \
   --oauth-service-account-email="[YOUR_SERVICE_ACCOUNT_EMAIL]" \
