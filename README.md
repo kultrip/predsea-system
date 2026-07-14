@@ -301,7 +301,7 @@ python simulation/setup_domain.py --output simulation/namelist.wps
 Build the WRF/WPS image when you are ready for the heavy compile:
 
 ```bash
-docker build --platform linux/amd64 -t predsea-wrf:4.5 -f simulation/Dockerfile simulation
+docker build --platform linux/amd64 -t predsea-wrf:4.6 -f simulation/Dockerfile simulation
 ```
 
 Run `simulation/run_pipeline.sh` inside the image with GFS GRIB2 files mounted at

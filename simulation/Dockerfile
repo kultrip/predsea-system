@@ -3,12 +3,15 @@
 # This build follows the proven Debian Bullseye WRF pattern and builds Jasper
 # from source to avoid stale architecture-specific binary URLs.
 # It is intended for linux/amd64 cloud runners. On Apple Silicon, build with:
-# docker build --platform linux/amd64 -t predsea-wrf:4.5 -f simulation/Dockerfile simulation
+# docker build --platform linux/amd64 -t predsea-wrf:4.6 -f simulation/Dockerfile simulation
 FROM debian:bullseye AS wrf-builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG WRF_VERSION=4.5
-ARG WPS_VERSION=4.5
+# WPS 4.6 adds the upstream GRIB2 table support for current ECMWF Open Data.
+# Keep WRF at 4.5 to avoid changing the numerical model while replacing the
+# preprocessing decoder that WPS 4.5 fails to advance beyond the 00Z message.
+ARG WPS_VERSION=4.6.0
 ARG JASPER_VERSION=2.0.33
 ARG WRF_CONFIGURE_OPTION=34
 ARG WPS_CONFIGURE_OPTION=3
