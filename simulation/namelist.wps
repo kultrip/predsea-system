@@ -30,6 +30,7 @@
 
 &ungrib
  out_format = 'WPS',
+ ordered_by_date = .false.,
  prefix = 'ECMWF',
 /
 

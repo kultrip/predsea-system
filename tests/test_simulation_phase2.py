@@ -19,6 +19,7 @@ def test_render_namelist_defines_one_km_balearic_nested_domain():
     assert "j_parent_start = 1, 20, 35, 180, 60, 180, 10" in namelist
     assert "e_we = 160, 277, 151, 301, 151, 151, 253" in namelist
     assert "e_sn = 120, 271, 151, 100, 400, 202, 301" in namelist
+    assert "ordered_by_date = .false." in namelist
 
 
 
@@ -66,8 +67,9 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert "COPY --from=wrf-builder /opt/WPS/geogrid.exe" in dockerfile
 
     assert "link_grib.csh" in pipeline
-    assert "ungrib.exe" in pipeline
-    assert "metgrid.exe" in pipeline
+    assert "run_wps_stage ungrib" in pipeline
+    assert "run_wps_stage metgrid" in pipeline
+    assert '"${exe}" > "${stdout_log}" 2>&1' in pipeline
     assert 'PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"' in pipeline
     assert '"${PREDSEA_BIN}/real.exe"' in pipeline
     assert '"${PREDSEA_BIN}/wrf.exe"' in pipeline
