@@ -140,7 +140,12 @@ def was_instance_preempted(
 
 
 def check_gce_instance_exists(instance_name: str, zone: str, project_id: str | None = None) -> bool:
-    """Check if the GCE instance exists using gcloud CLI."""
+    """Return whether the GCE workload is still actively running.
+
+    Failed VM startup scripts stop the instance instead of deleting it so its
+    disk remains inspectable. Treat TERMINATED as workload completion while
+    preserving the resource for diagnostics.
+    """
     cmd = [
         "gcloud", "compute", "instances", "describe", instance_name,
         f"--zone={zone}",
@@ -159,7 +164,7 @@ def check_gce_instance_exists(instance_name: str, zone: str, project_id: str | N
         )
         status = result.stdout.strip()
         print(f"ℹ️ Instance {instance_name} status: {status}")
-        return True
+        return status not in {"TERMINATED", "STOPPING", "SUSPENDED"}
     except subprocess.CalledProcessError as e:
         # If gcloud returns 404 (not found), it's deleted
         if "not found" in e.stderr.lower() or "error" in e.stderr.lower():

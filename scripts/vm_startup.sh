@@ -16,11 +16,26 @@ EXECUTION_MODE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.int
 
 DOCKER_IMAGE="europe-west1-docker.pkg.dev/${PROJECT_ID}/predsea-simulations/wrf:${IMAGE_TAG}"
 
-# Safety Control: Ensure the instance is deleted on both success and failure (unless in debug mode)
+# Successful instances self-delete. Failed instances preserve their boot disk
+# and stop so diagnostics remain available without continuing CPU charges.
 cleanup() {
+  local exit_code=$?
   echo "============================================="
-  echo "⚠️ Cleanup Triggered: Ensuring Spot VM self-deletion..."
+  echo "⚠️ Cleanup Triggered with exit code ${exit_code}."
   echo "============================================="
+
+  if [[ ${exit_code} -ne 0 ]] && [ -d /workspace/outputs ]; then
+    cat > /workspace/outputs/FAILURE <<EOF
+status=FAILURE
+exit_code=${exit_code}
+instance=${NAME}
+zone=${ZONE}
+run_date=${RUN_DATE}
+run_id=${RUN_ID}
+timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EOF
+  fi
+
   # Ensure all workspace outputs/logs are uploaded to GCS before self-deletion
   if [ -d /workspace/outputs ] && [ -n "${GCS_BUCKET:-}" ] && [ -n "${RUN_DATE:-}" ] && [ -n "${RUN_ID:-}" ]; then
     echo "Syncing final /workspace/outputs/ to GCS..."
@@ -34,8 +49,12 @@ cleanup() {
 
   if [[ "${NAME}" == *debug* ]]; then
     echo "ℹ️ Debug instance detected. Bypassing VM self-deletion to allow inspection."
-  else
+  elif [[ ${exit_code} -eq 0 ]]; then
+    echo "✅ Successful workload; deleting completed VM."
     gcloud compute instances delete "${NAME}" --zone="${ZONE}" --quiet || true
+  else
+    echo "🛑 Failed workload; stopping VM and preserving its boot disk for diagnostics."
+    shutdown -h now || true
   fi
 }
 trap cleanup EXIT

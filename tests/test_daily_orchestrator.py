@@ -1,6 +1,30 @@
 from scripts import daily_orchestrator as orchestrator
 
 
+def test_terminated_diagnostic_vm_is_not_treated_as_running(monkeypatch):
+    class Result:
+        stdout = "TERMINATED\n"
+        stderr = ""
+
+    monkeypatch.setattr(orchestrator.subprocess, "run", lambda *args, **kwargs: Result())
+
+    assert not orchestrator.check_gce_instance_exists(
+        "predsea-sim-failed", "europe-west1-b", "predsea-api"
+    )
+
+
+def test_running_vm_is_still_active(monkeypatch):
+    class Result:
+        stdout = "RUNNING\n"
+        stderr = ""
+
+    monkeypatch.setattr(orchestrator.subprocess, "run", lambda *args, **kwargs: Result())
+
+    assert orchestrator.check_gce_instance_exists(
+        "predsea-sim-running", "europe-west1-b", "predsea-api"
+    )
+
+
 def test_ordered_unique_keeps_primary_and_removes_duplicates():
     assert orchestrator.ordered_unique(
         "europe-west1-c",
