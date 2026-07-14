@@ -40,7 +40,7 @@ IMAGE_NAME="europe-west1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/pr
 
 # 2. Build the unified container image using Cloud Build
 log_info "Submitting build to Google Cloud Build (Remote compilation)..."
-gcloud builds submit --region="${REGION}" --default-buckets-behavior="regional-user-owned-bucket" --tag "${IMAGE_NAME}" .
+gcloud builds submit --project="${PROJECT_ID}" --region="${REGION}" --default-buckets-behavior="regional-user-owned-bucket" --tag "${IMAGE_NAME}" .
 
 # 3. Securely Load Environment Variables for API Integrations (CMEMS, AEMET, SOCIB)
 ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
@@ -72,6 +72,7 @@ ENV_VARS="$ENV_VARS,PREDSEA_GCS_BUCKET=predsea-daily-outputs,PREDSEA_GCS_PREFIX=
 
 log_info "Deploying the serverless Cloud Run Service: 'predsea-api'..."
 gcloud run deploy predsea-api \
+    --project "${PROJECT_ID}" \
     --image "${IMAGE_NAME}" \
     --region "${REGION}" \
     --allow-unauthenticated \
@@ -85,6 +86,7 @@ log_info "Cloud Run Service 'predsea-api' is now deployed and active!"
 
 log_info "Deploying the serverless Cloud Run Job: 'daily-orchestrator'..."
 gcloud run jobs deploy daily-orchestrator \
+    --project "${PROJECT_ID}" \
     --image "${IMAGE_NAME}" \
     --command "python" \
     --args "scripts/daily_orchestrator.py" \
