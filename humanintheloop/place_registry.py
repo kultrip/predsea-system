@@ -547,6 +547,22 @@ def available_place_ids():
     return sorted(PLACE_CATALOG)
 
 
+def _catalog_place_id_for_query(query):
+    """Resolve a catalog ID without building a place response.
+
+    Keeping this lookup independent from ``place_definition`` prevents the
+    public resolver and catalog accessor from recursively calling each other.
+    """
+    normalized = _normalize_query_text(query)
+    if not normalized:
+        return None
+    return (
+        DEFAULT_PLACE_BY_QUERY.get(normalized)
+        or PLACE_NAME_INDEX.get(normalized)
+        or (normalized if normalized in PLACE_CATALOG else None)
+    )
+
+
 def place_definition(place_id, latitude=None, longitude=None):
     if place_id == "current_position":
         lat = float(latitude) if latitude is not None else 0.0
@@ -559,7 +575,7 @@ def place_definition(place_id, latitude=None, longitude=None):
             "kind": "coordinate",
             "observation_candidates": (),
         }
-    canonical_place_id = default_place_id_for_query(place_id) or place_id
+    canonical_place_id = _catalog_place_id_for_query(place_id) or place_id
     try:
         return PLACE_CATALOG[canonical_place_id]
     except KeyError as error:
@@ -582,7 +598,7 @@ def resolve_place_query(query):
             "resolved_via": None,
         }
 
-    place_id = DEFAULT_PLACE_BY_QUERY.get(normalized) or PLACE_NAME_INDEX.get(normalized)
+    place_id = _catalog_place_id_for_query(query)
     resolved_via = None
     if place_id is None and normalized in PLACE_CATALOG:
         place_id = normalized
@@ -603,7 +619,7 @@ def resolve_place_query(query):
             "resolved_via": None,
         }
 
-    place = place_definition(place_id)
+    place = PLACE_CATALOG[place_id]
     return {
         "query": query,
         "matched": True,

@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from place_registry import default_place_id_for_query, place_pair_metrics, station_candidates_for_place
+from place_registry import (
+    default_place_id_for_query,
+    place_pair_metrics,
+    resolve_place_query,
+    station_candidates_for_place,
+)
 from place_weather import (
     available_place_ids,
     build_place_weather_record,
@@ -138,6 +143,15 @@ def test_palma_defaults_to_main_place_and_has_children():
     assert "port_de_palma" in child_ids
     assert "port_adriano" in child_ids
     assert "can_pastilla" in child_ids
+
+
+def test_place_resolution_does_not_recurse_between_catalog_and_query_lookup():
+    resolved = resolve_place_query("Port de Palma")
+
+    assert resolved["matched"] is True
+    assert resolved["place_id"] == "port_de_palma"
+    assert resolved["place_name"] == "Port de Palma"
+    assert default_place_id_for_query("unknown place") is None
 
 
 def test_place_pair_metrics_are_precomputed_and_accessible_from_place_weather():

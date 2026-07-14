@@ -17,6 +17,8 @@ from pathlib import Path
 # Resolve project paths
 SCRIPTS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPTS_DIR.parent
+DEFAULT_FALLBACK_ZONES = ("europe-west1-b", "europe-west1-c", "europe-west1-d")
+DEFAULT_FALLBACK_MACHINE_TYPES = ("c2d-standard-56", "c2d-standard-32")
 
 
 def log_step(name: str):
@@ -51,6 +53,38 @@ def run_subprocess(cmd: list[str], dry_run: bool = False) -> int:
     if return_code != 0:
         print(f"❌ Command failed with return code {return_code}")
     return return_code
+
+
+def ordered_unique(primary: str, fallbacks: str, defaults: tuple[str, ...]) -> list[str]:
+    """Return a stable, de-duplicated CLI fallback sequence."""
+    values = [primary]
+    values.extend(value.strip() for value in fallbacks.split(",") if value.strip())
+    values.extend(defaults)
+    return list(dict.fromkeys(values))
+
+
+def launch_spot_vm_with_fallback(
+    base_cmd: list[str],
+    zones: list[str],
+    machine_types: list[str],
+    *,
+    dry_run: bool = False,
+) -> tuple[str, str]:
+    """Try the preferred machine across zones before smaller machine types."""
+    attempts = [(zone, machine_type) for machine_type in machine_types for zone in zones]
+    for attempt_number, (zone, machine_type) in enumerate(attempts, start=1):
+        print(
+            f"🚀 Spot VM launch attempt {attempt_number}/{len(attempts)}: "
+            f"zone={zone}, machine={machine_type}"
+        )
+        cmd = [*base_cmd, f"--zone={zone}", f"--machine-type={machine_type}"]
+        if run_subprocess(cmd, dry_run=dry_run) == 0:
+            print(f"✅ Spot VM selected: zone={zone}, machine={machine_type}")
+            return zone, machine_type
+        print(f"⚠️ Launch unavailable in {zone} with {machine_type}; trying next fallback.")
+
+    attempted = ", ".join(f"{zone}/{machine}" for zone, machine in attempts)
+    raise RuntimeError(f"Spot VM launch failed for all configured candidates: {attempted}")
 
 
 def check_gce_instance_exists(instance_name: str, zone: str, project_id: str | None = None) -> bool:
@@ -160,6 +194,16 @@ def main():
     parser.add_argument("--gcs-bucket", default=PREDSEA_GCS_BUCKET, help="Cloud Storage Bucket name")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
     parser.add_argument("--machine-type", default="c2d-standard-56", help="GCP Machine Type for Spot VM")
+    parser.add_argument(
+        "--zones",
+        default=",".join(DEFAULT_FALLBACK_ZONES),
+        help="Comma-separated zone fallback order",
+    )
+    parser.add_argument(
+        "--machine-types",
+        default=",".join(DEFAULT_FALLBACK_MACHINE_TYPES),
+        help="Comma-separated machine type fallback order",
+    )
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
     parser.add_argument("--api-url", default=os.getenv("PREDSEA_API_URL", "http://localhost:8000"), help="Base URL of the FastAPI application")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
@@ -306,8 +350,6 @@ def main():
             f"--run-date={run_date}",
             f"--run-id={run_id}",
             f"--gcs-bucket={args.gcs_bucket}",
-            f"--zone={args.zone}",
-            f"--machine-type={args.machine_type}",
             f"--image-tag={args.image_tag}",
             f"--boot-disk-size={args.boot_disk_size}",
         ]
@@ -315,9 +357,18 @@ def main():
             orchestrator_cmd.append(f"--project={args.project}")
 
         # Launch instance request
-        launch_rc = run_subprocess(orchestrator_cmd, dry_run=args.dry_run)
-        if launch_rc != 0:
-            raise RuntimeError("Spot VM launch script returned exit code failure")
+        zones = ordered_unique(args.zone, args.zones, DEFAULT_FALLBACK_ZONES)
+        machine_types = ordered_unique(
+            args.machine_type,
+            args.machine_types,
+            DEFAULT_FALLBACK_MACHINE_TYPES,
+        )
+        selected_zone, selected_machine_type = launch_spot_vm_with_fallback(
+            orchestrator_cmd,
+            zones,
+            machine_types,
+            dry_run=args.dry_run,
+        )
 
         # Step 3: Monitor Spot VM Execution Tracking
         log_step("3. Polling Spot VM status until self-termination")
@@ -338,7 +389,7 @@ def main():
                     # delete_gce_instance(instance_name, args.zone, args.project)
                     raise RuntimeError(f"Simulation timed out after {args.timeout_hours} hours")
 
-                exists = check_gce_instance_exists(instance_name, args.zone, args.project)
+                exists = check_gce_instance_exists(instance_name, selected_zone, args.project)
                 if not exists:
                     print(f"ℹ️ Spot VM '{instance_name}' no longer exists. Verifying workload completion in GCS...")
                     success_gcs_path = f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/SUCCESS"
