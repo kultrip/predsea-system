@@ -20,12 +20,10 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPTS_DIR.parent
 DEFAULT_FALLBACK_ZONES = ("europe-west1-b", "europe-west1-c", "europe-west1-d")
 DEFAULT_FALLBACK_MACHINE_TYPES = (
-    "c2d-standard-56",
-    "c2d-standard-32",
-    "c2d-standard-16",
-    "c2-standard-16",
+    "n2-standard-64",
+    "n2-standard-32",
+    "n2-standard-16",
 )
-DEFAULT_ON_DEMAND_MACHINE_TYPE = "c2-standard-16"
 
 
 def log_step(name: str):
@@ -77,13 +75,12 @@ def launch_vm_with_fallback(
     *,
     dry_run: bool = False,
 ) -> tuple[str, str, str]:
-    """Try Spot candidates, then one regular on-demand VM as the final fallback."""
+    """Try reliable regular N2 capacity across zones, then smaller machines."""
     attempts = [
-        (zone, machine_type, "SPOT")
+        (zone, machine_type, "STANDARD")
         for machine_type in machine_types
         for zone in zones
     ]
-    attempts.append((zones[0], DEFAULT_ON_DEMAND_MACHINE_TYPE, "STANDARD"))
     for attempt_number, (zone, machine_type, provisioning_model) in enumerate(attempts, start=1):
         print(
             f"🚀 VM launch attempt {attempt_number}/{len(attempts)}: "
@@ -287,7 +284,11 @@ def main():
     parser.add_argument("--run-id", help="Run identifier timestamp (defaults to current time)")
     parser.add_argument("--gcs-bucket", default=PREDSEA_GCS_BUCKET, help="Cloud Storage Bucket name")
     parser.add_argument("--zone", default="europe-west1-b", help="GCP Zone")
-    parser.add_argument("--machine-type", default="c2d-standard-56", help="GCP Machine Type for Spot VM")
+    parser.add_argument(
+        "--machine-type",
+        default="n2-standard-64",
+        help="Primary regular GCP machine type for the simulation VM",
+    )
     parser.add_argument(
         "--zones",
         default=",".join(DEFAULT_FALLBACK_ZONES),
