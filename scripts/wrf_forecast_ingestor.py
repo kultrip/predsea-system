@@ -217,7 +217,11 @@ def process_wrf_forecast(
             raise ValueError("WRF file is missing wind vector variables U10/V10.")
             
         time_size = ds.sizes.get("Time", 1)
+        default_resolution_km = 1.0 if domain_id.startswith("d0") and int(domain_id[2:]) >= 3 else 3.0
+        resolution_km = float(ds.attrs.get("DX", default_resolution_km * 1000.0)) / 1000.0
+        source_label = f"PredSea {domain_id.upper()} {resolution_km:g}km"
         print(f"⏱️ Dataset contains {time_size} time steps.")
+        print(f"🗺️ Native horizontal resolution: {resolution_km:g} km.")
         
         # Prepare list of places and coordinate tuples to sample
         sampling_targets = []
@@ -362,7 +366,7 @@ def process_wrf_forecast(
                         "run_id": run_id,
                         "forecast_created_at_utc": run_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "forecast_source_id": PROVIDER,
-                        "forecast_source_label": f"PredSea {domain_id.upper()} 1km" if "d0" in domain_id and int(domain_id[2]) >= 3 else "PredSea WRF",
+                        "forecast_source_label": source_label,
                         "ocean_source": PROVIDER,
                         "provider": PROVIDER,
                         "network": network_id,
@@ -377,7 +381,7 @@ def process_wrf_forecast(
                         "value": corrected_val,
                         "units": var_units,
                         "lead_time_hours": float(lead_hours),
-                        "resolution_km": 1.0,
+                        "resolution_km": resolution_km,
                         "latitude": lat,
                         "longitude": lon,
                     })

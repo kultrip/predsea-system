@@ -19,21 +19,20 @@ class BalearicDomain:
     d01_e_sn: int = 120
     d02_e_we: int = 277
     d02_e_sn: int = 271
-    # Domain 3: Balearics nest (1km)
-    d03_e_we: int = 151
-    d03_e_sn: int = 151
-    # Domain 4: French Coast nest (1km)
-    d04_e_we: int = 301
-    d04_e_sn: int = 100
-    # Domain 5: Corsica & Sardinia nest (1km)
-    d05_e_we: int = 151
-    d05_e_sn: int = 400
-    # Domain 6: Ligurian/Tuscan Coast nest (1km)
-    d06_e_we: int = 151
-    d06_e_sn: int = 202
-    # Domain 7: Tyrrhenian Coast & Sicily nest (1km)
-    d07_e_we: int = 253
-    d07_e_sn: int = 301
+    # Emergency operational profile: retain all regional footprints at the
+    # d02 resolution.  Each dimension preserves the corresponding 1 km nest
+    # extent: (fine_dimension - 1) / 3 + 1.
+    regional_dx_m: int = 3000
+    d03_e_we: int = 51
+    d03_e_sn: int = 51
+    d04_e_we: int = 101
+    d04_e_sn: int = 34
+    d05_e_we: int = 51
+    d05_e_sn: int = 134
+    d06_e_we: int = 51
+    d06_e_sn: int = 68
+    d07_e_we: int = 85
+    d07_e_sn: int = 101
 
     d02_i_parent_start: int = 40
     d02_j_parent_start: int = 20
@@ -50,8 +49,37 @@ class BalearicDomain:
 
     forcing_prefix: str = "ECMWF"
 
+    @classmethod
+    def ultra_1km(cls, **kwargs) -> "BalearicDomain":
+        """Return the preserved seven-domain 1 km regional configuration."""
+        return cls(
+            regional_dx_m=1000,
+            d03_e_we=151,
+            d03_e_sn=151,
+            d04_e_we=301,
+            d04_e_sn=100,
+            d05_e_we=151,
+            d05_e_sn=400,
+            d06_e_we=151,
+            d06_e_sn=202,
+            d07_e_we=253,
+            d07_e_sn=301,
+            **kwargs,
+        )
+
+    @property
+    def regional_parent_ratio(self) -> int:
+        d02_dx_m = self.d01_dx_m // 3
+        if d02_dx_m % self.regional_dx_m:
+            raise ValueError("regional resolution must divide the d02 resolution exactly")
+        ratio = d02_dx_m // self.regional_dx_m
+        if ratio < 1:
+            raise ValueError("regional resolution cannot be coarser than d02")
+        return ratio
+
 
 def render_namelist(domain: BalearicDomain) -> str:
+    regional_ratio = domain.regional_parent_ratio
     return f"""&share
  wrf_core = 'ARW',
  max_dom = 7,
@@ -65,7 +93,7 @@ def render_namelist(domain: BalearicDomain) -> str:
 
 &geogrid
  parent_id = 1, 1, 2, 2, 2, 2, 2,
- parent_grid_ratio = 1, 3, 3, 3, 3, 3, 3,
+ parent_grid_ratio = 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},
  i_parent_start = 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start}, {domain.d04_i_parent_start}, {domain.d05_i_parent_start}, {domain.d06_i_parent_start}, {domain.d07_i_parent_start},
  j_parent_start = 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},
  e_we = {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we}, {domain.d04_e_we}, {domain.d05_e_we}, {domain.d06_e_we}, {domain.d07_e_we},
@@ -103,6 +131,7 @@ def write_namelist(path: Path, domain: BalearicDomain) -> Path:
 
 
 def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, domain: BalearicDomain) -> None:
+    regional_ratio = domain.regional_parent_ratio
     try:
         parts_start = start_date_str.split("_")
         date_start = parts_start[0].split("-")
@@ -155,14 +184,14 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
         r"(\be_vert\s*=)[^!\n/]+": f"\\1 45, 45, 45, 45, 45, 45, 45,",
         r"(\bnum_metgrid_levels\s*=)[^!\n/]+": f"\\1 13,",
         r"(\bnum_metgrid_soil_levels\s*=)[^!\n/]+": f"\\1 4,",
-        r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9}, {domain.d01_dx_m // 9},",
-        r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9}, {domain.d01_dy_m // 9},",
+        r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m},",
+        r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m},",
         r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 1, 2, 3, 4, 5, 6, 7,",
         r"(\bparent_id\s*=)[^!\n/]+": f"\\1 0, 1, 2, 2, 2, 2, 2,",
         r"(\bi_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start}, {domain.d04_i_parent_start}, {domain.d05_i_parent_start}, {domain.d06_i_parent_start}, {domain.d07_i_parent_start},",
         r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},",
-        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3, 3, 3, 3, 3,",
-        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, 3, 3, 3, 3, 3,",
+        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},",
+        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},",
         
         # Physics arrays
         r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
@@ -203,13 +232,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end-date", default=BalearicDomain.end_date)
     parser.add_argument("--geog-data-path", default=BalearicDomain.geog_data_path)
     parser.add_argument("--forcing-prefix", default=BalearicDomain.forcing_prefix)
+    parser.add_argument(
+        "--resolution-profile",
+        choices=("operational-3km", "ultra-1km"),
+        default="operational-3km",
+        help="Regional nest resolution profile (default: fast operational 3 km).",
+    )
     parser.add_argument("--patch-namelist-input", type=Path, help="Path to namelist.input to dynamically patch run dates.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    domain = BalearicDomain(
+    domain_factory = BalearicDomain.ultra_1km if args.resolution_profile == "ultra-1km" else BalearicDomain
+    domain = domain_factory(
         start_date=args.start_date,
         end_date=args.end_date,
         geog_data_path=args.geog_data_path,

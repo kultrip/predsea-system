@@ -77,6 +77,7 @@ def test_process_wrf_forecast(mock_wrf_file):
     assert first_row["source_family"] == "atmosphere"
     assert first_row["forecast_source_id"] == "predsea_wrf"
     assert first_row["resolution_km"] == 1.0
+    assert first_row["forecast_source_label"] == "PredSea D03 1km"
     
     # Check specific variable types are present
     variables = {r["variable"] for r in rows}
@@ -95,6 +96,20 @@ def test_process_wrf_forecast(mock_wrf_file):
         # T2 values are either 294, 295, 296 Kelvin -> converted to Celsius
         # 294K = 20.85C, 295K = 21.85C, 296K = 22.85C
         assert 20.0 < r["value"] < 24.0
+
+
+def test_process_wrf_forecast_reports_native_three_km_resolution(mock_wrf_file):
+    with xr.open_dataset(mock_wrf_file) as source:
+        dataset = source.load()
+    dataset.attrs["DX"] = 3000.0
+    dataset.to_netcdf(mock_wrf_file, mode="w")
+
+    rows = wrf_forecast_ingestor.process_wrf_forecast(
+        str(mock_wrf_file), run_date="2026-06-24", run_id="run-3km", domain_id="d05"
+    )
+
+    assert rows[0]["resolution_km"] == 3.0
+    assert rows[0]["forecast_source_label"] == "PredSea D05 3km"
 
 
 def test_main_dry_run(mock_wrf_file):

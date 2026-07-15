@@ -3,12 +3,12 @@ from pathlib import Path
 from simulation.setup_domain import BalearicDomain, patch_namelist_input, render_namelist
 
 
-def test_render_namelist_defines_one_km_balearic_nested_domain():
+def test_render_namelist_defaults_to_fast_three_km_regional_domains():
     namelist = render_namelist(BalearicDomain())
 
     assert "max_dom = 7" in namelist
     assert "parent_id = 1, 1, 2, 2, 2, 2, 2" in namelist
-    assert "parent_grid_ratio = 1, 3, 3, 3, 3, 3, 3" in namelist
+    assert "parent_grid_ratio = 1, 3, 1, 1, 1, 1, 1" in namelist
     assert "dx = 9000" in namelist
     assert "dy = 9000" in namelist
     assert "ref_lat = 40.0000" in namelist
@@ -17,9 +17,17 @@ def test_render_namelist_defines_one_km_balearic_nested_domain():
     assert "geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default'" in namelist
     assert "i_parent_start = 1, 40, 34, 10, 110, 160, 160" in namelist
     assert "j_parent_start = 1, 20, 35, 180, 60, 180, 10" in namelist
+    assert "e_we = 160, 277, 51, 101, 51, 51, 85" in namelist
+    assert "e_sn = 120, 271, 51, 34, 134, 68, 101" in namelist
+    assert "ordered_by_date = .true." in namelist
+
+
+def test_render_namelist_preserves_selectable_one_km_profile():
+    namelist = render_namelist(BalearicDomain.ultra_1km())
+
+    assert "parent_grid_ratio = 1, 3, 3, 3, 3, 3, 3" in namelist
     assert "e_we = 160, 277, 151, 301, 151, 151, 253" in namelist
     assert "e_sn = 120, 271, 151, 100, 400, 202, 301" in namelist
-    assert "ordered_by_date = .true." in namelist
 
 
 
@@ -53,6 +61,7 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
  time_step = 90,
  time_step_fract_num = 1,
  time_step_fract_den = 2,
+ dx = 9000,
  parent_time_step_ratio = 1,
 /
 """
@@ -69,7 +78,8 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
     assert "time_step = 45," in patched
     assert "time_step_fract_num = 0," in patched
     assert "time_step_fract_den = 1," in patched
-    assert "parent_time_step_ratio = 1, 3, 3, 3, 3, 3, 3," in patched
+    assert "parent_time_step_ratio = 1, 3, 1, 1, 1, 1, 1," in patched
+    assert "dx = 9000, 3000, 3000, 3000, 3000, 3000, 3000," in patched
 
 
 def test_phase2_files_capture_wrf_wps_pipeline_contract():
