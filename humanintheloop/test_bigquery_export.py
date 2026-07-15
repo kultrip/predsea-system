@@ -257,7 +257,7 @@ def test_ensure_station_metadata_table_patches_missing_schema_fields():
         def __init__(self):
             self.calls = []
 
-        def get(self, url):
+        def get(self, url, **kwargs):
             self.calls.append(("get", url))
             return FakeResponse(
                 200,
@@ -272,7 +272,7 @@ def test_ensure_station_metadata_table_patches_missing_schema_fields():
                 },
             )
 
-        def patch(self, url, json):
+        def patch(self, url, json, **kwargs):
             self.calls.append(("patch", url, json))
             return FakeResponse(200, json)
 
@@ -295,6 +295,7 @@ def test_export_validation_archive_to_bigquery_skips_without_config(tmp_path, mo
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
     monkeypatch.delenv("PREDSEA_BIGQUERY_DATASET", raising=False)
     monkeypatch.delenv("PREDSEA_BIGQUERY_TABLE", raising=False)
+    monkeypatch.setattr(bigquery_export, "google_auth_default_project", lambda: (None, None))
 
     result = bigquery_export.export_validation_archive_to_bigquery(tmp_path / "validation")
 
@@ -323,7 +324,7 @@ def test_insert_rows_reports_failed_row_samples_and_messages():
             }
 
     class FakeSession:
-        def post(self, url, json):
+        def post(self, url, json, **kwargs):
             return FakeResponse()
 
     rows = [

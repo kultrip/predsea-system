@@ -132,6 +132,32 @@ def test_available_place_ids_include_new_locations():
     assert {"san_antonio", "andratx", "fornells", "addaia", "tarragona", "palamos"}.issubset(set(place_ids))
 
 
+def test_cala_fornells_is_in_mallorca_and_routes_use_its_real_coordinates():
+    fornells = place_definition("fornells")
+
+    assert fornells["name"] == "Cala Fornells"
+    assert fornells["latitude"] == pytest.approx(39.5333)
+    assert fornells["longitude"] == pytest.approx(2.4379)
+    assert fornells["parent_place_id"] == "palma"
+    assert "mallorca" in fornells["observation_candidates"]
+    assert "menorca" not in fornells["observation_candidates"]
+
+    routes_path = Path(__file__).with_name("routes.json")
+    routes = json.loads(routes_path.read_text(encoding="utf-8"))
+    fornells_routes = [
+        route
+        for route in routes.values()
+        if route["destination"]["name"] == "Cala Fornells"
+    ]
+
+    assert fornells_routes
+    for route in fornells_routes:
+        assert route["destination"]["latitude"] == pytest.approx(39.5333)
+        assert route["destination"]["longitude"] == pytest.approx(2.4379)
+        assert route["sample_points"][-1]["latitude"] == pytest.approx(39.5333)
+        assert route["sample_points"][-1]["longitude"] == pytest.approx(2.4379)
+
+
 def test_palma_defaults_to_main_place_and_has_children():
     assert default_place_id_for_query("Palma") == "palma"
     assert default_place_id_for_query("Port de Palma") == "port_de_palma"

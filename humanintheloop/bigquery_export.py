@@ -27,6 +27,7 @@ import validation_archive
 DEFAULT_DATASET = "predsea_validation"
 DEFAULT_TABLE = "evidence_rows"
 DEFAULT_LOCATION = "europe-west1"
+DEFAULT_HTTP_TIMEOUT_SECONDS = float(os.environ.get("PREDSEA_BIGQUERY_HTTP_TIMEOUT_SECONDS", "30"))
 BIGQUERY_SCOPE = "https://www.googleapis.com/auth/bigquery"
 SCHEMA_VERSION = "predsea.bigquery.evidence_rows.v1"
 INSERT_BATCH_SIZE = 500
@@ -841,7 +842,7 @@ def schema_field_names(schema):
 
 def ensure_dataset(session, config: BigQueryConfig):
     dataset_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}"
-    response = session.get(dataset_url)
+    response = session.get(dataset_url, timeout=DEFAULT_HTTP_TIMEOUT_SECONDS)
     if response.status_code == 200:
         return response.json()
     if response.status_code != 404:
@@ -856,6 +857,7 @@ def ensure_dataset(session, config: BigQueryConfig):
     response = session.post(
         f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets",
         json=payload,
+        timeout=DEFAULT_HTTP_TIMEOUT_SECONDS,
     )
     if response.status_code not in (200, 201, 409):
         response.raise_for_status()
@@ -864,7 +866,7 @@ def ensure_dataset(session, config: BigQueryConfig):
 
 def ensure_table(session, config: BigQueryConfig):
     table_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables/{config.table_id}"
-    response = session.get(table_url)
+    response = session.get(table_url, timeout=DEFAULT_HTTP_TIMEOUT_SECONDS)
     if response.status_code == 200:
         return response.json()
     if response.status_code != 404:
@@ -882,6 +884,7 @@ def ensure_table(session, config: BigQueryConfig):
     response = session.post(
         f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables",
         json=payload,
+        timeout=DEFAULT_HTTP_TIMEOUT_SECONDS,
     )
     if response.status_code not in (200, 201, 409):
         response.raise_for_status()
@@ -890,7 +893,7 @@ def ensure_table(session, config: BigQueryConfig):
 
 def ensure_station_metadata_table(session, config: BigQueryConfig):
     table_url = f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables/{config.table_id}"
-    response = session.get(table_url)
+    response = session.get(table_url, timeout=DEFAULT_HTTP_TIMEOUT_SECONDS)
     if response.status_code == 200:
         existing = response.json()
         existing_fields = schema_field_names(existing.get("schema", {}).get("fields", []))
@@ -898,7 +901,11 @@ def ensure_station_metadata_table(session, config: BigQueryConfig):
         desired_fields = schema_field_names(desired_schema)
         if not desired_fields.issubset(existing_fields):
             patch_payload = {"schema": {"fields": desired_schema}}
-            patch_response = session.patch(table_url, json=patch_payload)
+            patch_response = session.patch(
+                table_url,
+                json=patch_payload,
+                timeout=DEFAULT_HTTP_TIMEOUT_SECONDS,
+            )
             if patch_response.status_code not in (200, 201, 409):
                 patch_response.raise_for_status()
             return patch_response.json() if patch_response.text else patch_payload
@@ -918,6 +925,7 @@ def ensure_station_metadata_table(session, config: BigQueryConfig):
     response = session.post(
         f"https://bigquery.googleapis.com/bigquery/v2/projects/{config.project_id}/datasets/{config.dataset_id}/tables",
         json=payload,
+        timeout=DEFAULT_HTTP_TIMEOUT_SECONDS,
     )
     if response.status_code not in (200, 201, 409):
         response.raise_for_status()
@@ -948,7 +956,11 @@ def insert_rows(session, config: BigQueryConfig, rows: Sequence[dict]):
                 for row in batch
             ],
         }
-        response = session.post(insert_url, json=payload)
+        response = session.post(
+            insert_url,
+            json=payload,
+            timeout=DEFAULT_HTTP_TIMEOUT_SECONDS,
+        )
         body = _response_body(response)
         if response.status_code >= 400:
             error_message = _response_error_message(body, response.text, response.status_code)

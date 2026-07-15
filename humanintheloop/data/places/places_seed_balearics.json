@@ -372,18 +372,19 @@
     "id": "fornells",
     "name": "Cala Fornells",
     "type": "anchorage",
-    "latitude": 39.937,
-    "longitude": 4.131,
-    "parent_place_id": "menorca",
+    "latitude": 39.5333,
+    "longitude": 2.4379,
+    "parent_place_id": "palma",
     "children": [],
     "aliases": [
       "fornells",
       "cala fornells"
     ],
     "observation_candidates": [
-      "mahon",
-      "puertos_mahon",
-      "menorca"
+      "bahia_de_palma",
+      "puertos_mallorca",
+      "mallorca",
+      "palma"
     ]
   },
   {

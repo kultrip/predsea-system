@@ -1156,6 +1156,7 @@ def generate_daily_briefings(
     logo_path=None,
     skip_figures=False,
     skip_maps=False,
+    skip_bigquery=False,
     publication_phase="high_resolution",
     wrf_status="complete",
 ):
@@ -1287,7 +1288,38 @@ def generate_daily_briefings(
             station_metadata=station_metadata,
             source_inventory=forecast_source_entries + atmospheric_context.get("atmospheric_sources", []),
         )
-    if hasattr(modules, "bigquery_export"):
+    validation_entry = validation_manifest_entry(validation_summary)
+
+    # Core publication is the availability boundary. Publish it before
+    # optional analytics so BigQuery cannot hide a valid forecast from the API.
+    write_manifest(
+        run_dir,
+        run_date,
+        run_id,
+        selected_route_ids,
+        vessel_class,
+        forecast_sources=forecast_source_entries,
+        regional_evidence=regional_manifest_entry,
+        validation=validation_entry,
+        publication_phase=publication_phase,
+        wrf_status=wrf_status,
+    )
+    write_latest_run(
+        day_dir,
+        run_date,
+        run_id,
+        selected_route_ids,
+        vessel_class,
+        regional_evidence=regional_manifest_entry,
+        validation=validation_entry,
+        publication_phase=publication_phase,
+        wrf_status=wrf_status,
+    )
+
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        publish_run_to_gcs(run_dir, day_dir, run_date, run_id)
+
+    if hasattr(modules, "bigquery_export") and not skip_bigquery:
         print("Exporting validation archive to BigQuery...", flush=True)
         bigquery_export_result = modules.bigquery_export.export_validation_archive_to_bigquery(
             run_dir,
@@ -1318,34 +1350,10 @@ def generate_daily_briefings(
                 flush=True,
             )
             write_bigquery_export_diagnostics(run_dir, "station_metadata_export", station_metadata_export_result)
-    validation_entry = validation_manifest_entry(validation_summary)
-
-    write_manifest(
-        run_dir,
-        run_date,
-        run_id,
-        selected_route_ids,
-        vessel_class,
-        forecast_sources=forecast_source_entries,
-        regional_evidence=regional_manifest_entry,
-        validation=validation_entry,
-        publication_phase=publication_phase,
-        wrf_status=wrf_status,
-    )
-    write_latest_run(
-        day_dir,
-        run_date,
-        run_id,
-        selected_route_ids,
-        vessel_class,
-        regional_evidence=regional_manifest_entry,
-        validation=validation_entry,
-        publication_phase=publication_phase,
-        wrf_status=wrf_status,
-    )
-
-    if not os.environ.get("PYTEST_CURRENT_TEST"):
-        publish_run_to_gcs(run_dir, day_dir, run_date, run_id)
+        # Upload best-effort export diagnostics. Re-uploading immutable run
+        # files and the same latest pointer is idempotent.
+        if not os.environ.get("PYTEST_CURRENT_TEST"):
+            publish_run_to_gcs(run_dir, day_dir, run_date, run_id)
 
     if not os.environ.get("PYTEST_CURRENT_TEST"):
         try:
@@ -1380,6 +1388,11 @@ def parse_args():
     parser.add_argument("--skip-figures", action="store_true", help="Only generate text/JSON artifacts.")
     parser.add_argument("--skip-maps", action="store_true", help="Do not generate route Decision Map artifacts.")
     parser.add_argument(
+        "--skip-bigquery",
+        action="store_true",
+        help="Publish core forecast artifacts without optional BigQuery exports.",
+    )
+    parser.add_argument(
         "--publication-phase",
         choices=["preliminary", "high_resolution"],
         default="high_resolution",
@@ -1408,6 +1421,7 @@ def main():
         logo_path=args.logo_path,
         skip_figures=args.skip_figures,
         skip_maps=args.skip_maps,
+        skip_bigquery=args.skip_bigquery,
         publication_phase=args.publication_phase,
         wrf_status=args.wrf_status,
     )

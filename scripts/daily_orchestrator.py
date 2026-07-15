@@ -507,6 +507,7 @@ def main():
                         "--wrf-status=running",
                         "--skip-figures",
                         "--skip-maps",
+                        "--skip-bigquery",
                     ]
                     preliminary_rc = run_subprocess(preliminary_cmd)
                     if preliminary_rc == 0:
@@ -629,6 +630,7 @@ def main():
             f"--date={run_date}",
             f"--run-id={run_id}",
             "--skip-figures",
+            "--skip-bigquery",
             "--publication-phase=high_resolution",
             "--wrf-status=complete",
         ]

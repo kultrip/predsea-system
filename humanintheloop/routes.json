@@ -9,8 +9,8 @@
     },
     "destination": {
       "name": "Cala Fornells",
-      "longitude": 4.131,
-      "latitude": 39.937
+      "longitude": 2.4379,
+      "latitude": 39.5333
     },
     "validation": {
       "truth_source": "mahon",
@@ -18,13 +18,13 @@
       "socib_instrument_id": 34,
       "socib_variable_id": 90776,
       "socib_direction_variable_id": 90763,
-      "suitability": "Short north-east Menorca coastal connection"
+      "suitability": "Origin-side Mahon observation context for the Menorca to Mallorca crossing"
     },
     "current_validation": {
       "truth_source": "mahon",
-      "suitability": "Mahon observation context for the north-east Menorca coastline"
+      "suitability": "Mahon observation context applies only near the Menorca departure"
     },
-    "route_note": "Short Addaia to Fornells coastal connection; close-to-shore and dependent on local sea state.",
+    "route_note": "Open-water passage from Port d'Addaia in Menorca to Cala Fornells in south-west Mallorca.",
     "sample_points": [
       {
         "name": "Addaia departure",
@@ -32,14 +32,14 @@
         "latitude": 39.99
       },
       {
-        "name": "North-east coast mid-leg",
-        "longitude": 4.16,
-        "latitude": 39.96
+        "name": "Menorca Channel mid-leg",
+        "longitude": 3.3195,
+        "latitude": 39.7622
       },
       {
         "name": "Fornells approach",
-        "longitude": 4.13,
-        "latitude": 39.94
+        "longitude": 2.4379,
+        "latitude": 39.5333
       }
     ]
   },
@@ -277,8 +277,8 @@
     },
     "destination": {
       "name": "Cala Fornells",
-      "longitude": 4.131,
-      "latitude": 39.937
+      "longitude": 2.4379,
+      "latitude": 39.5333
     },
     "validation": {
       "truth_source": null,
@@ -286,13 +286,13 @@
       "socib_instrument_id": null,
       "socib_variable_id": null,
       "socib_direction_variable_id": null,
-      "suitability": "Forecast-only Menorca transfer until a trusted validation source is chosen"
+      "suitability": "Forecast-only Mallorca coastal passage until a trusted validation source is chosen"
     },
     "current_validation": {
       "truth_source": null,
       "suitability": "no route-specific current observation configured"
     },
-    "route_note": "Alcudia to Fornells crossing; exposed enough to warrant a fresh forecast read on the day of sailing.",
+    "route_note": "Mallorca coastal passage from Alcudia to Cala Fornells; exposed enough to warrant a fresh forecast read on the day of sailing.",
     "sample_points": [
       {
         "name": "Alcudia departure",
@@ -300,14 +300,14 @@
         "latitude": 39.84
       },
       {
-        "name": "Mid Menorca Channel",
-        "longitude": 3.63,
-        "latitude": 39.93
+        "name": "Mallorca coast mid-leg",
+        "longitude": 2.789,
+        "latitude": 39.6867
       },
       {
         "name": "Fornells approach",
-        "longitude": 4.13,
-        "latitude": 39.94
+        "longitude": 2.4379,
+        "latitude": 39.5333
       }
     ]
   },
@@ -4061,8 +4061,8 @@
     },
     "destination": {
       "name": "Cala Fornells",
-      "longitude": 4.131,
-      "latitude": 39.937
+      "longitude": 2.4379,
+      "latitude": 39.5333
     },
     "validation": {
       "truth_source": "ciutadella",
@@ -4070,13 +4070,13 @@
       "socib_instrument_id": 34,
       "socib_variable_id": 90776,
       "socib_direction_variable_id": 90763,
-      "suitability": "Menorca north coast cruising link from Ciutadella"
+      "suitability": "Origin-side Ciutadella observation context for the Menorca to Mallorca crossing"
     },
     "current_validation": {
       "truth_source": "ciutadella",
-      "suitability": "Ciutadella current observations for the north Menorca coast"
+      "suitability": "Ciutadella current observations apply only near the Menorca departure"
     },
-    "route_note": "Ciutadella to Fornells coastal leg with the north coast open to local swell and short fetch.",
+    "route_note": "Open-water passage from Ciutadella in Menorca to Cala Fornells in south-west Mallorca.",
     "sample_points": [
       {
         "name": "Ciutadella departure",
@@ -4084,14 +4084,14 @@
         "latitude": 40.0
       },
       {
-        "name": "North Menorca mid-leg",
-        "longitude": 4.0,
-        "latitude": 39.97
+        "name": "Menorca Channel mid-leg",
+        "longitude": 3.1365,
+        "latitude": 39.7667
       },
       {
         "name": "Fornells approach",
-        "longitude": 4.13,
-        "latitude": 39.94
+        "longitude": 2.4379,
+        "latitude": 39.5333
       }
     ]
   },
@@ -6338,8 +6338,8 @@
     },
     "destination": {
       "name": "Cala Fornells",
-      "longitude": 4.131,
-      "latitude": 39.937
+      "longitude": 2.4379,
+      "latitude": 39.5333
     },
     "validation": {
       "truth_source": "mahon",
@@ -6347,13 +6347,13 @@
       "socib_instrument_id": 34,
       "socib_variable_id": 90776,
       "socib_direction_variable_id": 90763,
-      "suitability": "Menorca north-east coastal leg between Mahon and Fornells"
+      "suitability": "Origin-side Mahon observation context for the Menorca to Mallorca crossing"
     },
     "current_validation": {
       "truth_source": "mahon",
-      "suitability": "Mahon observation context for the north-east Menorca corridor"
+      "suitability": "Mahon observation context applies only near the Menorca departure"
     },
-    "route_note": "Mahon to Cala Fornells coastal transit; the north-east Menorca shoreline still deserves a fresh look.",
+    "route_note": "Open-water passage from Mahon in Menorca to Cala Fornells in south-west Mallorca.",
     "sample_points": [
       {
         "name": "Mahon departure",
@@ -6361,14 +6361,14 @@
         "latitude": 39.89
       },
       {
-        "name": "North-east Menorca mid-leg",
-        "longitude": 4.19,
-        "latitude": 39.93
+        "name": "Menorca Channel mid-leg",
+        "longitude": 3.352,
+        "latitude": 39.7112
       },
       {
         "name": "Fornells approach",
-        "longitude": 4.13,
-        "latitude": 39.94
+        "longitude": 2.4379,
+        "latitude": 39.5333
       }
     ]
   },

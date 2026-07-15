@@ -111,39 +111,39 @@
   },
   "fornells_mahon": {
     "route": "Mahon -> Cala Fornells",
-    "exposure": "North-east Menorca coastal transit with local swell and short fetch.",
+    "exposure": "Open-water passage from Menorca to south-west Mallorca.",
     "watch_patterns": [
-      "north-east coastline exposure",
-      "tight timing around the Fornells approach"
+      "Menorca Channel swell and wind",
+      "south-west Mallorca arrival conditions"
     ],
-    "default_operational_bias": "Read the local coastal conditions before assuming the run is easy."
+    "default_operational_bias": "Treat it as a substantial inter-island passage, not a Menorca coastal leg."
   },
   "addaia_fornells": {
     "route": "Port d'Addaia -> Cala Fornells",
-    "exposure": "Short north-east Menorca coastal connection with little room for error in fresh conditions.",
+    "exposure": "Open-water passage from Menorca to south-west Mallorca.",
     "watch_patterns": [
-      "nearshore swell on the Menorca east coast",
-      "arrival shelter at Fornells"
+      "Menorca Channel swell and wind",
+      "south-west Mallorca arrival conditions"
     ],
-    "default_operational_bias": "Keep the route conservative if the east coast is lively."
+    "default_operational_bias": "Use crossing-level margins and review the full channel forecast."
   },
   "ciutadella_fornells": {
     "route": "Ciutadella -> Cala Fornells",
-    "exposure": "North Menorca coastal leg with an exposed approach toward Fornells.",
+    "exposure": "Open-water passage from Menorca to south-west Mallorca.",
     "watch_patterns": [
-      "north coast swell",
-      "late-run fetch on the approach"
+      "Menorca Channel swell and wind",
+      "south-west Mallorca arrival conditions"
     ],
-    "default_operational_bias": "Good for a coastal day, but still worth a fresh read."
+    "default_operational_bias": "Treat it as an inter-island crossing rather than a coastal day sail."
   },
   "alcudia_fornells": {
     "route": "Alcudia -> Cala Fornells",
-    "exposure": "Menorca transfer with exposed open-water sections and a north coast arrival.",
+    "exposure": "Mallorca coastal passage from Alcudia to the south-west coast.",
     "watch_patterns": [
-      "channel swell between Mallorca and Menorca",
-      "arrival timing on the north coast"
+      "exposure around Mallorca's capes",
+      "south-west Mallorca arrival conditions"
     ],
-    "default_operational_bias": "Treat it as a meaningful crossing rather than a simple hop."
+    "default_operational_bias": "Review conditions along the full Mallorca coastline, not only at departure."
   },
   "barcelona_tarragona": {
     "route": "Barcelona -> Tarragona",

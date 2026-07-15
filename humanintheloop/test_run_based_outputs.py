@@ -435,10 +435,13 @@ def test_daily_generator_writes_place_weather_outputs(tmp_path, monkeypatch):
         (place_dir / "weather.json").write_text(json.dumps({"place_id": "ibiza"}), encoding="utf-8")
         return {"ibiza": place_dir / "weather.json"}
 
+    def unexpected_bigquery_export(*args, **kwargs):
+        raise AssertionError("BigQuery export must not run on the critical publication path")
+
     monkeypatch.setattr(generator, "load_mvp_modules", lambda: type("Modules", (), {
         "briefing": type("Briefing", (), {"load_observations": staticmethod(lambda: {})}),
         "chat_figure": object(),
-        "bigquery_export": type("BQ", (), {"export_validation_archive_to_bigquery": staticmethod(lambda run_dir, dry_run=False: {"status": "skipped", "exported_rows": 0})}),
+        "bigquery_export": type("BQ", (), {"export_validation_archive_to_bigquery": staticmethod(unexpected_bigquery_export)}),
         "fetch_data": type("FetchData", (), {"OUTPUT_DIR": str(tmp_path), "get_balearic_forecast": staticmethod(lambda dry_run=False: None)}),
         "forecast_sources": type("ForecastSources", (), {
             "fetch_available_forecasts": staticmethod(lambda fetch_data, output_dir=None, dry_run=False: [{
@@ -468,6 +471,7 @@ def test_daily_generator_writes_place_weather_outputs(tmp_path, monkeypatch):
         route_ids=["ibiza_palma"],
         skip_figures=True,
         skip_maps=True,
+        skip_bigquery=True,
     )
 
     assert (result.output_dir / "places" / "ibiza" / "weather.json").exists()
