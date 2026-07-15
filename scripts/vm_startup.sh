@@ -171,7 +171,9 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
     ${DOCKER_MOUNT_OPTS:-} \
     -e START_DATE="${RUN_DATE}_00:00:00" \
     -e END_DATE="$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)_00:00:00" \
-    -e MPI_PROCS="$(nproc)" \
+    -e MPI_PROCS="${PREDSEA_WRF_MPI_PROCS:-12}" \
+    -e MPI_NPROC_X="${PREDSEA_WRF_MPI_NPROC_X:-4}" \
+    -e MPI_NPROC_Y="${PREDSEA_WRF_MPI_NPROC_Y:-3}" \
     "${DOCKER_IMAGE}" \
     /opt/predsea/run_pipeline.sh 2>&1 | tee /workspace/outputs/docker_run.log
   DOCKER_EXIT_CODE=${PIPESTATUS[0]}

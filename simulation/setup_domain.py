@@ -130,7 +130,38 @@ def write_namelist(path: Path, domain: BalearicDomain) -> Path:
     return path
 
 
+def validate_mpi_decomposition(
+    domain: BalearicDomain,
+    nproc_x: int = 4,
+    nproc_y: int = 3,
+    minimum_patch_cells: int = 10,
+) -> None:
+    grids = (
+        (domain.d01_e_we, domain.d01_e_sn),
+        (domain.d02_e_we, domain.d02_e_sn),
+        (domain.d03_e_we, domain.d03_e_sn),
+        (domain.d04_e_we, domain.d04_e_sn),
+        (domain.d05_e_we, domain.d05_e_sn),
+        (domain.d06_e_we, domain.d06_e_sn),
+        (domain.d07_e_we, domain.d07_e_sn),
+    )
+    invalid = []
+    for domain_id, (e_we, e_sn) in enumerate(grids, start=1):
+        patch_x = e_we // nproc_x
+        patch_y = e_sn // nproc_y
+        if patch_x < minimum_patch_cells or patch_y < minimum_patch_cells:
+            invalid.append(f"d{domain_id:02d}={e_we}x{e_sn} -> {patch_x}x{patch_y} cells")
+    if invalid:
+        raise ValueError(
+            f"Invalid WRF MPI decomposition {nproc_x}x{nproc_y}; "
+            f"minimum patch dimension is {minimum_patch_cells}: {'; '.join(invalid)}"
+        )
+
+
 def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, domain: BalearicDomain) -> None:
+    nproc_x = 4
+    nproc_y = 3
+    validate_mpi_decomposition(domain, nproc_x=nproc_x, nproc_y=nproc_y)
     regional_ratio = domain.regional_parent_ratio
     try:
         parts_start = start_date_str.split("_")
@@ -192,6 +223,8 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
         r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},",
         r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},",
         r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},",
+        r"(\bnproc_x\s*=)[^!\n/]+": f"\\1 {nproc_x},",
+        r"(\bnproc_y\s*=)[^!\n/]+": f"\\1 {nproc_y},",
         
         # Physics arrays
         r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
@@ -220,6 +253,18 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
     new_content = content
     for pattern, replacement in replacements.items():
         new_content = re.sub(pattern, replacement, new_content, flags=re.IGNORECASE)
+
+    domains_match = re.search(r"(?ms)^\s*&domains\b.*?^\s*/", new_content)
+    if domains_match:
+        domains_block = domains_match.group(0)
+        additions = []
+        if not re.search(r"(?m)^\s*nproc_x\s*=", domains_block):
+            additions.append(f" nproc_x = {nproc_x},")
+        if not re.search(r"(?m)^\s*nproc_y\s*=", domains_block):
+            additions.append(f" nproc_y = {nproc_y},")
+        if additions:
+            patched_block = domains_block.rsplit("/", 1)[0] + "\n" + "\n".join(additions) + "\n/"
+            new_content = new_content[:domains_match.start()] + patched_block + new_content[domains_match.end():]
         
     path.write_text(new_content)
     print(f"Successfully patched {path} for domain starting {start_date_str}")

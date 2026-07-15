@@ -14,8 +14,15 @@ elif [[ -f "/data/Vtable.ECMWF" ]]; then
 else
   Vtable="${WPS_DIR}/ungrib/Variable_Tables/Vtable.ECMWF"
 fi
-MPI_PROCS="${MPI_PROCS:-4}"
+MPI_PROCS="${MPI_PROCS:-12}"
+MPI_NPROC_X="${MPI_NPROC_X:-4}"
+MPI_NPROC_Y="${MPI_NPROC_Y:-3}"
 WPS_STAGE_TIMEOUT_SECONDS="${WPS_STAGE_TIMEOUT_SECONDS:-1800}"
+
+if (( MPI_PROCS != MPI_NPROC_X * MPI_NPROC_Y )); then
+  echo "❌ MPI_PROCS=${MPI_PROCS} must equal MPI_NPROC_X*MPI_NPROC_Y (${MPI_NPROC_X}*${MPI_NPROC_Y})."
+  exit 96
+fi
 
 mkdir -p "${RUN_DIR}"
 cd "${RUN_DIR}"
@@ -124,7 +131,7 @@ run_wps_stage metgrid
 
 # Set MPI environment variables for container stability
 export OMPI_MCA_btl_vader_single_copy_mechanism=none
-export OMPI_MCA_btl_tcp_if_include=lo,eth0
+export OMP_NUM_THREADS=1
 
 # Re-enable strict error checking
 set -e
@@ -138,6 +145,8 @@ python3 /opt/predsea/setup_domain.py \
   --patch-namelist-input namelist.input
 cp "${PREDSEA_BIN}/real.exe" .
 cp "${PREDSEA_BIN}/wrf.exe" .
+
+echo "Using explicit WRF MPI decomposition ${MPI_NPROC_X}x${MPI_NPROC_Y} (${MPI_PROCS} pure-MPI ranks)."
 
 mpirun --oversubscribe --allow-run-as-root -np "${MPI_PROCS}" "${PREDSEA_BIN}/real.exe"
 mpirun --oversubscribe --allow-run-as-root -np "${MPI_PROCS}" "${PREDSEA_BIN}/wrf.exe"

@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from simulation.setup_domain import BalearicDomain, patch_namelist_input, render_namelist
+from simulation.setup_domain import (
+    BalearicDomain,
+    patch_namelist_input,
+    render_namelist,
+    validate_mpi_decomposition,
+)
 
 
 def test_render_namelist_defaults_to_fast_three_km_regional_domains():
@@ -80,6 +85,19 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
     assert "time_step_fract_den = 1," in patched
     assert "parent_time_step_ratio = 1, 3, 1, 1, 1, 1, 1," in patched
     assert "dx = 9000, 3000, 3000, 3000, 3000, 3000, 3000," in patched
+    assert "nproc_x = 4," in patched
+    assert "nproc_y = 3," in patched
+
+
+def test_operational_profile_accepts_explicit_twelve_rank_decomposition():
+    validate_mpi_decomposition(BalearicDomain(), nproc_x=4, nproc_y=3)
+
+
+def test_operational_profile_rejects_previous_sixty_four_rank_decomposition():
+    import pytest
+
+    with pytest.raises(ValueError, match="Invalid WRF MPI decomposition 8x8"):
+        validate_mpi_decomposition(BalearicDomain(), nproc_x=8, nproc_y=8)
 
 
 def test_phase2_files_capture_wrf_wps_pipeline_contract():
@@ -125,3 +143,7 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert 'PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"' in pipeline
     assert '"${PREDSEA_BIN}/real.exe"' in pipeline
     assert '"${PREDSEA_BIN}/wrf.exe"' in pipeline
+    assert 'MPI_PROCS="${MPI_PROCS:-12}"' in pipeline
+    assert 'MPI_NPROC_X="${MPI_NPROC_X:-4}"' in pipeline
+    assert 'MPI_NPROC_Y="${MPI_NPROC_Y:-3}"' in pipeline
+    assert "OMP_NUM_THREADS=1" in pipeline
