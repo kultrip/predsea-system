@@ -868,10 +868,12 @@ def _fetch_wrf_wind_context(modules, run_dir):
     output_dir = run_dir / "atmosphere"
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # We check for domains d03 (Balearics) to d07 (Sicily)
+    # Prefer the active operational d02 (3 km Western Mediterranean) while
+    # retaining support for archived/experimental regional domains.
     available_domains = []
     
     domains_meta = {
+        "d02": {"label": "PredSea Western Mediterranean 3km", "region": "Western Mediterranean", "resolution_km": 3.0},
         "d03": {"label": "PredSea Balearic 1km", "region": "Balearics"},
         "d04": {"label": "PredSea French Coast 1km", "region": "France"},
         "d05": {"label": "PredSea Corsica/Sardinia 1km", "region": "Corsica/Sardinia"},
@@ -924,19 +926,23 @@ def _fetch_wrf_wind_context(modules, run_dir):
                 "source": f"predsea_wrf_{dom_id}",
                 "label": meta["label"],
                 "tier": 0,
-                "resolution_km": 1.0,
+                "resolution_km": meta.get("resolution_km", 1.0),
                 "dataset_path": str(path),
                 "domain": dom_id,
             })
             
     if available_domains:
-        # For backward compatibility with single-wind-result logic, 
-        # we return the first one as primary but keep the list
-        primary = available_domains[0]
-        primary["all_domains"] = available_domains
-        return primary
+        return build_wrf_wind_result(available_domains)
         
     return {"available": False, "error": "No high-res WRF domains found"}
+
+
+def build_wrf_wind_result(available_domains):
+    """Build a JSON-safe primary result without a primary -> list -> primary cycle."""
+    domains = [dict(domain) for domain in available_domains]
+    primary = dict(domains[0])
+    primary["all_domains"] = domains
+    return primary
 
 
 def ocean_lineage_for_source(source):

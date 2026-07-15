@@ -16,6 +16,24 @@ def load_runner():
     return module
 
 
+def test_wrf_wind_result_is_json_serializable_and_independent():
+    runner = load_runner()
+    source_domains = [
+        {
+            "available": True,
+            "domain": "d02",
+            "dataset_path": "/tmp/wrf_d02.nc",
+            "resolution_km": 3.0,
+        }
+    ]
+
+    result = runner.build_wrf_wind_result(source_domains)
+
+    assert json.loads(json.dumps(result))["all_domains"][0]["domain"] == "d02"
+    assert result["all_domains"][0] is not result
+    assert result["all_domains"][0] is not source_domains[0]
+
+
 class FakeRouteAnalysis:
     DEFAULT_ROUTE_ID = "palma_ibiza"
     VESSEL_PROFILES = {"medium": {}, "small": {}, "large": {}}
@@ -26,7 +44,7 @@ class FakeRouteAnalysis:
             "palma_cabrera": {"id": "palma_cabrera", "name": "Palma -> Cabrera"},
         }
 
-    def forecast_summary_from_files(self, waves_path, currents_path, route):
+    def forecast_summary_from_files(self, waves_path, currents_path, route, wind_path=None):
         return {
             "wave_min_m": 0.5,
             "wave_max_m": 1.1,
@@ -487,7 +505,7 @@ def test_generate_daily_briefings_fails_when_forecast_layer_is_unavailable(tmp_p
     monkeypatch.setattr(runner, "maybe_generate_leaflet_overlays", lambda *args, **kwargs: None)
 
     class UnavailableForecastRouteAnalysis(FakeRouteAnalysis):
-        def forecast_summary_from_files(self, waves_path, currents_path, route):
+        def forecast_summary_from_files(self, waves_path, currents_path, route, wind_path=None):
             return {
                 "wave_min_m": None,
                 "wave_max_m": None,
