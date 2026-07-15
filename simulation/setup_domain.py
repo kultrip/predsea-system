@@ -141,6 +141,12 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
         r"(\bhistory_interval\s*=)[^!\n/]+": f"\\1 60, 60, 60, 60, 60, 60, 60,",
         r"(\bframes_per_outfile\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
         r"(\binput_from_file\s*=)[^!\n/]+": f"\\1 .true., .true., .true., .true., .true., .true., .true.,",
+        # WRF recommends no more than roughly 6 seconds per kilometre for the
+        # parent domain. 45 seconds leaves margin for the 9 km grid and divides
+        # cleanly through the 3:1 nested-domain time-step ratios.
+        r"(\btime_step\s*=)[^!\n/]+": f"\\1 45,",
+        r"(\btime_step_fract_num\s*=)[^!\n/]+": f"\\1 0,",
+        r"(\btime_step_fract_den\s*=)[^!\n/]+": f"\\1 1,",
         
         # Domains
         r"(\bmax_dom\s*=)[^!\n/]+": f"\\1 7,",

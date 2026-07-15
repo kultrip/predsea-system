@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from simulation.setup_domain import BalearicDomain, render_namelist
+from simulation.setup_domain import BalearicDomain, patch_namelist_input, render_namelist
 
 
 def test_render_namelist_defines_one_km_balearic_nested_domain():
@@ -41,6 +41,35 @@ def test_render_namelist_allows_dates_and_geog_path_override():
         in namelist
     )
     assert "geog_data_path = '/opt/wps_geog'" in namelist
+
+
+def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
+    namelist_input = tmp_path / "namelist.input"
+    namelist_input.write_text(
+        """&time_control
+ start_year = 2000,
+/
+&domains
+ time_step = 90,
+ time_step_fract_num = 1,
+ time_step_fract_den = 2,
+ parent_time_step_ratio = 1,
+/
+"""
+    )
+
+    patch_namelist_input(
+        namelist_input,
+        "2026-07-15_00:00:00",
+        "2026-07-16_00:00:00",
+        BalearicDomain(),
+    )
+
+    patched = namelist_input.read_text()
+    assert "time_step = 45," in patched
+    assert "time_step_fract_num = 0," in patched
+    assert "time_step_fract_den = 1," in patched
+    assert "parent_time_step_ratio = 1, 3, 3, 3, 3, 3, 3," in patched
 
 
 def test_phase2_files_capture_wrf_wps_pipeline_contract():
