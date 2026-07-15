@@ -154,3 +154,8 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert 'MPI_NPROC_X="${MPI_NPROC_X:-8}"' in pipeline
     assert 'MPI_NPROC_Y="${MPI_NPROC_Y:-8}"' in pipeline
     assert "OMP_NUM_THREADS=1" in pipeline
+
+    startup = Path("scripts/vm_startup.sh").read_text()
+    assert 'MPI_PROCS="${PREDSEA_WRF_MPI_PROCS:-64}"' in startup
+    assert 'MPI_NPROC_X="${PREDSEA_WRF_MPI_NPROC_X:-8}"' in startup
+    assert 'MPI_NPROC_Y="${PREDSEA_WRF_MPI_NPROC_Y:-8}"' in startup
