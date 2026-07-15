@@ -48,11 +48,13 @@ class BalearicDomain:
     d07_j_parent_start: int = 10
 
     forcing_prefix: str = "ECMWF"
+    max_dom: int = 2
 
     @classmethod
     def ultra_1km(cls, **kwargs) -> "BalearicDomain":
         """Return the preserved seven-domain 1 km regional configuration."""
         return cls(
+            max_dom=7,
             regional_dx_m=1000,
             d03_e_we=151,
             d03_e_sn=151,
@@ -77,14 +79,66 @@ class BalearicDomain:
             raise ValueError("regional resolution cannot be coarser than d02")
         return ratio
 
+    @property
+    def mpi_layout(self) -> tuple[int, int]:
+        """Return a safe decomposition for the active domain topology."""
+        return (8, 8) if self.max_dom == 2 else (4, 3)
+
+    @property
+    def grids(self) -> tuple[tuple[int, int], ...]:
+        grids = (
+            (self.d01_e_we, self.d01_e_sn),
+            (self.d02_e_we, self.d02_e_sn),
+            (self.d03_e_we, self.d03_e_sn),
+            (self.d04_e_we, self.d04_e_sn),
+            (self.d05_e_we, self.d05_e_sn),
+            (self.d06_e_we, self.d06_e_sn),
+            (self.d07_e_we, self.d07_e_sn),
+        )
+        return grids[: self.max_dom]
+
+    @property
+    def parent_grid_ratios(self) -> tuple[int, ...]:
+        ratios = (1, 3) + (self.regional_parent_ratio,) * 5
+        return ratios[: self.max_dom]
+
+
+def validate_domain_topology(domain: BalearicDomain) -> None:
+    """Reject degenerate WRF nests before geogrid or real.exe can run."""
+    if domain.max_dom < 1 or domain.max_dom > 7:
+        raise ValueError(f"max_dom must be between 1 and 7, got {domain.max_dom}")
+    invalid = [
+        f"d{domain_id:02d}={ratio}"
+        for domain_id, ratio in enumerate(domain.parent_grid_ratios[1:], start=2)
+        if ratio < 3
+    ]
+    if invalid:
+        raise ValueError(
+            "Invalid WRF nesting topology; every active child domain must have "
+            f"parent_grid_ratio >= 3: {', '.join(invalid)}"
+        )
+
+
+def _values(values: tuple[object, ...]) -> str:
+    return ", ".join(str(value) for value in values)
+
 
 def render_namelist(domain: BalearicDomain) -> str:
-    regional_ratio = domain.regional_parent_ratio
+    validate_domain_topology(domain)
+    count = domain.max_dom
+    dates_start = tuple(f"'{domain.start_date}'" for _ in range(count))
+    dates_end = tuple(f"'{domain.end_date}'" for _ in range(count))
+    parent_ids = (1, 1, 2, 2, 2, 2, 2)[:count]
+    starts_i = (1, domain.d02_i_parent_start, domain.d03_i_parent_start, domain.d04_i_parent_start, domain.d05_i_parent_start, domain.d06_i_parent_start, domain.d07_i_parent_start)[:count]
+    starts_j = (1, domain.d02_j_parent_start, domain.d03_j_parent_start, domain.d04_j_parent_start, domain.d05_j_parent_start, domain.d06_j_parent_start, domain.d07_j_parent_start)[:count]
+    e_we = tuple(grid[0] for grid in domain.grids)
+    e_sn = tuple(grid[1] for grid in domain.grids)
+    geog_res = tuple("'modis_landuse_20class_30s_with_lakes+default'" for _ in range(count))
     return f"""&share
  wrf_core = 'ARW',
- max_dom = 7,
- start_date = '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}', '{domain.start_date}',
- end_date = '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}', '{domain.end_date}',
+ max_dom = {count},
+ start_date = {_values(dates_start)},
+ end_date = {_values(dates_end)},
  interval_seconds = {domain.interval_seconds},
  io_form_geogrid = 2,
  opt_output_from_geogrid_path = './geo_em',
@@ -92,13 +146,13 @@ def render_namelist(domain: BalearicDomain) -> str:
 /
 
 &geogrid
- parent_id = 1, 1, 2, 2, 2, 2, 2,
- parent_grid_ratio = 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},
- i_parent_start = 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start}, {domain.d04_i_parent_start}, {domain.d05_i_parent_start}, {domain.d06_i_parent_start}, {domain.d07_i_parent_start},
- j_parent_start = 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},
- e_we = {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we}, {domain.d04_e_we}, {domain.d05_e_we}, {domain.d06_e_we}, {domain.d07_e_we},
- e_sn = {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn}, {domain.d04_e_sn}, {domain.d05_e_sn}, {domain.d06_e_sn}, {domain.d07_e_sn},
- geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default',
+ parent_id = {_values(parent_ids)},
+ parent_grid_ratio = {_values(domain.parent_grid_ratios)},
+ i_parent_start = {_values(starts_i)},
+ j_parent_start = {_values(starts_j)},
+ e_we = {_values(e_we)},
+ e_sn = {_values(e_sn)},
+ geog_data_res = {_values(geog_res)},
  dx = {domain.d01_dx_m},
  dy = {domain.d01_dy_m},
  map_proj = 'lambert',
@@ -136,17 +190,8 @@ def validate_mpi_decomposition(
     nproc_y: int = 3,
     minimum_patch_cells: int = 10,
 ) -> None:
-    grids = (
-        (domain.d01_e_we, domain.d01_e_sn),
-        (domain.d02_e_we, domain.d02_e_sn),
-        (domain.d03_e_we, domain.d03_e_sn),
-        (domain.d04_e_we, domain.d04_e_sn),
-        (domain.d05_e_we, domain.d05_e_sn),
-        (domain.d06_e_we, domain.d06_e_sn),
-        (domain.d07_e_we, domain.d07_e_sn),
-    )
     invalid = []
-    for domain_id, (e_we, e_sn) in enumerate(grids, start=1):
+    for domain_id, (e_we, e_sn) in enumerate(domain.grids, start=1):
         patch_x = e_we // nproc_x
         patch_y = e_sn // nproc_y
         if patch_x < minimum_patch_cells or patch_y < minimum_patch_cells:
@@ -159,10 +204,9 @@ def validate_mpi_decomposition(
 
 
 def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, domain: BalearicDomain) -> None:
-    nproc_x = 4
-    nproc_y = 3
+    validate_domain_topology(domain)
+    nproc_x, nproc_y = domain.mpi_layout
     validate_mpi_decomposition(domain, nproc_x=nproc_x, nproc_y=nproc_y)
-    regional_ratio = domain.regional_parent_ratio
     try:
         parts_start = start_date_str.split("_")
         date_start = parts_start[0].split("-")
@@ -188,19 +232,31 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
     content = path.read_text()
     
     import re
+    count = domain.max_dom
+
+    def repeated(value: object) -> str:
+        return ", ".join(str(value) for _ in range(count))
+
+    e_we = ", ".join(str(grid[0]) for grid in domain.grids)
+    e_sn = ", ".join(str(grid[1]) for grid in domain.grids)
+    dx = (domain.d01_dx_m, domain.d01_dx_m // 3) + (domain.regional_dx_m,) * 5
+    dy = (domain.d01_dy_m, domain.d01_dy_m // 3) + (domain.regional_dx_m,) * 5
+    parent_ids = (0, 1, 2, 2, 2, 2, 2)[:count]
+    starts_i = (1, domain.d02_i_parent_start, domain.d03_i_parent_start, domain.d04_i_parent_start, domain.d05_i_parent_start, domain.d06_i_parent_start, domain.d07_i_parent_start)[:count]
+    starts_j = (1, domain.d02_j_parent_start, domain.d03_j_parent_start, domain.d04_j_parent_start, domain.d05_j_parent_start, domain.d06_j_parent_start, domain.d07_j_parent_start)[:count]
     replacements = {
         # Time control
-        r"(\bstart_year\s*=)[^!\n/]+": f"\\1 {s_yr}, {s_yr}, {s_yr}, {s_yr}, {s_yr}, {s_yr}, {s_yr},",
-        r"(\bstart_month\s*=)[^!\n/]+": f"\\1 {s_mo}, {s_mo}, {s_mo}, {s_mo}, {s_mo}, {s_mo}, {s_mo},",
-        r"(\bstart_day\s*=)[^!\n/]+": f"\\1 {s_dy}, {s_dy}, {s_dy}, {s_dy}, {s_dy}, {s_dy}, {s_dy},",
-        r"(\bstart_hour\s*=)[^!\n/]+": f"\\1 {s_hr}, {s_hr}, {s_hr}, {s_hr}, {s_hr}, {s_hr}, {s_hr},",
-        r"(\bend_year\s*=)[^!\n/]+": f"\\1 {e_yr}, {e_yr}, {e_yr}, {e_yr}, {e_yr}, {e_yr}, {e_yr},",
-        r"(\bend_month\s*=)[^!\n/]+": f"\\1 {e_mo}, {e_mo}, {e_mo}, {e_mo}, {e_mo}, {e_mo}, {e_mo},",
-        r"(\bend_day\s*=)[^!\n/]+": f"\\1 {e_dy}, {e_dy}, {e_dy}, {e_dy}, {e_dy}, {e_dy}, {e_dy},",
-        r"(\bend_hour\s*=)[^!\n/]+": f"\\1 {e_hr}, {e_hr}, {e_hr}, {e_hr}, {e_hr}, {e_hr}, {e_hr},",
-        r"(\bhistory_interval\s*=)[^!\n/]+": f"\\1 60, 60, 60, 60, 60, 60, 60,",
-        r"(\bframes_per_outfile\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
-        r"(\binput_from_file\s*=)[^!\n/]+": f"\\1 .true., .true., .true., .true., .true., .true., .true.,",
+        r"(\bstart_year\s*=)[^!\n/]+": f"\\1 {repeated(s_yr)},",
+        r"(\bstart_month\s*=)[^!\n/]+": f"\\1 {repeated(s_mo)},",
+        r"(\bstart_day\s*=)[^!\n/]+": f"\\1 {repeated(s_dy)},",
+        r"(\bstart_hour\s*=)[^!\n/]+": f"\\1 {repeated(s_hr)},",
+        r"(\bend_year\s*=)[^!\n/]+": f"\\1 {repeated(e_yr)},",
+        r"(\bend_month\s*=)[^!\n/]+": f"\\1 {repeated(e_mo)},",
+        r"(\bend_day\s*=)[^!\n/]+": f"\\1 {repeated(e_dy)},",
+        r"(\bend_hour\s*=)[^!\n/]+": f"\\1 {repeated(e_hr)},",
+        r"(\bhistory_interval\s*=)[^!\n/]+": f"\\1 {repeated(60)},",
+        r"(\bframes_per_outfile\s*=)[^!\n/]+": f"\\1 {repeated(1)},",
+        r"(\binput_from_file\s*=)[^!\n/]+": f"\\1 {repeated('.true.')},",
         # WRF recommends no more than roughly 6 seconds per kilometre for the
         # parent domain. 45 seconds leaves margin for the 9 km grid and divides
         # cleanly through the 3:1 nested-domain time-step ratios.
@@ -209,45 +265,45 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
         r"(\btime_step_fract_den\s*=)[^!\n/]+": f"\\1 1,",
         
         # Domains
-        r"(\bmax_dom\s*=)[^!\n/]+": f"\\1 7,",
-        r"(\be_we\s*=)[^!\n/]+": f"\\1 {domain.d01_e_we}, {domain.d02_e_we}, {domain.d03_e_we}, {domain.d04_e_we}, {domain.d05_e_we}, {domain.d06_e_we}, {domain.d07_e_we},",
-        r"(\be_sn\s*=)[^!\n/]+": f"\\1 {domain.d01_e_sn}, {domain.d02_e_sn}, {domain.d03_e_sn}, {domain.d04_e_sn}, {domain.d05_e_sn}, {domain.d06_e_sn}, {domain.d07_e_sn},",
-        r"(\be_vert\s*=)[^!\n/]+": f"\\1 45, 45, 45, 45, 45, 45, 45,",
+        r"(\bmax_dom\s*=)[^!\n/]+": f"\\1 {count},",
+        r"(\be_we\s*=)[^!\n/]+": f"\\1 {e_we},",
+        r"(\be_sn\s*=)[^!\n/]+": f"\\1 {e_sn},",
+        r"(\be_vert\s*=)[^!\n/]+": f"\\1 {repeated(45)},",
         r"(\bnum_metgrid_levels\s*=)[^!\n/]+": f"\\1 13,",
         r"(\bnum_metgrid_soil_levels\s*=)[^!\n/]+": f"\\1 4,",
-        r"(\bdx\s*=)[^!\n/]+": f"\\1 {domain.d01_dx_m}, {domain.d01_dx_m // 3}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m},",
-        r"(\bdy\s*=)[^!\n/]+": f"\\1 {domain.d01_dy_m}, {domain.d01_dy_m // 3}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m}, {domain.regional_dx_m},",
-        r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 1, 2, 3, 4, 5, 6, 7,",
-        r"(\bparent_id\s*=)[^!\n/]+": f"\\1 0, 1, 2, 2, 2, 2, 2,",
-        r"(\bi_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_i_parent_start}, {domain.d03_i_parent_start}, {domain.d04_i_parent_start}, {domain.d05_i_parent_start}, {domain.d06_i_parent_start}, {domain.d07_i_parent_start},",
-        r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 1, {domain.d02_j_parent_start}, {domain.d03_j_parent_start}, {domain.d04_j_parent_start}, {domain.d05_j_parent_start}, {domain.d06_j_parent_start}, {domain.d07_j_parent_start},",
-        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},",
-        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 1, 3, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio}, {regional_ratio},",
+        r"(\bdx\s*=)[^!\n/]+": f"\\1 {_values(dx[:count])},",
+        r"(\bdy\s*=)[^!\n/]+": f"\\1 {_values(dy[:count])},",
+        r"(\bgrid_id\s*=)[^!\n/]+": f"\\1 {_values(tuple(range(1, count + 1)))},",
+        r"(\bparent_id\s*=)[^!\n/]+": f"\\1 {_values(parent_ids)},",
+        r"(\bi_parent_start\s*=)[^!\n/]+": f"\\1 {_values(starts_i)},",
+        r"(\bj_parent_start\s*=)[^!\n/]+": f"\\1 {_values(starts_j)},",
+        r"(\bparent_grid_ratio\s*=)[^!\n/]+": f"\\1 {_values(domain.parent_grid_ratios)},",
+        r"(\bparent_time_step_ratio\s*=)[^!\n/]+": f"\\1 {_values(domain.parent_grid_ratios)},",
         r"(\bnproc_x\s*=)[^!\n/]+": f"\\1 {nproc_x},",
         r"(\bnproc_y\s*=)[^!\n/]+": f"\\1 {nproc_y},",
         
         # Physics arrays
-        r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bcu_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bra_lw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bra_sw_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bbl_pbl_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bsf_sfclay_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bsf_surface_physics\s*=)[^!\n/]+": f"\\1 -1, -1, -1, -1, -1, -1, -1,",
-        r"(\bradt\s*=)[^!\n/]+": f"\\1 15, 15, 15, 15, 15, 15, 15,",
-        r"(\bbldt\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
-        r"(\bcudt\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
-        r"(\bsf_urban_physics\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
+        r"(\bmp_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bcu_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bra_lw_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bra_sw_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bbl_pbl_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bsf_sfclay_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bsf_surface_physics\s*=)[^!\n/]+": f"\\1 {repeated(-1)},",
+        r"(\bradt\s*=)[^!\n/]+": f"\\1 {repeated(15)},",
+        r"(\bbldt\s*=)[^!\n/]+": f"\\1 {repeated(0)},",
+        r"(\bcudt\s*=)[^!\n/]+": f"\\1 {repeated(0)},",
+        r"(\bsf_urban_physics\s*=)[^!\n/]+": f"\\1 {repeated(0)},",
         
         # Dynamics arrays
-        r"(\bzdamp\s*=)[^!\n/]+": f"\\1 5000., 5000., 5000., 5000., 5000., 5000., 5000.,",
-        r"(\bdampcoef\s*=)[^!\n/]+": f"\\1 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2,",
-        r"(\bkhdif\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
-        r"(\bkvdif\s*=)[^!\n/]+": f"\\1 0, 0, 0, 0, 0, 0, 0,",
-        r"(\bnon_hydrostatic\s*=)[^!\n/]+": f"\\1 .true., .true., .true., .true., .true., .true., .true.,",
-        r"(\bmoist_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
-        r"(\bscalar_adv_opt\s*=)[^!\n/]+": f"\\1 1, 1, 1, 1, 1, 1, 1,",
-        r"(\bgwd_opt\s*=)[^!\n/]+": f"\\1 1, 0, 0, 0, 0, 0, 0,",
+        r"(\bzdamp\s*=)[^!\n/]+": f"\\1 {repeated('5000.')},",
+        r"(\bdampcoef\s*=)[^!\n/]+": f"\\1 {repeated(0.2)},",
+        r"(\bkhdif\s*=)[^!\n/]+": f"\\1 {repeated(0)},",
+        r"(\bkvdif\s*=)[^!\n/]+": f"\\1 {repeated(0)},",
+        r"(\bnon_hydrostatic\s*=)[^!\n/]+": f"\\1 {repeated('.true.')},",
+        r"(\bmoist_adv_opt\s*=)[^!\n/]+": f"\\1 {repeated(1)},",
+        r"(\bscalar_adv_opt\s*=)[^!\n/]+": f"\\1 {repeated(1)},",
+        r"(\bgwd_opt\s*=)[^!\n/]+": f"\\1 1{', 0' * (count - 1)},",
     }
     
     new_content = content
@@ -258,6 +314,8 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
     if domains_match:
         domains_block = domains_match.group(0)
         additions = []
+        if not re.search(r"(?m)^\s*max_dom\s*=", domains_block):
+            additions.append(f" max_dom = {count},")
         if not re.search(r"(?m)^\s*nproc_x\s*=", domains_block):
             additions.append(f" nproc_x = {nproc_x},")
         if not re.search(r"(?m)^\s*nproc_y\s*=", domains_block):

@@ -4,26 +4,27 @@ from simulation.setup_domain import (
     BalearicDomain,
     patch_namelist_input,
     render_namelist,
+    validate_domain_topology,
     validate_mpi_decomposition,
 )
 
 
-def test_render_namelist_defaults_to_fast_three_km_regional_domains():
+def test_render_namelist_defaults_to_two_domain_operational_profile():
     namelist = render_namelist(BalearicDomain())
 
-    assert "max_dom = 7" in namelist
-    assert "parent_id = 1, 1, 2, 2, 2, 2, 2" in namelist
-    assert "parent_grid_ratio = 1, 3, 1, 1, 1, 1, 1" in namelist
+    assert "max_dom = 2" in namelist
+    assert "parent_id = 1, 1" in namelist
+    assert "parent_grid_ratio = 1, 3" in namelist
     assert "dx = 9000" in namelist
     assert "dy = 9000" in namelist
     assert "ref_lat = 40.0000" in namelist
     assert "ref_lon = 5.0000" in namelist
     assert "stand_lon = 5.0000" in namelist
-    assert "geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default'" in namelist
-    assert "i_parent_start = 1, 40, 34, 10, 110, 160, 160" in namelist
-    assert "j_parent_start = 1, 20, 35, 180, 60, 180, 10" in namelist
-    assert "e_we = 160, 277, 51, 101, 51, 51, 85" in namelist
-    assert "e_sn = 120, 271, 51, 34, 134, 68, 101" in namelist
+    assert "geog_data_res = 'modis_landuse_20class_30s_with_lakes+default', 'modis_landuse_20class_30s_with_lakes+default'" in namelist
+    assert "i_parent_start = 1, 40" in namelist
+    assert "j_parent_start = 1, 20" in namelist
+    assert "e_we = 160, 277" in namelist
+    assert "e_sn = 120, 271" in namelist
     assert "ordered_by_date = .true." in namelist
 
 
@@ -31,6 +32,7 @@ def test_render_namelist_preserves_selectable_one_km_profile():
     namelist = render_namelist(BalearicDomain.ultra_1km())
 
     assert "parent_grid_ratio = 1, 3, 3, 3, 3, 3, 3" in namelist
+    assert "max_dom = 7" in namelist
     assert "e_we = 160, 277, 151, 301, 151, 151, 253" in namelist
     assert "e_sn = 120, 271, 151, 100, 400, 202, 301" in namelist
 
@@ -46,11 +48,11 @@ def test_render_namelist_allows_dates_and_geog_path_override():
     )
 
     assert (
-        "start_date = '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00', '2026-05-04_00:00:00'"
+        "start_date = '2026-05-04_00:00:00', '2026-05-04_00:00:00'"
         in namelist
     )
     assert (
-        "end_date = '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00', '2026-05-05_00:00:00'"
+        "end_date = '2026-05-05_00:00:00', '2026-05-05_00:00:00'"
         in namelist
     )
     assert "geog_data_path = '/opt/wps_geog'" in namelist
@@ -83,21 +85,26 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
     assert "time_step = 45," in patched
     assert "time_step_fract_num = 0," in patched
     assert "time_step_fract_den = 1," in patched
-    assert "parent_time_step_ratio = 1, 3, 1, 1, 1, 1, 1," in patched
-    assert "dx = 9000, 3000, 3000, 3000, 3000, 3000, 3000," in patched
-    assert "nproc_x = 4," in patched
-    assert "nproc_y = 3," in patched
+    assert "max_dom = 2," in patched
+    assert "parent_time_step_ratio = 1, 3," in patched
+    assert "dx = 9000, 3000," in patched
+    assert "nproc_x = 8," in patched
+    assert "nproc_y = 8," in patched
 
 
-def test_operational_profile_accepts_explicit_twelve_rank_decomposition():
-    validate_mpi_decomposition(BalearicDomain(), nproc_x=4, nproc_y=3)
+def test_operational_profile_accepts_sixty_four_rank_decomposition():
+    validate_mpi_decomposition(BalearicDomain(), nproc_x=8, nproc_y=8)
 
 
-def test_operational_profile_rejects_previous_sixty_four_rank_decomposition():
+def test_ultra_profile_accepts_its_twelve_rank_decomposition():
+    validate_mpi_decomposition(BalearicDomain.ultra_1km(), nproc_x=4, nproc_y=3)
+
+
+def test_preflight_rejects_same_resolution_child_domains():
     import pytest
 
-    with pytest.raises(ValueError, match="Invalid WRF MPI decomposition 8x8"):
-        validate_mpi_decomposition(BalearicDomain(), nproc_x=8, nproc_y=8)
+    with pytest.raises(ValueError, match="parent_grid_ratio >= 3"):
+        validate_domain_topology(BalearicDomain(max_dom=3))
 
 
 def test_phase2_files_capture_wrf_wps_pipeline_contract():
@@ -143,7 +150,7 @@ def test_phase2_files_capture_wrf_wps_pipeline_contract():
     assert 'PREDSEA_BIN="${PREDSEA_BIN:-/opt/predsea/bin}"' in pipeline
     assert '"${PREDSEA_BIN}/real.exe"' in pipeline
     assert '"${PREDSEA_BIN}/wrf.exe"' in pipeline
-    assert 'MPI_PROCS="${MPI_PROCS:-12}"' in pipeline
-    assert 'MPI_NPROC_X="${MPI_NPROC_X:-4}"' in pipeline
-    assert 'MPI_NPROC_Y="${MPI_NPROC_Y:-3}"' in pipeline
+    assert 'MPI_PROCS="${MPI_PROCS:-64}"' in pipeline
+    assert 'MPI_NPROC_X="${MPI_NPROC_X:-8}"' in pipeline
+    assert 'MPI_NPROC_Y="${MPI_NPROC_Y:-8}"' in pipeline
     assert "OMP_NUM_THREADS=1" in pipeline

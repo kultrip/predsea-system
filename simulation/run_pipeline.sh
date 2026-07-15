@@ -14,9 +14,9 @@ elif [[ -f "/data/Vtable.ECMWF" ]]; then
 else
   Vtable="${WPS_DIR}/ungrib/Variable_Tables/Vtable.ECMWF"
 fi
-MPI_PROCS="${MPI_PROCS:-12}"
-MPI_NPROC_X="${MPI_NPROC_X:-4}"
-MPI_NPROC_Y="${MPI_NPROC_Y:-3}"
+MPI_PROCS="${MPI_PROCS:-64}"
+MPI_NPROC_X="${MPI_NPROC_X:-8}"
+MPI_NPROC_Y="${MPI_NPROC_Y:-8}"
 WPS_STAGE_TIMEOUT_SECONDS="${WPS_STAGE_TIMEOUT_SECONDS:-1800}"
 
 if (( MPI_PROCS != MPI_NPROC_X * MPI_NPROC_Y )); then
