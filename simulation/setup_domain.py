@@ -208,6 +208,17 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
     nproc_x, nproc_y = domain.mpi_layout
     validate_mpi_decomposition(domain, nproc_x=nproc_x, nproc_y=nproc_y)
     try:
+        from datetime import datetime
+
+        start_datetime = datetime.strptime(start_date_str, "%Y-%m-%d_%H:%M:%S")
+        end_datetime = datetime.strptime(end_date_str, "%Y-%m-%d_%H:%M:%S")
+        duration_seconds = int((end_datetime - start_datetime).total_seconds())
+        if duration_seconds <= 0:
+            raise ValueError("end date must be later than start date")
+
+        run_hours, remainder = divmod(duration_seconds, 60 * 60)
+        run_minutes, run_seconds = divmod(remainder, 60)
+
         parts_start = start_date_str.split("_")
         date_start = parts_start[0].split("-")
         time_start = parts_start[1].split(":")
@@ -246,6 +257,13 @@ def patch_namelist_input(path: Path, start_date_str: str, end_date_str: str, dom
     starts_j = (1, domain.d02_j_parent_start, domain.d03_j_parent_start, domain.d04_j_parent_start, domain.d05_j_parent_start, domain.d06_j_parent_start, domain.d07_j_parent_start)[:count]
     replacements = {
         # Time control
+        # Derive the WRF duration from the same start/end timestamps used by
+        # WPS. This removes the possibility of a stale template run_hours
+        # extending WRF beyond the boundary-condition coverage.
+        r"(\brun_days\s*=)[^!\n/]+": f"\\1 0,",
+        r"(\brun_hours\s*=)[^!\n/]+": f"\\1 {run_hours},",
+        r"(\brun_minutes\s*=)[^!\n/]+": f"\\1 {run_minutes},",
+        r"(\brun_seconds\s*=)[^!\n/]+": f"\\1 {run_seconds},",
         r"(\bstart_year\s*=)[^!\n/]+": f"\\1 {repeated(s_yr)},",
         r"(\bstart_month\s*=)[^!\n/]+": f"\\1 {repeated(s_mo)},",
         r"(\bstart_day\s*=)[^!\n/]+": f"\\1 {repeated(s_dy)},",

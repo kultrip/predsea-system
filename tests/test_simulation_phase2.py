@@ -62,6 +62,10 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
     namelist_input = tmp_path / "namelist.input"
     namelist_input.write_text(
         """&time_control
+ run_days = 0,
+ run_hours = 36,
+ run_minutes = 15,
+ run_seconds = 30,
  start_year = 2000,
 /
 &domains
@@ -82,6 +86,10 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
     )
 
     patched = namelist_input.read_text()
+    assert "run_days = 0," in patched
+    assert "run_hours = 24," in patched
+    assert "run_minutes = 0," in patched
+    assert "run_seconds = 0," in patched
     assert "time_step = 45," in patched
     assert "time_step_fract_num = 0," in patched
     assert "time_step_fract_den = 1," in patched
@@ -90,6 +98,34 @@ def test_patch_namelist_input_uses_stable_nested_time_step(tmp_path):
     assert "dx = 9000, 3000," in patched
     assert "nproc_x = 8," in patched
     assert "nproc_y = 8," in patched
+
+
+def test_patch_namelist_input_derives_non_day_duration_from_dates(tmp_path):
+    namelist_input = tmp_path / "namelist.input"
+    namelist_input.write_text(
+        """&time_control
+ run_days = 5,
+ run_hours = 0,
+ run_minutes = 0,
+ run_seconds = 0,
+/
+&domains
+/
+"""
+    )
+
+    patch_namelist_input(
+        namelist_input,
+        "2026-07-15_00:00:00",
+        "2026-07-16_06:30:15",
+        BalearicDomain(),
+    )
+
+    patched = namelist_input.read_text()
+    assert "run_days = 0," in patched
+    assert "run_hours = 30," in patched
+    assert "run_minutes = 30," in patched
+    assert "run_seconds = 15," in patched
 
 
 def test_operational_profile_accepts_sixty_four_rank_decomposition():
