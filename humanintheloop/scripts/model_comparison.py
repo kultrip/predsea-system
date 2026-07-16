@@ -78,8 +78,6 @@ COMPARISON_SPECS = [
     {"variable": "wind_speed",        "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_speed",        "units": "knots"},
     {"variable": "wind_direction",    "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_direction",    "units": "degree"},
     {"variable": "wind_gust",         "own_provider": "predsea_wrf",   "baseline_provider": "ecmwf_open_data", "cmems_equivalent": "arome_1km",  "obs_variable": "wind_gust",         "units": "knots"},
-    {"variable": "current_speed",     "own_provider": "predsea_roms",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
-    {"variable": "current_direction", "own_provider": "predsea_roms",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_direction", "units": "degree"},
     {"variable": "current_speed",     "own_provider": "predsea_croco", "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
     {"variable": "current_direction", "own_provider": "predsea_croco", "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_direction", "units": "degree"},
     {"variable": "current_speed",     "own_provider": "predsea_nemo",  "baseline_provider": "copernicus",      "cmems_equivalent": "cmems_nemo", "obs_variable": "current_speed",     "units": "m/s"},
@@ -178,7 +176,6 @@ def fetch_forecast_rows(client, project_id, dataset, table, target_date, lookbac
           variable,
           CASE
             WHEN COALESCE(provider, source_system, forecast_source_id) IS NOT NULL THEN COALESCE(provider, source_system, forecast_source_id)
-            WHEN variable IN ('current_speed', 'current_direction') THEN 'predsea_roms'
             WHEN variable IN ('wave_height', 'wave_direction') THEN 'predsea_swan'
             WHEN variable IN ('wind_speed', 'wind_direction', 'wind_gust', 'air_temperature', 'sea_level_pressure') THEN 'predsea_wrf'
             ELSE NULL
@@ -196,7 +193,6 @@ def fetch_forecast_rows(client, project_id, dataset, table, target_date, lookbac
           AND (
             CASE
               WHEN COALESCE(provider, source_system, forecast_source_id) IS NOT NULL THEN COALESCE(provider, source_system, forecast_source_id)
-              WHEN variable IN ('current_speed', 'current_direction') THEN 'predsea_roms'
               WHEN variable IN ('wave_height', 'wave_direction') THEN 'predsea_swan'
               WHEN variable IN ('wind_speed', 'wind_direction', 'wind_gust', 'air_temperature', 'sea_level_pressure') THEN 'predsea_wrf'
               ELSE NULL

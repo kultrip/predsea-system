@@ -25,6 +25,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "humanintheloop"))
 import model_comparison as mc  # noqa: E402
 
 
+def test_comparison_specs_only_name_operational_model_providers():
+    providers = {spec["own_provider"] for spec in mc.COMPARISON_SPECS}
+    assert "predsea_roms" not in providers
+    assert {"predsea_wrf", "predsea_croco", "predsea_nemo", "predsea_swan"} <= providers
+
+
 def _t(hour, minute=0):
     return datetime(2026, 7, 2, hour, minute, tzinfo=timezone.utc)
 

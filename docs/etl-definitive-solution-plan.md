@@ -188,6 +188,96 @@ The API must expose lineage, resolution, publication phase, WRF status, run ID, 
 6. One 1 km coastal tile passes a controlled benchmark without affecting the live backbone.
 7. Additional tiles are introduced one at a time using measured demand and cost.
 
+## Phase 4 — Forecast quality and comparative verification
+
+Forecast quality is an independent, asynchronous ETL. It must never delay the
+daily forecast publication, and its tables, reports, credentials, and object
+prefixes remain isolated from production serving.
+
+### Evidence layers
+
+| Layer | Required content |
+|---|---|
+| Forecast archive | Immutable raw PredSea WRF, SWAN, and CROCO samples with run cycle, valid time, lead hour, grid/version, and coordinates |
+| Baseline archive | ECMWF atmosphere and Copernicus wave/ocean values sampled at exactly the same coordinates and valid times |
+| Observation archive | Quality-controlled buoy, tide-gauge, weather-station, HF-radar, and satellite measurements with provider QC flags |
+| Matchups | Reproducible forecast-baseline-observation triples, including distance/time offsets and rejection reasons |
+| Scores | Metrics by model, variable, region/tile, station, lead-time band, season, and weather/sea-state regime |
+
+The authoritative comparison is against observations. ECMWF and Copernicus are
+competitive baselines, not ground truth. PredSea and each baseline must be
+evaluated on the same matched samples; missing data cannot be converted into a
+win or silently dropped from only one model.
+
+### Metrics
+
+- scalar fields: bias, MAE, RMSE, correlation, centered RMSE, and sample count;
+- wind/current/wave directions: circular bias and circular MAE;
+- threshold events: probability of detection, false-alarm ratio, critical
+  success index, and Brier score when probabilities exist;
+- operational route products: error in peak conditions, threshold-crossing
+  timing, best-window agreement, and unsafe false-negative rate;
+- coverage: availability, latency, spatial coverage, and rejected-match counts.
+
+Every score is stratified at minimum by lead bands `0–24`, `25–48`, `49–72`,
+`73–96`, and `97–120` hours. A five-day aggregate alone is insufficient because
+it can hide degradation late in the forecast.
+
+### Anti-leakage and correction policy
+
+1. Preserve raw model values permanently.
+2. Compute verification before applying any bias correction.
+3. Train corrections only on earlier cycles and evaluate them on later,
+   untouched cycles.
+4. Version correction models and expose both raw and corrected lineage.
+5. Never learn from observations whose valid time was unavailable when the
+   forecast was issued.
+
+### Quality gates
+
+Before a new model, horizon, or region can replace an existing product:
+
+1. at least 30 days of automated matchup collection, with an explicit
+   low-sample exception for bounded staging experiments;
+2. sufficient samples in every customer-critical lead band and sea-state
+   regime;
+3. no physical-range, continuity, or coastal-mask validation failure;
+4. unsafe false negatives do not regress beyond the agreed tolerance;
+5. PredSea demonstrates non-inferiority to the current baseline on the primary
+   operational metrics, with confidence intervals reported;
+6. the result repeats on unattended cycles and is published as a versioned
+   quality report.
+
+Staging may expose experimental native forecasts before this gate, clearly
+labelled and never used as the production default. Promotion is an explicit
+decision based on the report, not an automatic consequence of a successful
+model run.
+
+### Implementation sequence
+
+1. Correct the current comparison specification so CROCO, NEMO, and SWAN
+   providers are unambiguous; remove the stale `predsea_roms` path.
+2. Replace the exact station-ID bias join with the same spatial/temporal matchup
+   algorithm used by the real comparison path.
+3. Ingest real ECMWF and Copernicus baseline rows rather than merely naming
+   baseline providers in configuration.
+4. Materialize versioned `forecast_samples`, `observation_samples`,
+   `matchups`, and `verification_scores` tables in the staging BigQuery
+   dataset, partitioned by valid date and clustered by model, variable, region,
+   and lead hour.
+5. Generate immutable daily and rolling 7/30-day quality reports in the staging
+   bucket.
+6. Add a read-only staging API endpoint for coverage and score inspection.
+7. Promote only the evaluation schema and jobs after staging proves that they
+   cannot block or modify forecast publication.
+
+Observation providers are registered in
+`simulation/quality/observation_registry.json`, validated against the versioned
+schema beside it. Catalog-based networks can add newly discovered stations
+without a code release. A genuinely new provider requires only a connector plus
+one registry entry and its normalization/QC tests; it does not require changes
+to WRF, SWAN, CROCO, forecast domains, or production publication.
+
 ## Immediate implementation order
 
 1. Complete Phase 1 and promote the retained WRF output.
@@ -197,3 +287,6 @@ The API must expose lineage, resolution, publication phase, WRF status, run ID, 
 5. Prove resumability with an interrupted test run.
 6. Extend the 3 km forcing and WRF window to five days and benchmark it.
 7. Design and benchmark the first independent 1 km coastal tile while the 3 km service remains live.
+8. Run comparative verification continuously from the first staging forecasts;
+   quality data collection proceeds in parallel with horizon and region
+   expansion.

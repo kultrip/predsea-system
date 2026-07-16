@@ -40,6 +40,19 @@ def _circular_mean_degrees(values: np.ndarray) -> float:
     return float(angle % 360.0)
 
 
+def _computational_timestep_minutes(region: dict) -> int:
+    minutes = int(
+        region["models"]["swan"].get("computational_timestep_minutes", 5)
+    )
+    output_interval_minutes = int(region["output_interval_hours"]) * 60
+    if minutes <= 0 or output_interval_minutes % minutes != 0:
+        raise ValueError(
+            "SWAN computational_timestep_minutes must be positive and divide "
+            "the configured output interval exactly"
+        )
+    return minutes
+
+
 def _side_series(dataset: xr.Dataset, side: str) -> tuple[np.ndarray, ...]:
     if side == "north":
         edge = dataset.isel(latitude=-1)
@@ -146,6 +159,7 @@ def prepare(
 ) -> dict:
     region = json.loads(region_path.read_text())
     bbox = region["bbox"]
+    compute_timestep_minutes = _computational_timestep_minutes(region)
     end = start + np.timedelta64(forecast_hours, "h")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -240,10 +254,16 @@ def prepare(
                 f"{mx} {my}"
             ),
             (
-                "BLOCK 'OUTPUT' NOHEADER 'swan_output.nc' "
+                # SWAN's MPI NetCDF collector is not reliable for this regular
+                # grid. Parallel VTK is explicitly designed to remain sharded;
+                # the publication stage converts it to the canonical NetCDF.
+                "BLOCK 'OUTPUT' NOHEADER 'swan_output.vts' "
                 f"HSIGN TPS DIR WIND DEPTH OUTPUT {start_text} 1 HR"
             ),
-            f"COMPUTE NONSTATIONARY {start_text} 10 MIN {end_text}",
+            (
+                f"COMPUTE NONSTATIONARY {start_text} "
+                f"{compute_timestep_minutes} MIN {end_text}"
+            ),
             "STOP",
         ]
     )
@@ -268,6 +288,7 @@ def prepare(
         "start_time": str(start),
         "end_time": str(end),
         "forecast_hours": forecast_hours,
+        "computational_timestep_minutes": compute_timestep_minutes,
         "grid": {"nx": nx, "ny": ny, "dx_degrees": dx, "dy_degrees": dy},
         "wind": {
             "source": "ECMWF",
@@ -278,6 +299,11 @@ def prepare(
             "source": "Copernicus Marine",
             "formulation": "hourly parametric JONSWAP from VHM0/VTPK/VMDR",
             "timestamps": int(boundary.sizes["time"]),
+        },
+        "native_output": {
+            "format": "parallel_vtk",
+            "publication_format": "netcdf",
+            "reason": "avoid SWAN MPI NetCDF shard collection failure",
         },
         "inputs": inputs,
     }

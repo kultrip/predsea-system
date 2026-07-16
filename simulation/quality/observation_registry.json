@@ -1,0 +1,67 @@
+{
+  "schema_version": "predsea.observation_registry.v1",
+  "sources": [
+    {
+      "source_id": "puertos_del_estado",
+      "provider": "puertos",
+      "network": "REDEXT_REDCOS_REDMAR_HF_RADAR",
+      "connector": "humanintheloop.predsea.connectors.puertos_del_estado.etl",
+      "discovery_mode": "catalog",
+      "enabled_environments": ["test", "prod"],
+      "variables": [
+        "wave_height",
+        "wave_period",
+        "wave_direction",
+        "wind_speed",
+        "wind_direction",
+        "water_temperature",
+        "current_speed",
+        "current_direction",
+        "sea_level"
+      ],
+      "quality_control": {
+        "provider_flags_required": false,
+        "maximum_age_hours": 24,
+        "maximum_time_offset_minutes": 30
+      }
+    },
+    {
+      "source_id": "emodnet_physics",
+      "provider": "emodnet",
+      "network": "EMODNET_PHYSICS",
+      "connector": "humanintheloop.predsea.connectors.emodnet_physics",
+      "discovery_mode": "catalog",
+      "enabled_environments": ["test", "prod"],
+      "variables": ["wave_height", "water_temperature"],
+      "quality_control": {
+        "provider_flags_required": true,
+        "maximum_age_hours": 24,
+        "maximum_time_offset_minutes": 30
+      }
+    },
+    {
+      "source_id": "socib",
+      "provider": "socib",
+      "network": "SOCIB",
+      "connector": "humanintheloop.socib_client",
+      "discovery_mode": "catalog",
+      "enabled_environments": ["test", "prod"],
+      "variables": [
+        "wave_height",
+        "wave_period",
+        "wave_direction",
+        "wind_speed",
+        "wind_direction",
+        "water_temperature",
+        "current_speed",
+        "current_direction",
+        "sea_level"
+      ],
+      "quality_control": {
+        "provider_flags_required": false,
+        "maximum_age_hours": 24,
+        "maximum_time_offset_minutes": 30
+      }
+    }
+  ]
+}

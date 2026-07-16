@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://predsea.com/schemas/observation-registry-v1.json",
+  "title": "PredSea observation source registry",
+  "type": "object",
+  "required": ["schema_version", "sources"],
+  "properties": {
+    "schema_version": {"const": "predsea.observation_registry.v1"},
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "provider",
+          "connector",
+          "discovery_mode",
+          "enabled_environments",
+          "variables"
+        ],
+        "properties": {
+          "source_id": {"type": "string", "minLength": 1},
+          "provider": {"type": "string", "minLength": 1},
+          "network": {"type": "string"},
+          "connector": {"type": "string", "minLength": 1},
+          "discovery_mode": {
+            "enum": ["catalog", "configured_stations", "spatial_query"]
+          },
+          "enabled_environments": {
+            "type": "array",
+            "items": {"enum": ["test", "prod"]},
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "variables": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "quality_control": {
+            "type": "object",
+            "properties": {
+              "provider_flags_required": {"type": "boolean"},
+              "maximum_age_hours": {"type": "number", "exclusiveMinimum": 0},
+              "maximum_time_offset_minutes": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

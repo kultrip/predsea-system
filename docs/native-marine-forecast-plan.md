@@ -55,7 +55,8 @@ not expand a marine compute region.
 | Fetch WRF/CMEMS inputs | Checksummed forcing inventory |
 | Validate forcing | Complete time, variable, depth and boundary coverage |
 | Prepare grid/bathymetry | Versioned grid files and validation report |
-| Run SWAN | Native SWAN NetCDF plus logs |
+| Run SWAN | Native parallel SWAN VTK plus logs |
+| Canonicalize SWAN | Deterministic consolidated PredSea NetCDF |
 | Validate SWAN | Hourly coverage, full bbox, finite and physical wave values |
 | Run CROCO | Native CROCO NetCDF plus logs/restarts |
 | Validate CROCO | Hourly coverage, full bbox, finite and physical ocean values |
@@ -137,6 +138,19 @@ The initial six-hour run is a bounded staging benchmark. Copernicus is boundary
 forcing and validation data, while the gridded forecast is computed by PredSea's
 SWAN executable.
 
+For MPI runs, SWAN writes its native structured VTK output. SWAN's NetCDF
+collector was observed to abort with an EOF while merging otherwise-created
+per-rank files on this grid. The official SWAN manual identifies VTK as the
+parallel format that does not require collection. PredSea converts those native
+parallel outputs into one canonical, validated NetCDF during publication; this
+conversion is deterministic and does not alter model values.
+
+The Balearic 1 km profile uses a five-minute internal computational timestep
+while retaining hourly published products. A ten-minute step was rejected by
+SWAN itself because the higher-order geographic propagation CFL exceeded 10.
+The timestep is versioned in the region profile and must divide the publication
+interval exactly.
+
 ## Benchmark ladder
 
 1. Compile pinned SWAN and CROCO versions reproducibly.
@@ -173,3 +187,27 @@ Native output is eligible for staging publication only when:
 
 Production promotion additionally requires an unattended repeatable run and an
 atomic pointer update that can be rolled back without rerunning the models.
+
+## Comparative quality infrastructure
+
+Native SWAN and CROCO validation has two distinct levels:
+
+1. **run validity** — timestamps, coverage, fields, finite fractions, and
+   physical limits; and
+2. **forecast skill** — comparison with real observations and with Copernicus
+   on identical matched samples.
+
+Copernicus remains the baseline for waves and ocean, while buoys, tide gauges,
+HF radar, and other quality-controlled measurements are ground truth. The
+comparison archive records model cycle, valid time, lead hour, coordinate,
+region version, forcing lineage, and raw value for both PredSea and Copernicus.
+It must report bias/MAE/RMSE and circular directional errors by lead-time band,
+region, station, season, and sea-state regime. Route-level verification also
+measures peak-condition error, timing error, best-window agreement, and unsafe
+false negatives.
+
+This evaluation runs asynchronously in the staging dataset and bucket. It
+cannot update the production `latest` pointer, and missing observations produce
+an explicit insufficient-coverage result rather than a fabricated score.
+Raw forecasts are scored before bias correction; any correction is trained on
+past cycles and evaluated on later untouched cycles.
