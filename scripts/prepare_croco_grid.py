@@ -130,6 +130,7 @@ def build_grid(
         maximum_rx0=maximum_rx0,
     )
     h = np.where(mask_rho, smoothed, minimum_depth_m)
+    depth_change = h[mask_rho] - raw_depth[mask_rho]
 
     lon_u = 0.5 * (lon_rho[:, :-1] + lon_rho[:, 1:])
     lat_u = 0.5 * (lat_rho[:, :-1] + lat_rho[:, 1:])
@@ -214,6 +215,10 @@ def build_grid(
         "wet_fraction": float(mask_rho.mean()),
         "minimum_wet_depth_m": float(h[mask_rho].min()),
         "maximum_wet_depth_m": float(h[mask_rho].max()),
+        "changed_wet_cell_fraction": float((depth_change > 1e-6).mean()),
+        "mean_wet_cell_deepening_m": float(depth_change.mean()),
+        "p95_wet_cell_deepening_m": float(np.percentile(depth_change, 95)),
+        "maximum_wet_cell_deepening_m": float(depth_change.max()),
         "maximum_rx0": achieved_rx0,
         "smoothing_iterations": smoothing_iterations,
         "dx_m": [float(dx.min()), float(dx.max())],

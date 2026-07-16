@@ -52,3 +52,5 @@ def test_build_grid_creates_complete_croco_staggered_grid():
     ) <= set(grid.variables)
     assert report["maximum_rx0"] <= 0.2 + 1e-12
     assert report["wet_cell_count"] == 9
+    assert 0.0 <= report["changed_wet_cell_fraction"] <= 1.0
+    assert report["maximum_wet_cell_deepening_m"] >= 0.0
