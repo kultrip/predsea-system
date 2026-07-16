@@ -11,6 +11,11 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+try:
+    from scripts.validate_marine_region import validate_region
+except ModuleNotFoundError:  # Direct execution from the scripts directory.
+    from validate_marine_region import validate_region
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -157,6 +162,12 @@ def prepare(
     start: np.datetime64,
     forecast_hours: int,
 ) -> dict:
+    region_validation = validate_region(region_path)
+    if region_validation["status"] != "succeeded":
+        raise ValueError(
+            "Marine region profile failed preflight: "
+            + "; ".join(region_validation["errors"])
+        )
     region = json.loads(region_path.read_text())
     bbox = region["bbox"]
     compute_timestep_minutes = _computational_timestep_minutes(region)

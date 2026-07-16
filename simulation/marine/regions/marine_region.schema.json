@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://predsea.com/schemas/marine-region-v1.json",
+  "title": "PredSea native marine region profile",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "region_id",
+    "label",
+    "bbox",
+    "horizontal_resolution_m",
+    "output_interval_hours",
+    "models",
+    "forcing"
+  ],
+  "properties": {
+    "schema_version": {"const": "predsea.marine_region.v1"},
+    "region_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "label": {"type": "string", "minLength": 1},
+    "bbox": {
+      "type": "object",
+      "required": [
+        "longitude_min",
+        "longitude_max",
+        "latitude_min",
+        "latitude_max"
+      ],
+      "properties": {
+        "longitude_min": {"type": "number", "minimum": -180, "maximum": 180},
+        "longitude_max": {"type": "number", "minimum": -180, "maximum": 180},
+        "latitude_min": {"type": "number", "minimum": -90, "maximum": 90},
+        "latitude_max": {"type": "number", "minimum": -90, "maximum": 90}
+      },
+      "additionalProperties": false
+    },
+    "horizontal_resolution_m": {"type": "number", "exclusiveMinimum": 0},
+    "output_interval_hours": {"type": "integer", "minimum": 1},
+    "models": {
+      "type": "object",
+      "required": ["swan", "croco"],
+      "properties": {
+        "swan": {"$ref": "#/$defs/model"},
+        "croco": {"$ref": "#/$defs/model"}
+      },
+      "additionalProperties": false
+    },
+    "forcing": {
+      "type": "object",
+      "required": [
+        "atmosphere",
+        "ocean_initial_and_boundary",
+        "wave_open_boundary"
+      ],
+      "properties": {
+        "atmosphere": {"type": "string", "minLength": 1},
+        "ocean_initial_and_boundary": {"type": "string", "minLength": 1},
+        "wave_open_boundary": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "required": ["required_variables", "physical_ranges"],
+      "properties": {
+        "required_variables": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "physical_ranges": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "prefixItems": [{"type": "number"}, {"type": "number"}],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

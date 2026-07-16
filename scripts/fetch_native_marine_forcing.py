@@ -15,6 +15,11 @@ import copernicusmarine
 import numpy as np
 import xarray as xr
 
+try:
+    from scripts.validate_marine_region import validate_region
+except ModuleNotFoundError:  # Direct execution from the scripts directory.
+    from validate_marine_region import validate_region
+
 
 DATASETS = {
     "croco_currents_3d": {
@@ -151,6 +156,12 @@ def main() -> int:
     if not args.dry_run and (not username or not password):
         raise SystemExit("Copernicus Marine credentials are not configured")
 
+    region_validation = validate_region(args.region)
+    if region_validation["status"] != "succeeded":
+        raise SystemExit(
+            "Marine region profile failed preflight: "
+            + "; ".join(region_validation["errors"])
+        )
     region = json.loads(args.region.read_text())
     bbox = region["bbox"]
     # Copernicus interprets naive datetimes in the host timezone. Always send
