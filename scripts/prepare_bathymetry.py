@@ -107,10 +107,16 @@ def main():
     parser.add_argument("--lat-max", type=float, default=41.0, help="Maximum latitude")
     parser.add_argument("--resolution", type=float, default=0.01, help="Grid spacing in degrees (0.01 = ~1km)")
     parser.add_argument("--gcs-bucket", default="predsea-daily-outputs", help="GCS Bucket name")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Output directory (defaults to simulation/inputs).",
+    )
+    parser.add_argument("--no-upload", action="store_true", help="Do not upload generated grids.")
     parser.add_argument("--dry-run", action="store_true", help="Perform a dry run")
     args = parser.parse_args()
     
-    input_dir = PROJECT_ROOT / "simulation" / "inputs"
+    input_dir = args.output_dir or (PROJECT_ROOT / "simulation" / "inputs")
     input_dir.mkdir(parents=True, exist_ok=True)
     swan_path = input_dir / "balearic_bathymetry_swan.nc"
     nemo_path = input_dir / "balearic_bathymetry_nemo.nc"
@@ -356,7 +362,7 @@ def main():
     print(f"✅ Processed NEMO Bathymetry saved to {nemo_path}")
     
     # Upload to GCS
-    if args.gcs_bucket:
+    if args.gcs_bucket and not args.no_upload:
         upload_to_gcs(args.gcs_bucket, swan_path, "static/bathymetry/balearic_bathymetry_swan.nc")
         upload_to_gcs(args.gcs_bucket, nemo_path, "static/bathymetry/balearic_bathymetry_nemo.nc")
         print("🎉 Bathymetry successfully uploaded to GCS.")

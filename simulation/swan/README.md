@@ -1,4 +1,4 @@
-# SWAN (Simulating WAves Nearshore) Scaffold & Setup Guide
+# SWAN (Simulating WAves Nearshore)
 
 This directory houses the scaffolding, computational grid boundaries, and bathymetry specifications for compiling and running the SWAN coastal/shallow wave modeling system.
 
@@ -16,10 +16,11 @@ sudo apt-get update && sudo apt-get install -y gfortran mpich
 
 ### 2. Download and Compile SWAN
 ```bash
-# Download latest stable SWAN distribution
-wget https://swanmodel.sourceforge.io/download/zip/swan4141.tar.gz
-tar -zxvf swan4141.tar.gz
-cd swan4141
+# Download the pinned stable SWAN 41.51 distribution
+wget https://swanmodel.sourceforge.io/download/zip/swan4151.tar.gz
+echo "325c229f3dde0b812db4ec9ae6fa1cd4086d2109562c389576590ce8f94b26bb  swan4151.tar.gz" | sha256sum -c -
+tar -zxvf swan4151.tar.gz
+cd swan4151
 
 # Generate the appropriate Makefile (e.g., for GCC + MPI)
 make config
@@ -28,6 +29,19 @@ make config
 make mpi
 ```
 * **Compiled Binary**: Creates `swan.exe`. Move this binary into the execution folder of your Spot VM startup routine.
+
+The reproducible production build is now
+`simulation/marine/swan/Dockerfile`. Build it with:
+
+```bash
+gcloud builds submit \
+  simulation/marine/swan \
+  --project=predsea-api \
+  --region=europe-west1 \
+  --config=simulation/marine/swan/cloudbuild.yaml
+```
+
+Do not use the old 41.41 compile script for a native forecast benchmark.
 
 ---
 

@@ -1,0 +1,175 @@
+# PredSea Native Marine Forecast Implementation
+
+Last updated: 2026-07-16
+
+## System-of-record statement
+
+PredSea currently owns and runs the WRF atmospheric forecast. The customer-facing
+wave and ocean products still originate from Copernicus Marine data. SWAN and
+CROCO ingestors exist, but there is not yet a validated operational SWAN or
+CROCO execution.
+
+The target is:
+
+```text
+ECMWF -> WPS/WRF -> PredSea atmosphere
+                    |              |
+                    v              v
+             SWAN waves       CROCO ocean
+                    \              /
+                     PredSea forecast bundle
+                              |
+                         API -> Relay
+```
+
+Copernicus Marine remains an upstream source for initial/open-boundary
+conditions, an independent validation baseline, and an operational fallback. It
+must not be labelled as native PredSea output.
+
+## Safety boundary
+
+Native marine development runs only in staging and writes immutable,
+run-scoped objects. The existing production API and daily ETL remain unchanged
+until all promotion gates pass. A failed SWAN or CROCO run cannot replace a
+valid Copernicus-backed product.
+
+## First region
+
+The authoritative first tile is
+`simulation/marine/regions/balearic_1km.json`:
+
+- bounds: 0.5–5.5 E, 37.5–41.5 N;
+- nominal horizontal resolution: 1 km;
+- output cadence: hourly;
+- SWAN: 36 directions and 32 frequencies;
+- CROCO: 30 terrain-following vertical levels.
+
+Further regions use the same versioned region schema. Inland destinations do
+not expand a marine compute region.
+
+## Execution stages
+
+| Stage | Output required for success |
+|---|---|
+| Select cycle and region | Immutable run manifest |
+| Fetch WRF/CMEMS inputs | Checksummed forcing inventory |
+| Validate forcing | Complete time, variable, depth and boundary coverage |
+| Prepare grid/bathymetry | Versioned grid files and validation report |
+| Run SWAN | Native SWAN NetCDF plus logs |
+| Validate SWAN | Hourly coverage, full bbox, finite and physical wave values |
+| Run CROCO | Native CROCO NetCDF plus logs/restarts |
+| Validate CROCO | Hourly coverage, full bbox, finite and physical ocean values |
+| Publish staging bundle | PredSea-owned immutable bundle and lineage manifest |
+| Validate API | Route/place JSON and maps consume native outputs |
+| Promote | Atomic production pointer update |
+
+The benchmark runner `scripts/run_marine_benchmark.py` is fail-closed. It only
+writes `SUCCESS` when the command exits zero, the output exists, and
+`scripts/validate_marine_output.py` verifies its content. It records real wall
+time, disk growth, output size, CPU count and compute cost when a current hourly
+VM price is supplied.
+
+## Forcing correction discovered during audit
+
+The retained object
+`forcing/cmems/2026-07-16/cmems_ocean_forcing.nc` contains 121 hourly surface
+current fields (`uo`, `vo`) on a 228 x 519 grid. This is useful for comparison
+and possibly surface-current nudging, but it is not sufficient to initialize
+and force CROCO. CROCO also requires three-dimensional temperature, salinity
+and velocity fields, sea-surface height, vertical coordinates, and open-boundary
+coverage.
+
+The forcing downloader must therefore produce separate, validated products:
+
+- `cmems_ocean_3d.nc`: temperature, salinity, 3-D currents and depth;
+- `cmems_sea_level.nc`: sea-surface height;
+- `cmems_wave_boundary.nc`: wave spectra or the complete boundary parameters
+  required by the selected SWAN boundary formulation;
+- `predsea_wrf_surface.nc`: hourly WRF wind and pressure on the marine grid.
+
+No native marine benchmark may proceed on the current surface-current file
+alone and claim to represent CROCO.
+
+`scripts/fetch_native_marine_forcing.py` now implements that split using the
+current Copernicus Mediterranean catalogue:
+
+- hourly 3-D currents:
+  `cmems_mod_med_phy-cur_anfc_4.2km-3D_PT1H-m`;
+- hourly 3-D temperature:
+  `cmems_mod_med_phy-tem_anfc_4.2km-3D_PT1H-m`;
+- hourly 3-D salinity:
+  `cmems_mod_med_phy-sal_anfc_4.2km-3D_PT1H-m`;
+- hourly sea-surface height:
+  `cmems_mod_med_phy-ssh_anfc_4.2km-2D_PT1H-m`;
+- hourly wave parameters:
+  `cmems_mod_med_wav_anfc_4.2km_PT1H-i`.
+
+The Mediterranean wave product exposes integrated fields rather than full
+directional spectra. The first SWAN implementation will therefore construct
+parametric open-boundary conditions from significant wave height, mean
+direction and peak period. It must record this boundary formulation explicitly
+in its lineage.
+
+All catalogue requests use timezone-aware UTC bounds and validation checks the
+first and last timestamps as well as the count. A staging download made with
+naive datetimes was shifted two hours earlier by Europe/Madrid daylight-saving
+time; the regression test now rejects that failure mode.
+
+## SWAN runtime baseline
+
+SWAN 41.51 is built from the pinned official source archive and checksum in
+`simulation/marine/swan/Dockerfile`. The image is independent of the production
+WRF image. Its immutable staging build
+`sha256:50c5d25f818e742bb57bf9c73a3849acd8f16de73e53c3c92d015d332d5980e3`
+passed the official A11 refraction reference case with a normal SWAN
+termination. This proves the executable and NetCDF-enabled runtime; it does not
+by itself validate the PredSea domain.
+
+`scripts/prepare_swan_run.py` builds the first real-domain package from:
+
+- the versioned 1 km Balearic bathymetry;
+- ECMWF 10 m U/V wind fields, with SWAN temporal interpolation between the
+  three-hourly fields;
+- hourly Copernicus Mediterranean wave parameters converted into explicit
+  parametric JONSWAP conditions on all four open boundaries.
+
+The initial six-hour run is a bounded staging benchmark. Copernicus is boundary
+forcing and validation data, while the gridded forecast is computed by PredSea's
+SWAN executable.
+
+## Benchmark ladder
+
+1. Compile pinned SWAN and CROCO versions reproducibly.
+2. Run a 6-hour 1 km Balearic SWAN benchmark.
+3. Run a 6-hour 1 km Balearic CROCO benchmark.
+4. If stable, run each model for 24 hours.
+5. Project 96-hour and 120-hour runtime/disk/cost from measured throughput.
+6. Execute the longest horizon that fits the daily operational window.
+7. Validate against Copernicus and real observations without synthetic data.
+
+Every benchmark publishes:
+
+- `swan_benchmark.json` or `croco_benchmark.json`;
+- stdout/stderr logs;
+- model validation report;
+- exact image/source version and command;
+- real elapsed time;
+- peak/total storage measurement;
+- current VM price and measured compute cost;
+- explicit exclusion of storage/network charges until those are measured.
+
+## Promotion gates
+
+Native output is eligible for staging publication only when:
+
+1. all expected timestamps exist;
+2. mandatory fields are present and at least 90% finite;
+3. values remain inside configured physical limits;
+4. output covers the configured region;
+5. runtime and disk fit the operational envelope with margin;
+6. lineage identifies WRF and CMEMS as forcing, not final forecast providers;
+7. the API serves route/place values and maps from the native bundle;
+8. Copernicus fallback remains available.
+
+Production promotion additionally requires an unattended repeatable run and an
+atomic pointer update that can be rolled back without rerunning the models.
