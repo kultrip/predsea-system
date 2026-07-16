@@ -151,6 +151,18 @@ SWAN itself because the higher-order geographic propagation CFL exceeded 10.
 The timestep is versioned in the region profile and must divide the publication
 interval exactly.
 
+## CROCO runtime baseline
+
+CROCO 2.1.3 is pinned to the official stable-release archive and checksum in
+`simulation/marine/croco/Dockerfile`. CROCO requires compilation for each
+regional grid and physics configuration. The first image therefore compiles and
+runs the official analytic BASIN case only as a compiler, MPI/NetCDF-linkage,
+initialization, integration, and output smoke test. Passing that smoke test does
+not count as a Balearic forecast. The Balearic executable will be compiled from
+the same pinned source after the versioned grid, vertical coordinates, open
+boundaries, initial state, and WRF surface-forcing files are generated and
+validated.
+
 ## Benchmark ladder
 
 1. Compile pinned SWAN and CROCO versions reproducibly.
