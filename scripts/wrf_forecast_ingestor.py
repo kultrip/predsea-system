@@ -32,7 +32,7 @@ from google.cloud import storage
 
 import place_registry
 import route_analysis
-from model_output_discovery import candidate_blobs, download_first_valid
+from model_output_discovery import candidate_blobs, download_first_valid, validate_model_output
 from bigquery_export import (
     build_normalized_rows,
     resolve_config,
@@ -157,12 +157,68 @@ def download_wrf_files_from_gcs(bucket_name: str, run_date: str, run_id: str, lo
     
     for dom_id, domain_blobs in domains.items():
         local_path = local_dir / f"wrf_{dom_id}.nc"
+        hourly_blobs = [
+            blob for blob in domain_blobs
+            if Path(blob.name).name.lower().startswith(f"wrfout_{dom_id}_")
+        ]
+        if hourly_blobs:
+            combined_count = download_and_combine_wrf_domain(hourly_blobs, local_path)
+            print(
+                f"📥 Validated and combined {combined_count} hourly WRF {dom_id} outputs "
+                f"from gs://{bucket_name} -> {local_path}"
+            )
+            downloaded.append((dom_id, local_path))
+            continue
+
         selected = download_first_valid(domain_blobs, "wrf", local_path)
         if selected:
             print(f"📥 Validated WRF {dom_id} output: gs://{bucket_name}/{selected.name} -> {local_path}")
             downloaded.append((dom_id, local_path))
         
     return downloaded
+
+
+def download_and_combine_wrf_domain(domain_blobs, local_path: Path) -> int:
+    """Download chronological single-hour WRF files and create one complete Time series."""
+    datasets = []
+    with tempfile.TemporaryDirectory(prefix="predsea-wrf-hours-") as temporary_directory:
+        temporary_root = Path(temporary_directory)
+        for index, blob in enumerate(sorted(domain_blobs, key=lambda item: item.name)):
+            hourly_path = temporary_root / f"{index:04d}.nc"
+            blob.download_to_filename(str(hourly_path))
+            valid, reason = validate_model_output(hourly_path, "wrf")
+            if not valid:
+                raise ValueError(f"Invalid WRF hourly output '{blob.name}': {reason}")
+            with xr.open_dataset(hourly_path, decode_times=False) as dataset:
+                datasets.append(dataset.load())
+
+    if not datasets:
+        raise ValueError("No valid WRF hourly outputs were available to combine.")
+
+    combined = xr.concat(
+        datasets,
+        dim="Time",
+        data_vars="minimal",
+        coords="minimal",
+        compat="override",
+        combine_attrs="override",
+    )
+    try:
+        combined.to_netcdf(local_path)
+        time_count = int(combined.sizes.get("Time", 0))
+    finally:
+        combined.close()
+        for dataset in datasets:
+            dataset.close()
+
+    if time_count != len(datasets):
+        raise ValueError(
+            f"Combined WRF timeline is incomplete: expected {len(datasets)} timestamps, found {time_count}."
+        )
+    valid, reason = validate_model_output(local_path, "wrf")
+    if not valid:
+        raise ValueError(f"Combined WRF output failed validation: {reason}")
+    return time_count
 
 
 def get_nearest_grid_indices(lats: xr.DataArray, lons: xr.DataArray, target_lat: float, target_lon: float) -> tuple[int, int]:

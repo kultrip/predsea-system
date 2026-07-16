@@ -891,6 +891,7 @@ def _fetch_wrf_wind_context(modules, run_dir):
             
         try:
             from model_output_discovery import candidate_blobs, download_first_valid
+            from wrf_forecast_ingestor import download_and_combine_wrf_domain
             from google.cloud import storage
             client = storage.Client()
             bucket = client.bucket(bucket_name)
@@ -903,6 +904,18 @@ def _fetch_wrf_wind_context(modules, run_dir):
             domain_candidates = [
                 blob for blob in candidate_blobs(blobs, "wrf") if dom_id in Path(blob.name).name
             ]
+            hourly_candidates = [
+                blob for blob in domain_candidates
+                if Path(blob.name).name.lower().startswith(f"wrfout_{dom_id}_")
+            ]
+            if hourly_candidates:
+                timestamp_count = download_and_combine_wrf_domain(hourly_candidates, local_path)
+                print(
+                    f"📥 Downloaded and combined {timestamp_count} validated WRF {dom_id} timestamps "
+                    f"({domains_meta[dom_id]['region']}) from gs://{bucket_name}"
+                )
+                return local_path
+
             target_blob = download_first_valid(domain_candidates, "wrf", local_path)
 
             if target_blob:

@@ -142,3 +142,54 @@ def test_download_wrf_files_from_gcs_not_found(monkeypatch, tmp_path):
         "bucket", "2026-06-24", "run-123", tmp_path
     )
     assert downloaded == []
+
+
+def test_download_wrf_files_from_gcs_combines_all_hourly_outputs(monkeypatch, tmp_path):
+    source_paths = []
+    for hour, speed in enumerate((2.0, 4.0, 6.0)):
+        source_path = tmp_path / f"source-{hour}.nc"
+        xr.Dataset(
+            {
+                "U10": (("Time", "south_north", "west_east"), np.array([[[speed]]])),
+                "V10": (("Time", "south_north", "west_east"), np.array([[[0.0]]])),
+                "XLAT": (("Time", "south_north", "west_east"), np.array([[[39.0]]])),
+                "XLONG": (("Time", "south_north", "west_east"), np.array([[[2.0]]])),
+            },
+            coords={"Time": [hour]},
+        ).to_netcdf(source_path)
+        source_paths.append(source_path)
+
+    class MockStorageBlob:
+        def __init__(self, name, source_path):
+            self.name = name
+            self.source_path = source_path
+
+        def download_to_filename(self, destination):
+            Path(destination).write_bytes(self.source_path.read_bytes())
+
+    blobs = [
+        MockStorageBlob(
+            f"predictions/2026-07-16/runs/run-123/wrfout_d02_2026-07-16_{hour:02d}:00:00",
+            source_path,
+        )
+        for hour, source_path in reversed(list(enumerate(source_paths)))
+    ]
+
+    class MockStorageBucket:
+        def list_blobs(self, prefix=""):
+            return blobs
+
+    class MockStorageClient:
+        def bucket(self, name):
+            return MockStorageBucket()
+
+    monkeypatch.setattr(wrf_forecast_ingestor.storage, "Client", MockStorageClient)
+
+    downloaded = wrf_forecast_ingestor.download_wrf_files_from_gcs(
+        "bucket", "2026-07-16", "run-123", tmp_path / "combined"
+    )
+
+    assert downloaded == [("d02", tmp_path / "combined" / "wrf_d02.nc")]
+    with xr.open_dataset(downloaded[0][1], decode_times=False) as combined:
+        assert combined.sizes["Time"] == 3
+        assert combined["U10"].values[:, 0, 0].tolist() == [2.0, 4.0, 6.0]

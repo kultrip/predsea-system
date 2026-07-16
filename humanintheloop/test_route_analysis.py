@@ -1,4 +1,70 @@
+import numpy as np
+import xarray as xr
+
 import route_analysis
+
+
+def test_forecast_summary_samples_wrf_curvilinear_wind_grid(tmp_path):
+    times = np.array(["2026-07-16T00:00:00", "2026-07-16T01:00:00"], dtype="datetime64[ns]")
+    waves = xr.Dataset(
+        {
+            "VHM0": (("time", "latitude", "longitude"), np.array([[[0.5]], [[0.7]]])),
+            "VMDR": (("time", "latitude", "longitude"), np.array([[[300.0]], [[310.0]]])),
+        },
+        coords={"time": times, "latitude": [39.0], "longitude": [2.0]},
+    )
+    currents = xr.Dataset(
+        {
+            "uo": (("time", "latitude", "longitude"), np.array([[[0.1]], [[0.2]]])),
+            "vo": (("time", "latitude", "longitude"), np.array([[[0.0]], [[0.0]]])),
+        },
+        coords={"time": times, "latitude": [39.0], "longitude": [2.0]},
+    )
+    wrf = xr.Dataset(
+        {
+            "U10": (
+                ("Time", "south_north", "west_east"),
+                np.array([[[1.0, 2.0], [3.0, 4.0]], [[2.0, 3.0], [4.0, 5.0]]]),
+            ),
+            "V10": (("Time", "south_north", "west_east"), np.zeros((2, 2, 2))),
+            "XLAT": (
+                ("Time", "south_north", "west_east"),
+                np.array([[[38.0, 38.0], [39.0, 39.0]], [[38.0, 38.0], [39.0, 39.0]]]),
+            ),
+            "XLONG": (
+                ("Time", "south_north", "west_east"),
+                np.array([[[1.0, 2.0], [1.0, 2.0]], [[1.0, 2.0], [1.0, 2.0]]]),
+            ),
+        },
+        coords={"Time": times},
+    )
+    waves_path = tmp_path / "waves.nc"
+    currents_path = tmp_path / "currents.nc"
+    wind_path = tmp_path / "wrf.nc"
+    waves.to_netcdf(waves_path)
+    currents.to_netcdf(currents_path)
+    wrf.to_netcdf(wind_path)
+    route = {
+        "id": "test_route",
+        "origin": {"longitude": 2.0, "latitude": 39.0},
+        "destination": {"longitude": 2.0, "latitude": 39.0},
+        "sample_points": [{"name": "Test point", "longitude": 2.0, "latitude": 39.0}],
+    }
+
+    summary = route_analysis.forecast_summary_from_files(
+        waves_path,
+        currents_path,
+        wind_path=wind_path,
+        route=route,
+    )
+
+    with xr.open_dataset(wind_path) as opened_wrf:
+        selected = route_analysis.select_wind_point(opened_wrf, "U10", 2.0, 39.0)
+        assert selected.values.tolist() == [4.0, 5.0]
+
+    assert summary["wind_speed_kn"] == round(4.5 * route_analysis.MPS_TO_KNOTS, 1)
+    assert summary["wind_direction_deg"] == 90.0
+    assert summary["wind_gust_kn"] == round(5.0 * route_analysis.MPS_TO_KNOTS * 1.3, 1)
 
 
 def test_summarize_route_point_series_adds_operational_segments():

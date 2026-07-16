@@ -683,6 +683,56 @@ def resolve_nearest_sea_coordinate(waves_dataset, point):
     return lon, lat
 
 
+def select_wind_point(wind_dataset, variable_name, longitude, latitude):
+    """Select a wind series from rectilinear ECMWF or curvilinear WRF grids."""
+    variable = wind_dataset[variable_name]
+
+    if "XLAT" in wind_dataset and "XLONG" in wind_dataset:
+        latitudes = wind_dataset["XLAT"]
+        longitudes = wind_dataset["XLONG"]
+        for time_dimension in ("Time", "time"):
+            if time_dimension in latitudes.dims:
+                latitudes = latitudes.isel({time_dimension: 0})
+            if time_dimension in longitudes.dims:
+                longitudes = longitudes.isel({time_dimension: 0})
+
+        if latitudes.ndim != 2 or longitudes.ndim != 2:
+            raise ValueError("WRF XLAT/XLONG coordinates must resolve to two-dimensional grids.")
+
+        latitude_values = np.asarray(latitudes.values, dtype=float)
+        longitude_values = np.asarray(longitudes.values, dtype=float)
+        longitude_delta = (longitude_values - float(longitude) + 180.0) % 360.0 - 180.0
+        longitude_scale = math.cos(math.radians(float(latitude)))
+        distance_squared = (
+            (latitude_values - float(latitude)) ** 2
+            + (longitude_delta * longitude_scale) ** 2
+        )
+        if not np.isfinite(distance_squared).any():
+            raise ValueError("WRF XLAT/XLONG grid contains no finite coordinates.")
+
+        row, column = np.unravel_index(np.nanargmin(distance_squared), distance_squared.shape)
+        row_dimension, column_dimension = latitudes.dims
+        return variable.isel({row_dimension: int(row), column_dimension: int(column)})
+
+    latitude_name = next(
+        (name for name in ("latitude", "lat") if name in variable.coords or name in wind_dataset.coords),
+        None,
+    )
+    longitude_name = next(
+        (name for name in ("longitude", "lon") if name in variable.coords or name in wind_dataset.coords),
+        None,
+    )
+    if latitude_name and longitude_name:
+        return variable.sel(
+            {longitude_name: float(longitude), latitude_name: float(latitude)},
+            method="nearest",
+        )
+
+    raise ValueError(
+        f"Wind variable '{variable_name}' has neither WRF XLAT/XLONG nor rectilinear latitude/longitude coordinates."
+    )
+
+
 def forecast_summary_from_files(waves_path, currents_path, wind_path=None, route=None):
     try:
         import xarray as xr
@@ -796,8 +846,18 @@ def forecast_summary_from_files(waves_path, currents_path, wind_path=None, route
                 g_var = next((v for v in ["WSPD10MAX", "WIND_GUST", "gust", "10fg"] if v in wind_ds), None)
                 
                 if u_var and v_var:
-                    u_wind = wind_ds[u_var].sel(longitude=snapped_point["longitude"], latitude=snapped_point["latitude"], method="nearest")
-                    v_wind = wind_ds[v_var].sel(longitude=snapped_point["longitude"], latitude=snapped_point["latitude"], method="nearest")
+                    u_wind = select_wind_point(
+                        wind_ds,
+                        u_var,
+                        snapped_point["longitude"],
+                        snapped_point["latitude"],
+                    )
+                    v_wind = select_wind_point(
+                        wind_ds,
+                        v_var,
+                        snapped_point["longitude"],
+                        snapped_point["latitude"],
+                    )
                     
                     # Convert to knots (WRF is m/s, ECMWF is m/s)
                     u_vals = u_wind.values * MPS_TO_KNOTS
@@ -807,7 +867,12 @@ def forecast_summary_from_files(waves_path, currents_path, wind_path=None, route
                     wind_direction_points_by_time.append([float(current_direction_deg(u, v)) for u, v in zip(u_vals, v_vals)])
                     
                     if g_var:
-                        g_wind = wind_ds[g_var].sel(longitude=snapped_point["longitude"], latitude=snapped_point["latitude"], method="nearest")
+                        g_wind = select_wind_point(
+                            wind_ds,
+                            g_var,
+                            snapped_point["longitude"],
+                            snapped_point["latitude"],
+                        )
                         wind_gust_points_by_time.append([float(val * MPS_TO_KNOTS) for val in g_wind.values])
                     else:
                         # Estimate gust as 1.3x speed
