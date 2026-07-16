@@ -1424,101 +1424,162 @@ def ensure_forecast_files_fresh(target_date_str: str) -> None:
         logger.exception("Unhandled error in ensure_forecast_files_fresh: %s", e)
 
 
+def resolve_map_forecast_files(
+    store,
+    run_date: str,
+    run_id: str | None,
+    destination: Path,
+) -> tuple[Path, Path]:
+    """Resolve durable PredSea inputs for an on-demand route map.
+
+    Prefer the immutable PredSea run bundle. Provider-specific objects are
+    compatibility fallbacks for runs published before that contract existed.
+    """
+    destination.mkdir(parents=True, exist_ok=True)
+    waves_path = destination / "balearic_waves.nc"
+    currents_path = destination / "balearic_currents.nc"
+
+    if getattr(store, "storage_backend", None) == "gcs":
+        bucket = store.client.bucket(store.bucket_name)
+        run_prefix = store._base_prefix(run_date, run_id)
+        candidates = (
+            (
+                f"{run_prefix}/forecast_bundle/predsea_waves.nc",
+                f"{run_prefix}/forecast_bundle/predsea_ocean.nc",
+            ),
+            (
+                f"copernicus/bundles/{run_date}/balearic_waves.nc",
+                f"copernicus/bundles/{run_date}/balearic_currents.nc",
+            ),
+            ("copernicus/waves_latest.nc", "copernicus/currents_latest.nc"),
+        )
+        for waves_object, currents_object in candidates:
+            waves_blob = bucket.blob(waves_object)
+            currents_blob = bucket.blob(currents_object)
+            if not waves_blob.exists() or not currents_blob.exists():
+                continue
+            waves_blob.download_to_filename(str(waves_path))
+            currents_blob.download_to_filename(str(currents_path))
+            logger.info(
+                "Resolved map forecast inputs from gs://%s/%s and gs://%s/%s",
+                store.bucket_name,
+                waves_object,
+                store.bucket_name,
+                currents_object,
+            )
+            return waves_path, currents_path
+
+    import fetch_data
+
+    paths = fetch_data.resolve_forecast_output_paths(fetch_data.OUTPUT_DIR)
+    local_waves = Path(paths["waves_path"])
+    local_currents = Path(paths["currents_path"])
+    if local_waves.exists() and local_currents.exists():
+        return local_waves, local_currents
+    raise FileNotFoundError(
+        f"No durable PredSea forecast bundle is available for {run_date}"
+        + (f" run {run_id}" if run_id else "")
+        + "; the publication stage must upload forecast_bundle/ before maps can be generated."
+    )
+
+
 def generate_on_demand_map(route_id: str, run_date: str, run_id: str | None, store, target_date: str | None = None) -> bytes:
     import tempfile
     import xarray as xr
     import pandas as pd
     import route_analysis
     import map_generator
-    import fetch_data
     
     # 1. Load route config
     route = route_analysis.load_route(route_id)
     
-    # 2. Resolve waves and currents paths
-    if os.getenv("PREDSEA_AUTO_DOWNLOAD", "false").lower() == "true":
-        ensure_forecast_files_fresh(target_date or run_date)
-    paths = fetch_data.resolve_forecast_output_paths(fetch_data.OUTPUT_DIR)
-    waves_path = Path(paths["waves_path"])
-    currents_path = Path(paths["currents_path"])
-    
-    # 3. Slice NetCDF datasets for the target date
-    with xr.open_dataset(waves_path) as waves, xr.open_dataset(currents_path) as currents:
-        target_dt = pd.to_datetime(target_date or run_date).date()
+    # 2. Resolve run-scoped waves and currents from durable storage. The
+    # temporary directory lives for the full map-generation operation.
+    with tempfile.TemporaryDirectory(prefix="predsea-map-inputs-") as input_tmpdir:
+        waves_path, currents_path = resolve_map_forecast_files(
+            store,
+            run_date,
+            run_id,
+            Path(input_tmpdir),
+        )
+
+        # 3. Slice NetCDF datasets for the target date
+        with xr.open_dataset(waves_path) as waves, xr.open_dataset(currents_path) as currents:
+            target_dt = pd.to_datetime(target_date or run_date).date()
         
         # Check if target date exists in the datasets
-        waves_dates = pd.to_datetime(waves["time"].values).date
-        currents_dates = pd.to_datetime(currents["time"].values).date
+            waves_dates = pd.to_datetime(waves["time"].values).date
+            currents_dates = pd.to_datetime(currents["time"].values).date
         
-        waves_mask = waves_dates == target_dt
-        currents_mask = currents_dates == target_dt
+            waves_mask = waves_dates == target_dt
+            currents_mask = currents_dates == target_dt
         
-        if not waves_mask.any() or not currents_mask.any():
-            logger.warning(
-                "Requested date %s not found in forecast datasets. "
-                "Generating map using entire available forecast dataset.",
-                target_date or run_date
-            )
-            waves_sliced = waves
-            currents_sliced = currents
-        else:
-            waves_sliced = waves.sel(time=waves_mask)
-            currents_sliced = currents.sel(time=currents_mask)
+            if not waves_mask.any() or not currents_mask.any():
+                logger.warning(
+                    "Requested date %s not found in forecast datasets. "
+                    "Generating map using entire available forecast dataset.",
+                    target_date or run_date
+                )
+                waves_sliced = waves
+                currents_sliced = currents
+            else:
+                waves_sliced = waves.sel(time=waves_mask)
+                currents_sliced = currents.sel(time=currents_mask)
             
-        # 4. Save to temporary NetCDF files to ensure compat with unchanged map generator and route analysis
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmp_waves_path = Path(tmpdir) / "waves_subset.nc"
-            tmp_currents_path = Path(tmpdir) / "currents_subset.nc"
-            tmp_map_path = Path(tmpdir) / "route_decision_map.png"
+            # 4. Save to temporary NetCDF files for the existing map generator.
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmp_waves_path = Path(tmpdir) / "waves_subset.nc"
+                tmp_currents_path = Path(tmpdir) / "currents_subset.nc"
+                tmp_map_path = Path(tmpdir) / "route_decision_map.png"
             
-            waves_sliced.to_netcdf(tmp_waves_path)
-            currents_sliced.to_netcdf(tmp_currents_path)
+                waves_sliced.to_netcdf(tmp_waves_path)
+                currents_sliced.to_netcdf(tmp_currents_path)
             
             # 5. Build forecast summary from the sliced files
-            forecast = route_analysis.forecast_summary_from_files(
-                tmp_waves_path,
-                tmp_currents_path,
-                route=route,
-            )
+                forecast = route_analysis.forecast_summary_from_files(
+                    tmp_waves_path,
+                    tmp_currents_path,
+                    route=route,
+                )
             
             # 6. Build snapshot
-            observations = {}
-            try:
-                observations = store.load_observations(run_date, run_id)
-            except Exception:
+                observations = {}
                 try:
-                    latest_date = store.latest_date()
-                    latest_run = store.latest_run(latest_date)
-                    observations = store.load_observations(latest_date, latest_run)
+                    observations = store.load_observations(run_date, run_id)
                 except Exception:
-                    pass
+                    try:
+                        latest_date = store.latest_date()
+                        latest_run = store.latest_run(latest_date)
+                        observations = store.load_observations(latest_date, latest_run)
+                    except Exception:
+                        pass
             
-            snapshot = route_analysis.build_route_snapshot(
-                observations,
-                forecast,
-                route=route,
-                vessel_class="medium",
-            )
+                snapshot = route_analysis.build_route_snapshot(
+                    observations,
+                    forecast,
+                    route=route,
+                    vessel_class="medium",
+                )
             
             # 7. Generate route decision map using map_generator
-            map_generator.generate_route_decision_map(
-                waves_path=tmp_waves_path,
-                currents_path=tmp_currents_path,
-                route=route,
-                snapshot=snapshot,
-                output_path=tmp_map_path,
-            )
+                map_generator.generate_route_decision_map(
+                    waves_path=tmp_waves_path,
+                    currents_path=tmp_currents_path,
+                    route=route,
+                    snapshot=snapshot,
+                    output_path=tmp_map_path,
+                )
             
-            content = tmp_map_path.read_bytes()
+                content = tmp_map_path.read_bytes()
             
             # 8. Cache/Save the generated artifact to the store using target_date
-            cache_run_date = target_date or run_date
-            try:
-                save_artifact_to_store(store, route_id, "route_decision_map.png", cache_run_date, run_id, content)
-            except Exception as cache_err:
-                logger.warning("Failed to cache generated map to store: %s", cache_err)
+                cache_run_date = target_date or run_date
+                try:
+                    save_artifact_to_store(store, route_id, "route_decision_map.png", cache_run_date, run_id, content)
+                except Exception as cache_err:
+                    logger.warning("Failed to cache generated map to store: %s", cache_err)
                 
-            return content
+                return content
 
 
 def create_app(evidence_store=None, route_store=None):

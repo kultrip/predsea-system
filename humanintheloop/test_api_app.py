@@ -6,10 +6,63 @@ import pytest
 
 from fastapi.testclient import TestClient
 
-from api.app import create_app
+from api.app import create_app, resolve_map_forecast_files
 from api.evidence_store import EvidenceStore, GcsEvidenceStore
 import api.warnings_service as warnings_service
 import place_registry
+
+
+def test_resolve_map_forecast_files_prefers_predsea_run_bundle(tmp_path):
+    downloaded = []
+
+    class Blob:
+        def __init__(self, name):
+            self.name = name
+
+        def exists(self):
+            return self.name.startswith(
+                "predictions/2026-07-16/runs/run-123/forecast_bundle/"
+            )
+
+        def download_to_filename(self, destination):
+            Path(destination).write_bytes(self.name.encode())
+            downloaded.append(self.name)
+
+    class Bucket:
+        def blob(self, name):
+            return Blob(name)
+
+    class Client:
+        def bucket(self, name):
+            assert name == "staging-bucket"
+            return Bucket()
+
+    store = type(
+        "Store",
+        (),
+        {
+            "storage_backend": "gcs",
+            "bucket_name": "staging-bucket",
+            "client": Client(),
+            "_base_prefix": lambda self, run_date, run_id: (
+                f"predictions/{run_date}/runs/{run_id or 'run-123'}"
+            ),
+        },
+    )()
+
+    waves, currents = resolve_map_forecast_files(
+        store,
+        "2026-07-16",
+        "run-123",
+        tmp_path,
+    )
+
+    assert waves.exists()
+    assert currents.exists()
+    assert downloaded == [
+        "predictions/2026-07-16/runs/run-123/forecast_bundle/predsea_waves.nc",
+        "predictions/2026-07-16/runs/run-123/forecast_bundle/predsea_ocean.nc",
+    ]
 
 
 class FakeRouteStore:

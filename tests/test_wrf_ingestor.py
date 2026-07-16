@@ -198,3 +198,30 @@ def test_download_wrf_files_from_gcs_combines_all_hourly_outputs(monkeypatch, tm
         assert combined.sizes["Time"] == 3
         assert combined["U10"].values[:, 0, 0].tolist() == [2.0, 4.0, 6.0]
         assert "FULL_3D_STATE" not in combined
+
+
+def test_combine_deletes_each_native_hour_after_compaction(monkeypatch, tmp_path):
+    source_path = tmp_path / "native.nc"
+    xr.Dataset(
+        {
+            "U10": (("Time", "south_north", "west_east"), np.ones((1, 1, 1))),
+            "V10": (("Time", "south_north", "west_east"), np.zeros((1, 1, 1))),
+            "XLAT": (("Time", "south_north", "west_east"), np.array([[[39.0]]])),
+            "XLONG": (("Time", "south_north", "west_east"), np.array([[[2.0]]])),
+        }
+    ).to_netcdf(source_path)
+    observed_native_paths = []
+
+    class Blob:
+        name = "wrfout_d02_2026-07-16_00:00:00"
+
+        def download_to_filename(self, destination):
+            path = Path(destination)
+            path.write_bytes(source_path.read_bytes())
+            observed_native_paths.append(path)
+
+    output = tmp_path / "compact.nc"
+    assert wrf_forecast_ingestor.download_and_combine_wrf_domain([Blob()], output) == 1
+    assert output.exists()
+    assert observed_native_paths
+    assert all(not path.exists() for path in observed_native_paths)

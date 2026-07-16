@@ -204,17 +204,24 @@ def download_and_combine_wrf_domain(domain_blobs, local_path: Path) -> int:
         temporary_root = Path(temporary_directory)
         for index, blob in enumerate(sorted(domain_blobs, key=lambda item: item.name)):
             hourly_path = temporary_root / f"{index:04d}.nc"
-            blob.download_to_filename(str(hourly_path))
-            valid, reason = validate_model_output(hourly_path, "wrf")
-            if not valid:
-                raise ValueError(f"Invalid WRF hourly output '{blob.name}': {reason}")
-            with xr.open_dataset(hourly_path, decode_times=False) as dataset:
-                selected_variables = [
-                    variable for variable in WRF_PUBLICATION_VARIABLES if variable in dataset
-                ]
-                compact = dataset[selected_variables].load()
-                compact.attrs.update(dataset.attrs)
-                datasets.append(compact)
+            try:
+                blob.download_to_filename(str(hourly_path))
+                valid, reason = validate_model_output(hourly_path, "wrf")
+                if not valid:
+                    raise ValueError(f"Invalid WRF hourly output '{blob.name}': {reason}")
+                with xr.open_dataset(hourly_path, decode_times=False) as dataset:
+                    selected_variables = [
+                        variable for variable in WRF_PUBLICATION_VARIABLES if variable in dataset
+                    ]
+                    compact = dataset[selected_variables].load()
+                    compact.attrs.update(dataset.attrs)
+                    datasets.append(compact)
+            finally:
+                # Native WRF history files contain the complete 3-D state and
+                # can be gigabytes each. Retaining 25-121 downloads exhausts
+                # Cloud Run ephemeral storage even though the compact surface
+                # dataset is small.
+                hourly_path.unlink(missing_ok=True)
 
     if not datasets:
         raise ValueError("No valid WRF hourly outputs were available to combine.")

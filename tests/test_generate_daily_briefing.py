@@ -16,6 +16,43 @@ def load_runner():
     return module
 
 
+def test_write_predsea_forecast_bundle_owns_provider_inputs(tmp_path):
+    runner = load_runner()
+    waves = tmp_path / "waves.nc"
+    currents = tmp_path / "currents.nc"
+    atmosphere = tmp_path / "wrf.nc"
+    waves.write_bytes(b"waves")
+    currents.write_bytes(b"currents")
+    atmosphere.write_bytes(b"wrf")
+
+    manifest = runner.write_predsea_forecast_bundle(
+        tmp_path / "run",
+        "2026-07-16",
+        "run-123",
+        {
+            "id": "copernicus",
+            "forecast_source_status": "live",
+            "waves_path": waves,
+            "currents_path": currents,
+        },
+        {
+            "wind_result": {
+                "dataset_path": str(atmosphere),
+                "source": "predsea_wrf_d02",
+                "resolution_km": 3.0,
+            }
+        },
+    )
+
+    bundle = tmp_path / "run" / "forecast_bundle"
+    assert (bundle / "predsea_waves.nc").read_bytes() == b"waves"
+    assert (bundle / "predsea_ocean.nc").read_bytes() == b"currents"
+    assert (bundle / "predsea_atmosphere.nc").read_bytes() == b"wrf"
+    assert manifest["ownership"] == "PredSea"
+    assert manifest["lineage"]["marine_source"] == "copernicus"
+    assert manifest["lineage"]["atmosphere_source"] == "predsea_wrf_d02"
+
+
 def test_wrf_wind_result_is_json_serializable_and_independent():
     runner = load_runner()
     source_domains = [

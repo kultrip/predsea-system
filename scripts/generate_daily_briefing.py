@@ -3,6 +3,7 @@ import inspect
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import shutil
 import sys
@@ -463,6 +464,77 @@ def write_regional_evidence(run_dir, run_date, run_id, routes, forecast_sources=
     }
     (run_dir / "regional_evidence.json").write_text(json.dumps(regional_evidence, indent=2, default=str), encoding="utf-8")
     return regional_evidence
+
+
+def write_predsea_forecast_bundle(
+    run_dir,
+    run_date,
+    run_id,
+    preferred_source,
+    atmospheric_context,
+):
+    """Publish a stable PredSea-owned data contract for API consumers.
+
+    Upstream provider files remain traceable, but the API reads these
+    run-scoped PredSea objects rather than depending on a provider-specific
+    directory or another Cloud Run container's local filesystem.
+    """
+    bundle_dir = Path(run_dir) / "forecast_bundle"
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    components = {}
+
+    for source_key, bundle_name, variables in (
+        (
+            "waves_path",
+            "predsea_waves.nc",
+            ["wave_height", "wave_direction", "wave_period"],
+        ),
+        (
+            "currents_path",
+            "predsea_ocean.nc",
+            ["current_u", "current_v", "sea_temperature", "sea_level"],
+        ),
+    ):
+        source_path = resolve_humanintheloop_path(preferred_source.get(source_key))
+        if source_path is None or not source_path.exists():
+            continue
+        destination = bundle_dir / bundle_name
+        shutil.copy2(source_path, destination)
+        components[source_key] = {
+            "path": f"forecast_bundle/{bundle_name}",
+            "provider": preferred_source.get("id"),
+            "provider_status": preferred_source.get("forecast_source_status", "live"),
+            "variables": variables,
+        }
+
+    wind_result = atmospheric_context.get("wind_result", {})
+    wind_path = wind_result.get("dataset_path")
+    if wind_path and Path(wind_path).exists():
+        destination = bundle_dir / "predsea_atmosphere.nc"
+        shutil.copy2(wind_path, destination)
+        components["atmosphere"] = {
+            "path": "forecast_bundle/predsea_atmosphere.nc",
+            "provider": wind_result.get("source", "predsea_wrf"),
+            "resolution_km": wind_result.get("resolution_km"),
+            "variables": ["wind_u_10m", "wind_v_10m", "air_temperature", "pressure"],
+        }
+
+    manifest = {
+        "schema_version": "predsea.forecast_bundle.v1",
+        "run_date": run_date,
+        "run_id": run_id,
+        "ownership": "PredSea",
+        "components": components,
+        "lineage": {
+            "marine_source": preferred_source.get("id"),
+            "atmosphere_source": wind_result.get("source"),
+        },
+    }
+    (bundle_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, default=str),
+        encoding="utf-8",
+    )
+    return manifest
 
 
 def regional_evidence_manifest_entry(regional_evidence):
@@ -1206,6 +1278,13 @@ def generate_daily_briefings(
                 )
             sources.append(preferred_source)
         atmospheric_context = fetch_atmospheric_context(modules, run_dir)
+        predsea_forecast_bundle = write_predsea_forecast_bundle(
+            run_dir,
+            run_date,
+            run_id,
+            preferred_source,
+            atmospheric_context,
+        )
         forecast_source_entries = source_manifest_entries(modules, sources)
         source_inventory = forecast_source_entries + atmospheric_context.get("atmospheric_sources", [])
 
