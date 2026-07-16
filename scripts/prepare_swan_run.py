@@ -202,7 +202,7 @@ def prepare(
     end_text = _swan_time(end)
 
     commands = [
-        "PROJECT 'PredSea' 'Bal1km'",
+        "PROJECT 'PredSea' 'Bal1'",
         "MODE NONSTATIONARY TWODIMENSIONAL",
         "SET NAUTICAL",
         "COORDINATES SPHERICAL CCM",
@@ -241,7 +241,7 @@ def prepare(
             ),
             (
                 "BLOCK 'OUTPUT' NOHEADER 'swan_output.nc' "
-                f"HSIGN TPS DIR WIND DEPTH OUTPUT {start_text} 1 HR {end_text}"
+                f"HSIGN TPS DIR WIND DEPTH OUTPUT {start_text} 1 HR"
             ),
             f"COMPUTE NONSTATIONARY {start_text} 10 MIN {end_text}",
             "STOP",
