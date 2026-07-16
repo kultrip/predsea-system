@@ -32,6 +32,7 @@ from google.cloud import storage
 
 import place_registry
 import route_analysis
+from model_output_discovery import candidate_blobs, download_first_valid
 from bigquery_export import (
     build_normalized_rows,
     resolve_config,
@@ -108,20 +109,11 @@ def download_nemo_file_from_gcs(bucket_name: str, run_date: str, run_id: str, lo
         print(f"⚠️ No files found in '{prefix}'. Trying fallback prefix '{prefix_fallback}'...")
         blobs = list(bucket.list_blobs(prefix=prefix_fallback))
         
-    nc_blobs = [b for b in blobs if b.name.endswith((".nc", ".nc4"))]
-    nemo_blobs = [b for b in nc_blobs if "nemo" in b.name.lower() or "orca" in b.name.lower() or "med" in b.name.lower()]
-    
-    selected_blob = None
-    if nemo_blobs:
-        selected_blob = nemo_blobs[0]
-    elif nc_blobs:
-        # Use first non-WRF, non-SWAN file if possible
-        non_wrf_swan = [b for b in nc_blobs if "wrf" not in b.name.lower() and "swan" not in b.name.lower()]
-        selected_blob = non_wrf_swan[0] if non_wrf_swan else nc_blobs[0]
+    nemo_blobs = candidate_blobs(blobs, "nemo")
+    selected_blob = download_first_valid(nemo_blobs, "nemo", local_path)
         
     if selected_blob:
         print(f"📥 Downloading NEMO output: gs://{bucket_name}/{selected_blob.name} -> {local_path}")
-        selected_blob.download_to_filename(local_path)
         return True
         
     return False

@@ -123,7 +123,7 @@ def test_main_dry_run(mock_wrf_file):
     assert ret == 0
 
 
-def test_download_wrf_file_from_gcs_not_found(monkeypatch):
+def test_download_wrf_files_from_gcs_not_found(monkeypatch, tmp_path):
     class MockStorageBlob:
         def __init__(self, name):
             self.name = name
@@ -138,7 +138,7 @@ def test_download_wrf_file_from_gcs_not_found(monkeypatch):
 
     monkeypatch.setattr(wrf_forecast_ingestor.storage, "Client", MockStorageClient)
     
-    success = wrf_forecast_ingestor.download_wrf_file_from_gcs(
-        "bucket", "2026-06-24", "run-123", "local_file.nc"
+    downloaded = wrf_forecast_ingestor.download_wrf_files_from_gcs(
+        "bucket", "2026-06-24", "run-123", tmp_path
     )
-    assert success is False
+    assert downloaded == []

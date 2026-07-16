@@ -32,6 +32,7 @@ from google.cloud import storage
 
 import place_registry
 import route_analysis
+from model_output_discovery import candidate_blobs, download_first_valid
 from bigquery_export import (
     build_normalized_rows,
     resolve_config,
@@ -141,28 +142,25 @@ def download_wrf_files_from_gcs(bucket_name: str, run_date: str, run_id: str, lo
         print(f"⚠️ No files found in '{prefix}'. Trying fallback prefix '{prefix_fallback}'...")
         blobs = list(bucket.list_blobs(prefix=prefix_fallback))
         
-    nc_blobs = [b for b in blobs if b.name.endswith((".nc", ".nc4"))]
-    # Filter for domains d03 to d07 (high res nests)
-    # We also include d01/d02 as fallbacks if nests are missing
+    wrf_blobs = candidate_blobs(blobs, "wrf")
     domains = {}
-    for b in nc_blobs:
+    for b in wrf_blobs:
         # Extract domain from filename like wrfout_d03_2026-05-04_00:00:00 or wrf_d03.nc
         import re
         match = re.search(r"d0([1-7])", b.name)
         if match:
             dom_id = f"d0{match.group(1)}"
-            # Keep the first/most relevant one for this domain
-            if dom_id not in domains:
-                domains[dom_id] = b
+            domains.setdefault(dom_id, []).append(b)
 
     downloaded = []
     local_dir.mkdir(parents=True, exist_ok=True)
     
-    for dom_id, blob in domains.items():
+    for dom_id, domain_blobs in domains.items():
         local_path = local_dir / f"wrf_{dom_id}.nc"
-        print(f"📥 Downloading WRF {dom_id} output: gs://{bucket_name}/{blob.name} -> {local_path}")
-        blob.download_to_filename(str(local_path))
-        downloaded.append((dom_id, local_path))
+        selected = download_first_valid(domain_blobs, "wrf", local_path)
+        if selected:
+            print(f"📥 Validated WRF {dom_id} output: gs://{bucket_name}/{selected.name} -> {local_path}")
+            downloaded.append((dom_id, local_path))
         
     return downloaded
 

@@ -32,6 +32,7 @@ from google.cloud import storage
 
 import place_registry
 import route_analysis
+from model_output_discovery import candidate_blobs, download_first_valid
 from bigquery_export import (
     build_normalized_rows,
     resolve_config,
@@ -142,20 +143,11 @@ def download_croco_file_from_gcs(bucket_name: str, run_date: str, run_id: str, l
         print(f"⚠️ No files found in '{prefix}'. Trying fallback prefix '{prefix_fallback}'...")
         blobs = list(bucket.list_blobs(prefix=prefix_fallback))
         
-    nc_blobs = [b for b in blobs if b.name.endswith((".nc", ".nc4"))]
-    croco_blobs = [b for b in nc_blobs if "croco" in b.name or "roms" in b.name or "his" in b.name or "avg" in b.name]
-    
-    selected_blob = None
-    if croco_blobs:
-        selected_blob = croco_blobs[0]
-    elif nc_blobs:
-        # Use first non-WRF file if possible
-        non_wrf = [b for b in nc_blobs if "wrf" not in b.name]
-        selected_blob = non_wrf[0] if non_wrf else nc_blobs[0]
+    croco_blobs = candidate_blobs(blobs, "croco")
+    selected_blob = download_first_valid(croco_blobs, "croco", local_path)
         
     if selected_blob:
         print(f"📥 Downloading CROCO output: gs://{bucket_name}/{selected_blob.name} -> {local_path}")
-        selected_blob.download_to_filename(local_path)
         return True
         
     return False

@@ -890,8 +890,7 @@ def _fetch_wrf_wind_context(modules, run_dir):
             return None
             
         try:
-            import wrf_forecast_ingestor
-            # We use a custom search here since the ingestor might not expose a single-domain download easily
+            from model_output_discovery import candidate_blobs, download_first_valid
             from google.cloud import storage
             client = storage.Client()
             bucket = client.bucket(bucket_name)
@@ -901,16 +900,16 @@ def _fetch_wrf_wind_context(modules, run_dir):
                 prefix = f"predictions/{run_date}/"
                 blobs = list(bucket.list_blobs(prefix=prefix))
             
-            # Find the best match for this domain
-            target_blob = None
-            for b in blobs:
-                if b.name.endswith(".nc") and dom_id in b.name:
-                    target_blob = b
-                    break
-            
+            domain_candidates = [
+                blob for blob in candidate_blobs(blobs, "wrf") if dom_id in Path(blob.name).name
+            ]
+            target_blob = download_first_valid(domain_candidates, "wrf", local_path)
+
             if target_blob:
-                print(f"📥 Downloading WRF {dom_id} ({domains_meta[dom_id]['region']}): gs://{bucket_name}/{target_blob.name}")
-                target_blob.download_to_filename(str(local_path))
+                print(
+                    f"📥 Downloaded validated WRF {dom_id} ({domains_meta[dom_id]['region']}): "
+                    f"gs://{bucket_name}/{target_blob.name}"
+                )
                 return local_path
         except Exception as e:
             print(f"⚠️ Warning: Failed to download WRF {dom_id} from GCS: {e}")

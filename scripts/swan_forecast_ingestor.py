@@ -32,6 +32,7 @@ from google.cloud import storage
 
 import place_registry
 import route_analysis
+from model_output_discovery import candidate_blobs, download_first_valid
 from bigquery_export import (
     build_normalized_rows,
     resolve_config,
@@ -139,19 +140,11 @@ def download_swan_file_from_gcs(bucket_name: str, run_date: str, run_id: str, lo
         print(f"⚠️ No files found in '{prefix}'. Trying fallback prefix '{prefix_fallback}'...")
         blobs = list(bucket.list_blobs(prefix=prefix_fallback))
         
-    nc_blobs = [b for b in blobs if b.name.endswith((".nc", ".nc4"))]
-    swan_blobs = [b for b in nc_blobs if "swan" in b.name.lower() or "wave" in b.name.lower()]
-    
-    selected_blob = None
-    if swan_blobs:
-        selected_blob = swan_blobs[0]
-    elif nc_blobs:
-        # Use first wave file or anything containing 'swan'
-        selected_blob = nc_blobs[0]
+    swan_blobs = candidate_blobs(blobs, "swan")
+    selected_blob = download_first_valid(swan_blobs, "swan", local_path)
         
     if selected_blob:
         print(f"📥 Downloading SWAN output: gs://{bucket_name}/{selected_blob.name} -> {local_path}")
-        selected_blob.download_to_filename(local_path)
         return True
         
     return False

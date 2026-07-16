@@ -630,6 +630,7 @@ def main():
             f"--date={run_date}",
             f"--run-id={run_id}",
             "--skip-figures",
+            "--skip-maps",
             "--skip-bigquery",
             "--publication-phase=high_resolution",
             "--wrf-status=complete",
