@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import math
 import os
 import subprocess
 import sys
@@ -24,6 +25,17 @@ DEFAULT_FALLBACK_MACHINE_TYPES = (
     "n2-standard-32",
     "n2-standard-16",
 )
+DEFAULT_FORECAST_HOURS = int(os.environ.get("PREDSEA_FORECAST_HOURS", "24"))
+
+
+def forecast_resource_defaults(forecast_hours: int) -> tuple[float, str]:
+    """Return conservative VM timeout and disk defaults for an hourly WRF horizon."""
+    if forecast_hours <= 0:
+        raise ValueError("forecast_hours must be positive")
+    timeout_hours = max(4.0, (forecast_hours / 24.0) * 1.25)
+    disk_gb = max(200, 200 + max(0, forecast_hours - 24) * 3)
+    disk_gb = int(math.ceil(disk_gb / 50.0) * 50)
+    return round(timeout_hours, 2), f"{disk_gb}GB"
 
 
 def log_step(name: str):
@@ -309,8 +321,21 @@ def main():
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
     parser.add_argument("--dry-run", action="store_true", help="Perform dry-run for boundaries and simulation checks")
     parser.add_argument("--poll-interval", type=int, default=30, help="GCE status polling interval in seconds")
-    parser.add_argument("--timeout-hours", type=float, default=4.0, help="Maximum execution wait time for the GCE Spot VM")
-    parser.add_argument("--boot-disk-size", default="200GB", help="Boot disk size for GCE VM (e.g. 100GB)")
+    parser.add_argument(
+        "--forecast-hours",
+        type=int,
+        default=DEFAULT_FORECAST_HOURS,
+        help="WRF simulation horizon in hours; forcing coverage must be at least this long",
+    )
+    parser.add_argument(
+        "--timeout-hours",
+        type=float,
+        help="Maximum execution wait time for the GCE VM; derived from forecast horizon when omitted",
+    )
+    parser.add_argument(
+        "--boot-disk-size",
+        help="Boot disk size for GCE VM; derived from forecast horizon when omitted",
+    )
     parser.add_argument(
         "--preemption-retries",
         type=int,
@@ -319,6 +344,11 @@ def main():
     )
 
     args = parser.parse_args()
+    if args.forecast_hours <= 0 or args.forecast_hours > 120:
+        parser.error("--forecast-hours must be between 1 and 120")
+    default_timeout_hours, default_boot_disk_size = forecast_resource_defaults(args.forecast_hours)
+    args.timeout_hours = args.timeout_hours or default_timeout_hours
+    args.boot_disk_size = args.boot_disk_size or default_boot_disk_size
 
     # Propagate GOOGLE_CLOUD_PROJECT to sub-processes if explicitly provided
     if args.project:
@@ -350,6 +380,10 @@ def main():
     print(f"💻 Spot VM Instance Name: {instance_name}")
     print(f"📦 GCS Bucket: {args.gcs_bucket}")
     print(f"📌 Zone: {args.zone} | Machine: {args.machine_type}")
+    print(
+        f"🕒 Forecast: {args.forecast_hours}h hourly | "
+        f"VM timeout: {args.timeout_hours}h | disk: {args.boot_disk_size}"
+    )
     print(f"🐳 Image Tag: {args.image_tag}")
     print(f"⚠️ Dry-run: {args.dry_run}")
     print("=================================================================")
@@ -389,6 +423,7 @@ def main():
         ecmwf_cmd = [
             python_bin, str(SCRIPTS_DIR / "fetch_ecmwf_forcing.py"),
             f"--run-date={run_date}",
+            f"--lead-hours={args.forecast_hours}",
             f"--gcs-bucket={args.gcs_bucket}",
             "--skip-if-exists",
         ]
@@ -415,8 +450,8 @@ def main():
         # Step 1.5: Pre-generate namelist.wps and upload to forcing directory
         log_step("1.5. Pre-generating namelist.wps for simulation run")
         run_date_dt = datetime.datetime.strptime(run_date, "%Y-%m-%d")
-        end_date_dt = run_date_dt + datetime.timedelta(days=1)
-        end_date_str = end_date_dt.strftime("%Y-%m-%d")
+        end_date_dt = run_date_dt + datetime.timedelta(hours=args.forecast_hours)
+        end_date_str = end_date_dt.strftime("%Y-%m-%d_%H:%M:%S")
 
         # Create tmp directory in the workspace if it doesn't exist
         tmp_dir = PROJECT_ROOT / "tmp"
@@ -427,7 +462,7 @@ def main():
             python_bin, str(PROJECT_ROOT / "simulation" / "setup_domain.py"),
             f"--output={namelist_local_path}",
             f"--start-date={run_date}_00:00:00",
-            f"--end-date={end_date_str}_00:00:00",
+            f"--end-date={end_date_str}",
         ]
 
         setup_rc = run_subprocess(setup_domain_cmd, dry_run=args.dry_run)
@@ -488,6 +523,7 @@ def main():
                     f"--gcs-bucket={args.gcs_bucket}",
                     f"--image-tag={args.image_tag}",
                     f"--boot-disk-size={args.boot_disk_size}",
+                    f"--forecast-hours={args.forecast_hours}",
                 ]
                 if args.project:
                     orchestrator_cmd.append(f"--project={args.project}")

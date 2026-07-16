@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from scripts import daily_orchestrator as orchestrator
 
 
@@ -99,6 +101,27 @@ def test_default_machine_fallbacks_use_high_quota_n2_capacity():
         "n2-standard-32",
         "n2-standard-16",
     )
+
+
+def test_forecast_resource_defaults_scale_for_five_days():
+    timeout_hours, boot_disk_size = orchestrator.forecast_resource_defaults(120)
+
+    assert timeout_hours == 6.25
+    assert boot_disk_size == "500GB"
+
+
+def test_forecast_resource_defaults_preserve_operational_day_floor():
+    timeout_hours, boot_disk_size = orchestrator.forecast_resource_defaults(24)
+
+    assert timeout_hours == 4.0
+    assert boot_disk_size == "200GB"
+
+
+def test_forecast_horizon_is_forwarded_to_forcing_and_vm(monkeypatch, tmp_path):
+    source = Path(orchestrator.__file__).read_text()
+
+    assert 'f"--lead-hours={args.forecast_hours}"' in source
+    assert 'f"--forecast-hours={args.forecast_hours}"' in source
 
 
 def test_was_instance_preempted_reads_compute_audit_event(monkeypatch):

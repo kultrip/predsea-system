@@ -47,6 +47,20 @@ PROVIDER = "predsea_wrf"
 # The default network for backward compatibility, 
 # but we now dynamically set this per domain (WRF_d01, WRF_d03, etc.)
 DEFAULT_NETWORK = "WRF_d03"
+WRF_PUBLICATION_VARIABLES = (
+    "U10",
+    "V10",
+    "T2",
+    "PSFC",
+    "SWDOWN",
+    "WSPD10MAX",
+    "WIND_GUST",
+    "gust",
+    "XLAT",
+    "XLONG",
+    "XTIME",
+    "Times",
+)
 
 
 def load_bias_corrections(project_id: str | None, dataset: str, provider: str) -> dict[tuple[str, str, int, int], float]:
@@ -179,7 +193,12 @@ def download_wrf_files_from_gcs(bucket_name: str, run_date: str, run_id: str, lo
 
 
 def download_and_combine_wrf_domain(domain_blobs, local_path: Path) -> int:
-    """Download chronological single-hour WRF files and create one complete Time series."""
+    """Create a compact chronological WRF series for publication and ingestion.
+
+    Native WRF outputs contain the full 3-D atmospheric state. Loading 25-121
+    complete files in a Cloud Run publication job can exhaust memory even
+    though the API only needs near-surface meteorology and grid coordinates.
+    """
     datasets = []
     with tempfile.TemporaryDirectory(prefix="predsea-wrf-hours-") as temporary_directory:
         temporary_root = Path(temporary_directory)
@@ -190,7 +209,12 @@ def download_and_combine_wrf_domain(domain_blobs, local_path: Path) -> int:
             if not valid:
                 raise ValueError(f"Invalid WRF hourly output '{blob.name}': {reason}")
             with xr.open_dataset(hourly_path, decode_times=False) as dataset:
-                datasets.append(dataset.load())
+                selected_variables = [
+                    variable for variable in WRF_PUBLICATION_VARIABLES if variable in dataset
+                ]
+                compact = dataset[selected_variables].load()
+                compact.attrs.update(dataset.attrs)
+                datasets.append(compact)
 
     if not datasets:
         raise ValueError("No valid WRF hourly outputs were available to combine.")

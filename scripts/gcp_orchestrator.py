@@ -79,6 +79,7 @@ def launch_vm(args):
     print(f"🪧 Startup Script: {startup_script}")
     print(f"📦 Bucket: {gcs_bucket}")
     print(f"🏷️ Run Date: {run_date} | Run ID: {run_id}")
+    print(f"🕒 Forecast horizon: {args.forecast_hours} hours")
     print("=============================================")
 
     # Construct the gcloud compute instances create command
@@ -94,7 +95,7 @@ def launch_vm(args):
         f"--provisioning-model={provisioning_model}",
         "--scopes=https://www.googleapis.com/auth/cloud-platform",
         f"--metadata-from-file=startup-script={startup_script}",
-        f"--metadata=gcs-bucket={gcs_bucket},run-date={run_date},run-id={run_id},image-tag={image_tag},execution-mode={args.execution_mode}",
+        f"--metadata=gcs-bucket={gcs_bucket},run-date={run_date},run-id={run_id},image-tag={image_tag},execution-mode={args.execution_mode},forecast-hours={args.forecast_hours}",
         "--quiet"
     ]
     if provisioning_model == "SPOT":
@@ -141,6 +142,12 @@ def main():
     parser.add_argument("--execution-mode", choices=["container", "bare-metal"], default="container", help="Model execution mode on GCE VM")
     parser.add_argument("--boot-disk-size", default="200GB", help="Boot disk size for GCE VM (e.g. 100GB)")
     parser.add_argument(
+        "--forecast-hours",
+        type=int,
+        default=24,
+        help="WRF forecast horizon in hours",
+    )
+    parser.add_argument(
         "--provisioning-model",
         choices=["SPOT", "STANDARD"],
         default="SPOT",
@@ -148,6 +155,8 @@ def main():
     )
 
     args = parser.parse_args()
+    if args.forecast_hours <= 0 or args.forecast_hours > 120:
+        parser.error("--forecast-hours must be between 1 and 120")
     launch_vm(args)
 
 

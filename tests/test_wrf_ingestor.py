@@ -154,6 +154,10 @@ def test_download_wrf_files_from_gcs_combines_all_hourly_outputs(monkeypatch, tm
                 "V10": (("Time", "south_north", "west_east"), np.array([[[0.0]]])),
                 "XLAT": (("Time", "south_north", "west_east"), np.array([[[39.0]]])),
                 "XLONG": (("Time", "south_north", "west_east"), np.array([[[2.0]]])),
+                "FULL_3D_STATE": (
+                    ("Time", "bottom_top", "south_north", "west_east"),
+                    np.array([[[[999.0]]]]),
+                ),
             },
             coords={"Time": [hour]},
         ).to_netcdf(source_path)
@@ -193,3 +197,4 @@ def test_download_wrf_files_from_gcs_combines_all_hourly_outputs(monkeypatch, tm
     with xr.open_dataset(downloaded[0][1], decode_times=False) as combined:
         assert combined.sizes["Time"] == 3
         assert combined["U10"].values[:, 0, 0].tolist() == [2.0, 4.0, 6.0]
+        assert "FULL_3D_STATE" not in combined

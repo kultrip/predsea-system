@@ -13,6 +13,8 @@ RUN_DATE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/
 RUN_ID=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/run-id || date -u +"%Y-%m-%dT%H%MZ")
 IMAGE_TAG=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/image-tag || echo "latest")
 EXECUTION_MODE=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/execution-mode || echo "container")
+FORECAST_HOURS=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/forecast-hours || echo "24")
+END_DATE=$(date -u -d "${RUN_DATE} 00:00:00 UTC + ${FORECAST_HOURS} hours" +%Y-%m-%d_%H:%M:%S)
 
 DOCKER_IMAGE="europe-west1-docker.pkg.dev/${PROJECT_ID}/predsea-simulations/wrf:${IMAGE_TAG}"
 
@@ -65,6 +67,7 @@ echo "Project ID: ${PROJECT_ID}"
 echo "Instance: ${NAME} in zone ${ZONE}"
 echo "Execution Mode: ${EXECUTION_MODE}"
 echo "Target Date/Run: ${RUN_DATE} / ${RUN_ID}"
+echo "Forecast horizon: ${FORECAST_HOURS}h (${RUN_DATE}_00:00:00 through ${END_DATE})"
 echo "============================================="
 
 # 2. Setup folders
@@ -170,7 +173,7 @@ if [ "${EXECUTION_MODE}" = "container" ]; then
     -v /workspace/WPS_GEOG:/opt/WPS_GEOG \
     ${DOCKER_MOUNT_OPTS:-} \
     -e START_DATE="${RUN_DATE}_00:00:00" \
-    -e END_DATE="$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)_00:00:00" \
+    -e END_DATE="${END_DATE}" \
     -e MPI_PROCS="${PREDSEA_WRF_MPI_PROCS:-64}" \
     -e MPI_NPROC_X="${PREDSEA_WRF_MPI_NPROC_X:-8}" \
     -e MPI_NPROC_Y="${PREDSEA_WRF_MPI_NPROC_Y:-8}" \
@@ -217,10 +220,9 @@ else
   # Patch namelist.input dates
   if [ -f /workspace/outputs/wrf/namelist.input ] && [ -f /workspace/bin/setup_domain.py ]; then
     echo "Patching namelist.input dates..."
-    NEXT_DATE=$(date -d "${RUN_DATE} + 1 day" +%Y-%m-%d)
     python3 /workspace/bin/setup_domain.py \
       --start-date "${RUN_DATE}_00:00:00" \
-      --end-date "${NEXT_DATE}_00:00:00" \
+      --end-date "${END_DATE}" \
       --patch-namelist-input /workspace/outputs/wrf/namelist.input || true
   fi
 
@@ -263,6 +265,16 @@ else
     mpirun -np "${SWAN_CORES}" /workspace/bin/swan.exe 2>&1 | tee swan.log || true
   fi
 fi
+
+# A valid hourly run includes both hour zero and the final forecast hour.
+EXPECTED_WRF_TIMESTAMPS=$((FORECAST_HOURS + 1))
+WRF_DOMAIN="d02"
+WRF_OUTPUT_COUNT=$(find /workspace/outputs -type f -name "wrfout_${WRF_DOMAIN}_*" | wc -l)
+if [ "${WRF_OUTPUT_COUNT}" -ne "${EXPECTED_WRF_TIMESTAMPS}" ]; then
+  echo "❌ WRF output coverage is incomplete: expected ${EXPECTED_WRF_TIMESTAMPS} hourly ${WRF_DOMAIN} files for ${FORECAST_HOURS}h, found ${WRF_OUTPUT_COUNT}."
+  exit 99
+fi
+echo "✅ WRF output coverage complete: ${WRF_OUTPUT_COUNT}/${EXPECTED_WRF_TIMESTAMPS} hourly ${WRF_DOMAIN} files."
 
 # 4. Sync the results directly to GCS predictions bucket
 echo "Syncing model outputs directly to GCS..."
