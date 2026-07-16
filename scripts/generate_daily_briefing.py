@@ -509,14 +509,33 @@ def write_predsea_forecast_bundle(
 
     wind_result = atmospheric_context.get("wind_result", {})
     wind_path = wind_result.get("dataset_path")
+    atmosphere_metadata = {}
     if wind_path and Path(wind_path).exists():
         destination = bundle_dir / "predsea_atmosphere.nc"
         shutil.copy2(wind_path, destination)
+        try:
+            import xarray as xr
+
+            with xr.open_dataset(wind_path, decode_times=False) as atmosphere:
+                time_count = int(atmosphere.sizes.get("Time", atmosphere.sizes.get("time", 0)))
+                atmosphere_metadata["timestamp_count"] = time_count
+                if time_count:
+                    atmosphere_metadata["horizon_hours"] = max(0, time_count - 1)
+                if "XLAT" in atmosphere and "XLONG" in atmosphere:
+                    atmosphere_metadata["coverage"] = {
+                        "min_latitude": float(atmosphere["XLAT"].min()),
+                        "max_latitude": float(atmosphere["XLAT"].max()),
+                        "min_longitude": float(atmosphere["XLONG"].min()),
+                        "max_longitude": float(atmosphere["XLONG"].max()),
+                    }
+        except Exception as error:
+            atmosphere_metadata["inspection_error"] = str(error)
         components["atmosphere"] = {
             "path": "forecast_bundle/predsea_atmosphere.nc",
             "provider": wind_result.get("source", "predsea_wrf"),
             "resolution_km": wind_result.get("resolution_km"),
             "variables": ["wind_u_10m", "wind_v_10m", "air_temperature", "pressure"],
+            **atmosphere_metadata,
         }
 
     manifest = {
@@ -524,6 +543,12 @@ def write_predsea_forecast_bundle(
         "run_date": run_date,
         "run_id": run_id,
         "ownership": "PredSea",
+        "product": {
+            "region_id": os.environ.get("PREDSEA_REGION_ID", DEFAULT_REGION_ID),
+            "atmosphere_resolution_km": wind_result.get("resolution_km"),
+            "forecast_hours": atmosphere_metadata.get("horizon_hours"),
+            "temporal_resolution_hours": 1,
+        },
         "components": components,
         "lineage": {
             "marine_source": preferred_source.get("id"),

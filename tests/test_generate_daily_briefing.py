@@ -17,13 +17,23 @@ def load_runner():
 
 
 def test_write_predsea_forecast_bundle_owns_provider_inputs(tmp_path):
+    import numpy as np
+    import xarray as xr
+
     runner = load_runner()
     waves = tmp_path / "waves.nc"
     currents = tmp_path / "currents.nc"
     atmosphere = tmp_path / "wrf.nc"
     waves.write_bytes(b"waves")
     currents.write_bytes(b"currents")
-    atmosphere.write_bytes(b"wrf")
+    xr.Dataset(
+        {
+            "U10": (("Time", "south_north", "west_east"), np.ones((3, 1, 1))),
+            "V10": (("Time", "south_north", "west_east"), np.zeros((3, 1, 1))),
+            "XLAT": (("Time", "south_north", "west_east"), np.array([[[39.0]], [[39.0]], [[39.0]]])),
+            "XLONG": (("Time", "south_north", "west_east"), np.array([[[2.0]], [[2.0]], [[2.0]]])),
+        }
+    ).to_netcdf(atmosphere)
 
     manifest = runner.write_predsea_forecast_bundle(
         tmp_path / "run",
@@ -47,10 +57,12 @@ def test_write_predsea_forecast_bundle_owns_provider_inputs(tmp_path):
     bundle = tmp_path / "run" / "forecast_bundle"
     assert (bundle / "predsea_waves.nc").read_bytes() == b"waves"
     assert (bundle / "predsea_ocean.nc").read_bytes() == b"currents"
-    assert (bundle / "predsea_atmosphere.nc").read_bytes() == b"wrf"
+    assert (bundle / "predsea_atmosphere.nc").exists()
     assert manifest["ownership"] == "PredSea"
     assert manifest["lineage"]["marine_source"] == "copernicus"
     assert manifest["lineage"]["atmosphere_source"] == "predsea_wrf_d02"
+    assert manifest["product"]["forecast_hours"] == 2
+    assert manifest["components"]["atmosphere"]["timestamp_count"] == 3
 
 
 def test_wrf_wind_result_is_json_serializable_and_independent():
