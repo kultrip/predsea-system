@@ -455,11 +455,11 @@ inside each immutable staging run prefix.
 
 ## 12. Native output validator
 
-An initial validator is present but uncommitted:
+The authoritative, region-driven validator is:
 
 ```text
-scripts/validate_native_marine_output.py
-tests/test_validate_native_marine_output.py
+scripts/validate_marine_output.py
+tests/test_validate_marine_output.py
 ```
 
 It checks:
@@ -472,12 +472,14 @@ It checks:
 - model-specific physical ranges;
 - machine-readable pass/fail report.
 
-Before committing:
+Before publication:
 
-1. install/use the repository test environment;
-2. run the new tests and the existing SWAN/CROCO ingestor tests;
-3. inspect real native outputs and adjust variable aliases only from evidence;
-4. keep the validator strict enough to prevent silent partial publication.
+1. run its tests and the SWAN/CROCO ingestor tests;
+2. inspect real native outputs and adjust variable aliases only from evidence;
+3. keep the validator strict enough to prevent silent partial publication.
+
+Do not introduce a second generic marine-output validator. One authoritative
+region profile and validation implementation prevents rule drift.
 
 The validator must fail closed. A process exit code or file existence is not
 proof of a scientifically usable forecast.
@@ -874,4 +876,3 @@ Then follow the mandatory gcloud skill and inspect the two active builds.
 
 After cloud state is known, continue from Phase 1 above. Do not restart already
 successful expensive stages merely to simplify the workflow.
-
