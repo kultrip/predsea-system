@@ -25,7 +25,10 @@ RUN make config \
     && sed -i 's|echo "localhost" > machinefile|echo "localhost slots=$npmpi" > machinefile|' swanrun \
     && test -x swan.exe
 
-FROM python:3.11-slim
+# Keep the runtime ABI aligned with the Bookworm builder. The floating
+# python:3.11-slim tag currently resolves to Trixie, where the Bookworm NetCDF
+# runtime package names below no longer exist.
+FROM python:3.11-slim-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
