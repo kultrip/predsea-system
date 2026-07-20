@@ -14,6 +14,8 @@ humanintheloop/artifacts/
 humanintheloop/mvp_data/
 predictions/
 simulation/inputs/
+!assets/static_grids/balearic_bathymetry_swan.nc
+!assets/static_grids/balearic_bathymetry_nemo.nc
 outputs/
 scratch/
 .emergent/
@@ -26,6 +28,13 @@ processing/fixtures/wrfout_*_tuned_domain.nc
 .env.*
 *.env
 credentials.json
+credentials.sh
 *.pem
 *.key
 .credentials
+
+# Generated native-model binaries and local benchmark artifacts
+simulation/marine/croco/*.exe
+test_bin*
+*.o
+*.mod

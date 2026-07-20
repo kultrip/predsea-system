@@ -42,13 +42,34 @@ def _first_existing(dataset: xr.Dataset, names: Iterable[str]) -> str | None:
 def _finite_stats(data: xr.DataArray) -> dict[str, float | int]:
     values = np.asarray(data.values)
     finite = np.isfinite(values)
-    count = int(values.size)
-    finite_count = int(finite.sum())
-    result: dict[str, float | int] = {
-        "count": count,
-        "finite_count": finite_count,
-        "finite_fraction": finite_count / count if count else 0.0,
-    }
+
+    # Check if this is a 3D time-series spatial field: (time, latitude, longitude)
+    if values.ndim == 3:
+        # Identify land mask: coordinates that are ALWAYS NaN across all times
+        is_nan = ~finite
+        land_mask = np.all(is_nan, axis=0)
+        wet_mask = ~land_mask
+
+        # Calculate size of the wet ocean domain across all timesteps
+        ntime = values.shape[0]
+        wet_count = int(np.sum(wet_mask) * ntime)
+        finite_count = int(finite.sum())
+
+        result: dict[str, float | int] = {
+            "count": wet_count,
+            "finite_count": finite_count,
+            "finite_fraction": finite_count / wet_count if wet_count else 1.0,
+        }
+    else:
+        # Fallback for 1D/2D coords or metrics without time dim
+        count = int(values.size)
+        finite_count = int(finite.sum())
+        result = {
+            "count": count,
+            "finite_count": finite_count,
+            "finite_fraction": finite_count / count if count else 0.0,
+        }
+
     if finite_count:
         finite_values = values[finite]
         result.update(

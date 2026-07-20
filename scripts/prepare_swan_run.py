@@ -175,9 +175,14 @@ def prepare(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with xr.open_dataset(bathymetry_path) as bathy_dataset:
-        depth = bathy_dataset["depth"].transpose("latitude", "longitude").load()
-        longitude = np.asarray(bathy_dataset["longitude"].values)
-        latitude = np.asarray(bathy_dataset["latitude"].values)
+        # Slice bathymetry to region's bbox to support multi-region scaling and prevent memory exhaustion
+        sliced_bathy = bathy_dataset.sel(
+            longitude=slice(bbox["longitude_min"], bbox["longitude_max"]),
+            latitude=slice(bbox["latitude_min"], bbox["latitude_max"])
+        )
+        depth = sliced_bathy["depth"].transpose("latitude", "longitude").load()
+        longitude = np.asarray(sliced_bathy["longitude"].values)
+        latitude = np.asarray(sliced_bathy["latitude"].values)
     if not np.all(np.diff(longitude) > 0) or not np.all(np.diff(latitude) > 0):
         raise ValueError("bathymetry coordinates must increase west-east and south-north")
     bottom = np.asarray(depth.values, dtype=np.float64)
@@ -226,8 +231,9 @@ def prepare(
     start_text = _swan_time(start)
     end_text = _swan_time(end)
 
+    project_code = region["region_id"][:4].title()
     commands = [
-        "PROJECT 'PredSea' 'Bal1'",
+        f"PROJECT 'PredSea' '{project_code}'",
         "MODE NONSTATIONARY TWODIMENSIONAL",
         "SET NAUTICAL",
         "COORDINATES SPHERICAL CCM",
@@ -278,7 +284,7 @@ def prepare(
             "STOP",
         ]
     )
-    command_path = output_dir / "predsea_balearic.swn"
+    command_path = output_dir / f"predsea_{region['region_id']}.swn"
     command_path.write_text("\n".join(commands) + "\n")
 
     inputs = {

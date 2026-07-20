@@ -1,0 +1,5 @@
+cfgrib>=0.9.15
+eccodes>=2.36.0
+netCDF4>=1.7
+numpy>=2.0
+xarray>=2025.1

@@ -5,8 +5,9 @@
 .venv*/
 **/.venv/
 humanintheloop/.venv/
-simulation/inputs/
 simulation/inputs/**
+!simulation/inputs/balearic_bathymetry_swan.nc
+!simulation/inputs/balearic_bathymetry_nemo.nc
 processing/fixtures/**
 __pycache__/
 .pytest_cache/
@@ -39,3 +40,13 @@ credentials.json
 *.pem
 *.key
 .credentials
+tmp/
+tmp/**
+**/*.nc
+!assets/static_grids/balearic_bathymetry_swan.nc
+!assets/static_grids/balearic_bathymetry_nemo.nc
+**/*.vts
+**/*.vtu
+**/*.vtp
+**/*.vti
+**/*.pvd
