@@ -192,11 +192,55 @@ def main():
             ],
             stage="validated ECMWF SWAN wind cache upload",
         )
-    wave_boundary = require_one(
-        inputs_dir,
-        ("cmems_swan_boundary.nc", "cmems_wave_boundary.nc"),
-        "CMEMS SWAN boundary NetCDF",
-    )
+    try:
+        wave_boundary = require_one(
+            inputs_dir,
+            ("cmems_swan_boundary.nc", "cmems_wave_boundary.nc"),
+            "CMEMS SWAN boundary NetCDF",
+        )
+    except FileNotFoundError:
+        print(
+            "📡 Validated CMEMS SWAN boundary is absent; fetching the exact "
+            "regional hourly product directly in GCP."
+        )
+        run_checked(
+            [
+                "python3",
+                "/app/scripts/fetch_native_marine_forcing.py",
+                "--run-date",
+                run_date,
+                "--forecast-hours",
+                str(args.forecast_hours),
+                "--region",
+                str(
+                    project_root
+                    / "simulation"
+                    / "marine"
+                    / "regions"
+                    / f"{args.region}.json"
+                ),
+                "--output-dir",
+                str(inputs_dir),
+                "--models",
+                "swan",
+                "--overwrite",
+            ],
+            stage="CMEMS SWAN boundary acquisition and validation",
+        )
+        wave_boundary = require_one(
+            inputs_dir,
+            ("cmems_swan_boundary.nc",),
+            "fresh CMEMS SWAN boundary NetCDF",
+        )
+        run_checked(
+            [
+                "gsutil",
+                "cp",
+                str(wave_boundary),
+                f"{cmems_gcs_src}{wave_boundary.name}",
+            ],
+            stage="validated CMEMS SWAN boundary cache upload",
+        )
     print(f"🔍 Resolved forcing: wind={wind_grib.name}, waves={wave_boundary.name}")
 
     # 2. Run SWAN simulation flow

@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 def get_gcp_project() -> str:
     # 1. Try environment variables
@@ -120,6 +122,8 @@ def build_batch_job_json(
     run_date: str,
     run_id: str,
     timeout_seconds: int,
+    copernicus_username: str | None = None,
+    copernicus_password: str | None = None,
 ) -> dict:
     runnable_cmd = (
         f"python3 /app/scripts/run_marine_simulation.py "
@@ -130,6 +134,19 @@ def build_batch_job_json(
         f"--gcs-bucket {gcs_bucket}"
     )
 
+    environment_variables = {
+        "GOOGLE_CLOUD_PROJECT": project_id,
+        "PREDSEA_RUN_DATE": run_date,
+        "PREDSEA_RUN_ID": run_id,
+    }
+    if copernicus_username and copernicus_password:
+        environment_variables.update(
+            {
+                "COPERNICUS_USERNAME": copernicus_username,
+                "COPERNICUS_PASSWORD": copernicus_password,
+            }
+        )
+
     job_def = {
         "taskGroups": [
           {
@@ -137,11 +154,7 @@ def build_batch_job_json(
               "runnables": [
                 {
                   "environment": {
-                    "variables": {
-                      "GOOGLE_CLOUD_PROJECT": project_id,
-                      "PREDSEA_RUN_DATE": run_date,
-                      "PREDSEA_RUN_ID": run_id,
-                    }
+                    "variables": environment_variables
                   },
                   "container": {
                     "imageUri": image_uri,
@@ -186,6 +199,7 @@ def default_timeout_seconds(forecast_hours: int) -> int:
 
 
 def main():
+    load_dotenv(Path(__file__).resolve().parents[1] / "humanintheloop" / ".env")
     parser = argparse.ArgumentParser(description="Submit parallel marine simulation jobs to GCP Batch.")
     parser.add_argument("--region", required=True, help="Region ID (e.g., balearic_1km, alboran_1km)")
     parser.add_argument("--model", choices=["swan", "croco", "both"], default="both", help="Model to run")
@@ -249,13 +263,23 @@ def main():
         run_date=run_date,
         run_id=run_id,
         timeout_seconds=timeout_seconds,
+        copernicus_username=os.getenv("COPERNICUS_USERNAME")
+        or os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
+        copernicus_password=os.getenv("COPERNICUS_PASSWORD")
+        or os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD"),
     )
 
     job_json_str = json.dumps(job_manifest, indent=2)
 
     if args.dry_run:
+        redacted_manifest = json.loads(job_json_str)
+        variables = redacted_manifest["taskGroups"][0]["taskSpec"]["runnables"][0][
+            "environment"
+        ]["variables"]
+        if "COPERNICUS_PASSWORD" in variables:
+            variables["COPERNICUS_PASSWORD"] = "<redacted>"
         print("\n================= GCP BATCH JOB MANIFEST (DRY RUN) =================")
-        print(job_json_str)
+        print(json.dumps(redacted_manifest, indent=2))
         print("====================================================================")
         return
 
