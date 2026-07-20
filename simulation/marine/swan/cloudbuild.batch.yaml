@@ -16,7 +16,8 @@ steps:
         test -x /usr/local/bin/swan.exe &&
         test -x /usr/bin/python3 &&
         CLOUDSDK_PYTHON=/usr/bin/python3 gsutil version -l &&
-        python3 -c 'import cfgrib, netCDF4, numpy, xarray' &&
+        python3 -c 'import cfgrib, ecmwf.opendata, netCDF4, numpy, xarray' &&
+        python3 /app/scripts/fetch_swan_wind.py --help &&
         python3 /app/scripts/run_marine_simulation.py --help
 images:
   - ${_IMAGE}

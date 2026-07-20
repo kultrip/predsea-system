@@ -64,6 +64,6 @@ COPY assets/static_grids/balearic_bathymetry_swan.nc \
 
 RUN test -x /usr/local/bin/swan.exe \
     && test -x /usr/bin/python3 \
-    && python3 -c "import cfgrib, netCDF4, numpy, xarray"
+    && python3 -c "import cfgrib, ecmwf.opendata, netCDF4, numpy, xarray"
 
 ENTRYPOINT ["python3", "/app/scripts/run_marine_simulation.py"]

@@ -16,6 +16,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    from scripts.fetch_swan_wind import fetch_wind, validate_wind
+except ModuleNotFoundError:  # Direct execution from the scripts directory.
+    from fetch_swan_wind import fetch_wind, validate_wind
+
 
 def log_step(name: str):
     print("\n" + "=" * 60)
@@ -141,10 +146,14 @@ def main():
     cmems_gcs_src = f"gs://{args.gcs_bucket}/forcing/cmems/{run_date}/"
 
     print(f"📥 Syncing ECMWF forcing from {ecmwf_gcs_src}...")
-    run_checked(
-        ["gsutil", "-m", "rsync", "-r", ecmwf_gcs_src, str(inputs_dir)],
-        stage="ECMWF forcing download",
+    ecmwf_sync_rc = run_subprocess(
+        ["gsutil", "-m", "rsync", "-r", ecmwf_gcs_src, str(inputs_dir)]
     )
+    if ecmwf_sync_rc != 0:
+        print(
+            "⚠️ Cached ECMWF forcing is unavailable; the runner will fetch "
+            "the minimal SWAN wind product directly."
+        )
 
     print(f"📥 Syncing CMEMS forcing from {cmems_gcs_src}...")
     run_checked(
@@ -152,11 +161,37 @@ def main():
         stage="CMEMS forcing download",
     )
 
-    wind_grib = require_one(
-        inputs_dir,
-        (f"ecmwf_sfc_{run_date}_*Z.grib2", "ecmwf_sfc.grib2"),
-        "ECMWF surface-wind GRIB",
-    )
+    wind_candidates = sorted(inputs_dir.glob(f"ecmwf_sfc_{run_date}_*Z.grib2"))
+    wind_candidates.extend(inputs_dir.glob("ecmwf_sfc.grib2"))
+    wind_grib = inputs_dir / f"ecmwf_swan_wind_{run_date}_00Z.grib2"
+    wind_error: Exception | None = None
+    for candidate in dict.fromkeys(path.resolve() for path in wind_candidates):
+        try:
+            report = validate_wind(candidate, run_date, args.forecast_hours)
+            print(f"✅ Cached ECMWF SWAN wind passed payload/time validation: {report}")
+            wind_grib = candidate
+            break
+        except Exception as exc:
+            wind_error = exc
+            print(f"⚠️ Rejecting cached ECMWF wind {candidate.name}: {exc}")
+    else:
+        print(
+            "📡 No cached wind passed validation; fetching a clean 10u/10v "
+            "forecast directly from ECMWF Open Data in GCP."
+        )
+        if wind_error:
+            print(f"   Last cached-wind validation error: {wind_error}")
+        report = fetch_wind(run_date, args.forecast_hours, wind_grib)
+        print(f"✅ Fresh ECMWF SWAN wind passed payload/time validation: {report}")
+        run_checked(
+            [
+                "gsutil",
+                "cp",
+                str(wind_grib),
+                f"{ecmwf_gcs_src}{wind_grib.name}",
+            ],
+            stage="validated ECMWF SWAN wind cache upload",
+        )
     wave_boundary = require_one(
         inputs_dir,
         ("cmems_swan_boundary.nc", "cmems_wave_boundary.nc"),
