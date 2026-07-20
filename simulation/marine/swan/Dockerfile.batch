@@ -30,11 +30,15 @@ RUN make config \
 # runtime package names below no longer exist.
 FROM python:3.11-slim-bookworm
 
+# Google Cloud Batch injects CLOUDSDK_PYTHON=/usr/bin/python3. The official
+# Python slim image installs it under /usr/local/bin, so expose the path
+# expected by Batch and by gsutil.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates curl libeccodes-tools libgfortran5 libnetcdf19 \
         libnetcdff7 openmpi-bin \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/local/bin/python3 /usr/bin/python3
 
 RUN curl -sSL \
       https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz \
@@ -59,6 +63,7 @@ COPY assets/static_grids/balearic_bathymetry_swan.nc \
      /app/simulation/inputs/balearic_bathymetry_swan.nc
 
 RUN test -x /usr/local/bin/swan.exe \
+    && test -x /usr/bin/python3 \
     && python3 -c "import cfgrib, netCDF4, numpy, xarray"
 
 ENTRYPOINT ["python3", "/app/scripts/run_marine_simulation.py"]
