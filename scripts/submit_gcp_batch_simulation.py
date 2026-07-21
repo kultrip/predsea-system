@@ -297,6 +297,7 @@ def main():
         f"--location={args.location}",
         f"--config={manifest_tmp_path}",
         f"--project={project}",
+        "--format=value(name)",
         "--quiet"
     ]
 
