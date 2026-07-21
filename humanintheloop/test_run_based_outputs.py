@@ -298,6 +298,30 @@ def test_publish_latest_copernicus_files_resolves_relative_paths_from_humaninthe
     assert result["waves_path"].startswith("gs://") or result["waves_path"].endswith("balearic_waves.nc")
 
 
+def test_publish_latest_copernicus_files_skips_hybrid_predsea_source(monkeypatch):
+    generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
+    uploads = []
+    monkeypatch.setattr(
+        generator,
+        "upload_file_to_gcs",
+        lambda local_path, gcs_uri: uploads.append((str(local_path), gcs_uri)),
+    )
+
+    result = generator.publish_latest_copernicus_files(
+        {
+            "id": "predsea_swan",
+            "wave_provider": "predsea_swan",
+            "current_provider": "copernicus",
+            "waves_path": "/tmp/predsea_waves.nc",
+            "currents_path": "/tmp/predsea_ocean.nc",
+        },
+        run_date="2026-07-20",
+    )
+
+    assert result == {}
+    assert uploads == []
+
+
 def test_daily_generator_atmospheric_context_is_disabled_by_default(monkeypatch):
     generator = load_script_module(Path(__file__).resolve().parents[1] / "scripts" / "generate_daily_briefing.py")
     monkeypatch.delenv("PREDSEA_ENABLE_ATMOSPHERIC_INGESTION", raising=False)

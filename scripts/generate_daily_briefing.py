@@ -220,6 +220,14 @@ def copernicus_bundle_prefix(run_date):
 
 
 def publish_latest_copernicus_files(source, run_date=None):
+    if source.get("id", "copernicus") != "copernicus":
+        print(
+            "Skipping Copernicus compatibility publication for hybrid forecast "
+            f"source {source.get('id')}; the canonical PredSea bundle retains "
+            "per-component lineage.",
+            flush=True,
+        )
+        return {}
     published = {}
     uploads = {
         "waves_path": COPERNICUS_LATEST_WAVES_GCS_URI,

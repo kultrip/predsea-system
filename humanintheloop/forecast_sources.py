@@ -19,6 +19,7 @@ SOCIB_SOURCE = {
 SOURCE_TIMEOUT_SECONDS = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "1800"))
 SOURCE_ATTEMPTS = int(os.getenv("PREDSEA_SOURCE_ATTEMPTS", "1"))
 NATIVE_SWAN_GCS_URI_ENV = "PREDSEA_NATIVE_SWAN_GCS_URI"
+NATIVE_CURRENT_GCS_URI_ENV = "PREDSEA_NATIVE_CURRENT_GCS_URI"
 NATIVE_SWAN_EXPECTED_HOURS_ENV = "PREDSEA_NATIVE_SWAN_FORECAST_HOURS"
 
 
@@ -177,11 +178,68 @@ def adapt_native_swan_for_publication(source_path, destination_path, expected_ho
     }
 
 
+def adapt_current_fallback_for_publication(source_path, destination_path, required_times):
+    """Subset a fallback current product to the exact native-wave timeline."""
+    destination_path = Path(destination_path)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    required_times = np.asarray(required_times).astype("datetime64[ns]")
+    with xr.open_dataset(source_path) as source:
+        time_name = _first_existing(source, ("time", "Time", "time_counter"))
+        latitude_name = _first_existing(source, ("latitude", "lat", "nav_lat"))
+        longitude_name = _first_existing(source, ("longitude", "lon", "nav_lon"))
+        u_name = _first_existing(source, ("uo", "current_u", "u"))
+        v_name = _first_existing(source, ("vo", "current_v", "v"))
+        missing = [
+            label
+            for label, value in (
+                ("time", time_name),
+                ("latitude", latitude_name),
+                ("longitude", longitude_name),
+                ("eastward current", u_name),
+                ("northward current", v_name),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError("current fallback is missing " + ", ".join(missing))
+        available_times = np.asarray(source[time_name].values).astype("datetime64[ns]")
+        missing_times = required_times[~np.isin(required_times, available_times)]
+        if missing_times.size:
+            rendered = ", ".join(str(value) for value in missing_times[:3])
+            raise ValueError(f"current fallback does not cover native SWAN time(s): {rendered}")
+
+        selected = source.sel({time_name: required_times}).load()
+        for label, variable_name in (("eastward current", u_name), ("northward current", v_name)):
+            values = np.asarray(selected[variable_name].values)
+            finite = values[np.isfinite(values)]
+            if not finite.size:
+                raise ValueError(f"current fallback {label} contains no finite values")
+            if float(np.abs(finite).max()) > 15.0:
+                raise ValueError(f"current fallback {label} exceeds 15 m/s")
+        rename = {}
+        if time_name != "time":
+            rename[time_name] = "time"
+        if latitude_name != "latitude":
+            rename[latitude_name] = "latitude"
+        if longitude_name != "longitude":
+            rename[longitude_name] = "longitude"
+        if rename:
+            selected = selected.rename(rename)
+        selected.attrs.update(
+            provider="copernicus",
+            role="current_fallback_until_native_croco_is_validated",
+            publication_schema="predsea.route_ocean.v1",
+        )
+        selected.to_netcdf(destination_path)
+    return {"timestamp_count": int(required_times.size), "temporal_resolution_hours": 1}
+
+
 def fetch_native_swan_source(sources, output_dir, dry_run=False, forecast_run_date=None):
     """Resolve one immutable native SWAN artifact and pair it with fallback currents."""
     uri = os.getenv(NATIVE_SWAN_GCS_URI_ENV, "").strip()
     if not uri:
         return None
+    pinned_current_uri = os.getenv(NATIVE_CURRENT_GCS_URI_ENV, "").strip()
     currents_source = next(
         (source for source in sources if source.get("available") and source.get("currents_path")),
         None,
@@ -193,14 +251,17 @@ def fetch_native_swan_source(sources, output_dir, dry_run=False, forecast_run_da
         "forecast_source_status": "staging_native",
         "forecast_run_date": forecast_run_date,
         "wave_provider": "predsea_swan",
-        "current_provider": currents_source.get("id") if currents_source else None,
+        "current_provider": "copernicus"
+        if pinned_current_uri
+        else (currents_source.get("id") if currents_source else None),
         "metadata": {
             "native_wave_gcs_uri": uri,
+            "current_fallback_gcs_uri": pinned_current_uri or None,
             "wave_model": "SWAN 41.51",
             "current_role": "fallback_until_native_croco_is_validated",
         },
     }
-    if currents_source is None:
+    if currents_source is None and not pinned_current_uri:
         result["error"] = "native SWAN publication requires an available current fallback"
         return result
     if dry_run:
@@ -214,6 +275,8 @@ def fetch_native_swan_source(sources, output_dir, dry_run=False, forecast_run_da
         native_dir = Path(output_dir) / "predsea_swan"
         raw_path = native_dir / "native_swan_raw.nc"
         publication_path = native_dir / "predsea_waves.nc"
+        current_raw_path = native_dir / "current_fallback_raw.nc"
+        current_publication_path = native_dir / "predsea_ocean_fallback.nc"
         native_dir.mkdir(parents=True, exist_ok=True)
         blob = storage.Client().bucket(bucket_name).blob(object_name)
         if not blob.exists():
@@ -223,20 +286,43 @@ def fetch_native_swan_source(sources, output_dir, dry_run=False, forecast_run_da
         validation = adapt_native_swan_for_publication(
             raw_path, publication_path, expected_hours=expected_hours
         )
+        if pinned_current_uri:
+            current_bucket, current_object = _parse_gcs_uri(pinned_current_uri)
+            current_blob = storage.Client().bucket(current_bucket).blob(current_object)
+            if not current_blob.exists():
+                raise FileNotFoundError(
+                    f"immutable current fallback artifact does not exist: {pinned_current_uri}"
+                )
+            current_blob.download_to_filename(str(current_raw_path))
+            with xr.open_dataset(publication_path) as waves:
+                current_validation = adapt_current_fallback_for_publication(
+                    current_raw_path,
+                    current_publication_path,
+                    waves["time"].values,
+                )
+            current_path = current_publication_path
+            current_source_id = "copernicus"
+            current_source_status = "pinned_immutable_fallback"
+        else:
+            current_validation = None
+            current_path = Path(currents_source["currents_path"])
+            current_source_id = currents_source.get("id")
+            current_source_status = currents_source.get("forecast_source_status")
         result.update(
             available=True,
             waves_path=publication_path,
-            currents_path=Path(currents_source["currents_path"]),
+            currents_path=current_path,
         )
         result["metadata"].update(
             validation=validation,
-            current_source_id=currents_source.get("id"),
-            current_source_status=currents_source.get("forecast_source_status"),
+            current_validation=current_validation,
+            current_source_id=current_source_id,
+            current_source_status=current_source_status,
         )
         print(
             f"Native SWAN source ready: {uri} "
             f"({validation['timestamp_count']} hourly timestamps); "
-            f"currents={currents_source.get('id')}",
+            f"currents={current_source_id}",
             flush=True,
         )
     except Exception as error:
@@ -246,6 +332,8 @@ def fetch_native_swan_source(sources, output_dir, dry_run=False, forecast_run_da
 
 def configured_source_ids():
     if os.getenv("PREDSEA_BYPASS_COPERNICUS") == "1":
+        return []
+    if os.getenv(NATIVE_SWAN_GCS_URI_ENV) and os.getenv(NATIVE_CURRENT_GCS_URI_ENV):
         return []
     return ["copernicus"]
 
