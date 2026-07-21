@@ -4,6 +4,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
+import xarray as xr
+
 
 COPERNICUS_SOURCE = {
     "id": "copernicus",
@@ -15,6 +18,8 @@ SOCIB_SOURCE = {
 }
 SOURCE_TIMEOUT_SECONDS = int(os.getenv("PREDSEA_SOURCE_TIMEOUT_SECONDS", "1800"))
 SOURCE_ATTEMPTS = int(os.getenv("PREDSEA_SOURCE_ATTEMPTS", "1"))
+NATIVE_SWAN_GCS_URI_ENV = "PREDSEA_NATIVE_SWAN_GCS_URI"
+NATIVE_SWAN_EXPECTED_HOURS_ENV = "PREDSEA_NATIVE_SWAN_FORECAST_HOURS"
 
 
 def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False, forecast_run_date=None):
@@ -49,8 +54,194 @@ def fetch_available_forecasts(fetch_data, output_dir=None, dry_run=False, foreca
         else:
             print(f"Forecast source unavailable: {source_id} ({source.get('error')})", flush=True)
         sources.append(source)
-    mark_preferred_source(sources)
+    native_source = fetch_native_swan_source(
+        sources,
+        output_dir,
+        dry_run=dry_run,
+        forecast_run_date=forecast_run_date,
+    )
+    if native_source is not None:
+        sources.append(native_source)
+    mark_preferred_source(
+        sources,
+        preferred_source_id="predsea_swan"
+        if native_source and native_source.get("available")
+        else "copernicus",
+    )
     return sources
+
+
+def _parse_gcs_uri(uri):
+    if not uri.startswith("gs://") or "/" not in uri[5:]:
+        raise ValueError(f"{NATIVE_SWAN_GCS_URI_ENV} must be a complete gs://bucket/object URI")
+    return uri[5:].split("/", 1)
+
+
+def _first_existing(dataset, names):
+    return next((name for name in names if name in dataset.variables), None)
+
+
+def adapt_native_swan_for_publication(source_path, destination_path, expected_hours=24):
+    """Validate native SWAN output and write the stable route/API wave schema."""
+    expected_timestamps = int(expected_hours) + 1
+    destination_path = Path(destination_path)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with xr.open_dataset(source_path) as source:
+        time_name = _first_existing(source, ("time", "Time"))
+        latitude_name = _first_existing(source, ("latitude", "lat"))
+        longitude_name = _first_existing(source, ("longitude", "lon"))
+        height_name = _first_existing(
+            source, ("significant_wave_height", "VHM0", "hs", "hsign", "swh")
+        )
+        direction_name = _first_existing(
+            source, ("mean_wave_direction", "VMDR", "dir", "mwd", "wave_direction")
+        )
+        period_name = _first_existing(
+            source, ("peak_wave_period", "VTPK", "tp", "tps", "RTpeak")
+        )
+        missing = [
+            label
+            for label, value in (
+                ("time", time_name),
+                ("latitude", latitude_name),
+                ("longitude", longitude_name),
+                ("significant wave height", height_name),
+                ("mean wave direction", direction_name),
+                ("peak wave period", period_name),
+            )
+            if value is None
+        ]
+        if missing:
+            raise ValueError("native SWAN output is missing " + ", ".join(missing))
+
+        timestamp_count = int(source[time_name].size)
+        if timestamp_count != expected_timestamps:
+            raise ValueError(
+                f"native SWAN output has {timestamp_count} timestamps; expected {expected_timestamps}"
+            )
+        decoded_times = np.asarray(source[time_name].values).astype("datetime64[s]")
+        if decoded_times.size > 1:
+            deltas = np.diff(decoded_times).astype("timedelta64[s]").astype(np.int64)
+            if not np.all(deltas == 3600):
+                raise ValueError("native SWAN output timestamps are not exactly hourly")
+
+        for label, variable_name, lower, upper in (
+            ("wave height", height_name, 0.0, 30.0),
+            ("wave direction", direction_name, 0.0, 360.0),
+            ("wave period", period_name, 0.0, 40.0),
+        ):
+            values = np.asarray(source[variable_name].values)
+            finite = values[np.isfinite(values)]
+            if not finite.size:
+                raise ValueError(f"native SWAN {label} contains no finite values")
+            if float(finite.min()) < lower or float(finite.max()) > upper:
+                raise ValueError(
+                    f"native SWAN {label} range [{finite.min()}, {finite.max()}] "
+                    f"exceeds [{lower}, {upper}]"
+                )
+
+        publication = xr.Dataset(
+            data_vars={
+                "VHM0": source[height_name].copy(),
+                "VMDR": source[direction_name].copy(),
+                "VTPK": source[period_name].copy(),
+            },
+            coords={
+                "time": source[time_name].copy(),
+                "latitude": source[latitude_name].copy(),
+                "longitude": source[longitude_name].copy(),
+            },
+            attrs={
+                **source.attrs,
+                "title": "PredSea native SWAN wave forecast",
+                "provider": "predsea_swan",
+                "native_model": "SWAN",
+                "publication_schema": "predsea.route_wave.v1",
+            },
+        )
+        publication["VHM0"].attrs.update(units="m")
+        publication["VMDR"].attrs.update(units="degree")
+        publication["VTPK"].attrs.update(units="s")
+        publication.to_netcdf(destination_path)
+
+    return {
+        "timestamp_count": timestamp_count,
+        "forecast_hours": int(expected_hours),
+        "temporal_resolution_hours": 1,
+        "native_variables": {
+            "wave_height": height_name,
+            "wave_direction": direction_name,
+            "wave_period": period_name,
+        },
+    }
+
+
+def fetch_native_swan_source(sources, output_dir, dry_run=False, forecast_run_date=None):
+    """Resolve one immutable native SWAN artifact and pair it with fallback currents."""
+    uri = os.getenv(NATIVE_SWAN_GCS_URI_ENV, "").strip()
+    if not uri:
+        return None
+    currents_source = next(
+        (source for source in sources if source.get("available") and source.get("currents_path")),
+        None,
+    )
+    result = {
+        "id": "predsea_swan",
+        "label": "PredSea native SWAN 1 km waves with Copernicus current fallback",
+        "available": False,
+        "forecast_source_status": "staging_native",
+        "forecast_run_date": forecast_run_date,
+        "wave_provider": "predsea_swan",
+        "current_provider": currents_source.get("id") if currents_source else None,
+        "metadata": {
+            "native_wave_gcs_uri": uri,
+            "wave_model": "SWAN 41.51",
+            "current_role": "fallback_until_native_croco_is_validated",
+        },
+    }
+    if currents_source is None:
+        result["error"] = "native SWAN publication requires an available current fallback"
+        return result
+    if dry_run:
+        result["error"] = "dry-run does not download the configured native SWAN artifact"
+        return result
+
+    try:
+        from google.cloud import storage
+
+        bucket_name, object_name = _parse_gcs_uri(uri)
+        native_dir = Path(output_dir) / "predsea_swan"
+        raw_path = native_dir / "native_swan_raw.nc"
+        publication_path = native_dir / "predsea_waves.nc"
+        native_dir.mkdir(parents=True, exist_ok=True)
+        blob = storage.Client().bucket(bucket_name).blob(object_name)
+        if not blob.exists():
+            raise FileNotFoundError(f"immutable native SWAN artifact does not exist: {uri}")
+        blob.download_to_filename(str(raw_path))
+        expected_hours = int(os.getenv(NATIVE_SWAN_EXPECTED_HOURS_ENV, "24"))
+        validation = adapt_native_swan_for_publication(
+            raw_path, publication_path, expected_hours=expected_hours
+        )
+        result.update(
+            available=True,
+            waves_path=publication_path,
+            currents_path=Path(currents_source["currents_path"]),
+        )
+        result["metadata"].update(
+            validation=validation,
+            current_source_id=currents_source.get("id"),
+            current_source_status=currents_source.get("forecast_source_status"),
+        )
+        print(
+            f"Native SWAN source ready: {uri} "
+            f"({validation['timestamp_count']} hourly timestamps); "
+            f"currents={currents_source.get('id')}",
+            flush=True,
+        )
+    except Exception as error:
+        result["error"] = str(error)
+    return result
 
 
 def configured_source_ids():
@@ -224,6 +415,10 @@ def source_manifest_entry(source):
         entry["error"] = source["error"]
     if source.get("metadata"):
         entry["metadata"] = source["metadata"]
+    if source.get("wave_provider"):
+        entry["wave_provider"] = source["wave_provider"]
+    if source.get("current_provider"):
+        entry["current_provider"] = source["current_provider"]
     if source.get("waves_path"):
         entry["waves_path"] = str(source["waves_path"])
     if source.get("currents_path"):

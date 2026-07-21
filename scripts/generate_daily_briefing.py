@@ -226,6 +226,15 @@ def publish_latest_copernicus_files(source, run_date=None):
         "currents_path": COPERNICUS_LATEST_CURRENTS_GCS_URI,
     }
     for key, gcs_uri in uploads.items():
+        provider_key = "wave_provider" if key == "waves_path" else "current_provider"
+        component_provider = source.get(provider_key) or source.get("id", "copernicus")
+        if component_provider != "copernicus":
+            print(
+                f"Skipping Copernicus compatibility upload for {key}; "
+                f"component provider is {component_provider}.",
+                flush=True,
+            )
+            continue
         local_path = resolve_humanintheloop_path(source.get(key))
         if local_path is None:
             continue
@@ -242,7 +251,7 @@ def publish_latest_copernicus_files(source, run_date=None):
             )
             published[key] = str(local_path)
     bundle_prefix = copernicus_bundle_prefix(run_date or source.get("forecast_run_date"))
-    if bundle_prefix:
+    if bundle_prefix and source.get("id", "copernicus") == "copernicus":
         bundle_manifest = {
             "id": source.get("id", "copernicus"),
             "label": source.get("label", "Copernicus Marine Mediterranean forecast"),
@@ -502,7 +511,10 @@ def write_predsea_forecast_bundle(
         shutil.copy2(source_path, destination)
         components[source_key] = {
             "path": f"forecast_bundle/{bundle_name}",
-            "provider": preferred_source.get("id"),
+            "provider": preferred_source.get(
+                "wave_provider" if source_key == "waves_path" else "current_provider",
+                preferred_source.get("id"),
+            ),
             "provider_status": preferred_source.get("forecast_source_status", "live"),
             "variables": variables,
         }
@@ -552,6 +564,8 @@ def write_predsea_forecast_bundle(
         "components": components,
         "lineage": {
             "marine_source": preferred_source.get("id"),
+            "wave_source": preferred_source.get("wave_provider", preferred_source.get("id")),
+            "ocean_source": preferred_source.get("current_provider", preferred_source.get("id")),
             "atmosphere_source": wind_result.get("source"),
         },
     }

@@ -60,9 +60,39 @@ def test_write_predsea_forecast_bundle_owns_provider_inputs(tmp_path):
     assert (bundle / "predsea_atmosphere.nc").exists()
     assert manifest["ownership"] == "PredSea"
     assert manifest["lineage"]["marine_source"] == "copernicus"
+    assert manifest["lineage"]["wave_source"] == "copernicus"
+    assert manifest["lineage"]["ocean_source"] == "copernicus"
     assert manifest["lineage"]["atmosphere_source"] == "predsea_wrf_d02"
     assert manifest["product"]["forecast_hours"] == 2
     assert manifest["components"]["atmosphere"]["timestamp_count"] == 3
+
+
+def test_write_predsea_forecast_bundle_records_hybrid_component_lineage(tmp_path):
+    runner = load_runner()
+    waves = tmp_path / "native_swan.nc"
+    currents = tmp_path / "fallback_currents.nc"
+    waves.write_bytes(b"native waves")
+    currents.write_bytes(b"fallback currents")
+
+    manifest = runner.write_predsea_forecast_bundle(
+        tmp_path / "run",
+        "2026-07-20",
+        "native-run",
+        {
+            "id": "predsea_swan",
+            "wave_provider": "predsea_swan",
+            "current_provider": "copernicus",
+            "forecast_source_status": "staging_native",
+            "waves_path": waves,
+            "currents_path": currents,
+        },
+        {"wind_result": {}},
+    )
+
+    assert manifest["components"]["waves_path"]["provider"] == "predsea_swan"
+    assert manifest["components"]["currents_path"]["provider"] == "copernicus"
+    assert manifest["lineage"]["wave_source"] == "predsea_swan"
+    assert manifest["lineage"]["ocean_source"] == "copernicus"
 
 
 def test_wrf_wind_result_is_json_serializable_and_independent():
