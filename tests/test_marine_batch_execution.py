@@ -54,3 +54,28 @@ def test_batch_manifest_carries_immutable_run_identity_and_timeout():
     assert task["maxRunDuration"] == "28800s"
     assert runnable["container"]["imageUri"] == image
     assert runnable["environment"]["variables"]["PREDSEA_RUN_ID"] == "run-123"
+
+
+def test_batch_manifest_exposes_copernicus_service_environment_names():
+    manifest = build_batch_job_json(
+        project_id="predsea-api",
+        region_id="balearic_1km",
+        model_type="swan",
+        forecast_hours=24,
+        gcs_bucket="predsea-daily-outputs-test",
+        machine_type="c2d-highcpu-4",
+        cpu_milli=4000,
+        memory_mib=8192,
+        mpi_ranks=2,
+        image_uri="example.invalid/swan@sha256:" + "a" * 64,
+        run_date="2026-07-20",
+        run_id="run-credentials",
+        timeout_seconds=14400,
+        copernicus_username="user",
+        copernicus_password="password",
+    )
+    variables = manifest["taskGroups"][0]["taskSpec"]["runnables"][0][
+        "environment"
+    ]["variables"]
+    assert variables["COPERNICUSMARINE_SERVICE_USERNAME"] == "user"
+    assert variables["COPERNICUSMARINE_SERVICE_PASSWORD"] == "password"

@@ -144,6 +144,10 @@ def build_batch_job_json(
             {
                 "COPERNICUS_USERNAME": copernicus_username,
                 "COPERNICUS_PASSWORD": copernicus_password,
+                # copernicusmarine reads these service-specific names when
+                # running non-interactively in GCP Batch.
+                "COPERNICUSMARINE_SERVICE_USERNAME": copernicus_username,
+                "COPERNICUSMARINE_SERVICE_PASSWORD": copernicus_password,
             }
         )
 
@@ -276,8 +280,12 @@ def main():
         variables = redacted_manifest["taskGroups"][0]["taskSpec"]["runnables"][0][
             "environment"
         ]["variables"]
-        if "COPERNICUS_PASSWORD" in variables:
-            variables["COPERNICUS_PASSWORD"] = "<redacted>"
+        for secret_name in (
+            "COPERNICUS_PASSWORD",
+            "COPERNICUSMARINE_SERVICE_PASSWORD",
+        ):
+            if secret_name in variables:
+                variables[secret_name] = "<redacted>"
         print("\n================= GCP BATCH JOB MANIFEST (DRY RUN) =================")
         print(json.dumps(redacted_manifest, indent=2))
         print("====================================================================")
