@@ -150,6 +150,13 @@ def _open_wind(
             f"ECMWF wind coverage {u.time.values[0]}..{u.time.values[-1]} "
             f"does not match {start}..{end}"
         )
+    hourly_times = np.arange(
+        start, end + np.timedelta64(1, "h"), np.timedelta64(1, "h")
+    )
+    u = u.interp(time=hourly_times)
+    v = v.interp(time=hourly_times)
+    if not np.isfinite(u.values).all() or not np.isfinite(v.values).all():
+        raise ValueError("Hourly ECMWF wind interpolation produced non-finite values")
     return u, v
 
 

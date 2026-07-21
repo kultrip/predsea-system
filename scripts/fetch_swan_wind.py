@@ -11,17 +11,24 @@ import xarray as xr
 from ecmwf.opendata import Client
 
 
+def source_steps(forecast_hours: int) -> list[int]:
+    """Return forecast steps actually published by ECMWF Open Data."""
+    steps = list(range(0, forecast_hours + 1, 3))
+    if steps[-1] != forecast_hours:
+        steps.append(forecast_hours)
+    return steps
+
+
 def expected_times(run_date: str, forecast_hours: int) -> np.ndarray:
     start = np.datetime64(f"{run_date}T00:00:00", "ns")
-    return np.arange(
-        start,
-        start + np.timedelta64(forecast_hours + 1, "h"),
-        np.timedelta64(1, "h"),
-    ).astype("datetime64[ns]")
+    return np.asarray(
+        [start + np.timedelta64(step, "h") for step in source_steps(forecast_hours)],
+        dtype="datetime64[ns]",
+    )
 
 
 def validate_wind(path: Path, run_date: str, forecast_hours: int) -> dict:
-    """Decode both wind components and require exact hourly coverage."""
+    """Decode both components and require exact published-step coverage."""
     expected = expected_times(run_date, forecast_hours)
     report: dict[str, object] = {"path": str(path), "expected_times": len(expected)}
     for short_name, variable in (("10u", "u10"), ("10v", "v10")):
@@ -41,7 +48,7 @@ def validate_wind(path: Path, run_date: str, forecast_hours: int) -> dict:
             )
             if not np.array_equal(observed, expected):
                 raise ValueError(
-                    f"{short_name} coverage does not match the exact hourly window: "
+                    f"{short_name} coverage does not match the exact ECMWF source window: "
                     f"observed {observed[0] if observed.size else 'empty'}.."
                     f"{observed[-1] if observed.size else 'empty'} "
                     f"({observed.size} times), expected {expected[0]}..{expected[-1]} "
@@ -74,7 +81,10 @@ def fetch_wind(run_date: str, forecast_hours: int, target: Path) -> dict:
             type="fc",
             levtype="sfc",
             param=["10u", "10v"],
-            step=list(range(forecast_hours + 1)),
+            # ECMWF Open Data IFS publishes these surface forecast fields at
+            # three-hour steps. SWAN preparation interpolates them to the
+            # operational hourly timeline after this source-level validation.
+            step=source_steps(forecast_hours),
             target=str(partial),
         )
         report = validate_wind(partial, run_date, forecast_hours)
