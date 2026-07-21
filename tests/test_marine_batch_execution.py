@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.run_marine_simulation import require_one
+from scripts.run_marine_simulation import require_one, resolve_swan_tools
 from scripts.submit_gcp_batch_simulation import (
     build_batch_job_json,
     default_timeout_seconds,
@@ -25,6 +25,17 @@ def test_require_one_returns_the_exact_product(tmp_path: Path):
     assert require_one(
         tmp_path, ("cmems_swan_boundary.nc",), "SWAN boundary"
     ) == expected.resolve()
+
+
+def test_resolve_swan_tools_handles_minimal_batch_path(tmp_path: Path, monkeypatch):
+    for name in ("swan.exe", "swanrun"):
+        executable = tmp_path / name
+        executable.write_text("#!/bin/sh\n")
+        executable.chmod(0o755)
+    monkeypatch.setenv("PATH", "")
+    swan_exe, swanrun = resolve_swan_tools(tmp_path)
+    assert swan_exe == str(tmp_path / "swan.exe")
+    assert swanrun == str(tmp_path / "swanrun")
 
 
 def test_long_horizon_timeout_is_not_the_old_four_hour_constant():

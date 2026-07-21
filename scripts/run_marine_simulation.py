@@ -28,6 +28,17 @@ def log_step(name: str):
     print("=" * 60)
 
 
+def resolve_swan_tools(
+    install_dir: Path = Path("/usr/local/bin"),
+) -> tuple[str | None, str | None]:
+    """Resolve the native SWAN tools even when Batch supplies a minimal PATH."""
+    current_path = os.environ.get("PATH", "")
+    entries = current_path.split(os.pathsep) if current_path else []
+    if str(install_dir) not in entries:
+        os.environ["PATH"] = os.pathsep.join([str(install_dir), *entries])
+    return shutil.which("swan.exe"), shutil.which("swanrun")
+
+
 def run_subprocess(cmd: list[str], cwd: Path | None = None) -> int:
     print(f"Running: {' '.join(cmd)}")
     process = subprocess.Popen(
@@ -277,8 +288,7 @@ def main():
         # Compile/run steps can be performed using native swan binary
         print(f"🚀 Executing parallel SWAN wave model on {args.mpi_ranks} MPI ranks...")
         # Note: In container, swan.exe or similar execution script is inside PATH or compiled in place
-        swan_exe = shutil.which("swan.exe")
-        swanrun = shutil.which("swanrun")
+        swan_exe, swanrun = resolve_swan_tools()
         if not swan_exe or not swanrun:
             raise FileNotFoundError(
                 "swan.exe/swanrun are not installed in the Batch image; "
