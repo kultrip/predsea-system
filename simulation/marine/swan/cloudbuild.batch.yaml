@@ -14,6 +14,7 @@ steps:
       - -c
       - >-
         test -x /usr/local/bin/swan.exe &&
+        test -x /usr/local/bin/swanrun &&
         test -x /usr/bin/python3 &&
         CLOUDSDK_PYTHON=/usr/bin/python3 gsutil version -l &&
         python3 -c 'import cfgrib, copernicusmarine, ecmwf.opendata, netCDF4, numpy, xarray' &&
