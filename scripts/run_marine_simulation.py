@@ -305,7 +305,15 @@ def main():
         ]
 
         # We run the command inside the prepared swan workspace directory containing swan.cmd
+        # GCP Batch containers run as root. OpenMPI requires both acknowledgements
+        # before it will launch ranks in that environment.
+        os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
+        os.environ["OMPI_ALLOW_RUN_AS_ROOT_CONFIRM"] = "1"
         run_checked(swan_run_cmd, stage="parallel SWAN execution", cwd=swan_work_dir)
+        if not (swan_work_dir / "swan_output.pvd").is_file():
+            raise RuntimeError(
+                "parallel SWAN execution returned without producing swan_output.pvd"
+            )
 
         # Convert parallel VTK outputs to NetCDF using the corrected vtk_to_netcdf script
         log_step("3. Converting SWAN parallel VTK XML output to NetCDF")
