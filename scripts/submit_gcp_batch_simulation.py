@@ -122,6 +122,7 @@ def build_batch_job_json(
     run_date: str,
     run_id: str,
     timeout_seconds: int,
+    provisioning_model: str = "SPOT",
     copernicus_username: str | None = None,
     copernicus_password: str | None = None,
 ) -> dict:
@@ -182,7 +183,7 @@ def build_batch_job_json(
             {
               "policy": {
                 "machineType": machine_type,
-                "provisioningModel": "SPOT"
+                "provisioningModel": provisioning_model
               }
             }
           ]
@@ -219,6 +220,16 @@ def main():
     parser.add_argument("--run-date", help="UTC model cycle date YYYY-MM-DD")
     parser.add_argument("--run-id", help="Immutable run identifier")
     parser.add_argument("--timeout-seconds", type=int, help="Batch task timeout")
+    parser.add_argument("--machine-type", help="Override the profile-derived Batch machine type")
+    parser.add_argument("--cpu-milli", type=int, help="Override requested task CPU in millicores")
+    parser.add_argument("--memory-mib", type=int, help="Override requested task memory in MiB")
+    parser.add_argument("--mpi-ranks", type=int, help="Override the profile-derived MPI rank count")
+    parser.add_argument(
+        "--provisioning-model",
+        choices=["SPOT", "STANDARD"],
+        default="SPOT",
+        help="VM provisioning model; use STANDARD for deadline-critical production benchmarks",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print manifest without submitting")
 
     args = parser.parse_args()
@@ -246,9 +257,17 @@ def main():
         sys.exit(1)
 
     machine_type, cpu_milli, memory_mib, mpi_ranks = calculate_resources(region_cfg)
+    machine_type = args.machine_type or machine_type
+    cpu_milli = args.cpu_milli or cpu_milli
+    memory_mib = args.memory_mib or memory_mib
+    mpi_ranks = args.mpi_ranks or mpi_ranks
+    if cpu_milli <= 0 or memory_mib <= 0 or mpi_ranks <= 0:
+        parser.error("CPU, memory, and MPI rank overrides must be positive")
+    if mpi_ranks > cpu_milli // 1000:
+        parser.error("--mpi-ranks cannot exceed requested vCPUs")
 
     print(f"✨ Scheduled execution parameters:")
-    print(f"   - Target Machine: {machine_type} (Spot VM)")
+    print(f"   - Target Machine: {machine_type} ({args.provisioning_model} VM)")
     print(f"   - CPUs / RAM: {cpu_milli/1000:.1f} vCPUs / {memory_mib/1024:.1f} GiB")
     print(f"   - MPI Parallel Decomposition: {mpi_ranks} ranks")
 
@@ -267,6 +286,7 @@ def main():
         run_date=run_date,
         run_id=run_id,
         timeout_seconds=timeout_seconds,
+        provisioning_model=args.provisioning_model,
         copernicus_username=os.getenv("COPERNICUS_USERNAME")
         or os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
         copernicus_password=os.getenv("COPERNICUS_PASSWORD")

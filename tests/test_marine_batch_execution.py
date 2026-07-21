@@ -90,3 +90,32 @@ def test_batch_manifest_exposes_copernicus_service_environment_names():
     ]["variables"]
     assert variables["COPERNICUSMARINE_SERVICE_USERNAME"] == "user"
     assert variables["COPERNICUSMARINE_SERVICE_PASSWORD"] == "password"
+
+
+def test_batch_manifest_supports_deadline_critical_standard_vm():
+    manifest = build_batch_job_json(
+        project_id="predsea-api",
+        region_id="balearic_1km",
+        model_type="swan",
+        forecast_hours=24,
+        gcs_bucket="predsea-daily-outputs-test",
+        machine_type="c2d-highcpu-16",
+        cpu_milli=16000,
+        memory_mib=32768,
+        mpi_ranks=8,
+        image_uri="example.invalid/swan@sha256:" + "a" * 64,
+        run_date="2026-07-20",
+        run_id="run-standard-16",
+        timeout_seconds=14400,
+        provisioning_model="STANDARD",
+    )
+
+    policy = manifest["allocationPolicy"]["instances"][0]["policy"]
+    task = manifest["taskGroups"][0]["taskSpec"]
+    command = task["runnables"][0]["container"]["commands"][1]
+    assert policy == {
+        "machineType": "c2d-highcpu-16",
+        "provisioningModel": "STANDARD",
+    }
+    assert task["computeResource"] == {"cpuMilli": "16000", "memoryMib": "32768"}
+    assert "--mpi-ranks 8" in command
