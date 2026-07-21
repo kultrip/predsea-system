@@ -102,6 +102,131 @@ def resolve_swan_bathymetry(project_root: Path, region_id: str) -> Path:
     )
 
 
+def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: Path,
+                         region_id: str, run_date: str, run_id: str,
+                         forecast_hours: int, mpi_ranks: int, gcs_bucket: str) -> None:
+    """Run the bounded regional CROCO path from explicit real inputs."""
+    if mpi_ranks != 16:
+        raise ValueError(
+            "the pinned Balearic CROCO binary is compiled for a 4x4 decomposition; "
+            "--mpi-ranks must be 16"
+        )
+    grid_uri = os.environ.get("PREDSEA_CROCO_GRID_GCS_URI")
+    wrf_uri = os.environ.get("PREDSEA_WRF_GCS_URI")
+    if not grid_uri or not grid_uri.startswith("gs://"):
+        raise ValueError("PREDSEA_CROCO_GRID_GCS_URI must identify an immutable staging grid object")
+    if not wrf_uri or not wrf_uri.startswith("gs://"):
+        raise ValueError("PREDSEA_WRF_GCS_URI must identify immutable staging WRF output")
+
+    region_profile = project_root / "simulation" / "marine" / "regions" / f"{region_id}.json"
+    template = project_root / "simulation" / "marine" / "croco" / "croco.in.balearic"
+    croco_exe = Path("/usr/local/bin/croco_balearic")
+    for required in (region_profile, template, croco_exe):
+        if not required.is_file():
+            raise FileNotFoundError(f"required CROCO runtime asset is missing: {required}")
+
+    croco_work = outputs_dir / f"croco_{region_id}"
+    croco_work.mkdir(parents=True, exist_ok=True)
+    grid_path = croco_work / "croco_grid.nc"
+    wrf_dir = inputs_dir / "wrf"
+    wrf_dir.mkdir(parents=True, exist_ok=True)
+    run_checked(["gsutil", "cp", grid_uri, str(grid_path)], stage="CROCO grid download")
+    run_checked(["gsutil", "-m", "cp", "-r", wrf_uri, str(wrf_dir)], stage="WRF forcing download")
+
+    log_step("2. Acquiring validated three-dimensional CMEMS ocean forcing")
+    run_checked(
+        [
+            "python3", "/app/scripts/fetch_native_marine_forcing.py",
+            "--run-date", run_date,
+            "--forecast-hours", str(forecast_hours),
+            "--region", str(region_profile),
+            "--output-dir", str(croco_work),
+            "--models", "croco",
+            "--overwrite",
+        ],
+        stage="CROCO CMEMS acquisition and validation",
+    )
+    run_checked(
+        [
+            "python3", "/app/scripts/prepare_croco_forcing.py",
+            "--grid", str(grid_path),
+            "--forcing-dir", str(croco_work),
+            "--output-dir", str(croco_work),
+            "--vertical-levels", "30",
+        ],
+        stage="CROCO ocean forcing interpolation",
+    )
+
+    domain = os.environ.get("PREDSEA_WRF_DOMAIN", "d02")
+    wrf_files = sorted(wrf_dir.rglob(f"wrfout_{domain}_*"))
+    if len(wrf_files) < forecast_hours + 1:
+        raise RuntimeError(
+            f"WRF forcing is incomplete for {domain}: expected at least "
+            f"{forecast_hours + 1} hourly files, found {len(wrf_files)}"
+        )
+    bulk_path = croco_work / "croco_blk.nc"
+    run_checked(
+        [
+            "python3", "/app/scripts/prepare_croco_bulk_forcing.py",
+            "--wrf", *[str(path) for path in wrf_files[: forecast_hours + 1]],
+            "--grid", str(grid_path),
+            "--output", str(bulk_path),
+            "--start-time", f"{run_date}T00:00:00",
+            "--forecast-hours", str(forecast_hours),
+        ],
+        stage="real WRF-to-CROCO bulk forcing conversion",
+    )
+
+    namelist = croco_work / "croco.in"
+    run_checked(
+        [
+            "python3", "/app/simulation/marine/croco/prepare_croco_in.py",
+            "--template", str(template),
+            "--output", str(namelist),
+            "--work-dir", str(croco_work),
+            "--start-date", run_date,
+            "--forecast-hours", str(forecast_hours),
+        ],
+        stage="CROCO namelist rendering",
+    )
+
+    log_step("3. Running native CROCO ocean forecast")
+    os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
+    os.environ["OMPI_ALLOW_RUN_AS_ROOT_CONFIRM"] = "1"
+    run_checked(
+        ["mpirun", "--allow-run-as-root", "-np", str(mpi_ranks), str(croco_exe), str(namelist)],
+        stage="parallel CROCO execution",
+        cwd=croco_work,
+    )
+    history = croco_work / "croco_his.nc"
+    if not history.is_file() or history.stat().st_size == 0:
+        raise RuntimeError("CROCO returned without a non-empty croco_his.nc")
+    run_checked(
+        [
+            "python3", "/app/scripts/validate_marine_output.py",
+            "--output", str(history),
+            "--model=croco",
+            "--region", str(region_profile),
+            "--forecast-hours", str(forecast_hours),
+        ],
+        stage="CROCO content validation",
+    )
+
+    log_step("4. Uploading validated native CROCO forecast")
+    prefix = f"predictions/{run_date}/runs/{run_id}/{region_id}/"
+    target = f"gs://{gcs_bucket}/{prefix}{region_id}_croco_forecast.nc"
+    run_checked(["gsutil", "cp", str(history), target], stage="canonical CROCO upload")
+    marker = outputs_dir / "CROCO_SUCCESS"
+    marker.write_text(
+        f"status=SUCCESS\nmodel=croco\nforcing=predsea_wrf+cmems\n"
+        f"timestamp={dt.datetime.now(dt.timezone.utc).isoformat()}\n"
+    )
+    run_checked(
+        ["gsutil", "cp", str(marker), f"gs://{gcs_bucket}/{prefix}CROCO_SUCCESS"],
+        stage="CROCO success-marker upload",
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run SWAN/CROCO simulation shard.")
     parser.add_argument("--region", required=True, help="Region ID (e.g., balearic_1km, alboran_1km)")
@@ -115,10 +240,10 @@ def main():
         parser.error("--forecast-hours must be between 1 and 120")
     if args.mpi_ranks <= 0:
         parser.error("--mpi-ranks must be positive")
-    if args.model != "swan":
+    if args.model == "both":
         parser.error(
-            "CROCO Batch execution is not implemented yet; refusing to report "
-            "success for --model=croco/both"
+            "combined execution is intentionally disabled; submit SWAN and CROCO "
+            "as separate parallel Batch jobs"
         )
 
     # Determine dates and run IDs from environment or fallback to today
@@ -171,6 +296,21 @@ def main():
         ["gsutil", "-m", "rsync", "-r", cmems_gcs_src, str(inputs_dir)],
         stage="CMEMS forcing download",
     )
+
+    if args.model == "croco":
+        run_croco_simulation(
+            project_root=project_root,
+            inputs_dir=inputs_dir,
+            outputs_dir=outputs_dir,
+            region_id=args.region,
+            run_date=run_date,
+            run_id=run_id,
+            forecast_hours=args.forecast_hours,
+            mpi_ranks=args.mpi_ranks,
+            gcs_bucket=args.gcs_bucket,
+        )
+        log_step("🏆 CROCO shard execution finished successfully!")
+        return
 
     wind_candidates = sorted(inputs_dir.glob(f"ecmwf_sfc_{run_date}_*Z.grib2"))
     wind_candidates.extend(inputs_dir.glob("ecmwf_sfc.grib2"))

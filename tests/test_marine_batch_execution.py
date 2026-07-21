@@ -119,3 +119,27 @@ def test_batch_manifest_supports_deadline_critical_standard_vm():
     }
     assert task["computeResource"] == {"cpuMilli": "16000", "memoryMib": "32768"}
     assert "--mpi-ranks 8" in command
+
+
+def test_croco_manifest_requires_and_carries_explicit_staging_inputs():
+    with pytest.raises(ValueError, match="explicit grid and WRF"):
+        build_batch_job_json(
+            project_id="predsea-api", region_id="balearic_1km", model_type="croco",
+            forecast_hours=6, gcs_bucket="predsea-daily-outputs-test",
+            machine_type="c2d-highcpu-16", cpu_milli=16000, memory_mib=32768,
+            mpi_ranks=16, image_uri="example.invalid/croco@sha256:" + "a" * 64,
+            run_date="2026-07-20", run_id="croco-gate", timeout_seconds=7200,
+        )
+
+    manifest = build_batch_job_json(
+        project_id="predsea-api", region_id="balearic_1km", model_type="croco",
+        forecast_hours=6, gcs_bucket="predsea-daily-outputs-test",
+        machine_type="c2d-highcpu-16", cpu_milli=16000, memory_mib=32768,
+        mpi_ranks=16, image_uri="example.invalid/croco@sha256:" + "a" * 64,
+        run_date="2026-07-20", run_id="croco-gate", timeout_seconds=7200,
+        croco_grid_gcs_uri="gs://predsea-daily-outputs-test/static/croco_grid.nc",
+        wrf_gcs_uri="gs://predsea-daily-outputs-test/runs/wrf/*",
+    )
+    variables = manifest["taskGroups"][0]["taskSpec"]["runnables"][0]["environment"]["variables"]
+    assert variables["PREDSEA_CROCO_GRID_GCS_URI"].startswith("gs://predsea-daily-outputs-test/")
+    assert variables["PREDSEA_WRF_GCS_URI"].startswith("gs://predsea-daily-outputs-test/")

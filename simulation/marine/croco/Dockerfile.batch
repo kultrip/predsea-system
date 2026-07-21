@@ -1,0 +1,51 @@
+FROM debian:bookworm-slim AS croco_builder
+
+ARG CROCO_VERSION=2.1.3
+ARG CROCO_SHA256=4b7464365f3e6197ed83b5ae8842cc1efc736add2c86e16a0ff188e7650661c1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl gfortran libnetcdf-dev libnetcdff-dev make \
+      openmpi-bin libopenmpi-dev python3 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+RUN curl --fail --location --retry 4 \
+      "https://gitlab.inria.fr/croco-ocean/croco/-/archive/v${CROCO_VERSION}/croco-v${CROCO_VERSION}.tar.gz" \
+      --output croco.tar.gz \
+    && echo "${CROCO_SHA256}  croco.tar.gz" | sha256sum --check \
+    && mkdir -p tmp/croco_build \
+    && tar -xzf croco.tar.gz -C tmp/croco_build \
+    && mv "tmp/croco_build/croco-v${CROCO_VERSION}" tmp/croco_build/croco_src
+COPY simulation/marine/croco/patch_croco_source.py /build/patch_croco_source.py
+RUN python3 /build/patch_croco_source.py \
+    && cp tmp/croco_build/croco_src/OCEAN/jobcomp tmp/croco_build/jobcomp \
+    && chmod 0755 tmp/croco_build/jobcomp
+WORKDIR /build/tmp/croco_build
+RUN ./jobcomp --src croco_src/OCEAN --jobs 8 && test -x croco
+
+FROM python:3.11-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl libeccodes-tools libgfortran5 libnetcdf19 \
+      libnetcdff7 openmpi-bin \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/local/bin/python3 /usr/bin/python3
+RUN curl -sSL \
+      https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz \
+      -o /tmp/google-cloud-sdk.tar.gz \
+    && tar -xzf /tmp/google-cloud-sdk.tar.gz -C /opt \
+    && /opt/google-cloud-sdk/install.sh --quiet \
+    && rm /tmp/google-cloud-sdk.tar.gz
+ENV PATH="/opt/google-cloud-sdk/bin:${PATH}" \
+    PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app
+COPY --from=croco_builder /build/tmp/croco_build/croco /usr/local/bin/croco_balearic
+RUN chmod 0755 /usr/local/bin/croco_balearic
+WORKDIR /app
+COPY simulation/marine/swan/requirements.batch.txt /app/requirements.batch.txt
+RUN pip install --no-cache-dir -r /app/requirements.batch.txt
+COPY scripts /app/scripts
+COPY simulation/marine/regions /app/simulation/marine/regions
+COPY simulation/marine/croco/croco.in.balearic /app/simulation/marine/croco/croco.in.balearic
+COPY simulation/marine/croco/prepare_croco_in.py /app/simulation/marine/croco/prepare_croco_in.py
+RUN test -x /usr/local/bin/croco_balearic \
+    && python3 -c "import copernicusmarine, netCDF4, numpy, scipy, xarray" \
+    && python3 /app/scripts/prepare_croco_bulk_forcing.py --help \
+    && python3 /app/scripts/run_marine_simulation.py --help
+ENTRYPOINT ["python3", "/app/scripts/run_marine_simulation.py"]

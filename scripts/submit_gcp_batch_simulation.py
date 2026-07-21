@@ -125,6 +125,8 @@ def build_batch_job_json(
     provisioning_model: str = "SPOT",
     copernicus_username: str | None = None,
     copernicus_password: str | None = None,
+    croco_grid_gcs_uri: str | None = None,
+    wrf_gcs_uri: str | None = None,
 ) -> dict:
     runnable_cmd = (
         f"python3 /app/scripts/run_marine_simulation.py "
@@ -149,6 +151,15 @@ def build_batch_job_json(
                 # running non-interactively in GCP Batch.
                 "COPERNICUSMARINE_SERVICE_USERNAME": copernicus_username,
                 "COPERNICUSMARINE_SERVICE_PASSWORD": copernicus_password,
+            }
+        )
+    if model_type == "croco":
+        if not croco_grid_gcs_uri or not wrf_gcs_uri:
+            raise ValueError("CROCO jobs require explicit grid and WRF GCS URIs")
+        environment_variables.update(
+            {
+                "PREDSEA_CROCO_GRID_GCS_URI": croco_grid_gcs_uri,
+                "PREDSEA_WRF_GCS_URI": wrf_gcs_uri,
             }
         )
 
@@ -224,6 +235,8 @@ def main():
     parser.add_argument("--cpu-milli", type=int, help="Override requested task CPU in millicores")
     parser.add_argument("--memory-mib", type=int, help="Override requested task memory in MiB")
     parser.add_argument("--mpi-ranks", type=int, help="Override the profile-derived MPI rank count")
+    parser.add_argument("--croco-grid-gcs-uri", help="Immutable staging CROCO grid gs:// object")
+    parser.add_argument("--wrf-gcs-uri", help="Immutable staging WRF output gs:// prefix/object")
     parser.add_argument(
         "--provisioning-model",
         choices=["SPOT", "STANDARD"],
@@ -291,6 +304,8 @@ def main():
         or os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
         copernicus_password=os.getenv("COPERNICUS_PASSWORD")
         or os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD"),
+        croco_grid_gcs_uri=args.croco_grid_gcs_uri,
+        wrf_gcs_uri=args.wrf_gcs_uri,
     )
 
     job_json_str = json.dumps(job_manifest, indent=2)
