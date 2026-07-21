@@ -153,11 +153,34 @@ def _open_wind(
     hourly_times = np.arange(
         start, end + np.timedelta64(1, "h"), np.timedelta64(1, "h")
     )
-    u = u.interp(time=hourly_times)
-    v = v.interp(time=hourly_times)
+    u = _linear_time_interpolate(u, hourly_times)
+    v = _linear_time_interpolate(v, hourly_times)
     if not np.isfinite(u.values).all() or not np.isfinite(v.values).all():
         raise ValueError("Hourly ECMWF wind interpolation produced non-finite values")
     return u, v
+
+
+def _linear_time_interpolate(
+    values: xr.DataArray, target_times: np.ndarray
+) -> xr.DataArray:
+    """Linearly interpolate time without xarray's optional SciPy dependency."""
+    source_ns = values.time.values.astype("datetime64[ns]").astype(np.int64)
+    target_ns = target_times.astype("datetime64[ns]").astype(np.int64)
+    frames: list[xr.DataArray] = []
+    for target in target_ns:
+        right = int(np.searchsorted(source_ns, target, side="left"))
+        if right < source_ns.size and source_ns[right] == target:
+            frame = values.isel(time=right, drop=True)
+        else:
+            left = right - 1
+            if left < 0 or right >= source_ns.size:
+                raise ValueError("Hourly wind target lies outside ECMWF coverage")
+            weight = (target - source_ns[left]) / (source_ns[right] - source_ns[left])
+            frame = values.isel(time=left, drop=True) * (1.0 - weight) + values.isel(
+                time=right, drop=True
+            ) * weight
+        frames.append(frame)
+    return xr.concat(frames, dim=xr.IndexVariable("time", target_times))
 
 
 def prepare(

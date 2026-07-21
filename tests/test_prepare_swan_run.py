@@ -2,12 +2,37 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import xarray as xr
 
 from scripts.prepare_swan_run import (
     _circular_mean_degrees,
     _computational_timestep_minutes,
+    _linear_time_interpolate,
     _swan_time,
 )
+
+
+def test_linear_time_interpolation_produces_exact_hourly_values_without_scipy():
+    source = xr.DataArray(
+        np.array([[[0.0]], [[3.0]], [[6.0]]]),
+        dims=("time", "latitude", "longitude"),
+        coords={
+            "time": np.array(
+                ["2026-07-20T00", "2026-07-20T03", "2026-07-20T06"],
+                dtype="datetime64[h]",
+            ),
+            "latitude": [39.0],
+            "longitude": [2.0],
+        },
+    )
+    target = np.arange(
+        np.datetime64("2026-07-20T00"),
+        np.datetime64("2026-07-20T07"),
+        np.timedelta64(1, "h"),
+    )
+    result = _linear_time_interpolate(source, target)
+    assert result.sizes["time"] == 7
+    assert np.array_equal(result.values[:, 0, 0], np.arange(7.0))
 
 
 def test_circular_mean_handles_north_wraparound():
