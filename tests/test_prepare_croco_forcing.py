@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 import numpy as np
+from pathlib import Path
 
 from scripts.prepare_croco_forcing import croco_climatology_times
+
+
+def test_climatology_uses_croco_ssh_variable_contract():
+    source = Path("scripts/prepare_croco_forcing.py").read_text()
+
+    assert '"SSH": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm)' in source
+    assert '"zeta": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm)' not in source
 
 
 def test_builds_named_elapsed_day_axes_required_by_croco():

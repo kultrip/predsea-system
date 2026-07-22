@@ -292,7 +292,9 @@ def main() -> int:
     clm_times = croco_climatology_times(src_time)
     ds_clm = xr.Dataset(
         data_vars={
-            "zeta": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm),
+            # This CROCO build resolves sea-surface-height climatology by its
+            # canonical forcing name (SSH), not the ROMS history name (zeta).
+            "SSH": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm),
             "temp": (("tclm_time", "s_rho", "eta_rho", "xi_rho"), temp_clm),
             "salt": (("sclm_time", "s_rho", "eta_rho", "xi_rho"), salt_clm),
             "u": (("uclm_time", "s_rho", "eta_u", "xi_u"), u_clm),
