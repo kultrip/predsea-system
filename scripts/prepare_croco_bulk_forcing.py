@@ -80,7 +80,7 @@ def build_bulk_forcing(
         lat_rho = np.asarray(grid["lat_rho"].values)
 
     fields: dict[str, list[np.ndarray]] = {
-        name: [] for name in ("uwnd", "vwnd", "tair", "rhum", "prate", "radlw", "radsw")
+        name: [] for name in ("uwnd", "vwnd", "tair", "rhum", "prate", "radlw_in", "radsw")
     }
     times: list[np.datetime64] = []
     previous_rain: np.ndarray | None = None
@@ -125,7 +125,9 @@ def build_bulk_forcing(
                 "tair": t2 - 273.15,
                 "rhum": _relative_humidity_percent(t2, q2, psfc),
                 "prate": rain_rate,
-                "radlw": _surface(wrf["GLW"]),
+                # With incoming-longwave radiation enabled, this CROCO build
+                # resolves the bulk field by the canonical name radlw_in.
+                "radlw_in": _surface(wrf["GLW"]),
                 "radsw": _surface(wrf["SWDOWN"]),
             }
             for name, values in source.items():
@@ -163,7 +165,7 @@ def build_bulk_forcing(
     dataset["rhum"].attrs["units"] = "percent"
     dataset["prate"].attrs["units"] = "m s-1"
     dataset["uwnd"].attrs["units"] = dataset["vwnd"].attrs["units"] = "m s-1"
-    dataset["radlw"].attrs["units"] = dataset["radsw"].attrs["units"] = "W m-2"
+    dataset["radlw_in"].attrs["units"] = dataset["radsw"].attrs["units"] = "W m-2"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_netcdf(output_path, encoding={name: {"zlib": True, "complevel": 1} for name in fields})
     return dataset
