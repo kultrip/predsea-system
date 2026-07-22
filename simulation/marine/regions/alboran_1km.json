@@ -1,0 +1,50 @@
+{
+  "schema_version": "predsea.marine_region.v1",
+  "region_id": "alboran_1km",
+  "label": "Alboran Sea 1km regional forecast",
+  "bbox": {
+    "longitude_min": -6.0,
+    "longitude_max": -1.0,
+    "latitude_min": 35.0,
+    "latitude_max": 37.5
+  },
+  "horizontal_resolution_m": 1000,
+  "output_interval_hours": 1,
+  "models": {
+    "swan": {
+      "directions": 36,
+      "frequencies": 32,
+      "computational_timestep_minutes": 5,
+      "required_variables": [
+        "significant_wave_height"
+      ],
+      "physical_ranges": {
+        "significant_wave_height": [0.0, 20.0],
+        "peak_wave_period": [0.0, 40.0],
+        "mean_wave_direction": [0.0, 360.0]
+      }
+    },
+    "croco": {
+      "vertical_levels": 30,
+      "required_variables": [
+        "eastward_current",
+        "northward_current",
+        "sea_surface_temperature",
+        "sea_surface_salinity",
+        "sea_surface_height"
+      ],
+      "physical_ranges": {
+        "eastward_current": [-5.0, 5.0],
+        "northward_current": [-5.0, 5.0],
+        "sea_surface_temperature": [-2.5, 40.0],
+        "sea_surface_salinity": [0.0, 45.0],
+        "sea_surface_height": [-5.0, 5.0]
+      }
+    }
+  },
+  "forcing": {
+    "atmosphere": "predsea_wrf",
+    "ocean_initial_and_boundary": "cmems",
+    "wave_open_boundary": "cmems"
+  }
+}

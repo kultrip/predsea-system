@@ -6,6 +6,7 @@ import xarray as xr
 from scripts.prepare_croco_grid import (
     CROCO_REQUIRED_GRID_VARIABLES,
     build_grid,
+    crop_bathymetry_to_bbox,
     smooth_bathymetry,
 )
 
@@ -63,3 +64,52 @@ def test_build_grid_creates_complete_croco_staggered_grid():
     assert float(grid["el"].item()) > 0.0
     assert report["xl_m"] == float(grid["xl"].item())
     assert report["el_m"] == float(grid["el"].item())
+
+
+def test_crop_bathymetry_to_region_bbox():
+    longitude, latitude = np.meshgrid(
+        np.arange(-2.0, 3.0, 0.5),
+        np.arange(35.0, 43.0, 0.5),
+    )
+    source = xr.Dataset(
+        {
+            "bathy": (("y", "x"), np.full(longitude.shape, 100.0)),
+            "nav_lon": (("y", "x"), longitude),
+            "nav_lat": (("y", "x"), latitude),
+        }
+    )
+    cropped = crop_bathymetry_to_bbox(
+        source,
+        {
+            "longitude_min": -1.0,
+            "longitude_max": 1.0,
+            "latitude_min": 37.0,
+            "latitude_max": 39.0,
+        },
+    )
+    assert cropped["bathy"].shape == (5, 5)
+    assert float(cropped["nav_lon"].min()) == -1.0
+    assert float(cropped["nav_lon"].max()) == 1.0
+    assert float(cropped["nav_lat"].min()) == 37.0
+    assert float(cropped["nav_lat"].max()) == 39.0
+
+
+def test_crop_bathymetry_rejects_uncovered_bbox():
+    longitude, latitude = np.meshgrid(np.arange(3.0), np.arange(3.0))
+    source = xr.Dataset(
+        {
+            "bathy": (("y", "x"), np.full((3, 3), 100.0)),
+            "nav_lon": (("y", "x"), longitude),
+            "nav_lat": (("y", "x"), latitude),
+        }
+    )
+    with np.testing.assert_raises_regex(ValueError, "does not cover"):
+        crop_bathymetry_to_bbox(
+            source,
+            {
+                "longitude_min": -6.0,
+                "longitude_max": -1.0,
+                "latitude_min": 35.0,
+                "latitude_max": 37.5,
+            },
+        )

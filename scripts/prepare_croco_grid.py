@@ -77,6 +77,65 @@ def _maximum_rx0(depth: np.ndarray, wet: np.ndarray) -> float:
     return max(maxima)
 
 
+def crop_bathymetry_to_bbox(
+    bathymetry: xr.Dataset,
+    bbox: dict[str, float],
+) -> xr.Dataset:
+    """Subset a rectilinear/near-rectilinear source grid to a region bbox."""
+    for name in ("bathy", "nav_lon", "nav_lat"):
+        if name not in bathymetry:
+            raise ValueError(f"bathymetry is missing {name}")
+    depth = bathymetry["bathy"]
+    if depth.ndim != 2:
+        raise ValueError("bathymetry must be a two-dimensional grid")
+    dims = depth.dims
+    lon = np.asarray(bathymetry["nav_lon"].values, dtype=float)
+    lat = np.asarray(bathymetry["nav_lat"].values, dtype=float)
+    inside = (
+        (lon >= bbox["longitude_min"])
+        & (lon <= bbox["longitude_max"])
+        & (lat >= bbox["latitude_min"])
+        & (lat <= bbox["latitude_max"])
+    )
+    row_indices = np.flatnonzero(inside.any(axis=1))
+    column_indices = np.flatnonzero(inside.any(axis=0))
+    if row_indices.size < 3 or column_indices.size < 3:
+        raise ValueError("source bathymetry does not cover the requested region bbox")
+    cropped = bathymetry.isel(
+        {
+            dims[0]: slice(int(row_indices[0]), int(row_indices[-1]) + 1),
+            dims[1]: slice(int(column_indices[0]), int(column_indices[-1]) + 1),
+        }
+    )
+    cropped_lon = np.asarray(cropped["nav_lon"].values, dtype=float)
+    cropped_lat = np.asarray(cropped["nav_lat"].values, dtype=float)
+    actual = {
+        "longitude_min": float(cropped_lon.min()),
+        "longitude_max": float(cropped_lon.max()),
+        "latitude_min": float(cropped_lat.min()),
+        "latitude_max": float(cropped_lat.max()),
+    }
+    longitude_step = float(np.nanmedian(np.abs(np.diff(lon, axis=1))))
+    latitude_step = float(np.nanmedian(np.abs(np.diff(lat, axis=0))))
+    tolerances = {
+        "longitude_min": longitude_step * 1.01,
+        "longitude_max": longitude_step * 1.01,
+        "latitude_min": latitude_step * 1.01,
+        "latitude_max": latitude_step * 1.01,
+    }
+    mismatches = [
+        key
+        for key, expected in bbox.items()
+        if abs(actual[key] - float(expected)) > tolerances[key]
+    ]
+    if mismatches:
+        raise ValueError(
+            "cropped bathymetry does not match requested bbox for: "
+            + ", ".join(sorted(mismatches))
+        )
+    return cropped
+
+
 def smooth_bathymetry(
     depth: np.ndarray,
     wet: np.ndarray,
@@ -285,7 +344,8 @@ def main(argv: list[str] | None = None) -> int:
             + "; ".join(region_validation["errors"])
         )
     region = json.loads(args.region.read_text())
-    with xr.open_dataset(args.bathymetry) as bathymetry:
+    with xr.open_dataset(args.bathymetry) as source_bathymetry:
+        bathymetry = crop_bathymetry_to_bbox(source_bathymetry, region["bbox"])
         grid, report = build_grid(
             bathymetry,
             minimum_depth_m=args.minimum_depth_m,
@@ -301,6 +361,7 @@ def main(argv: list[str] | None = None) -> int:
         grid.to_netcdf(args.output)
     report.update(
         region_id=region["region_id"],
+        requested_bbox=region["bbox"],
         output=str(args.output),
         output_size_bytes=args.output.stat().st_size,
         output_sha256=_sha256(args.output),

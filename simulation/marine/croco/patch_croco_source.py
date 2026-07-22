@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+import os
 import pathlib
 
 def main():
+    lm = int(os.environ.get("PREDSEA_CROCO_LM", "499"))
+    mm = int(os.environ.get("PREDSEA_CROCO_MM", "399"))
+    vertical_levels = int(os.environ.get("PREDSEA_CROCO_N", "30"))
+    if min(lm, mm, vertical_levels) <= 0:
+        raise ValueError("CROCO compile-time dimensions must be positive")
     build_dir = pathlib.Path("tmp/croco_build")
     src_cppdefs = build_dir / "croco_src/OCEAN/cppdefs.h"
     dst_cppdefs = build_dir / "cppdefs.h"
@@ -48,7 +54,9 @@ def main():
     # Inject BALEARIC_1KM dimension parameters with N=30
     param_content = param_content.replace(
         "#  elif defined GIBRALTAR_VHR5",
-        "#  elif defined BALEARIC_1KM\n       parameter (LLm0=1799, MMm0=949,  N=30)\n#  elif defined GIBRALTAR_VHR5"
+        "#  elif defined BALEARIC_1KM\n"
+        f"       parameter (LLm0={lm}, MMm0={mm},  N={vertical_levels})\n"
+        "#  elif defined GIBRALTAR_VHR5"
     )
 
     # Set MPI subdivision grid (4 x 4 = 16 cores) for BALEARIC_1KM

@@ -33,19 +33,36 @@ run-scoped objects. The existing production API and daily ETL remain unchanged
 until all promotion gates pass. A failed SWAN or CROCO run cannot replace a
 valid Copernicus-backed product.
 
-## First region
+## First Region & Multi-Region Coastal Expansion
 
-The authoritative first tile is
-`simulation/marine/regions/balearic_1km.json`:
+The authoritative first tile is `simulation/marine/regions/balearic_1km.json`, representing the baseline benchmark region. Further regions expand the system across the Western Mediterranean, partitioning the domain into high-resolution 1 km tiles that align perfectly with the national coastlines of Spain, France, and Italy:
 
-- bounds: 0.5–5.5 E, 37.5–41.5 N;
-- nominal horizontal resolution: 1 km;
-- output cadence: hourly;
-- SWAN: 36 directions and 32 frequencies;
-- CROCO: 30 terrain-following vertical levels.
+### 1. Spain East Coast & Balearics (Authority Tile)
+* **Configuration**: `simulation/marine/regions/balearic_1km.json`
+* **Bounds**: `0.5° E to 5.5° E`, `37.5° N to 41.5° N`
+* **Coverage**: Catalonia (Barcelona, Tarragona), Valencia, Alicante, and the Balearic Islands.
 
-Further regions use the same versioned region schema. Inland destinations do
-not expand a marine compute region.
+### 2. Spain South Coast & Gibraltar
+* **Configuration**: `simulation/marine/regions/alboran_1km.json`
+* **Bounds**: `-6.0° E to -1.0° E`, `35.0° N to 37.5° N`
+* **Coverage**: Andalusia (Málaga, Almería, Marbella) and the Strait of Gibraltar gateway.
+
+### 3. France South Coast & Gulf of Lion
+* **Configuration**: `simulation/marine/regions/gulf_of_lion_1km.json`
+* **Bounds**: `2.0° E to 6.5° E`, `41.5° N to 44.5° N`
+* **Coverage**: Occitanie, Provence-Alpes-Côte d'Azur (Marseille, Toulon, Cannes, Nice), and the wind-swept Gulf of Lion shelf.
+
+### 4. Italy West Coast & Tyrrhenian
+* **Configuration**: `simulation/marine/regions/tyrrhenian_1km.json`
+* **Bounds**: `7.5° E to 14.0° E`, `38.0° N to 44.5° N`
+* **Coverage**: Liguria (Genoa), Tuscany (Livorno), Lazio (Rome), Campania (Naples), Sardinia, Corsica, and Western Sicily.
+
+### 5. Southern Western Mediterranean (Algerian Basin)
+* **Configuration**: `simulation/marine/regions/algerian_1km.json`
+* **Bounds**: `-1.0° E to 8.5° E`, `35.0° N to 38.0° N`
+* **Coverage**: Algerian coast (Algiers, Oran) and steep southern continental slopes.
+
+All regions are defined using the same versioned JSON schema (`marine_region.schema.json`). Inland destinations do not expand a marine compute region. This spatial partitioning ensures optimal computational efficiency, custom-tuned local timesteps (to handle regional wave propagation CFL limits), and direct alignment with regional buoy validation datasets.
 
 ## Execution stages
 
@@ -60,8 +77,10 @@ not expand a marine compute region.
 | Validate SWAN | Hourly coverage, full bbox, finite and physical wave values |
 | Run CROCO | Native CROCO NetCDF plus logs/restarts |
 | Validate CROCO | Hourly coverage, full bbox, finite and physical ocean values |
+| Expand validated regional tiles | Alboran/Gibraltar, Gulf of Lion, Tyrrhenian and Algerian tiles each pass 6 h then 24 h SWAN/CROCO gates |
+| Assemble multi-region bundle | All regional manifests align in time, overlap, variables, grid and lineage |
 | Publish staging bundle | PredSea-owned immutable bundle and lineage manifest |
-| Validate API | Route/place JSON and maps consume native outputs |
+| Validate API | Route/place JSON and maps across every supported region consume native outputs |
 | Promote | Atomic production pointer update |
 
 The benchmark runner `scripts/run_marine_benchmark.py` is fail-closed. It only

@@ -16,6 +16,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import xarray as xr
+
 try:
     from scripts.fetch_swan_wind import fetch_wind, validate_wind
 except ModuleNotFoundError:  # Direct execution from the scripts directory.
@@ -144,6 +146,17 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
     wrf_dir = inputs_dir / "wrf"
     wrf_dir.mkdir(parents=True, exist_ok=True)
     run_checked(["gsutil", "cp", grid_uri, str(grid_path)], stage="CROCO grid download")
+    with xr.open_dataset(grid_path) as grid:
+        actual_shape = (int(grid.sizes["xi_rho"]), int(grid.sizes["eta_rho"]))
+        expected_shape = (
+            int(os.environ.get("PREDSEA_CROCO_XI_RHO", "501")),
+            int(os.environ.get("PREDSEA_CROCO_ETA_RHO", "401")),
+        )
+        if actual_shape != expected_shape:
+            raise ValueError(
+                "CROCO grid/binary dimension mismatch: "
+                f"grid xi_rho/eta_rho={actual_shape}, binary expects {expected_shape}"
+            )
     run_checked(["gsutil", "-m", "cp", "-r", wrf_uri, str(wrf_dir)], stage="WRF forcing download")
 
     log_step("2. Acquiring validated three-dimensional CMEMS ocean forcing")

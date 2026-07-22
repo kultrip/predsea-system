@@ -2,6 +2,9 @@ FROM debian:bookworm-slim AS croco_builder
 
 ARG CROCO_VERSION=2.1.3
 ARG CROCO_SHA256=4b7464365f3e6197ed83b5ae8842cc1efc736add2c86e16a0ff188e7650661c1
+ARG PREDSEA_CROCO_LM=499
+ARG PREDSEA_CROCO_MM=399
+ARG PREDSEA_CROCO_N=30
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl gfortran libnetcdf-dev libnetcdff-dev make \
       openmpi-bin libopenmpi-dev python3 \
@@ -15,7 +18,10 @@ RUN curl --fail --location --retry 4 \
     && tar -xzf croco.tar.gz -C tmp/croco_build \
     && mv "tmp/croco_build/croco-v${CROCO_VERSION}" tmp/croco_build/croco_src
 COPY simulation/marine/croco/patch_croco_source.py /build/patch_croco_source.py
-RUN python3 /build/patch_croco_source.py \
+RUN PREDSEA_CROCO_LM=${PREDSEA_CROCO_LM} \
+    PREDSEA_CROCO_MM=${PREDSEA_CROCO_MM} \
+    PREDSEA_CROCO_N=${PREDSEA_CROCO_N} \
+    python3 /build/patch_croco_source.py \
     && cp tmp/croco_build/croco_src/OCEAN/jobcomp tmp/croco_build/jobcomp \
     && chmod 0755 tmp/croco_build/jobcomp
 WORKDIR /build/tmp/croco_build

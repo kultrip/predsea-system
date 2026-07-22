@@ -3,6 +3,9 @@ steps:
     args:
       - build
       - --file=simulation/marine/croco/Dockerfile.batch
+      - --build-arg=PREDSEA_CROCO_LM=${_CROCO_LM}
+      - --build-arg=PREDSEA_CROCO_MM=${_CROCO_MM}
+      - --build-arg=PREDSEA_CROCO_N=${_CROCO_N}
       - --tag=${_IMAGE}
       - .
   - name: gcr.io/cloud-builders/docker
@@ -22,6 +25,9 @@ images:
   - ${_IMAGE}
 substitutions:
   _IMAGE: europe-west1-docker.pkg.dev/predsea-api/predsea-simulations/croco-batch:2.1.3
+  _CROCO_LM: "499"
+  _CROCO_MM: "399"
+  _CROCO_N: "30"
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_HIGHCPU_8

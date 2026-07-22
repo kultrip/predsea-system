@@ -458,16 +458,21 @@ Proceed in this order while production remains live:
 |---:|---|---|
 | 1 | Balearic SWAN 1 km, 24 h | one fully validated staging run |
 | 2 | Repeatable unattended SWAN run | at least a second clean cycle; interruption behavior understood |
-| 3 | Staging API consumes native waves | route/place/map values prove native lineage and non-null data |
-| 4 | SWAN 96 h benchmark | forcing, stability, disk, runtime, cost margin pass |
-| 5 | SWAN 120 h benchmark | only if operational window retains margin; otherwise retain 96 h |
-| 6 | Balearic CROCO 1 km, initially 6 h then 24 h | real 3-D ocean forcing, native output, content validation |
-| 7 | Coupled staging bundle | WRF + SWAN + CROCO manifests align in time/space/lineage |
-| 8 | Forecast quality ETL | asynchronous matchups against observations and baselines |
-| 9 | Guarded production promotion | unattended repeatability, rollback, API and customer gates |
-| 10 | Additional regions | introduce one versioned tile at a time |
+| 3 | Balearic CROCO 1 km, initially 6 h then 24 h | real 3-D ocean forcing, native output, content validation |
+| 4 | Balearic coupled reference bundle | WRF + SWAN + CROCO manifests align in time/space/lineage |
+| 5 | Repeatable unattended Balearic native run | at least a second clean cycle; interruption behavior understood |
+| 6 | Forecast quality ETL foundation | asynchronous matchups against observations and baselines; never blocks publication |
+| 7 | Regional grid and forcing preflight | every planned tile has complete atmospheric/ocean forcing and versioned bathymetry |
+| 8 | Additional 1 km regions | Alboran/Gibraltar, Gulf of Lion, Tyrrhenian and Algerian tiles each pass bounded 6 h then 24 h gates |
+| 9 | Multi-region staging API | route/place/map tests prove native lineage and non-null data in every supported region and across overlaps |
+| 10 | Guarded production promotion | unattended repeatability, rollback, API and customer gates |
+| 11 | SWAN/CROCO 96 h benchmark | forcing, stability, disk, runtime and cost margin pass for every promoted tile |
+| 12 | SWAN/CROCO 120 h benchmark | only if the operational window retains margin; otherwise retain 96 h |
 
-Do not jump directly to 120 hours before measuring the 24-hour run. Project
+Geographic coverage has priority over extending the horizon. Do not start the
+96/120-hour program until all required Western Mediterranean tiles have passed
+their 24-hour gates and the multi-region staging API has been validated. Do not
+jump directly to 120 hours before measuring each regional 24-hour run. Project
 runtime, disk, and cost from evidence, then test 96 hours if five days lacks
 margin. Four days is an acceptable operational product; a late five-day failure
 is not.
