@@ -3,7 +3,55 @@ from __future__ import annotations
 import numpy as np
 from pathlib import Path
 
-from scripts.prepare_croco_forcing import croco_climatology_times
+from scripts.prepare_croco_forcing import (
+    croco_climatology_times,
+    croco_depths,
+    croco_s_coordinates,
+    depth_average_velocity,
+)
+
+
+def test_new_s_coordinate_matches_pinned_croco_213_reference_values():
+    s_rho, s_w, cs_r, cs_w = croco_s_coordinates(30, theta_s=6.0, theta_b=0.0)
+
+    np.testing.assert_allclose(s_rho[[0, -1]], [-29.5 / 30.0, -0.5 / 30.0])
+    np.testing.assert_allclose(s_w[[0, -1]], [-1.0, 0.0])
+    np.testing.assert_allclose(cs_w[[0, -1]], [-1.0, 0.0])
+    expected_cs_r = (1.0 - np.cosh(6.0 * s_rho)) / (np.cosh(6.0) - 1.0)
+    np.testing.assert_allclose(cs_r, expected_cs_r)
+
+
+def test_new_s_coordinate_depths_are_stretched_and_bound_the_water_column():
+    s_rho, s_w, cs_r, cs_w = croco_s_coordinates(30, 6.0, 0.0)
+    h = np.array([[1000.0]])
+    zeta = np.array([[0.25]])
+
+    z_rho = croco_depths(h, zeta, s_rho, cs_r, hc_m=10.0)
+    z_w = croco_depths(h, zeta, s_w, cs_w, hc_m=10.0)
+
+    np.testing.assert_allclose(z_w[0, 0, 0], -1000.0)
+    np.testing.assert_allclose(z_w[-1, 0, 0], 0.25)
+    assert np.all(np.diff(z_w[:, 0, 0]) > 0.0)
+    assert not np.allclose(z_rho[:, 0, 0], s_rho * h.item())
+
+
+def test_barotropic_velocity_is_thickness_weighted_not_level_mean():
+    velocity = np.array([[[1.0]], [[3.0]]])
+    z_w = np.array([[[-10.0]], [[-9.0]], [[0.0]]])
+
+    result = depth_average_velocity(velocity, z_w)
+
+    np.testing.assert_allclose(result, [[2.8]])
+    assert result.item() != velocity.mean()
+
+
+def test_forcing_generator_uses_staggered_bathymetry_and_no_unweighted_mean():
+    source = Path("scripts/prepare_croco_forcing.py").read_text()
+
+    assert "h_u = 0.5 * (h[:, :-1] + h[:, 1:])" in source
+    assert "h_v = 0.5 * (h[:-1, :] + h[1:, :])" in source
+    assert "u_clm.mean(axis=1)" not in source
+    assert "v_clm.mean(axis=1)" not in source
 
 
 def test_climatology_uses_croco_ssh_variable_contract():

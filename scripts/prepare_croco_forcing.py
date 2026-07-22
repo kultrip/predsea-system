@@ -46,6 +46,9 @@ def parse_args() -> argparse.Namespace:
         default=30,
         help="Number of vertical sigma levels",
     )
+    parser.add_argument("--theta-s", type=float, default=6.0)
+    parser.add_argument("--theta-b", type=float, default=0.0)
+    parser.add_argument("--hc-m", type=float, default=10.0)
     return parser.parse_args()
 
 
@@ -86,7 +89,72 @@ def interpolate_2d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray,
     return t, interpolator((target_lat, target_lon))
 
 
-def interpolate_3d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray, src_lon: np.ndarray, src_depth: np.ndarray, target_lat: np.ndarray, target_lon: np.ndarray, s_rho: np.ndarray, h: np.ndarray, N: int) -> tuple[int, np.ndarray]:
+def croco_s_coordinates(
+    levels: int, theta_s: float, theta_b: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Reproduce CROCO 2.1.3 ``NEW_S_COORD`` from ``set_scoord.F``."""
+    if levels <= 0:
+        raise ValueError("CROCO vertical level count must be positive")
+    if theta_s < 0.0 or theta_b < 0.0:
+        raise ValueError("CROCO stretching parameters must be non-negative")
+
+    ds = 1.0 / levels
+    s_rho = ds * (np.arange(1, levels + 1, dtype=float) - levels - 0.5)
+    s_w = ds * (np.arange(0, levels + 1, dtype=float) - levels)
+
+    def csf(s: np.ndarray) -> np.ndarray:
+        if theta_s > 0.0:
+            csrf = (1.0 - np.cosh(theta_s * s)) / (np.cosh(theta_s) - 1.0)
+        else:
+            csrf = -(s**2)
+        if theta_b > 0.0:
+            return (np.exp(theta_b * csrf) - 1.0) / (1.0 - np.exp(-theta_b))
+        return csrf
+
+    cs_r = csf(s_rho)
+    cs_w = csf(s_w)
+    cs_w[0], cs_w[-1] = -1.0, 0.0
+    return s_rho, s_w, cs_r, cs_w
+
+
+def croco_depths(
+    h: np.ndarray,
+    zeta: np.ndarray,
+    s: np.ndarray,
+    cs: np.ndarray,
+    hc_m: float,
+) -> np.ndarray:
+    """Return CROCO ``NEW_S_COORD`` depths for rho or w levels."""
+    h = np.asarray(h, dtype=float)
+    zeta = np.asarray(zeta, dtype=float)
+    if h.shape != zeta.shape:
+        raise ValueError("bathymetry and sea level must share a horizontal grid")
+    if np.any(h <= 0.0):
+        raise ValueError("CROCO bathymetry must be positive")
+    z0 = hc_m * s[:, None, None] + cs[:, None, None] * h[None, :, :]
+    depths = z0 + zeta[None, :, :] * (1.0 + z0 / h[None, :, :])
+    # ``set_depth.F`` initializes the bottom W point directly to ``-h`` and
+    # only applies the transform for k=1..N.  Preserve that special endpoint.
+    bottom = np.isclose(s, -1.0)
+    if np.any(bottom):
+        depths[bottom] = -h
+    return depths
+
+
+def depth_average_velocity(velocity: np.ndarray, z_w: np.ndarray) -> np.ndarray:
+    """Compute barotropic velocity from thickness-weighted 3-D transport."""
+    velocity = np.asarray(velocity, dtype=float)
+    layer_thickness = np.diff(np.asarray(z_w, dtype=float), axis=0)
+    if velocity.shape != layer_thickness.shape:
+        raise ValueError("velocity and CROCO layer-thickness shapes do not agree")
+    if np.any(layer_thickness <= 0.0):
+        raise ValueError("CROCO layer thickness must be positive")
+    return np.sum(velocity * layer_thickness, axis=0) / np.sum(
+        layer_thickness, axis=0
+    )
+
+
+def interpolate_3d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray, src_lon: np.ndarray, src_depth: np.ndarray, target_lat: np.ndarray, target_lon: np.ndarray, s_rho: np.ndarray, cs_r: np.ndarray, h: np.ndarray, zeta: np.ndarray, hc_m: float, N: int) -> tuple[int, np.ndarray]:
     nz_src = len(src_depth)
     ny_tgt, nx_tgt = target_lon.shape
     src_z = -src_depth[::-1]
@@ -105,7 +173,8 @@ def interpolate_3d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray,
 
     # 2. Vertical interpolation
     local_h = h[:ny_tgt, :nx_tgt]
-    target_z = s_rho[:, np.newaxis, np.newaxis] * local_h[np.newaxis, :, :]
+    local_zeta = zeta[:ny_tgt, :nx_tgt]
+    target_z = croco_depths(local_h, local_zeta, s_rho, cs_r, hc_m)
     target_z_clipped = np.clip(target_z, src_z[0], src_z[-1])
 
     idx = np.searchsorted(src_z, target_z_clipped.ravel())
@@ -180,8 +249,14 @@ def main() -> int:
     eta_v, xi_v = lon_v.shape
     N = args.vertical_levels
 
-    # Define standard sigma coordinate stretching
-    s_rho = np.linspace(-1.0 + 1.0 / (2 * N), 0.0 - 1.0 / (2 * N), N)
+    # Reproduce the exact vertical coordinate compiled into the regional CROCO
+    # binary.  A linear ``s*h`` approximation creates a different water column
+    # and can excite the split-explicit barotropic mode.
+    s_rho, s_w, cs_r, cs_w = croco_s_coordinates(
+        N, args.theta_s, args.theta_b
+    )
+    h_u = 0.5 * (h[:, :-1] + h[:, 1:])
+    h_v = 0.5 * (h[:-1, :] + h[1:, :])
 
     # 2. Check input files
     forcing_files = {
@@ -240,7 +315,7 @@ def main() -> int:
             zeta_clm[t] = result
 
     # 3D interpolation helper (parallelized with ProcessPoolExecutor)
-    def interpolate_3d(ds: xr.Dataset, var_name: str, target_lon: np.ndarray, target_lat: np.ndarray, shape_3d: tuple[int, int, int]) -> np.ndarray:
+    def interpolate_3d(ds: xr.Dataset, var_name: str, target_lon: np.ndarray, target_lat: np.ndarray, target_h: np.ndarray, target_zeta: np.ndarray, shape_3d: tuple[int, int, int]) -> np.ndarray:
         out = np.zeros(shape_3d, dtype=np.float32)
         var_values = ds[var_name].values
 
@@ -256,7 +331,10 @@ def main() -> int:
                     target_lat,
                     target_lon,
                     s_rho,
-                    h,
+                    cs_r,
+                    target_h,
+                    target_zeta[t],
+                    args.hc_m,
                     N
                 )
                 for t in range(nt)
@@ -267,20 +345,27 @@ def main() -> int:
         return out
 
     print("🔄 Interpolating 3D Temperature...")
-    temp_clm = interpolate_3d(ds_tem, "thetao", lon_rho, lat_rho, (nt, N, eta_rho, xi_rho))
+    temp_clm = interpolate_3d(ds_tem, "thetao", lon_rho, lat_rho, h, zeta_clm, (nt, N, eta_rho, xi_rho))
 
     print("🔄 Interpolating 3D Salinity...")
-    salt_clm = interpolate_3d(ds_sal, "so", lon_rho, lat_rho, (nt, N, eta_rho, xi_rho))
+    salt_clm = interpolate_3d(ds_sal, "so", lon_rho, lat_rho, h, zeta_clm, (nt, N, eta_rho, xi_rho))
 
     print("🔄 Interpolating 3D Eastward velocity (u)...")
-    u_clm = interpolate_3d(ds_cur, "uo", lon_u, lat_u, (nt, N, eta_rho, xi_u))
+    zeta_u = 0.5 * (zeta_clm[:, :, :-1] + zeta_clm[:, :, 1:])
+    u_clm = interpolate_3d(ds_cur, "uo", lon_u, lat_u, h_u, zeta_u, (nt, N, eta_rho, xi_u))
 
     print("🔄 Interpolating 3D Northward velocity (v)...")
-    v_clm = interpolate_3d(ds_cur, "vo", lon_v, lat_v, (nt, N, eta_v, xi_v))
+    zeta_v = 0.5 * (zeta_clm[:, :-1, :] + zeta_clm[:, 1:, :])
+    v_clm = interpolate_3d(ds_cur, "vo", lon_v, lat_v, h_v, zeta_v, (nt, N, eta_v, xi_v))
 
     print("🔄 Computing vertically integrated velocities (ubar, vbar)...")
-    ubar_clm = u_clm.mean(axis=1)
-    vbar_clm = v_clm.mean(axis=1)
+    ubar_clm = np.empty((nt, eta_u, xi_u), dtype=np.float32)
+    vbar_clm = np.empty((nt, eta_v, xi_v), dtype=np.float32)
+    for t in range(nt):
+        z_w_u = croco_depths(h_u, zeta_u[t], s_w, cs_w, args.hc_m)
+        z_w_v = croco_depths(h_v, zeta_v[t], s_w, cs_w, args.hc_m)
+        ubar_clm[t] = depth_average_velocity(u_clm[t], z_w_u)
+        vbar_clm[t] = depth_average_velocity(v_clm[t], z_w_v)
 
     # Save output datasets
     args.output_dir.mkdir(parents=True, exist_ok=True)
