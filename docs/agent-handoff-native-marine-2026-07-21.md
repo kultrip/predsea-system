@@ -1,6 +1,6 @@
 # PredSea Native Marine Forecast — Agent Handoff
 
-Last updated: **2026-07-22 17:50 Europe/Madrid**
+Last updated: **2026-07-22 20:05 Europe/Madrid**
 Repository: `/Users/charles.santana/Kultrip/predsea-system`  
 Google Cloud project: `predsea-api`  
 Primary GCP location: `europe-west1`  
@@ -10,6 +10,93 @@ This is the authoritative operational handoff for continuing the native PredSea
 marine forecast project. Read it before changing code or cloud resources. Older
 handoffs remain useful history, but their run IDs, digests, and status may be
 stale.
+
+## 0. Read this first: exact current state
+
+The active objective is a native, hourly, 1 km Western Mediterranean marine
+forecast produced by PredSea in GCP. Geographic coverage has priority over
+extending the horizon to 96/120 hours. API publication comes only after every
+regional tile has passed its model gates.
+
+The current work is **not production**. It is isolated in
+`gs://predsea-daily-outputs-test`. Production services, jobs, scheduler, IAM,
+bucket and `latest` pointers have not been changed and must remain untouched.
+
+### Current gate table
+
+| # | Gate | State | Evidence / next action |
+|---:|---|:---:|---|
+| 1 | Staging isolation and immutable run layout | ✅ | GCP Batch plus staging bucket; no production writes |
+| 2 | Balearic 1 km CROCO grid | ✅ | 501 x 401 rho grid, 30 levels, wet fraction 0.9289, rx0 <= 0.2 |
+| 3 | Real 3-D CMEMS ocean forcing | ✅ | u/v, temperature, salinity and SSH prepared on the exact grid |
+| 4 | Real hourly WRF atmospheric forcing | ✅ | seven exact timestamps for the bounded six-hour test |
+| 5 | Grid/forcing/binary dimension and geographic agreement | ✅ | fail-closed checks pass |
+| 6 | CROCO climatology time-axis contract | ✅ | `ssh_time`, `uclm_time`, `tclm_time`, `sclm_time` read by CROCO |
+| 7 | CROCO SSH variable contract | ✅ | SSH forcing read at model hours 0 and 1 |
+| 8 | CROCO incoming longwave contract | ✅ | `radlw_in` read at model hours 0 and 1 |
+| 9 | CROCO MPI startup and initial history record | ✅ | Standard `c2d-highcpu-16`, 16 MPI ranks, finite plausible initial fields |
+| 10 | Balearic SWAN 1 km / 24 h | ✅ | 25 hourly native-wave timestamps validated in staging |
+| 11 | Balearic CROCO six-hour numerical stability | ❌ active blocker | dt=60 s reproduced a STEP2D blow-up; dt=20 s attempt also exited 1, but its model log was not retained |
+| 12 | Durable failure diagnostics | 🟡 being implemented | capture CROCO stdout and upload `FAILURE.txt`, log and partial artifacts to run-scoped GCS before rethrowing |
+| 13 | Balearic CROCO 24 h | ⬜ | only after a clean six-hour run with seven valid timestamps |
+| 14 | Alboran/Gibraltar 1 km | ⬜ | must prove open boundaries, bathymetry, tides/exchange flow and overlap |
+| 15 | Gulf of Lion 1 km | ⬜ | independent grid, six-hour gate, then 24-hour gate |
+| 16 | Tyrrhenian 1 km | ⬜ | independent grid, six-hour gate, then 24-hour gate |
+| 17 | Algerian Basin 1 km | ⬜ | independent grid, six-hour gate, then 24-hour gate |
+| 18 | Cross-tile overlap/continuity validation | ⬜ | no gaps, jumps, duplicate authority or mismatched timestamps |
+| 19 | Staging API and route-product tests | ⬜ | intentionally after geographic coverage |
+| 20 | 96/120-hour forecasts | ⬜ | intentionally after all-region 24-hour proof |
+| 21 | Production promotion | ⬜ | requires explicit guarded release decision |
+
+### Latest exact cloud attempt
+
+```text
+Cloud Build: 6e3fa9de-aff9-4635-969e-d7a7caedc1d1 (SUCCESS)
+Image digest: sha256:ae0fcf8ccdac53963043a31ffb3af34ada78315b2504caf8ca62a632251e528b
+Batch job: predsea-sim-balearic-1km-croco-f4323874
+Run ID: 2026-07-16T0000Z-croco-balearic-6h-v7
+Machine: c2d-highcpu-16 STANDARD, 16 vCPU, 32 GiB, 16 MPI ranks
+CROCO timestep: 20 seconds
+Forecast gate: 6 hours, expected 7 hourly records
+Started: 2026-07-22T17:33:25Z
+Failed: 2026-07-22T17:45:17Z
+Batch evidence: task 0 exit code 1
+Root cause: NOT YET PROVEN because the application stdout was not persisted
+```
+
+Do not infer that dt=20 s is numerically unstable from the Batch exit code
+alone. The run may have failed during forcing, MPI, integration, validation or
+upload. The next run must persist evidence before any new model/configuration
+change is considered.
+
+### Work currently in the workspace
+
+`scripts/run_marine_simulation.py` has an uncommitted diagnostic change that:
+
+1. tees CROCO MPI stdout to `croco.stdout.log` while still streaming it;
+2. creates a structured `FAILURE.txt` on any CROCO exception;
+3. uploads the run-scoped CROCO work directory to
+   `predictions/<date>/runs/<run-id>/<region>/failure-diagnostics/`;
+4. rethrows the original error so GCP Batch still fails closed.
+
+This change must receive focused tests before commit. Do not accidentally stage
+the many unrelated changes in the dirty worktree. The user intentionally
+removed large local shapefiles and NetCDF files; do not restore or commit those
+deletions as part of this task.
+
+### Immediate continuation sequence
+
+1. Add unit tests for log teeing and best-effort run-scoped failure upload.
+2. Run focused marine Batch tests and `git diff --check`.
+3. Stage only the diagnostic runner, its tests and this handoff.
+4. Commit and push to `codex/wrf-curvilinear-publication`.
+5. Build the CROCO Batch image and obtain its immutable digest.
+6. Dry-run the same six-hour submission using a new run ID.
+7. Submit on `c2d-highcpu-16` STANDARD with 16 MPI ranks and dt=20 s.
+8. If it fails, read `FAILURE.txt`, `croco.stdout.log` and partial NetCDF from
+   the run-scoped diagnostic prefix before changing anything.
+9. If it succeeds, verify exactly seven distinct hourly records, finite values,
+   physical ranges, exact geographic coverage and provenance; then run 24 h.
 
 ## 1. Mission
 
@@ -166,7 +253,7 @@ The authoritative status at this update is:
 | Balearic CROCO grid | bbox 0.5–5.5 E, 37.5–41.5 N; 501 x 401; 30 levels | validated exact bbox, shape, wet fraction 0.9289 and max rx0 0.2 | retained immutable grid |
 | Balearic SWAN | 1 km nominal, 24 h, 25 hourly timestamps | staging native wave run validated | replicate only after regional grid preflight |
 | Balearic CROCO forcing | CMEMS 3-D u/v, temperature, salinity, SSH plus seven WRF surface timestamps for 6 h | forcing preparation passed | rerun CROCO binary |
-| Balearic CROCO | 1 km nominal, 30 levels, 16 MPI ranks, 6 h gate | last execution failed before integration because the climatology lacked CROCO time variables | run corrected 6 h gate, then 24 h |
+| Balearic CROCO | 1 km nominal, 30 levels, 16 MPI ranks, 6 h gate | all known input contracts fixed; dt=60 s numerical blow-up proven; dt=20 s run exited 1 without retained model log | add durable diagnostics, repeat identical dt=20 s gate, then diagnose from evidence |
 | Alboran/Gibraltar | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
 | Gulf of Lion | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
 | Tyrrhenian | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
@@ -185,7 +272,7 @@ Do not copy a shortened checksum from chat history. Retrieve and record the
 complete checksum/object generation from GCS metadata and the companion
 validation report before publication.
 
-The most recent CROCO 6-hour job was:
+The earlier input-contract failure was:
 
 ```text
 Friendly job: predsea-sim-balearic-1km-croco-1f486f02
@@ -197,7 +284,7 @@ Requested:    16 vCPU, 32 GiB, 16 MPI ranks
 Result:       FAILED before timestep integration
 ```
 
-This failure was not VM capacity, preemption, WRF, CMEMS download, grid, or
+That earlier failure was not VM capacity, preemption, WRF, CMEMS download, grid, or
 interpolation. CROCO reported:
 
 ```text
@@ -220,9 +307,15 @@ Immutable digest: sha256:ee8244de30d0082f7054d73810321ed113fc339c6f00e1ad688da68
 Cloud Build: 32f159a1-05bb-4c29-9be5-f761b3bbd6cb (SUCCESS)
 ```
 
-At the moment of this update the corrected six-hour Batch job has **not yet
-been submitted**. Dry-run the submission first and use a new run ID. Never
-reuse `1f486f02` or overwrite its diagnostic evidence.
+Subsequent fixes also added the required SSH and incoming-longwave variables.
+CROCO then entered integration and reproduced a STEP2D velocity blow-up with a
+60-second baroclinic timestep. Commit `61c8e93` reduced that timestep to 20
+seconds while retaining 30 fast barotropic substeps. Image
+`sha256:ae0fcf8ccdac53963043a31ffb3af34ada78315b2504caf8ca62a632251e528b`
+was tested by Batch job `predsea-sim-balearic-1km-croco-f4323874`, which exited
+1 after about 12 minutes. Because that attempt did not preserve application
+stdout, its cause remains unknown. The diagnostic rerun described in section 0
+is mandatory before changing physics, timestep, forcing or grid again.
 
 The running heartbeat/monitor is named:
 

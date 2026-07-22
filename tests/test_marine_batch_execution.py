@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from scripts.run_marine_simulation import croco_mpi_command, require_one, resolve_swan_tools
+from scripts.run_marine_simulation import (
+    croco_mpi_command,
+    require_one,
+    resolve_swan_tools,
+    run_subprocess,
+    upload_croco_failure_diagnostics,
+)
 from scripts.submit_gcp_batch_simulation import (
     build_batch_job_json,
     default_timeout_seconds,
@@ -44,6 +50,46 @@ def test_croco_mpi_uses_allocated_hardware_threads():
     assert command[:5] == [
         "mpirun", "--allow-run-as-root", "--use-hwthread-cpus", "-np", "16"
     ]
+
+
+def test_run_subprocess_streams_output_to_durable_log(tmp_path: Path):
+    log_path = tmp_path / "croco.stdout.log"
+
+    result = run_subprocess(
+        ["python3", "-c", "print('CROCO STEP 42')"], log_path=log_path
+    )
+
+    assert result == 0
+    assert log_path.read_text(encoding="utf-8") == "CROCO STEP 42\n"
+
+
+def test_croco_failure_diagnostics_are_run_scoped(tmp_path: Path, monkeypatch):
+    captured = {}
+
+    def fake_run_subprocess(command, cwd=None, log_path=None):
+        captured["command"] = command
+        return 0
+
+    monkeypatch.setattr(
+        "scripts.run_marine_simulation.run_subprocess", fake_run_subprocess
+    )
+
+    result = upload_croco_failure_diagnostics(
+        outputs_dir=tmp_path,
+        region_id="balearic_1km",
+        run_date="2026-07-16",
+        run_id="croco-diagnostic-v8",
+        gcs_bucket="predsea-daily-outputs-test",
+        error=RuntimeError("parallel CROCO execution failed with exit code 1"),
+    )
+
+    failure = tmp_path / "croco_balearic_1km" / "FAILURE.txt"
+    assert result == 0
+    assert "status=FAILED" in failure.read_text(encoding="utf-8")
+    assert "RuntimeError" in failure.read_text(encoding="utf-8")
+    assert captured["command"][-1].endswith(
+        "/2026-07-16/runs/croco-diagnostic-v8/balearic_1km/failure-diagnostics/"
+    )
 
 
 def test_long_horizon_timeout_is_not_the_old_four_hour_constant():

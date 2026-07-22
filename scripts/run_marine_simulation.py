@@ -41,7 +41,9 @@ def resolve_swan_tools(
     return shutil.which("swan.exe"), shutil.which("swanrun")
 
 
-def run_subprocess(cmd: list[str], cwd: Path | None = None) -> int:
+def run_subprocess(
+    cmd: list[str], cwd: Path | None = None, log_path: Path | None = None
+) -> int:
     print(f"Running: {' '.join(cmd)}")
     process = subprocess.Popen(
         cmd,
@@ -51,16 +53,51 @@ def run_subprocess(cmd: list[str], cwd: Path | None = None) -> int:
         bufsize=1,
         cwd=str(cwd) if cwd else None
     )
-    if process.stdout:
-        for line in process.stdout:
-            print(line, end="")
+    log_file = None
+    if log_path is not None:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_file = log_path.open("w", encoding="utf-8")
+    try:
+        if process.stdout:
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                if log_file is not None:
+                    log_file.write(line)
+                    log_file.flush()
+    finally:
+        if log_file is not None:
+            log_file.close()
     return process.wait()
 
 
-def run_checked(cmd: list[str], *, stage: str, cwd: Path | None = None) -> None:
-    return_code = run_subprocess(cmd, cwd=cwd)
+def run_checked(
+    cmd: list[str], *, stage: str, cwd: Path | None = None,
+    log_path: Path | None = None,
+) -> None:
+    return_code = run_subprocess(cmd, cwd=cwd, log_path=log_path)
     if return_code != 0:
         raise RuntimeError(f"{stage} failed with exit code {return_code}")
+
+
+def upload_croco_failure_diagnostics(
+    *, outputs_dir: Path, region_id: str, run_date: str, run_id: str,
+    gcs_bucket: str, error: Exception,
+) -> int:
+    """Persist a failed CROCO run without turning upload failure into success."""
+    failure_dir = outputs_dir / f"croco_{region_id}"
+    failure_dir.mkdir(parents=True, exist_ok=True)
+    (failure_dir / "FAILURE.txt").write_text(
+        f"status=FAILED\nstage=croco\nerror={type(error).__name__}: {error}\n"
+        f"timestamp={dt.datetime.now(dt.timezone.utc).isoformat()}\n",
+        encoding="utf-8",
+    )
+    diagnostic_target = (
+        f"gs://{gcs_bucket}/predictions/{run_date}/runs/{run_id}/"
+        f"{region_id}/failure-diagnostics/"
+    )
+    return run_subprocess(
+        ["gsutil", "-m", "cp", "-r", str(failure_dir), diagnostic_target]
+    )
 
 
 def croco_mpi_command(mpi_ranks: int, executable: Path, namelist: Path) -> list[str]:
@@ -225,6 +262,7 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
         croco_mpi_command(mpi_ranks, croco_exe, namelist),
         stage="parallel CROCO execution",
         cwd=croco_work,
+        log_path=croco_work / "croco.stdout.log",
     )
     history = croco_work / "croco_his.nc"
     if not history.is_file() or history.stat().st_size == 0:
@@ -326,17 +364,34 @@ def main():
     )
 
     if args.model == "croco":
-        run_croco_simulation(
-            project_root=project_root,
-            inputs_dir=inputs_dir,
-            outputs_dir=outputs_dir,
-            region_id=args.region,
-            run_date=run_date,
-            run_id=run_id,
-            forecast_hours=args.forecast_hours,
-            mpi_ranks=args.mpi_ranks,
-            gcs_bucket=args.gcs_bucket,
-        )
+        try:
+            run_croco_simulation(
+                project_root=project_root,
+                inputs_dir=inputs_dir,
+                outputs_dir=outputs_dir,
+                region_id=args.region,
+                run_date=run_date,
+                run_id=run_id,
+                forecast_hours=args.forecast_hours,
+                mpi_ranks=args.mpi_ranks,
+                gcs_bucket=args.gcs_bucket,
+            )
+        except Exception as exc:
+            upload_rc = upload_croco_failure_diagnostics(
+                outputs_dir=outputs_dir,
+                region_id=args.region,
+                run_date=run_date,
+                run_id=run_id,
+                gcs_bucket=args.gcs_bucket,
+                error=exc,
+            )
+            if upload_rc != 0:
+                print(
+                    "WARNING: failed to upload CROCO failure diagnostics",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            raise
         log_step("🏆 CROCO shard execution finished successfully!")
         return
 
