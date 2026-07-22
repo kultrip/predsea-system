@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.run_marine_simulation import require_one, resolve_swan_tools
+from scripts.run_marine_simulation import croco_mpi_command, require_one, resolve_swan_tools
 from scripts.submit_gcp_batch_simulation import (
     build_batch_job_json,
     default_timeout_seconds,
@@ -36,6 +36,14 @@ def test_resolve_swan_tools_handles_minimal_batch_path(tmp_path: Path, monkeypat
     swan_exe, swanrun = resolve_swan_tools(tmp_path)
     assert swan_exe == str(tmp_path / "swan.exe")
     assert swanrun == str(tmp_path / "swanrun")
+
+
+def test_croco_mpi_uses_allocated_hardware_threads():
+    command = croco_mpi_command(16, Path("/usr/local/bin/croco"), Path("/work/croco.in"))
+
+    assert command[:5] == [
+        "mpirun", "--allow-run-as-root", "--use-hwthread-cpus", "-np", "16"
+    ]
 
 
 def test_long_horizon_timeout_is_not_the_old_four_hour_constant():

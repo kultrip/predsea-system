@@ -61,6 +61,19 @@ def run_checked(cmd: list[str], *, stage: str, cwd: Path | None = None) -> None:
         raise RuntimeError(f"{stage} failed with exit code {return_code}")
 
 
+def croco_mpi_command(mpi_ranks: int, executable: Path, namelist: Path) -> list[str]:
+    """Use every allocated vCPU, including SMT hardware threads, as an MPI slot."""
+    return [
+        "mpirun",
+        "--allow-run-as-root",
+        "--use-hwthread-cpus",
+        "-np",
+        str(mpi_ranks),
+        str(executable),
+        str(namelist),
+    ]
+
+
 def require_one(directory: Path, patterns: tuple[str, ...], label: str) -> Path:
     """Resolve one explicit input product and reject ambiguous discovery."""
     matches: list[Path] = []
@@ -194,7 +207,7 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
     os.environ["OMPI_ALLOW_RUN_AS_ROOT"] = "1"
     os.environ["OMPI_ALLOW_RUN_AS_ROOT_CONFIRM"] = "1"
     run_checked(
-        ["mpirun", "--allow-run-as-root", "-np", str(mpi_ranks), str(croco_exe), str(namelist)],
+        croco_mpi_command(mpi_ranks, croco_exe, namelist),
         stage="parallel CROCO execution",
         cwd=croco_work,
     )
