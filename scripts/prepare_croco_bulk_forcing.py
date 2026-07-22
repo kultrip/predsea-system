@@ -30,6 +30,23 @@ def _surface(values: xr.DataArray) -> np.ndarray:
     return array.astype(np.float64)
 
 
+def _wrf_timestamp(raw: np.ndarray) -> str:
+    """Decode WRF ``Times`` values across NetCDF string representations."""
+    values = np.asarray(raw)
+    first = values[0]
+    if values.ndim == 2:
+        parts = np.asarray(first).tolist()
+        if parts and isinstance(parts[0], bytes):
+            stamp = b"".join(parts).decode("ascii")
+        else:
+            stamp = "".join(str(part) for part in parts)
+    elif isinstance(first, bytes):
+        stamp = first.decode("ascii")
+    else:
+        stamp = str(first)
+    return stamp.replace("_", "T")
+
+
 def _relative_humidity_percent(t_kelvin: np.ndarray, q: np.ndarray, p_pa: np.ndarray) -> np.ndarray:
     """Convert WRF specific humidity to relative humidity in percent."""
     vapor_pressure = q * p_pa / np.maximum(0.622 + 0.378 * q, 1.0e-8)
@@ -77,12 +94,7 @@ def build_bulk_forcing(
             source_lat = _surface(wrf["XLAT"])
             source_lon = _surface(wrf["XLONG"])
             if "Times" in wrf:
-                raw = np.asarray(wrf["Times"].values)
-                if raw.ndim == 2:
-                    stamp = b"".join(raw[0].tolist()).decode().replace("_", "T")
-                else:
-                    stamp = str(raw[0]).replace("_", "T")
-                valid_time = np.datetime64(stamp)
+                valid_time = np.datetime64(_wrf_timestamp(wrf["Times"].values))
             elif "XTIME" in wrf and "START_DATE" in wrf.attrs:
                 valid_time = np.datetime64(wrf.attrs["START_DATE"].replace("_", "T")) + np.timedelta64(
                     int(round(float(np.asarray(wrf["XTIME"].values).ravel()[0]))), "m"

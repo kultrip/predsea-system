@@ -5,7 +5,13 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from scripts.prepare_croco_bulk_forcing import build_bulk_forcing
+from scripts.prepare_croco_bulk_forcing import _wrf_timestamp, build_bulk_forcing
+
+
+def test_decodes_netcdf_fixed_width_byte_timestamp():
+    raw = np.array([b"2026-07-16T00:00:00"], dtype="S19")
+
+    assert _wrf_timestamp(raw) == "2026-07-16T00:00:00"
 
 
 def _write_grid(path: Path) -> None:
