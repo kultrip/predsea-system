@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import xarray as xr
 
-from scripts.prepare_croco_grid import build_grid, smooth_bathymetry
+from scripts.prepare_croco_grid import (
+    CROCO_REQUIRED_GRID_VARIABLES,
+    build_grid,
+    smooth_bathymetry,
+)
 
 
 def test_smooth_bathymetry_enforces_rx0():
@@ -54,3 +58,8 @@ def test_build_grid_creates_complete_croco_staggered_grid():
     assert report["wet_cell_count"] == 9
     assert 0.0 <= report["changed_wet_cell_fraction"] <= 1.0
     assert report["maximum_wet_cell_deepening_m"] >= 0.0
+    assert CROCO_REQUIRED_GRID_VARIABLES <= set(grid.variables)
+    assert float(grid["xl"].item()) > 0.0
+    assert float(grid["el"].item()) > 0.0
+    assert report["xl_m"] == float(grid["xl"].item())
+    assert report["el_m"] == float(grid["el"].item())

@@ -19,6 +19,25 @@ except ModuleNotFoundError:  # Direct execution from the scripts directory.
 
 EARTH_RADIUS_M = 6_371_000.0
 EARTH_ROTATION_S = 7.2921159e-5
+CROCO_REQUIRED_GRID_VARIABLES = frozenset(
+    {
+        "spherical",
+        "xl",
+        "el",
+        "h",
+        "f",
+        "pm",
+        "pn",
+        "lon_rho",
+        "lat_rho",
+        "lon_u",
+        "lat_u",
+        "lon_v",
+        "lat_v",
+        "angle",
+        "mask_rho",
+    }
+)
 
 
 def _sha256(path: Path) -> str:
@@ -164,6 +183,12 @@ def build_grid(
     dy[0, :] = dy_edges[0, :]
     dy[-1, :] = dy_edges[-1, :]
 
+    # CROCO reads these scalar basin lengths before any gridded arrays.  Use
+    # the median full-row/full-column geodesic length so mildly curvilinear
+    # spherical grids retain a representative physical XI/ETA extent.
+    xl = float(np.median(dx.sum(axis=1)))
+    el = float(np.median(dy.sum(axis=0)))
+
     mask_u = mask_rho[:, :-1] & mask_rho[:, 1:]
     mask_v = mask_rho[:-1, :] & mask_rho[1:, :]
     mask_psi = (
@@ -197,6 +222,8 @@ def build_grid(
                 2.0 * EARTH_ROTATION_S * np.sin(np.deg2rad(lat_rho)),
             ),
             "spherical": ((), np.bytes_("T")),
+            "xl": ((), xl),
+            "el": ((), el),
         },
         attrs={
             "title": "PredSea CROCO regional grid",
@@ -223,6 +250,8 @@ def build_grid(
         "smoothing_iterations": smoothing_iterations,
         "dx_m": [float(dx.min()), float(dx.max())],
         "dy_m": [float(dy.min()), float(dy.max())],
+        "xl_m": xl,
+        "el_m": el,
         "bbox": [
             float(lon_rho.min()),
             float(lat_rho.min()),
@@ -230,6 +259,12 @@ def build_grid(
             float(lat_rho.max()),
         ],
     }
+    missing = CROCO_REQUIRED_GRID_VARIABLES.difference(grid.variables)
+    if missing:
+        raise ValueError(
+            "generated grid is missing CROCO-required variables: "
+            + ", ".join(sorted(missing))
+        )
     return grid, report
 
 
