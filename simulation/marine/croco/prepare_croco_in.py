@@ -30,7 +30,7 @@ def render(template: str, *, start_date: str, forecast_hours: int, work_dir: Pat
         r"(?m)^(grid:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_grid.nc",
         r"(?m)^(bulk_forcing:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_blk.nc",
         r"(?m)^(climatology:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_clm.nc",
-        r"(?m)^(boundary:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_clm.nc",
+        r"(?m)^(boundary:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_bry.nc",
         r"(?m)^(initial:[ \t]+NRREC / filename[ \t]*\n[ \t]*1[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_ini.nc",
         r"(?m)^(restart:[ \t]+NRST, NRPFRST / filename[ \t]*\n)[ \t]*\d+[ \t]+-1[ \t]*\n[ \t]*.*$": rf"\g<1>                   {ntimes}    -1\n    {work_dir}/croco_rst.nc",
         r"(?m)^(history:[ \t]+LDEFHIS, NWRT, NRPFHIS / filename[ \t]*\n)[ \t]*T[ \t]+\d+[ \t]+0[ \t]*\n[ \t]*.*$": rf"\g<1>            T      {steps_per_hour}     0\n    {work_dir}/croco_his.nc",

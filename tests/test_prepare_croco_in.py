@@ -18,6 +18,8 @@ def test_renders_six_hour_gate_from_single_horizon(tmp_path):
     assert "2026-07-20 00:00:00" in result
     assert "2026-07-20 06:00:00" in result
     assert f"{tmp_path}/croco_blk.nc" in result
+    assert f"{tmp_path}/croco_bry.nc" in result
+    assert "boundary: filename\n" + f"    {tmp_path}/croco_clm.nc" not in result
     assert f"{tmp_path}/croco_his.nc" in result
 
 
