@@ -11,7 +11,9 @@ import datetime as dt
 import json
 import multiprocessing
 from pathlib import Path
+import shutil
 import sys
+import tempfile
 
 import numpy as np
 import xarray as xr
@@ -49,6 +51,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--theta-s", type=float, default=6.0)
     parser.add_argument("--theta-b", type=float, default=0.0)
     parser.add_argument("--hc-m", type=float, default=10.0)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Bounded interpolation process count; keep low to avoid multiplying 3-D working arrays",
+    )
     return parser.parse_args()
 
 
@@ -131,8 +139,17 @@ def croco_depths(
         raise ValueError("bathymetry and sea level must share a horizontal grid")
     if np.any(h <= 0.0):
         raise ValueError("CROCO bathymetry must be positive")
-    z0 = hc_m * s[:, None, None] + cs[:, None, None] * h[None, :, :]
-    depths = z0 + zeta[None, :, :] * (1.0 + z0 / h[None, :, :])
+    # CROCO 2.1.3 ``set_depth.F`` uses ``hinv=1/(abs(h)+hc)`` under
+    # NEW_S_COORD, then multiplies the static term by ``h*hinv``.  Omitting
+    # this normalization can put interior levels below the seabed in shallow
+    # cells and makes the generated transport inconsistent with the runtime.
+    h_abs = np.abs(h)
+    hinv = 1.0 / (h_abs + hc_m)
+    z0 = hc_m * s[:, None, None] + cs[:, None, None] * h_abs[None, :, :]
+    depths = (
+        z0 * h[None, :, :] * hinv[None, :, :]
+        + zeta[None, :, :] * (1.0 + z0 * hinv[None, :, :])
+    )
     # ``set_depth.F`` initializes the bottom W point directly to ``-h`` and
     # only applies the transform for k=1..N.  Preserve that special endpoint.
     bottom = np.isclose(s, -1.0)
@@ -288,9 +305,19 @@ def main() -> int:
     print(f"👉 CMEMS bounds: Lon [{src_lon.min():.3f}, {src_lon.max():.3f}], Lat [{src_lat.min():.3f}, {src_lat.max():.3f}]")
     print(f"👉 CMEMS depth layers: {len(src_depth)} layers down to {src_depth.max():.1f}m")
 
-    # Set up process pool based on available CPU count (capped at 32)
-    max_workers = min(multiprocessing.cpu_count(), 32)
+    # Each worker materializes several full 30-level target-grid arrays.  A
+    # CPU-sized pool can multiply memory until the kernel kills the process,
+    # especially after temperature and salinity outputs are resident.  Keep
+    # this independently bounded from CROCO's later MPI rank count.
+    if args.workers <= 0:
+        raise ValueError("CROCO forcing worker count must be positive")
+    max_workers = min(args.workers, multiprocessing.cpu_count())
     print(f"🚀 Initializing parallel forcing compiler with {max_workers} processes...")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    # Keep multi-gigabyte interpolation arrays outside the run artifact tree.
+    # A failed Batch task uploads that tree for diagnosis, so putting scratch
+    # files there would create a second failure while collecting diagnostics.
+    scratch_dir = Path(tempfile.mkdtemp(prefix="predsea-croco-forcing-"))
 
     # Interpolate SSH (zeta)
     print("🔄 Interpolating sea level (zeta) in parallel...")
@@ -316,7 +343,8 @@ def main() -> int:
 
     # 3D interpolation helper (parallelized with ProcessPoolExecutor)
     def interpolate_3d(ds: xr.Dataset, var_name: str, target_lon: np.ndarray, target_lat: np.ndarray, target_h: np.ndarray, target_zeta: np.ndarray, shape_3d: tuple[int, int, int]) -> np.ndarray:
-        out = np.zeros(shape_3d, dtype=np.float32)
+        scratch_path = scratch_dir / f"{var_name}.interpolated.float32"
+        out = np.memmap(scratch_path, mode="w+", dtype=np.float32, shape=shape_3d)
         var_values = ds[var_name].values
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
@@ -342,6 +370,7 @@ def main() -> int:
             for fut in futures:
                 t, result = fut.result()
                 out[t] = result
+        out.flush()
         return out
 
     print("🔄 Interpolating 3D Temperature...")
@@ -368,7 +397,6 @@ def main() -> int:
         vbar_clm[t] = depth_average_velocity(v_clm[t], z_w_v)
 
     # Save output datasets
-    args.output_dir.mkdir(parents=True, exist_ok=True)
     clm_path = args.output_dir / "croco_clm.nc"
     bry_path = args.output_dir / "croco_bry.nc"
     ini_path = args.output_dir / "croco_ini.nc"
@@ -452,6 +480,16 @@ def main() -> int:
     )
     encoding_ini = {var: {"zlib": True, "complevel": 1} for var in ds_ini.data_vars}
     ds_ini.to_netcdf(ini_path, encoding=encoding_ini)
+
+    # The NetCDF outputs are now self-contained. Close every view of the
+    # disk-backed arrays before removing their temporary backing files.
+    ds_clm.close()
+    ds_bry.close()
+    ds_ini.close()
+    for array in (temp_clm, salt_clm, u_clm, v_clm):
+        array.flush()
+    del ds_clm, ds_bry, ds_ini, temp_clm, salt_clm, u_clm, v_clm
+    shutil.rmtree(scratch_dir)
 
     print("=========================================================================")
     print("✅ CROCO Forcing compiled successfully!")

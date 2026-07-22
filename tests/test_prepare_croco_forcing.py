@@ -35,6 +35,20 @@ def test_new_s_coordinate_depths_are_stretched_and_bound_the_water_column():
     assert not np.allclose(z_rho[:, 0, 0], s_rho * h.item())
 
 
+def test_new_s_coordinate_depths_match_shallow_water_runtime_formula():
+    s_rho, s_w, cs_r, cs_w = croco_s_coordinates(30, 6.0, 0.0)
+    h = np.array([[10.0]])
+    zeta = np.array([[0.2]])
+
+    z_w = croco_depths(h, zeta, s_w, cs_w, hc_m=10.0)
+    k = 1
+    z0 = 10.0 * s_w[k] + cs_w[k] * h.item()
+    expected = z0 * h.item() / 20.0 + zeta.item() * (1.0 + z0 / 20.0)
+
+    np.testing.assert_allclose(z_w[k, 0, 0], expected)
+    assert np.all(np.diff(z_w[:, 0, 0]) > 0.0)
+
+
 def test_barotropic_velocity_is_thickness_weighted_not_level_mean():
     velocity = np.array([[[1.0]], [[3.0]]])
     z_w = np.array([[[-10.0]], [[-9.0]], [[0.0]]])
@@ -52,6 +66,8 @@ def test_forcing_generator_uses_staggered_bathymetry_and_no_unweighted_mean():
     assert "h_v = 0.5 * (h[:-1, :] + h[1:, :])" in source
     assert "u_clm.mean(axis=1)" not in source
     assert "v_clm.mean(axis=1)" not in source
+    assert 'default=4' in source
+    assert "min(args.workers, multiprocessing.cpu_count())" in source
 
 
 def test_climatology_uses_croco_ssh_variable_contract():
