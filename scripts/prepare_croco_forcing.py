@@ -129,6 +129,27 @@ def interpolate_3d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray,
     return t, weight_low * val_low + weight_high * val_high
 
 
+def croco_climatology_times(src_time: np.ndarray) -> dict[str, tuple[str, np.ndarray]]:
+    """Return the explicit time axes required by CROCO climatology readers.
+
+    This regional binary is compiled without ``USE_CALENDAR``. CROCO therefore
+    expects elapsed model days, not CF-decoded datetimes, and it looks up four
+    fixed variable names in the climatology file.
+    """
+    timestamps = np.asarray(src_time).astype("datetime64[ns]")
+    if timestamps.ndim != 1 or timestamps.size < 2:
+        raise ValueError("CROCO climatology requires at least two forcing timestamps")
+    elapsed_days = (
+        (timestamps - timestamps[0]) / np.timedelta64(1, "D")
+    ).astype(np.float64)
+    if not np.all(np.isfinite(elapsed_days)) or not np.all(np.diff(elapsed_days) > 0):
+        raise ValueError("CROCO climatology timestamps must be finite and increasing")
+    return {
+        name: (name, elapsed_days.copy())
+        for name in ("ssh_time", "uclm_time", "tclm_time", "sclm_time")
+    }
+
+
 def main() -> int:
     args = parse_args()
     print("=========================================================================")
@@ -268,23 +289,29 @@ def main() -> int:
 
     # Save Climatology dataset (all timesteps)
     print(f"💾 Saving Climatology/Boundary forcing to: {clm_path}...")
+    clm_times = croco_climatology_times(src_time)
     ds_clm = xr.Dataset(
         data_vars={
-            "zeta": (("ocean_time", "eta_rho", "xi_rho"), zeta_clm),
-            "temp": (("ocean_time", "s_rho", "eta_rho", "xi_rho"), temp_clm),
-            "salt": (("ocean_time", "s_rho", "eta_rho", "xi_rho"), salt_clm),
-            "u": (("ocean_time", "s_rho", "eta_u", "xi_u"), u_clm),
-            "v": (("ocean_time", "s_rho", "eta_v", "xi_v"), v_clm),
-            "ubar": (("ocean_time", "eta_u", "xi_u"), ubar_clm),
-            "vbar": (("ocean_time", "eta_v", "xi_v"), vbar_clm),
+            "zeta": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm),
+            "temp": (("tclm_time", "s_rho", "eta_rho", "xi_rho"), temp_clm),
+            "salt": (("sclm_time", "s_rho", "eta_rho", "xi_rho"), salt_clm),
+            "u": (("uclm_time", "s_rho", "eta_u", "xi_u"), u_clm),
+            "v": (("uclm_time", "s_rho", "eta_v", "xi_v"), v_clm),
+            "ubar": (("uclm_time", "eta_u", "xi_u"), ubar_clm),
+            "vbar": (("uclm_time", "eta_v", "xi_v"), vbar_clm),
         },
         coords={
-            "ocean_time": src_time,
+            **clm_times,
             "s_rho": s_rho,
             "lon_rho": (("eta_rho", "xi_rho"), lon_rho),
             "lat_rho": (("eta_rho", "xi_rho"), lat_rho),
         }
     )
+    for time_name in clm_times:
+        ds_clm[time_name].attrs.update(
+            long_name="elapsed time since forecast initialization",
+            units="days",
+        )
     encoding_clm = {var: {"zlib": True, "complevel": 1} for var in ds_clm.data_vars}
     ds_clm.to_netcdf(clm_path, encoding=encoding_clm)
 
