@@ -1,13 +1,15 @@
 # PredSea Native Marine Forecast Implementation
 
-Last updated: 2026-07-16
+Last updated: 2026-07-22
 
 ## System-of-record statement
 
-PredSea currently owns and runs the WRF atmospheric forecast. The customer-facing
-wave and ocean products still originate from Copernicus Marine data. SWAN and
-CROCO ingestors exist, but there is not yet a validated operational SWAN or
-CROCO execution.
+PredSea owns and runs the WRF atmospheric forecast. A native Balearic SWAN
+24-hour staging forecast has now been validated. Native CROCO is not yet
+validated: its real grid and forcing preparation pass, but the first bounded
+execution stopped on a climatology NetCDF time-coordinate contract. That defect
+is fixed and the corrected immutable image is ready for the six-hour rerun.
+Customer-facing production remains on the existing fallback path.
 
 The target is:
 
@@ -181,6 +183,48 @@ not count as a Balearic forecast. The Balearic executable will be compiled from
 the same pinned source after the versioned grid, vertical coordinates, open
 boundaries, initial state, and WRF surface-forcing files are generated and
 validated.
+
+### Current CROCO reference evidence (2026-07-22)
+
+- Validated Balearic file grid: 501 x 401 points, nominal 1 km, exact profile
+  bbox, max rx0 0.2, wet fraction about 0.929.
+- Matching compiled interior dimensions: LM=499, MM=399, N=30.
+- Runtime target: `c2d-highcpu-16` Standard, 16 MPI ranks, 32 GiB.
+- Real forcing proven through preparation: hourly 3-D CMEMS u/v, temperature,
+  salinity and sea level; hourly PredSea WRF bulk surface fields.
+- First 6 h execution reached CROCO input parsing but stopped because
+  `croco_clm.nc` lacked `tclm_time` (and the other fixed climatology time axes).
+- Commit `03aacfc` emits elapsed-day `ssh_time`, `uclm_time`, `tclm_time`, and
+  `sclm_time` and rejects invalid timelines.
+- Corrected staging image digest:
+  `sha256:ee8244de30d0082f7054d73810321ed113fc339c6f00e1ad688da685882be924`.
+- The corrected 6 h job is the immediate next gate; it was not yet submitted at
+  the time of this documentation update.
+
+Important: the current regional compile uses full-field CMEMS climatology and
+nudging and explicitly disables dedicated `FRC_BRY` forcing. This can supply
+edge values for the Balearic reference test, but it is not evidence that the
+Gibraltar exchange-current/tidal problem is solved. The regional expansion must
+make an explicit, evidence-backed decision between full-field climatology and
+dedicated open-boundary files. Gibraltar also requires tides and Strait
+transport validation; the present Balearic compile does not prove those.
+
+## Current implementation status
+
+| Component | Current status | Required next result |
+|---|---|---|
+| WRF 3 km / 24 h | proven | retained forcing source for marine gates |
+| Balearic SWAN 1 km / 24 h | validated staging output | repeatability during regional rollout |
+| Balearic CROCO grid/forcing | validated through input preparation | successful native integration/output |
+| Balearic CROCO 6 h | corrected image ready | submit and pass content gate |
+| Balearic CROCO 24 h | waiting | run only after 6 h passes |
+| Alboran/Gibraltar | profile only | grid + SWAN/CROCO 6 h then 24 h |
+| Gulf of Lion | profile only | grid + SWAN/CROCO 6 h then 24 h |
+| Tyrrhenian | profile only | grid + SWAN/CROCO 6 h then 24 h |
+| Algerian Basin | profile only | grid + SWAN/CROCO 6 h then 24 h |
+| Multi-region staging API | waiting | all tile/overlap gates pass |
+| 96/120 h horizons | deferred | start after geographic coverage |
+| Production | untouched | explicit guarded promotion only |
 
 ## Benchmark ladder
 

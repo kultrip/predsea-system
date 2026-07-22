@@ -1,6 +1,6 @@
 # PredSea Native Marine Forecast — Agent Handoff
 
-Last updated: **2026-07-21 11:10 Europe/Madrid**  
+Last updated: **2026-07-22 17:50 Europe/Madrid**
 Repository: `/Users/charles.santana/Kultrip/predsea-system`  
 Google Cloud project: `predsea-api`  
 Primary GCP location: `europe-west1`  
@@ -95,16 +95,20 @@ explicitly to:
 origin/codex/wrf-curvilinear-publication
 ```
 
-Recent relevant commits, in order:
+Recent relevant commits, newest first:
 
 ```text
-28c902b fix: adapt ECMWF SWAN winds to hourly timeline
-5bd908a fix: pass Copernicus service credentials to Batch
-2a61b42 fix: interpolate SWAN winds without SciPy
-2444709 fix: resolve native SWAN tools in Batch
-edc8ea2 build: reduce SWAN Cloud Build context
-4c64a40 fix: make SWAN runner executable in Batch
-6b41421 fix: allow SWAN MPI launch in Batch
+03aacfc fix: emit CROCO climatology time axes
+bf7403c feat: enforce regional CROCO grid contracts
+7272409 fix: emit CROCO physical grid extents
+6e93144 fix: expose Batch vCPUs as CROCO MPI slots
+2663435 fix: decode WRF fixed-width timestamps for CROCO
+5db44a5 fix: include CROCO interpolation runtime
+97ec834 fix: use available CROCO build worker
+b6a662b feat: add fail-closed CROCO Batch staging path
+8648790 feat: support reproducible Batch resource benchmarks
+5f952f9 fix: pin matching currents for native wave publication
+8aac7e6 feat: publish native SWAN waves in staging
 ```
 
 Before editing:
@@ -151,49 +155,82 @@ resource.type="batch.googleapis.com/Job"
 The `resource.labels.job_id` value observed in logging is the Batch **UID**, not
 always the friendly job name. Obtain it from `gcloud batch jobs describe`.
 
-## 5. Current cloud state
+## 5. Current cloud and component state
 
-Current staging-only Batch job:
+The authoritative status at this update is:
+
+| Component | Configuration | Evidence/status | Next gate |
+|---|---|---|---|
+| ECMWF forcing | atmospheric inputs | proven acquisition and validation | reuse per run |
+| WRF | Western Mediterranean, 3 km, 24 h | stable native atmospheric forecast proven | provide atmospheric forcing to marine tiles |
+| Balearic CROCO grid | bbox 0.5–5.5 E, 37.5–41.5 N; 501 x 401; 30 levels | validated exact bbox, shape, wet fraction 0.9289 and max rx0 0.2 | retained immutable grid |
+| Balearic SWAN | 1 km nominal, 24 h, 25 hourly timestamps | staging native wave run validated | replicate only after regional grid preflight |
+| Balearic CROCO forcing | CMEMS 3-D u/v, temperature, salinity, SSH plus seven WRF surface timestamps for 6 h | forcing preparation passed | rerun CROCO binary |
+| Balearic CROCO | 1 km nominal, 30 levels, 16 MPI ranks, 6 h gate | last execution failed before integration because the climatology lacked CROCO time variables | run corrected 6 h gate, then 24 h |
+| Alboran/Gibraltar | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
+| Gulf of Lion | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
+| Tyrrhenian | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
+| Algerian Basin | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
+| Multi-region staging/API | Western Mediterranean | not assembled | wait for every regional 24 h gate |
+| 96/120 h horizons | all tiles | deliberately deferred | geographic coverage has priority |
+| Production | existing ETL/API/bucket/pointers | untouched | no promotion authorization yet |
+
+The validated Balearic CROCO grid is stored at:
 
 ```text
-Friendly job: predsea-sim-balearic-1km-swan-f8b64f3c
-Run ID:       2026-07-20T0000Z-swan-current-r10
+gs://predsea-daily-outputs-test/static/native-marine/balearic_1km/croco-grid/20260722-v3/croco_grid.nc
+```
+
+Do not copy a shortened checksum from chat history. Retrieve and record the
+complete checksum/object generation from GCS metadata and the companion
+validation report before publication.
+
+The most recent CROCO 6-hour job was:
+
+```text
+Friendly job: predsea-sim-balearic-1km-croco-1f486f02
+Run date:     2026-07-16
 Region:       balearic_1km
-Model:        SWAN 41.51
-Horizon:      24 hours
-Output:       hourly, 25 timestamps including hour 0
-Machine:      c2d-highcpu-4 Spot
-MPI ranks:    2
-GCP location: europe-west1
-Bucket:       predsea-daily-outputs-test
-Image digest: sha256:9f1ae044a4e00cf08e10e51d66a8dae8df75a9f6aebcb3d703d063ba390174ac
+Model:        CROCO 2.1.3 regional binary
+Machine:      c2d-highcpu-16 Standard
+Requested:    16 vCPU, 32 GiB, 16 MPI ranks
+Result:       FAILED before timestep integration
 ```
 
-Last observed state at approximately 2026-07-21 11:00 Europe/Madrid:
+This failure was not VM capacity, preemption, WRF, CMEMS download, grid, or
+interpolation. CROCO reported:
 
 ```text
-SCHEDULED — waiting for a Spot VM allocation
+GET_TCLIMA - unable to find climatology variable: tclm_time
+ERROR: Abnormal termination: netCDF INPUT
 ```
 
-This status is time-sensitive. The next agent must re-query it before making any
-claim or submitting another job. Do not submit a duplicate while r10 is active.
+The generated `croco_clm.nc` used a generic `ocean_time`; the compiled CROCO
+readers require `ssh_time`, `uclm_time`, `tclm_time`, and `sclm_time`, expressed
+as elapsed model days because this regional binary is compiled without
+`USE_CALENDAR`.
 
-Cloud Build for the r10 image:
+The fix is committed, pushed, and tested:
 
 ```text
-Build ID: 762e5621-f295-4c2a-a559-5f5a8bb6b86f
-Status: SUCCESS
-Tag: europe-west1-docker.pkg.dev/predsea-api/predsea-simulations/swan-batch:mpi-6b41421
-Digest: sha256:9f1ae044a4e00cf08e10e51d66a8dae8df75a9f6aebcb3d703d063ba390174ac
+Commit: 03aacfc
+Tests: 8 focused CROCO forcing/bulk/namelist tests passed
+Image tag: europe-west1-docker.pkg.dev/predsea-api/predsea-simulations/croco-batch:clmtime-03aacfc
+Immutable digest: sha256:ee8244de30d0082f7054d73810321ed113fc339c6f00e1ad688da685882be924
+Cloud Build: 32f159a1-05bb-4c29-9be5-f761b3bbd6cb (SUCCESS)
 ```
+
+At the moment of this update the corrected six-hour Batch job has **not yet
+been submitted**. Dry-run the submission first and use a new run ID. Never
+reuse `1f486f02` or overwrite its diagnostic evidence.
 
 The running heartbeat/monitor is named:
 
 ```text
-complete-predsea-july-20-swan-staging-run
+continue-predsea-swan-and-croco-staging
 ```
 
-Delete that monitor only after terminal success or a genuinely external blocker.
+Keep it until the current bounded staging program reaches a terminal decision.
 
 ## 6. Current product configuration
 
@@ -311,9 +348,65 @@ runtime user and that new contract is tested.
 The SWAN `swanrun` wrapper returned success even when `mpirun` refused to start.
 This is why output existence/content validation is mandatory after execution.
 
-## 8. Exact next actions
+## 8. Exact next actions (updated 2026-07-22)
 
-### Gate A — monitor r10
+### Gate A — corrected Balearic CROCO 6-hour run
+
+1. Dry-run `scripts/submit_gcp_batch_simulation.py` with:
+   - region `balearic_1km`;
+   - model `croco`;
+   - forecast hours `6`;
+   - run date `2026-07-16` to match retained WRF output;
+   - a new immutable run ID;
+   - staging bucket `predsea-daily-outputs-test`;
+   - location `europe-west1`;
+   - `c2d-highcpu-16`, 16000 CPU millicores, 32768 MiB, 16 MPI ranks;
+   - provisioning model `STANDARD`;
+   - image pinned to `sha256:ee8244de...be924`;
+   - the immutable `20260722-v3` grid URI above;
+   - the retained July 16 `wrfout_d02_*` staging prefix.
+2. Inspect the redacted dry-run manifest. It must contain no credentials and no
+   production bucket or pointer.
+3. Submit once.
+4. Verify, in order:
+   - grid/binary dimensions agree (interior LM=499, MM=399; file 501 x 401);
+   - exact seven-hour CMEMS coverage and real 3-D depth coverage;
+   - exact seven WRF timestamps and required surface variables;
+   - `croco_clm.nc` contains all four CROCO time axes with values 0 through
+     0.25 elapsed days;
+   - CROCO passes initial NetCDF reads and enters integration;
+   - no NaN, CFL/blowup, NetCDF, MPI, or domain-decomposition fatal error;
+   - history output has seven hourly records and required physical variables;
+   - content validation and immutable staging upload pass;
+   - success marker is written only after validation.
+5. Record elapsed runtime, disk, artifact size, finite fractions and ranges.
+
+### Gate B — Balearic CROCO 24-hour run
+
+Only after Gate A passes, run the same immutable code/grid at 24 hours with 25
+hourly CMEMS and WRF timestamps. Do not treat a six-hour pass as permission to
+skip full horizon validation.
+
+### Gate C — Western Mediterranean regional expansion
+
+After Balearic CROCO 24-hour validation, prioritize geography over horizon:
+
+1. Alboran/Gibraltar;
+2. Gulf of Lion;
+3. Tyrrhenian;
+4. Algerian Basin.
+
+For each tile: create and validate the exact grid first, compile/pin a matching
+CROCO binary, run SWAN and CROCO for six hours, then 24 hours, measure cost and
+runtime, and validate overlap continuity. Do not reuse the Balearic binary for
+a different grid shape.
+
+### Historical SWAN instructions
+
+The older r10 instructions below remain historical evidence for debugging
+SWAN, but r10 is no longer the active gate.
+
+### Historical Gate — monitor r10
 
 1. Describe `predsea-sim-balearic-1km-swan-f8b64f3c`.
 2. If scheduled, wait; do not submit duplicates merely because Spot allocation
@@ -341,7 +434,7 @@ Expected output prefix:
 gs://predsea-daily-outputs-test/predictions/2026-07-20/runs/2026-07-20T0000Z-swan-current-r10/balearic_1km/
 ```
 
-### Gate B — if r10 fails
+### Historical Gate — if r10 fails
 
 Do not guess and do not immediately alter physics.
 
@@ -363,7 +456,7 @@ Do not guess and do not immediately alter physics.
 Mechanical staging issues are authorized for autonomous repair. Production is
 still out of scope.
 
-### Gate C — after r10 succeeds
+### Historical Gate — after r10 succeeds
 
 Success requires all of the following, not merely Batch `SUCCEEDED`:
 
@@ -566,6 +659,46 @@ Each region needs versioned bounds, grid, bathymetry, timestep, forcing
 coverage, observation registry, runtime/disk/cost measurements, and an
 independent promotion decision. Inland destinations must not enlarge marine
 compute domains.
+
+Current profiles imply the following planning geometry. The point counts below
+are profile-derived estimates using the present 0.01-degree spacing convention;
+they are **not validated CROCO file dimensions** until each grid job emits and
+checks the actual NetCDF. Because longitude distance changes with latitude,
+0.01 degree is only nominally 1 km.
+
+| Tile | Bounds (lon, lat) | Planned points (x by y) | Nominal points | Status |
+|---|---|---:|---:|---|
+| Balearic | 0.5..5.5, 37.5..41.5 | 501 x 401 | 200,901 | validated grid |
+| Alboran/Gibraltar | -6.0..-1.0, 35.0..37.5 | about 501 x 251 | 125,751 | estimate only |
+| Gulf of Lion | 2.0..6.5, 41.5..44.5 | about 451 x 301 | 135,751 | estimate only |
+| Tyrrhenian | 7.5..14.0, 38.0..44.5 | about 651 x 651 | 423,801 | estimate only |
+| Algerian Basin | -1.0..8.5, 35.0..38.0 | about 951 x 301 | 286,251 | estimate only |
+
+The current model/resource planning contract is:
+
+| Model/stage | Spatial/vertical configuration | Time configuration | Initial VM plan |
+|---|---|---|---|
+| WRF atmospheric source | Western Mediterranean 3 km, stable two-domain topology | hourly publication; retain the exact proven namelist timestep rather than guessing it from documentation | historical large Standard VM; re-measure before production sizing |
+| SWAN per tile | nominal 1 km, 36 directions, 32 frequencies | 5-minute internal step, hourly output, 6 h then 24 h | 16 vCPU Standard benchmark; tune only from measured scaling |
+| CROCO per tile | nominal 1 km, 30 sigma levels; binary compiled to exact grid interior | current Balearic gate uses 60-second 3-D step and 30 fast 2-D substeps; hourly output | `c2d-highcpu-16` Standard, 16 MPI ranks, 32 GiB for gates |
+| Canonicalization/validation | native model grid | exact hour 0 through requested horizon | Batch task/container; must fit measured disk and memory |
+
+Never copy those resource/timestep values blindly to a new coast. Tyrrhenian
+and Algerian are substantially larger than Balearic, while Gibraltar has a
+narrow, dynamically sensitive exchange. Each tile must pass its own CFL,
+decomposition, disk, runtime, open-boundary, and physical-value gates.
+
+Gibraltar is included by the Alboran bbox, but geographic inclusion alone is
+not acceptance. Its dedicated gate must verify:
+
+- the Strait is wet and resolved in the versioned bathymetry/mask;
+- east and west open-boundary data cover the complete water column and time;
+- tidal constituents are explicitly sourced and enabled if required;
+- two-layer Atlantic/Mediterranean exchange direction and transport are
+  physically plausible;
+- no artificial wall, land bridge, smoothing closure, or edge extrapolation
+  blocks the Strait;
+- overlap fields agree with adjacent tiles within documented tolerances.
 
 Do not assume a configuration stable for one coastline is stable for another.
 Bathymetry, open boundaries, winds, numerical timestep, observations, and cost
