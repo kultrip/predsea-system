@@ -285,6 +285,7 @@ def main() -> int:
     # Save output datasets
     args.output_dir.mkdir(parents=True, exist_ok=True)
     clm_path = args.output_dir / "croco_clm.nc"
+    bry_path = args.output_dir / "croco_bry.nc"
     ini_path = args.output_dir / "croco_ini.nc"
 
     # Save Climatology dataset (all timesteps)
@@ -317,6 +318,33 @@ def main() -> int:
     encoding_clm = {var: {"zlib": True, "complevel": 1} for var in ds_clm.data_vars}
     ds_clm.to_netcdf(clm_path, encoding=encoding_clm)
 
+    # Explicit side variables are required by CROCO's FRC_BRY readers; the
+    # full-domain climatology file does not constrain an open boundary.
+    bry_vars = {}
+    sides = {
+        "west": (0, slice(None), "eta_rho", "eta_u", "eta_v"),
+        "east": (-1, slice(None), "eta_rho", "eta_u", "eta_v"),
+        "south": (slice(None), 0, "xi_rho", "xi_u", "xi_v"),
+        "north": (slice(None), -1, "xi_rho", "xi_u", "xi_v"),
+    }
+    for side, (ii, jj, rho_axis, u_axis, v_axis) in sides.items():
+        bry_vars[f"zeta_{side}"] = (("bry_time", rho_axis), zeta_clm[:, jj, ii])
+        bry_vars[f"temp_{side}"] = (("bry_time", "s_rho", rho_axis), temp_clm[:, :, jj, ii])
+        bry_vars[f"salt_{side}"] = (("bry_time", "s_rho", rho_axis), salt_clm[:, :, jj, ii])
+        bry_vars[f"u_{side}"] = (("bry_time", "s_rho", u_axis), u_clm[:, :, jj, ii])
+        bry_vars[f"v_{side}"] = (("bry_time", "s_rho", v_axis), v_clm[:, :, jj, ii])
+        bry_vars[f"ubar_{side}"] = (("bry_time", u_axis), ubar_clm[:, jj, ii])
+        bry_vars[f"vbar_{side}"] = (("bry_time", v_axis), vbar_clm[:, jj, ii])
+    bry_time = clm_times["ssh_time"][1]
+    ds_bry = xr.Dataset(bry_vars, coords={"bry_time": bry_time, "s_rho": s_rho})
+    ds_bry["bry_time"].attrs.update(long_name="boundary time", units="days")
+    if not all(bool(np.isfinite(ds_bry[name]).all()) for name in ds_bry.data_vars):
+        raise ValueError("CROCO boundary forcing contains non-finite values")
+    ds_bry.to_netcdf(
+        bry_path,
+        encoding={var: {"zlib": True, "complevel": 1} for var in ds_bry.data_vars},
+    )
+
     # Save Initial condition dataset (t=0)
     print(f"💾 Saving Initial conditions to: {ini_path}...")
     ds_ini = xr.Dataset(
@@ -343,6 +371,7 @@ def main() -> int:
     print("=========================================================================")
     print("✅ CROCO Forcing compiled successfully!")
     print(f"   - Climatology: {clm_path} ({clm_path.stat().st_size / (1024*1024):.1f} MB)")
+    print(f"   - Boundary: {bry_path} ({bry_path.stat().st_size / (1024*1024):.1f} MB)")
     print(f"   - Initial State: {ini_path} ({ini_path.stat().st_size / (1024*1024):.1f} MB)")
     print("=========================================================================")
     return 0

@@ -28,7 +28,7 @@ bulk_forcing: filename
 climatology: filename
     tmp/forcing-croco-24h/croco_clm.nc
 boundary: filename
-    tmp/forcing-croco-24h/croco_clm.nc
+    tmp/forcing-croco-24h/croco_bry.nc
 initial: NRREC / filename
           1
     tmp/forcing-croco-24h/croco_ini.nc
