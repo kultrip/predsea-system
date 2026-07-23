@@ -317,8 +317,24 @@ def main():
         help="Comma-separated machine type fallback order",
     )
     parser.add_argument("--image-tag", default="latest", help="Model Docker image tag")
+    parser.add_argument(
+        "--batch-image-uri",
+        default=os.environ.get("PREDSEA_BATCH_IMAGE_URI"),
+        help="Immutable native-model Batch image URI containing @sha256:",
+    )
+    parser.add_argument(
+        "--batch-regions",
+        default=os.environ.get("PREDSEA_BATCH_REGIONS", "balearic_1km"),
+        help="Comma-separated validated marine regions to submit",
+    )
     parser.add_argument("--api-url", default=os.getenv("PREDSEA_API_URL", "http://localhost:8000"), help="Base URL of the FastAPI application")
     parser.add_argument("--project", help="GCP Project ID (defaults to active gcloud config)")
+    parser.add_argument(
+        "--use-gcp-batch",
+        action="store_true",
+        default=os.environ.get("PREDSEA_USE_GCP_BATCH", "").lower() in ("1", "true"),
+        help="Use high-speed multi-region parallel GCP Batch simulations instead of a legacy single-VM"
+    )
     parser.add_argument("--dry-run", action="store_true", help="Perform dry-run for boundaries and simulation checks")
     parser.add_argument("--poll-interval", type=int, default=30, help="GCE status polling interval in seconds")
     parser.add_argument(
@@ -501,7 +517,95 @@ def main():
         completed_normally = False
         simulation_attempt = 0
 
-        if args.dry_run:
+        if args.use_gcp_batch:
+            log_step("2. Submitting Parallel GCP Batch Multi-Region Shards")
+            regions_dir = PROJECT_ROOT / "simulation" / "marine" / "regions"
+            active_regions = [
+                value.strip() for value in args.batch_regions.split(",") if value.strip()
+            ]
+            if not active_regions:
+                raise RuntimeError("No --batch-regions were configured")
+            missing_profiles = [
+                region
+                for region in active_regions
+                if not (regions_dir / f"{region}.json").exists()
+            ]
+            if missing_profiles:
+                raise RuntimeError(
+                    "Unknown Batch region profiles: " + ", ".join(missing_profiles)
+                )
+            batch_image_uri = args.batch_image_uri
+            if not batch_image_uri:
+                if args.dry_run:
+                    batch_image_uri = "dry-run.invalid/predsea-native@sha256:" + ("0" * 64)
+                else:
+                    raise RuntimeError(
+                        "PREDSEA_BATCH_IMAGE_URI/--batch-image-uri is required"
+                    )
+                
+            print(f"Discovered active 1km grids: {', '.join(active_regions)}")
+            
+            submitted_regions = []
+            for region in active_regions:
+                print(f"\n🚀 Submitting parallel GCP Batch job for region: {region}...")
+                submit_cmd = [
+                    python_bin, str(SCRIPTS_DIR / "submit_gcp_batch_simulation.py"),
+                    f"--region={region}",
+                    f"--model=swan",
+                    f"--forecast-hours={args.forecast_hours}",
+                    f"--image-uri={batch_image_uri}",
+                    f"--gcs-bucket={args.gcs_bucket}",
+                    f"--run-date={run_date}",
+                    f"--run-id={run_id}",
+                    f"--timeout-seconds={int(args.timeout_hours * 3600)}",
+                ]
+                if project_id:
+                    submit_cmd.append(f"--project={project_id}")
+                if args.dry_run:
+                    submit_cmd.append("--dry-run")
+                    
+                rc = run_subprocess(submit_cmd)
+                if rc == 0:
+                    submitted_regions.append(region)
+                else:
+                    print(f"⚠️ Warning: Submission failed for region {region}")
+                    
+            if not submitted_regions and not args.dry_run:
+                raise RuntimeError("Failed to submit any GCP Batch jobs.")
+                
+            log_step("3. Polling GCP Batch jobs until completion markers are found in GCS")
+            start_time = time.time()
+            timeout_seconds = args.timeout_hours * 3600
+            completed_regions = set()
+            
+            if args.dry_run:
+                print("⚡ [DRY RUN] Simulating successful GCS marker discovery for all regions.")
+                completed_regions = set(active_regions)
+                
+            while len(completed_regions) < len(submitted_regions):
+                elapsed = time.time() - start_time
+                if elapsed > timeout_seconds:
+                    raise RuntimeError(f"GCP Batch multi-region pipeline timed out after {args.timeout_hours} hours")
+                    
+                remaining = [r for r in submitted_regions if r not in completed_regions]
+                print(f"\n⏳ Checking completion status for remaining regions: {', '.join(remaining)}")
+                print(f"   Elapsed time: {elapsed/60:.1f} minutes. Checking again in {args.poll_interval}s...")
+                
+                for region in remaining:
+                    success_gcs_path = (
+                        f"gs://{args.gcs_bucket}/predictions/{run_date}/runs/{run_id}/{region}/SUCCESS"
+                    )
+                    if check_gcs_object_exists(success_gcs_path):
+                        print(f"🎉 SUCCESS: Completed region '{region}' found marker at {success_gcs_path}.")
+                        completed_regions.add(region)
+                        
+                if len(completed_regions) < len(submitted_regions):
+                    time.sleep(args.poll_interval)
+                    
+            print("\n🏆 All parallel GCP Batch regional jobs completed successfully!")
+            completed_normally = True
+
+        elif args.dry_run:
             print("⚡ [DRY RUN] Simulating Spot VM completion successfully.")
             completed_normally = True
         else:
@@ -708,7 +812,19 @@ def main():
         ]
         if args.project:
             comparison_cmd.append(f"--project={args.project}")
-        run_subprocess(comparison_cmd, dry_run=args.dry_run)
+        comparison_rc = run_subprocess(comparison_cmd, dry_run=args.dry_run)
+        if comparison_rc != 0:
+            print(
+                f"⚠️ Warning: Real Model Comparison step failed (exit code {comparison_rc}). "
+                "No accuracy_comparison.json report was produced for this run. "
+                "This does not block forecast publication, but it means model quality "
+                "is not being measured for this date -- investigate before assuming "
+                "validation is happening."
+            )
+            notify(
+                f"⚠️ PredSea Model Comparison Failed: Run {run_date} ({run_id}) published, "
+                f"but the accuracy comparison step exited with code {comparison_rc}."
+            )
 
         print("\n🌟 =================================================================")
         print("🏆 PredSea end-to-end daily forecasting orchestrator run successfully!")
