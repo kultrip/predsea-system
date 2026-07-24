@@ -196,6 +196,11 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
             )
     run_checked(["gsutil", "-m", "cp", "-r", wrf_uri, str(wrf_dir)], stage="WRF forcing download")
 
+    with open(region_profile, "r", encoding="utf-8") as f:
+        region_data = json.load(f)
+    croco_spec = region_data.get("models", {}).get("croco", {})
+    vertical_levels = int(croco_spec.get("vertical_levels", 32))
+
     log_step("2. Acquiring validated three-dimensional CMEMS ocean forcing")
     run_checked(
         [
@@ -215,7 +220,7 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
             "--grid", str(grid_path),
             "--forcing-dir", str(croco_work),
             "--output-dir", str(croco_work),
-            "--vertical-levels", "30",
+            "--vertical-levels", str(vertical_levels),
         ],
         stage="CROCO ocean forcing interpolation",
     )

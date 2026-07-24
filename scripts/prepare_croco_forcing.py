@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--vertical-levels",
         type=int,
-        default=30,
+        default=32,
         help="Number of vertical sigma levels",
     )
     parser.add_argument("--theta-s", type=float, default=6.0)
