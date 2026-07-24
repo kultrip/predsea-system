@@ -42,7 +42,7 @@ def main():
 
     # Use real gridded WRF bulk forcing. Explicitly disable the analytical
     # zero-flux fallback used by the historical compile-only prototype.
-    cppdefs_content += "\n\n/* BALEARIC_1KM Specific Overrides */\n#ifdef BALEARIC_1KM\n# define BULK_FLUX\n# define SOLAR_PENETRATION\n# define LMD_MIXING\n# ifdef LMD_MIXING\n#  define LMD_SKPP\n#  define LMD_BKPP\n#  define LMD_RIMIX\n#  define LMD_CONVEC\n#  define LMD_NONLOCAL\n# endif\n# undef ONLINE\n# undef MERRA_AEROSOL\n# undef ANA_SMFLUX\n# undef ANA_STFLUX\n# undef ANA_SSFLUX\n# define FRC_BRY\n# define Z_FRC_BRY\n# define M2_FRC_BRY\n# define M3_FRC_BRY\n# define T_FRC_BRY\n#endif\n"
+    cppdefs_content += "\n\n/* BALEARIC_1KM Specific Overrides */\n#ifdef BALEARIC_1KM\n# define MASKING\n# define BULK_FLUX\n# define SOLAR_PENETRATION\n# define WTYPE 1\n# define LMD_MIXING\n# ifdef LMD_MIXING\n#  define LMD_SKPP\n#  define LMD_BKPP\n#  define LMD_RIMIX\n#  define LMD_CONVEC\n#  define LMD_NONLOCAL\n# endif\n# undef ONLINE\n# undef MERRA_AEROSOL\n# undef ANA_SMFLUX\n# undef ANA_STFLUX\n# undef ANA_SSFLUX\n# define FRC_BRY\n# define Z_FRC_BRY\n# define M2_FRC_BRY\n# define M3_FRC_BRY\n# define T_FRC_BRY\n#endif\n"
 
     dst_cppdefs.write_text(cppdefs_content)
     print("✅ Patched cppdefs.h successfully!")

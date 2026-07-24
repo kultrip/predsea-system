@@ -246,7 +246,7 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
     )
 
     namelist = croco_work / "croco.in"
-    croco_timestep_seconds = int(os.environ.get("PREDSEA_CROCO_TIMESTEP_SECONDS", "20"))
+    croco_timestep_seconds = int(os.environ.get("PREDSEA_CROCO_TIMESTEP_SECONDS", "30"))
     run_checked(
         [
             "python3", "/app/simulation/marine/croco/prepare_croco_in.py",

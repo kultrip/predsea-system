@@ -1,11 +1,14 @@
 title:
         Balearic Islands 1km Regional Hydrodynamic Forecast
 time_stepping: NTIMES   dt[sec]  NDTFAST  NINFO
-                1440      60      30      10
+                2880      30      30      10
 time_stepping_nbq: NDTNBQ    CSOUND_NBQ    VISC2_NBQ
                      1         1000         0.01
 S-coord: THETA_S,   THETA_B,    Hc (m)
            6.0d0     0.0d0      10.0d0
+
+Jerlov water type:
+            1
 
 start_date:
 2000-01-01 00:00:00
@@ -71,7 +74,7 @@ tracer_diff4: TNU4(1:NT)           [m^4/sec for all]
                50*0.d11
 
 vertical_mixing: Akv_bak, Akt_bak [m^2/sec]
-                   1.d-5    50*1.d-6
+                   1.d-5    50*1.d-5
 
 bottom_drag:     RDRG [m/s],  RDRG2,  Zob [m],  Cdb_min, Cdb_max
                  0.0d-04      0.d-3   1.d-2     1.d-4    1.d-1
