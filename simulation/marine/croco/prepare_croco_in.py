@@ -34,6 +34,7 @@ def render(template: str, *, start_date: str, forecast_hours: int, work_dir: Pat
         r"(?m)^(initial:[ \t]+NRREC / filename[ \t]*\n[ \t]*1[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_ini.nc",
         r"(?m)^(restart:[ \t]+NRST, NRPFRST / filename[ \t]*\n)[ \t]*\d+[ \t]+-1[ \t]*\n[ \t]*.*$": rf"\g<1>                   {ntimes}    -1\n    {work_dir}/croco_rst.nc",
         r"(?m)^(history:[ \t]+LDEFHIS, NWRT, NRPFHIS / filename[ \t]*\n)[ \t]*T[ \t]+\d+[ \t]+0[ \t]*\n[ \t]*.*$": rf"\g<1>            T      {steps_per_hour}     0\n    {work_dir}/croco_his.nc",
+        r"(?m)^(averages:[ \t]+NTSAVG, NAVG, NRPFAVG / filename[ \t]*\n)[ \t]*1[ \t]+\d+[ \t]+0[ \t]*\n[ \t]*.*$": rf"\g<1>            1      {ntimes}     0\n    {work_dir}/croco_avg.nc",
     }
     for pattern, replacement in replacements.items():
         text, count = re.subn(pattern, replacement, text)
