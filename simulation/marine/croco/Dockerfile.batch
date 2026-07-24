@@ -4,7 +4,7 @@ ARG CROCO_VERSION=2.1.3
 ARG CROCO_SHA256=4b7464365f3e6197ed83b5ae8842cc1efc736add2c86e16a0ff188e7650661c1
 ARG PREDSEA_CROCO_LM=499
 ARG PREDSEA_CROCO_MM=399
-ARG PREDSEA_CROCO_N=30
+ARG PREDSEA_CROCO_N=32
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl gfortran libnetcdf-dev libnetcdff-dev make \
       openmpi-bin libopenmpi-dev python3 \

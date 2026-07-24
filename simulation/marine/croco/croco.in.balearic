@@ -71,7 +71,7 @@ tracer_diff4: TNU4(1:NT)           [m^4/sec for all]
                50*0.d11
 
 vertical_mixing: Akv_bak, Akt_bak [m^2/sec]
-                   1.d-5    30*1.d-6
+                   1.d-5    50*1.d-6
 
 bottom_drag:     RDRG [m/s],  RDRG2,  Zob [m],  Cdb_min, Cdb_max
                  0.0d-04      0.d-3   1.d-2     1.d-4    1.d-1

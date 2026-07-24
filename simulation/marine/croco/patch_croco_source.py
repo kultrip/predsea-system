@@ -5,7 +5,7 @@ import pathlib
 def main():
     lm = int(os.environ.get("PREDSEA_CROCO_LM", "499"))
     mm = int(os.environ.get("PREDSEA_CROCO_MM", "399"))
-    vertical_levels = int(os.environ.get("PREDSEA_CROCO_N", "30"))
+    vertical_levels = int(os.environ.get("PREDSEA_CROCO_N", "32"))
     if min(lm, mm, vertical_levels) <= 0:
         raise ValueError("CROCO compile-time dimensions must be positive")
     build_dir = pathlib.Path("tmp/croco_build")

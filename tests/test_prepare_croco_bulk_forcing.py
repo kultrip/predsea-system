@@ -63,7 +63,7 @@ def test_builds_real_croco_bulk_forcing(tmp_path):
 
     assert output.exists()
     assert result.attrs["source"] == "PredSea WRF"
-    assert result.sizes["bulk_time"] == 2
+    assert result.sizes["bulk_time"] == 3
     assert set(("uwnd", "vwnd", "tair", "rhum", "prate", "radlw_in", "radsw")) <= set(result)
     assert "radlw" not in result
     assert np.isclose(float(result["prate"].isel(bulk_time=1).mean()), 1.0e-6)

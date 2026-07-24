@@ -146,10 +146,15 @@ def build_bulk_forcing(
                 f"expected {expected[0]} through {expected[-1]} ({len(expected)} timestamps), "
                 f"got {times[0]} through {times[-1]} ({len(times)} timestamps)"
             )
+    if len(times) > 1:
+        time_step = times[1] - times[0]
+    else:
+        time_step = np.timedelta64(1, "h")
+    padded_times = times + [times[-1] + time_step]
     origin = times[0].astype("datetime64[s]")
-    bulk_time = np.array([(time - origin) / np.timedelta64(1, "D") for time in times], dtype=np.float64)
+    bulk_time = np.array([(time - origin) / np.timedelta64(1, "D") for time in padded_times], dtype=np.float64)
     dataset = xr.Dataset(
-        {name: (("bulk_time", "eta_rho", "xi_rho"), np.stack(values)) for name, values in fields.items()},
+        {name: (("bulk_time", "eta_rho", "xi_rho"), np.pad(np.stack(values), ((0, 1), (0, 0), (0, 0)), mode="edge")) for name, values in fields.items()},
         coords={
             "bulk_time": ("bulk_time", bulk_time),
             "lon_rho": (("eta_rho", "xi_rho"), lon_rho),

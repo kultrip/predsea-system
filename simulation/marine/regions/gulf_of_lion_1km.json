@@ -25,7 +25,7 @@
       }
     },
     "croco": {
-      "vertical_levels": 30,
+      "vertical_levels": 32,
       "required_variables": [
         "eastward_current",
         "northward_current",
