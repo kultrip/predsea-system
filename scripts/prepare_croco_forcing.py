@@ -171,6 +171,30 @@ def depth_average_velocity(velocity: np.ndarray, z_w: np.ndarray) -> np.ndarray:
     )
 
 
+def verify_transport_consistency(
+    u_3d: np.ndarray,
+    v_3d: np.ndarray,
+    ubar: np.ndarray,
+    vbar: np.ndarray,
+    z_w_u: np.ndarray,
+    z_w_v: np.ndarray,
+    tolerance: float = 1e-4,
+) -> None:
+    """Fail-closed check comparing ubar/vbar against the vertical integral of u/v."""
+    ubar_reconstructed = depth_average_velocity(u_3d, z_w_u)
+    vbar_reconstructed = depth_average_velocity(v_3d, z_w_v)
+
+    max_diff_u = float(np.max(np.abs(ubar - ubar_reconstructed)))
+    max_diff_v = float(np.max(np.abs(vbar - vbar_reconstructed)))
+
+    if max_diff_u > tolerance or max_diff_v > tolerance:
+        raise ValueError(
+            f"Barotropic transport mismatch exceeds tolerance {tolerance} m/s: "
+            f"max_diff_u={max_diff_u:.6e}, max_diff_v={max_diff_v:.6e}"
+        )
+
+
+
 def interpolate_3d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray, src_lon: np.ndarray, src_depth: np.ndarray, target_lat: np.ndarray, target_lon: np.ndarray, s_rho: np.ndarray, cs_r: np.ndarray, h: np.ndarray, zeta: np.ndarray, hc_m: float, N: int) -> tuple[int, np.ndarray]:
     nz_src = len(src_depth)
     ny_tgt, nx_tgt = target_lon.shape
@@ -395,6 +419,26 @@ def main() -> int:
         z_w_v = croco_depths(h_v, zeta_v[t], s_w, cs_w, args.hc_m)
         ubar_clm[t] = depth_average_velocity(u_clm[t], z_w_u)
         vbar_clm[t] = depth_average_velocity(v_clm[t], z_w_v)
+        verify_transport_consistency(
+            u_clm[t], v_clm[t], ubar_clm[t], vbar_clm[t], z_w_u, z_w_v, tolerance=1e-4
+        )
+    print("✅ Verified barotropic transport consistency (tolerance=1e-4 m/s)")
+
+    # Pad forcing arrays by 1 timestep (edge padding) so linear interpolation at t = forecast_hours
+    # has a valid upper time record and doesn't trigger GET_TCLIMA out-of-bounds error.
+    if len(src_time) > 1:
+        time_step = src_time[1] - src_time[0]
+    else:
+        time_step = np.timedelta64(1, "h")
+    src_time_padded = np.append(src_time, src_time[-1] + time_step)
+
+    zeta_clm_pad = np.pad(zeta_clm, ((0, 1), (0, 0), (0, 0)), mode="edge")
+    temp_clm_pad = np.pad(temp_clm, ((0, 1), (0, 0), (0, 0), (0, 0)), mode="edge")
+    salt_clm_pad = np.pad(salt_clm, ((0, 1), (0, 0), (0, 0), (0, 0)), mode="edge")
+    u_clm_pad = np.pad(u_clm, ((0, 1), (0, 0), (0, 0), (0, 0)), mode="edge")
+    v_clm_pad = np.pad(v_clm, ((0, 1), (0, 0), (0, 0), (0, 0)), mode="edge")
+    ubar_clm_pad = np.pad(ubar_clm, ((0, 1), (0, 0), (0, 0)), mode="edge")
+    vbar_clm_pad = np.pad(vbar_clm, ((0, 1), (0, 0), (0, 0)), mode="edge")
 
     # Save output datasets
     clm_path = args.output_dir / "croco_clm.nc"
@@ -403,18 +447,18 @@ def main() -> int:
 
     # Save Climatology dataset (all timesteps)
     print(f"💾 Saving Climatology/Boundary forcing to: {clm_path}...")
-    clm_times = croco_climatology_times(src_time)
+    clm_times = croco_climatology_times(src_time_padded)
     ds_clm = xr.Dataset(
         data_vars={
             # This CROCO build resolves sea-surface-height climatology by its
             # canonical forcing name (SSH), not the ROMS history name (zeta).
-            "SSH": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm),
-            "temp": (("tclm_time", "s_rho", "eta_rho", "xi_rho"), temp_clm),
-            "salt": (("sclm_time", "s_rho", "eta_rho", "xi_rho"), salt_clm),
-            "u": (("uclm_time", "s_rho", "eta_u", "xi_u"), u_clm),
-            "v": (("uclm_time", "s_rho", "eta_v", "xi_v"), v_clm),
-            "ubar": (("uclm_time", "eta_u", "xi_u"), ubar_clm),
-            "vbar": (("uclm_time", "eta_v", "xi_v"), vbar_clm),
+            "SSH": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm_pad),
+            "temp": (("tclm_time", "s_rho", "eta_rho", "xi_rho"), temp_clm_pad),
+            "salt": (("sclm_time", "s_rho", "eta_rho", "xi_rho"), salt_clm_pad),
+            "u": (("uclm_time", "s_rho", "eta_u", "xi_u"), u_clm_pad),
+            "v": (("uclm_time", "s_rho", "eta_v", "xi_v"), v_clm_pad),
+            "ubar": (("uclm_time", "eta_u", "xi_u"), ubar_clm_pad),
+            "vbar": (("uclm_time", "eta_v", "xi_v"), vbar_clm_pad),
         },
         coords={
             **clm_times,
@@ -441,13 +485,13 @@ def main() -> int:
         "north": (slice(None), -1, "xi_rho", "xi_u", "xi_v"),
     }
     for side, (ii, jj, rho_axis, u_axis, v_axis) in sides.items():
-        bry_vars[f"zeta_{side}"] = (("bry_time", rho_axis), zeta_clm[:, jj, ii])
-        bry_vars[f"temp_{side}"] = (("bry_time", "s_rho", rho_axis), temp_clm[:, :, jj, ii])
-        bry_vars[f"salt_{side}"] = (("bry_time", "s_rho", rho_axis), salt_clm[:, :, jj, ii])
-        bry_vars[f"u_{side}"] = (("bry_time", "s_rho", u_axis), u_clm[:, :, jj, ii])
-        bry_vars[f"v_{side}"] = (("bry_time", "s_rho", v_axis), v_clm[:, :, jj, ii])
-        bry_vars[f"ubar_{side}"] = (("bry_time", u_axis), ubar_clm[:, jj, ii])
-        bry_vars[f"vbar_{side}"] = (("bry_time", v_axis), vbar_clm[:, jj, ii])
+        bry_vars[f"zeta_{side}"] = (("bry_time", rho_axis), zeta_clm_pad[:, jj, ii])
+        bry_vars[f"temp_{side}"] = (("bry_time", "s_rho", rho_axis), temp_clm_pad[:, :, jj, ii])
+        bry_vars[f"salt_{side}"] = (("bry_time", "s_rho", rho_axis), salt_clm_pad[:, :, jj, ii])
+        bry_vars[f"u_{side}"] = (("bry_time", "s_rho", u_axis), u_clm_pad[:, :, jj, ii])
+        bry_vars[f"v_{side}"] = (("bry_time", "s_rho", v_axis), v_clm_pad[:, :, jj, ii])
+        bry_vars[f"ubar_{side}"] = (("bry_time", u_axis), ubar_clm_pad[:, jj, ii])
+        bry_vars[f"vbar_{side}"] = (("bry_time", v_axis), vbar_clm_pad[:, jj, ii])
     bry_time = clm_times["ssh_time"][1]
     ds_bry = xr.Dataset(bry_vars, coords={"bry_time": bry_time, "s_rho": s_rho})
     ds_bry["bry_time"].attrs.update(long_name="boundary time", units="days")

@@ -8,7 +8,30 @@ from scripts.prepare_croco_forcing import (
     croco_depths,
     croco_s_coordinates,
     depth_average_velocity,
+    verify_transport_consistency,
 )
+
+
+def test_verify_transport_consistency_passes_matching_and_fails_mismatch():
+    u_3d = np.array([[[1.0]], [[3.0]]])
+    v_3d = np.array([[[2.0]], [[4.0]]])
+    z_w = np.array([[[-10.0]], [[-9.0]], [[0.0]]])
+
+    ubar = depth_average_velocity(u_3d, z_w)
+    vbar = depth_average_velocity(v_3d, z_w)
+
+    # Should pass when ubar/vbar match
+    verify_transport_consistency(u_3d, v_3d, ubar, vbar, z_w, z_w, tolerance=1e-4)
+
+    # Should fail when ubar is modified beyond tolerance
+    bad_ubar = ubar + 0.01
+    try:
+        verify_transport_consistency(u_3d, v_3d, bad_ubar, vbar, z_w, z_w, tolerance=1e-4)
+    except ValueError as exc:
+        assert "Barotropic transport mismatch" in str(exc)
+    else:
+        raise AssertionError("Inconsistent transport must raise ValueError")
+
 
 
 def test_new_s_coordinate_matches_pinned_croco_213_reference_values():
@@ -73,8 +96,8 @@ def test_forcing_generator_uses_staggered_bathymetry_and_no_unweighted_mean():
 def test_climatology_uses_croco_ssh_variable_contract():
     source = Path("scripts/prepare_croco_forcing.py").read_text()
 
-    assert '"SSH": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm)' in source
-    assert '"zeta": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm)' not in source
+    assert '"SSH": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm_pad)' in source
+    assert '"zeta": (("ssh_time", "eta_rho", "xi_rho"), zeta_clm_pad)' not in source
 
 
 def test_writes_all_explicit_open_boundary_fields():
@@ -120,3 +143,11 @@ def test_rejects_non_increasing_climatology_time():
         assert "increasing" in str(exc)
     else:
         raise AssertionError("duplicate CROCO forcing timestamps must be rejected")
+
+
+def test_padding_preserves_3d_rank_for_barotropic_velocities():
+    source = Path("scripts/prepare_croco_forcing.py").read_text()
+
+    assert 'ubar_clm_pad = np.pad(ubar_clm, ((0, 1), (0, 0), (0, 0)), mode="edge")' in source
+    assert 'vbar_clm_pad = np.pad(vbar_clm, ((0, 1), (0, 0), (0, 0)), mode="edge")' in source
+

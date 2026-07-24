@@ -43,8 +43,8 @@ def _finite_stats(data: xr.DataArray) -> dict[str, float | int]:
     values = np.asarray(data.values)
     finite = np.isfinite(values)
 
-    # Check if this is a 3D time-series spatial field: (time, latitude, longitude)
-    if values.ndim == 3:
+    # Check if this is a 3D+ time-series spatial field: (time, ...)
+    if values.ndim >= 3:
         # Identify land mask: coordinates that are ALWAYS NaN across all times
         is_nan = ~finite
         land_mask = np.all(is_nan, axis=0)
@@ -110,12 +110,23 @@ def validate(
                     f"expected {expected_timestamps} timestamps, found {timestamp_count}"
                 )
             try:
-                decoded = np.asarray(dataset[time_name].values).astype("datetime64[ns]")
-                if decoded.size > 1:
-                    deltas = np.diff(decoded).astype("timedelta64[s]").astype(np.int64)
+                raw_time = dataset[time_name].values
+                if np.issubdtype(raw_time.dtype, np.floating) or np.issubdtype(raw_time.dtype, np.integer):
+                    units = getattr(dataset[time_name], "units", "").lower()
+                    if "day" in units:
+                        deltas = np.diff(raw_time) * 86400.0
+                    else:
+                        deltas = np.diff(raw_time)
                     expected_seconds = region["output_interval_hours"] * 3600
-                    if not np.all(deltas == expected_seconds):
+                    if not np.allclose(deltas, expected_seconds, rtol=1e-2):
                         errors.append("forecast timestamps are not uniformly hourly")
+                else:
+                    decoded = np.asarray(raw_time).astype("datetime64[ns]")
+                    if decoded.size > 1:
+                        deltas = np.diff(decoded).astype("timedelta64[s]").astype(np.int64)
+                        expected_seconds = region["output_interval_hours"] * 3600
+                        if not np.all(deltas == expected_seconds):
+                            errors.append("forecast timestamps are not uniformly hourly")
             except (TypeError, ValueError):
                 warnings.append("time coordinate could not be decoded for interval validation")
 
@@ -148,7 +159,11 @@ def validate(
             if not source_name:
                 errors.append(f"missing required variable {canonical_name}")
                 continue
-            stats = _finite_stats(dataset[source_name])
+            da = dataset[source_name]
+            mask_var = _first_existing(dataset, ("mask_rho", "mask_u", "mask_v", "mask"))
+            if mask_var is not None:
+                da = da.where(dataset[mask_var] == 1)
+            stats = _finite_stats(da)
             variables[canonical_name] = {"source_name": source_name, **stats}
             if stats["finite_fraction"] < 0.90:
                 errors.append(
@@ -169,7 +184,11 @@ def validate(
             source_name = _first_existing(dataset, ALIASES[canonical_name])
             if not source_name:
                 continue
-            stats = _finite_stats(dataset[source_name])
+            da = dataset[source_name]
+            mask_var = _first_existing(dataset, ("mask_rho", "mask_u", "mask_v", "mask"))
+            if mask_var is not None:
+                da = da.where(dataset[mask_var] == 1)
+            stats = _finite_stats(da)
             variables[canonical_name] = {"source_name": source_name, **stats}
             if stats["finite_count"] and (
                 stats["minimum"] < bounds[0] or stats["maximum"] > bounds[1]
