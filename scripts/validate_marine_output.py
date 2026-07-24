@@ -160,6 +160,8 @@ def validate(
                 errors.append(f"missing required variable {canonical_name}")
                 continue
             da = dataset[source_name]
+            if "s_rho" in da.dims:
+                da = da.isel(s_rho=-1)
             mask_var = _first_existing(dataset, ("mask_rho", "mask_u", "mask_v", "mask"))
             if mask_var is not None:
                 da = da.where(dataset[mask_var] == 1)
@@ -185,6 +187,8 @@ def validate(
             if not source_name:
                 continue
             da = dataset[source_name]
+            if "s_rho" in da.dims:
+                da = da.isel(s_rho=-1)
             mask_var = _first_existing(dataset, ("mask_rho", "mask_u", "mask_v", "mask"))
             if mask_var is not None:
                 da = da.where(dataset[mask_var] == 1)
