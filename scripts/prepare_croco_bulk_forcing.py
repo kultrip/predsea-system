@@ -200,12 +200,21 @@ def build_bulk_forcing(
         "units": "Celsius",
     })
 
+    # Define dQdSST matching SST shape, filled with constant -40.0 W/m2/K (SOCIB operational standard)
+    dqdsst_data = np.full_like(frc_dataset["sst"].values, -40.0, dtype=np.float32)
+    frc_dataset["dQdSST"] = (("sst_time", "eta_rho", "xi_rho"), dqdsst_data)
+    frc_dataset["dQdSST"].attrs.update({
+        "long_name": "surface heat flux sensitivity to SST",
+        "units": "Watts meter-2 Kelvin-1",
+    })
+
     frc_path = output_path.parent / "croco_frc.nc"
     frc_dataset.to_netcdf(
         frc_path,
         encoding={
             "SST": {"zlib": True, "complevel": 1},
             "sst": {"zlib": True, "complevel": 1},
+            "dQdSST": {"zlib": True, "complevel": 1},
         },
     )
     return dataset
