@@ -80,7 +80,7 @@ def build_bulk_forcing(
         lat_rho = np.asarray(grid["lat_rho"].values)
 
     fields: dict[str, list[np.ndarray]] = {
-        name: [] for name in ("uwnd", "vwnd", "tair", "rhum", "prate", "radlw_in", "radsw")
+        name: [] for name in ("uwnd", "vwnd", "tair", "rhum", "prate", "radlw_in", "radlw", "radsw", "sst")
     }
     times: list[np.datetime64] = []
     previous_rain: np.ndarray | None = None
@@ -105,6 +105,13 @@ def build_bulk_forcing(
             t2 = _surface(wrf["T2"])
             q2 = _surface(wrf["Q2"])
             psfc = _surface(wrf["PSFC"])
+            if "SST" in wrf:
+                sst_k = _surface(wrf["SST"])
+            elif "TSK" in wrf:
+                sst_k = _surface(wrf["TSK"])
+            else:
+                sst_k = t2
+
             cumulative_rain = sum(
                 (_surface(wrf[name]) for name in ("RAINC", "RAINNC") if name in wrf),
                 np.zeros_like(t2),
@@ -130,6 +137,7 @@ def build_bulk_forcing(
                 "radlw_in": np.maximum(_surface(wrf["GLW"]), 0.0),
                 "radlw": np.maximum(_surface(wrf["GLW"]), 0.0),
                 "radsw": np.minimum(np.maximum(_surface(wrf["SWDOWN"]), 0.0), 1000.0),
+                "sst": sst_k - 273.15,
             }
             for name, values in source.items():
                 fields[name].append(_interpolate(source_lon, source_lat, values, lon_rho, lat_rho))
@@ -168,6 +176,7 @@ def build_bulk_forcing(
         calendar="gregorian",
     )
     dataset["tair"].attrs["units"] = "Celsius"
+    dataset["sst"].attrs["units"] = "Celsius"
     dataset["rhum"].attrs["units"] = "percent"
     dataset["prate"].attrs["units"] = "m s-1"
     dataset["uwnd"].attrs["units"] = dataset["vwnd"].attrs["units"] = "m s-1"
