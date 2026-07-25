@@ -183,6 +183,13 @@ def build_bulk_forcing(
     dataset["radlw_in"].attrs["units"] = dataset["radsw"].attrs["units"] = "W m-2"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_netcdf(output_path, encoding={name: {"zlib": True, "complevel": 1} for name in fields})
+
+    # Generate croco_frc.nc containing sst and sst_time for QCORRECTION
+    frc_dataset = dataset[["sst"]].copy()
+    frc_dataset = frc_dataset.rename({"bulk_time": "sst_time"})
+    frc_dataset["sst_time"].attrs.update(dataset["bulk_time"].attrs)
+    frc_path = output_path.parent / "croco_frc.nc"
+    frc_dataset.to_netcdf(frc_path, encoding={"sst": {"zlib": True, "complevel": 1}})
     return dataset
 
 
