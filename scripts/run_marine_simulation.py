@@ -245,6 +245,18 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
         stage="real WRF-to-CROCO bulk forcing conversion",
     )
 
+    # Ensure both croco_blk.nc and croco_frc.nc are present in croco_work and
+    # mirrored to relative template directory tmp/forcing-croco-24h
+    rel_forcing_dir = Path("tmp/forcing-croco-24h")
+    rel_forcing_dir.mkdir(parents=True, exist_ok=True)
+    for fname in ("croco_blk.nc", "croco_frc.nc"):
+        src = croco_work / fname
+        if src.is_file():
+            dst = rel_forcing_dir / fname
+            if dst.resolve() != src.resolve():
+                import shutil
+                shutil.copy2(src, dst)
+
     namelist = croco_work / "croco.in"
     croco_timestep_seconds = int(os.environ.get("PREDSEA_CROCO_TIMESTEP_SECONDS", "30"))
     run_checked(

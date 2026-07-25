@@ -28,6 +28,7 @@ def render(template: str, *, start_date: str, forecast_hours: int, work_dir: Pat
     text = re.sub(r"(end_date:\s*\n).*", rf"\g<1>{end:%Y-%m-%d %H:%M:%S}", text)
     replacements = {
         r"(?m)^(grid:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_grid.nc",
+        r"(?m)^(forcing:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_frc.nc",
         r"(?m)^(bulk_forcing:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_blk.nc",
         r"(?m)^(climatology:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_clm.nc",
         r"(?m)^(boundary:[ \t]+filename[ \t]*\n)[ \t]*.*$": rf"\g<1>    {work_dir}/croco_bry.nc",
