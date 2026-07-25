@@ -28,10 +28,10 @@ def main():
         "# undef BENGUELA_LR\n# define BALEARIC_1KM"
     )
 
-    # Enable MPI parallelization
+    # Serial single-core mode (no MPI)
     cppdefs_content = cppdefs_content.replace(
         "# undef  MPI",
-        "# define MPI"
+        "# undef MPI"
     )
 
     # Enable CLIMATOLOGY boundaries and nudging
@@ -59,10 +59,10 @@ def main():
         "#  elif defined GIBRALTAR_VHR5"
     )
 
-    # Set MPI subdivision grid (4 x 4 = 16 cores) for BALEARIC_1KM
+    # Set single-core grid decomposition (NP_XI=1, NP_ETA=1) for BALEARIC_1KM
     param_content = param_content.replace(
         "      parameter (NP_XI=1,  NP_ETA=4,  NNODES=NP_XI*NP_ETA)",
-        "# if defined BALEARIC_1KM\n      parameter (NP_XI=4,  NP_ETA=4,  NNODES=NP_XI*NP_ETA)\n# else\n      parameter (NP_XI=1,  NP_ETA=4,  NNODES=NP_XI*NP_ETA)\n# endif"
+        "# if defined BALEARIC_1KM\n      parameter (NP_XI=1,  NP_ETA=1,  NNODES=NP_XI*NP_ETA)\n# else\n      parameter (NP_XI=1,  NP_ETA=1,  NNODES=NP_XI*NP_ETA)\n# endif"
     )
 
     dst_param.write_text(param_content)

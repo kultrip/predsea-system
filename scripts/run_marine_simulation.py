@@ -101,7 +101,9 @@ def upload_croco_failure_diagnostics(
 
 
 def croco_mpi_command(mpi_ranks: int, executable: Path, namelist: Path) -> list[str]:
-    """Use every allocated vCPU, including SMT hardware threads, as an MPI slot."""
+    """Execute serial binary directly when mpi_ranks <= 1, else invoke mpirun."""
+    if mpi_ranks <= 1:
+        return [str(executable), str(namelist)]
     return [
         "mpirun",
         "--allow-run-as-root",
@@ -158,10 +160,9 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
                          region_id: str, run_date: str, run_id: str,
                          forecast_hours: int, mpi_ranks: int, gcs_bucket: str) -> None:
     """Run the bounded regional CROCO path from explicit real inputs."""
-    if mpi_ranks != 16:
+    if mpi_ranks not in (1, 8, 16):
         raise ValueError(
-            "the pinned Balearic CROCO binary is compiled for a 4x4 decomposition; "
-            "--mpi-ranks must be 16"
+            f"unsupported mpi_ranks value: {mpi_ranks}; expected 1, 8, or 16"
         )
     grid_uri = os.environ.get("PREDSEA_CROCO_GRID_GCS_URI")
     wrf_uri = os.environ.get("PREDSEA_WRF_GCS_URI")
