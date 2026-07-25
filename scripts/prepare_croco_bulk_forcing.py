@@ -80,7 +80,7 @@ def build_bulk_forcing(
         lat_rho = np.asarray(grid["lat_rho"].values)
 
     fields: dict[str, list[np.ndarray]] = {
-        name: [] for name in ("uwnd", "vwnd", "tair", "rhum", "prate", "radlw_in", "radlw", "radsw", "sst")
+        name: [] for name in ("uwnd", "vwnd", "tair", "rhum", "prate", "radlw_in", "radsw", "sst")
     }
     times: list[np.datetime64] = []
     previous_rain: np.ndarray | None = None
@@ -132,10 +132,9 @@ def build_bulk_forcing(
                 "tair": t2 - 273.15,
                 "rhum": np.clip(_relative_humidity_percent(t2, q2, psfc), 10.0, 100.0),
                 "prate": rain_rate,
-                # With incoming-longwave radiation enabled, CROCO resolves bulk
-                # fields by radlw_in and radlw.
+                # With incoming-longwave radiation enabled (BULK_LW), CROCO
+                # uses radlw_in for the bulk flux solver.
                 "radlw_in": np.maximum(_surface(wrf["GLW"]), 0.0),
-                "radlw": np.maximum(_surface(wrf["GLW"]), 0.0),
                 "radsw": np.minimum(np.maximum(_surface(wrf["SWDOWN"]), 0.0), 1000.0),
                 "sst": sst_k - 273.15,
             }
