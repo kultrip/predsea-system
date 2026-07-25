@@ -184,12 +184,30 @@ def build_bulk_forcing(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_netcdf(output_path, encoding={name: {"zlib": True, "complevel": 1} for name in fields})
 
-    # Generate croco_frc.nc containing sst and sst_time for QCORRECTION
+    # Generate croco_frc.nc containing SST, sst, and sst_time for QCORRECTION
     frc_dataset = dataset[["sst"]].copy()
     frc_dataset = frc_dataset.rename({"bulk_time": "sst_time"})
     frc_dataset["sst_time"].attrs.update(dataset["bulk_time"].attrs)
+
+    # Provide both uppercase SST (required by CROCO get_sst.F) and lowercase sst
+    frc_dataset["SST"] = frc_dataset["sst"].copy()
+    frc_dataset["SST"].attrs.update({
+        "long_name": "sea surface temperature",
+        "units": "Celsius",
+    })
+    frc_dataset["sst"].attrs.update({
+        "long_name": "sea surface temperature",
+        "units": "Celsius",
+    })
+
     frc_path = output_path.parent / "croco_frc.nc"
-    frc_dataset.to_netcdf(frc_path, encoding={"sst": {"zlib": True, "complevel": 1}})
+    frc_dataset.to_netcdf(
+        frc_path,
+        encoding={
+            "SST": {"zlib": True, "complevel": 1},
+            "sst": {"zlib": True, "complevel": 1},
+        },
+    )
     return dataset
 
 
