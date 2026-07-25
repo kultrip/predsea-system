@@ -25,7 +25,7 @@ RUN PREDSEA_CROCO_LM=${PREDSEA_CROCO_LM} \
     && cp tmp/croco_build/croco_src/OCEAN/jobcomp tmp/croco_build/jobcomp \
     && chmod 0755 tmp/croco_build/jobcomp
 WORKDIR /build/tmp/croco_build
-RUN ./jobcomp --src croco_src/OCEAN --jobs 8 && test -x croco
+RUN rm -rf Build Compile && ./jobcomp --src croco_src/OCEAN --jobs 8 && test -x croco
 
 FROM python:3.11-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \

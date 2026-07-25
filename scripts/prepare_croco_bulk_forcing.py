@@ -123,12 +123,13 @@ def build_bulk_forcing(
                 "uwnd": _surface(wrf["U10"]),
                 "vwnd": _surface(wrf["V10"]),
                 "tair": t2 - 273.15,
-                "rhum": _relative_humidity_percent(t2, q2, psfc),
+                "rhum": np.clip(_relative_humidity_percent(t2, q2, psfc), 10.0, 100.0),
                 "prate": rain_rate,
-                # With incoming-longwave radiation enabled, this CROCO build
-                # resolves the bulk field by the canonical name radlw_in.
-                "radlw_in": _surface(wrf["GLW"]),
-                "radsw": _surface(wrf["SWDOWN"]),
+                # With incoming-longwave radiation enabled, CROCO resolves bulk
+                # fields by radlw_in and radlw.
+                "radlw_in": np.maximum(_surface(wrf["GLW"]), 0.0),
+                "radlw": np.maximum(_surface(wrf["GLW"]), 0.0),
+                "radsw": np.minimum(np.maximum(_surface(wrf["SWDOWN"]), 0.0), 1000.0),
             }
             for name, values in source.items():
                 fields[name].append(_interpolate(source_lon, source_lat, values, lon_rho, lat_rho))
