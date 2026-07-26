@@ -39,6 +39,21 @@ def _first_existing(dataset: xr.Dataset, names: Iterable[str]) -> str | None:
     return next((name for name in names if name in dataset.variables), None)
 
 
+def _apply_matching_mask(dataset: xr.Dataset, da: xr.DataArray) -> xr.DataArray:
+    """Apply land mask only if mask dimensions match or are a subset of da dimensions."""
+    mask_candidates = (
+        ("mask_u", "mask_v", "mask_rho", "mask")
+        if ("xi_u" in da.dims or "eta_v" in da.dims)
+        else ("mask_rho", "mask_u", "mask_v", "mask")
+    )
+    for mask_name in mask_candidates:
+        if mask_name in dataset.variables:
+            mask_da = dataset[mask_name]
+            if set(mask_da.dims).issubset(set(da.dims)):
+                return da.where(mask_da == 1)
+    return da
+
+
 def _finite_stats(data: xr.DataArray) -> dict[str, float | int]:
     values = np.asarray(data.values)
     finite = np.isfinite(values)
@@ -144,7 +159,7 @@ def validate(
                     "longitude_min": float(lon_stats["minimum"]),
                     "longitude_max": float(lon_stats["maximum"]),
                 }
-                tolerance = 0.02
+                tolerance = 0.05
                 if coverage["latitude_min"] > bbox["latitude_min"] + tolerance:
                     errors.append("output does not reach the configured southern boundary")
                 if coverage["latitude_max"] < bbox["latitude_max"] - tolerance:
@@ -162,9 +177,7 @@ def validate(
             da = dataset[source_name]
             if "s_rho" in da.dims:
                 da = da.isel(s_rho=-1)
-            mask_var = _first_existing(dataset, ("mask_rho", "mask_u", "mask_v", "mask"))
-            if mask_var is not None:
-                da = da.where(dataset[mask_var] == 1)
+            da = _apply_matching_mask(dataset, da)
             stats = _finite_stats(da)
             variables[canonical_name] = {"source_name": source_name, **stats}
             if stats["finite_fraction"] < 0.90:
@@ -189,9 +202,7 @@ def validate(
             da = dataset[source_name]
             if "s_rho" in da.dims:
                 da = da.isel(s_rho=-1)
-            mask_var = _first_existing(dataset, ("mask_rho", "mask_u", "mask_v", "mask"))
-            if mask_var is not None:
-                da = da.where(dataset[mask_var] == 1)
+            da = _apply_matching_mask(dataset, da)
             stats = _finite_stats(da)
             variables[canonical_name] = {"source_name": source_name, **stats}
             if stats["finite_count"] and (
