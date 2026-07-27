@@ -9,11 +9,13 @@ from pathlib import Path
 
 
 def render(template: str, *, start_date: str, forecast_hours: int, work_dir: Path,
-           timestep_seconds: int = 60) -> str:
+           timestep_seconds: int = 60, ndtfast: int = 30) -> str:
     if forecast_hours < 1 or forecast_hours > 120:
         raise ValueError("forecast_hours must be between 1 and 120")
     if timestep_seconds <= 0 or 3600 % timestep_seconds:
         raise ValueError("timestep_seconds must be a positive divisor of one hour")
+    if ndtfast <= 0:
+        raise ValueError("ndtfast must be a positive integer")
     start = dt.datetime.strptime(start_date, "%Y-%m-%d")
     end = start + dt.timedelta(hours=forecast_hours)
     ntimes = forecast_hours * 3600 // timestep_seconds
@@ -21,7 +23,7 @@ def render(template: str, *, start_date: str, forecast_hours: int, work_dir: Pat
     text = template
     text = re.sub(
         r"(time_stepping: NTIMES\s+dt\[sec\]\s+NDTFAST\s+NINFO\s*\n)\s*\d+\s+\d+\s+\d+\s+\d+",
-        rf"\g<1>                {ntimes}      {timestep_seconds}      30      10",
+        rf"\g<1>                {ntimes}      {timestep_seconds}      {ndtfast}      10",
         text,
     )
     text = re.sub(r"(start_date:\s*\n).*", rf"\g<1>{start:%Y-%m-%d %H:%M:%S}", text)
@@ -36,6 +38,7 @@ def render(template: str, *, start_date: str, forecast_hours: int, work_dir: Pat
         r"(?m)^(restart:[ \t]+NRST, NRPFRST / filename[ \t]*\n)[ \t]*\d+[ \t]+-1[ \t]*\n[ \t]*.*$": rf"\g<1>                   {ntimes}    -1\n    {work_dir}/croco_rst.nc",
         r"(?m)^(history:[ \t]+LDEFHIS, NWRT, NRPFHIS / filename[ \t]*\n)[ \t]*T[ \t]+\d+[ \t]+0[ \t]*\n[ \t]*.*$": rf"\g<1>            T      {steps_per_hour}     0\n    {work_dir}/croco_his.nc",
         r"(?m)^(averages:[ \t]+NTSAVG, NAVG, NRPFAVG / filename[ \t]*\n)[ \t]*1[ \t]+\d+[ \t]+0[ \t]*\n[ \t]*.*$": rf"\g<1>            1      {ntimes}     0\n    {work_dir}/croco_avg.nc",
+        r"(?m)^(sponge:[ \t]+X_SPONGE \[m\],[ \t]+V_SPONGE \[m\^2/sec\][ \t]*\n)[ \t]*.*$": rf"\g<1>                    50000.           100.",
     }
     for pattern, replacement in replacements.items():
         text, count = re.subn(pattern, replacement, text)
@@ -54,6 +57,7 @@ def main() -> int:
     parser.add_argument("--start-date", required=True)
     parser.add_argument("--forecast-hours", type=int, required=True)
     parser.add_argument("--timestep-seconds", type=int, default=60)
+    parser.add_argument("--ndtfast", type=int, default=30)
     args = parser.parse_args()
     rendered = render(
         args.template.read_text(),
@@ -61,6 +65,7 @@ def main() -> int:
         forecast_hours=args.forecast_hours,
         work_dir=args.work_dir,
         timestep_seconds=args.timestep_seconds,
+        ndtfast=args.ndtfast,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(rendered)

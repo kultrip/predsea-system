@@ -41,6 +41,12 @@
 # define LMD_NONLOCAL
 #endif
 
+/* Vertical Advection & Drag & Boundary Sponge */
+#define SPLINES_VDIFF
+#define SPLINES_VDIFF_TRACER
+#define UV_LOGDRAG
+#define SPONGE_GRID
+
 /* Surface Forcing & Heat Fluxes */
 #define BULK_FLUX
 #ifdef BULK_FLUX

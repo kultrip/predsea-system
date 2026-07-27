@@ -18,14 +18,19 @@ RUN curl --fail --location --retry 4 \
     && tar -xzf croco.tar.gz -C tmp/croco_build \
     && mv "tmp/croco_build/croco-v${CROCO_VERSION}" tmp/croco_build/croco_src
 COPY simulation/marine/croco/patch_croco_source.py /build/patch_croco_source.py
-RUN PREDSEA_CROCO_LM=${PREDSEA_CROCO_LM} \
-    PREDSEA_CROCO_MM=${PREDSEA_CROCO_MM} \
-    PREDSEA_CROCO_N=${PREDSEA_CROCO_N} \
-    python3 /build/patch_croco_source.py \
-    && cp tmp/croco_build/croco_src/OCEAN/jobcomp tmp/croco_build/jobcomp \
-    && chmod 0755 tmp/croco_build/jobcomp
-WORKDIR /build/tmp/croco_build
-RUN rm -rf Build Compile && ./jobcomp --src croco_src/OCEAN --jobs 8 && test -x croco
+RUN mkdir -p /usr/local/bin \
+    && for region in alboran_1km:499:249 algerian_1km:949:299 balearic_1km:499:399 gulf_of_lion_1km:449:299 tyrrhenian_1km:648:649; do \
+         name=$(echo $region | cut -d: -f1); \
+         lm=$(echo $region | cut -d: -f2); \
+         mm=$(echo $region | cut -d: -f3); \
+         echo "🔨 Building CROCO binary for $name (LM=$lm, MM=$mm)..."; \
+         rm -rf /build/tmp/croco_build/Build /build/tmp/croco_build/Compile; \
+         PREDSEA_CROCO_LM=$lm PREDSEA_CROCO_MM=$mm PREDSEA_CROCO_N=32 python3 /build/patch_croco_source.py; \
+         cp /build/tmp/croco_build/croco_src/OCEAN/jobcomp /build/tmp/croco_build/jobcomp; \
+         chmod 0755 /build/tmp/croco_build/jobcomp; \
+         (cd /build/tmp/croco_build && ./jobcomp --src croco_src/OCEAN --jobs 8 && test -x croco && mv croco /usr/local/bin/croco_${name}); \
+       done \
+    && ln -s /usr/local/bin/croco_balearic_1km /usr/local/bin/croco_balearic
 
 FROM python:3.11-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,8 +46,8 @@ RUN curl -sSL \
     && rm /tmp/google-cloud-sdk.tar.gz
 ENV PATH="/opt/google-cloud-sdk/bin:${PATH}" \
     PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app
-COPY --from=croco_builder /build/tmp/croco_build/croco /usr/local/bin/croco_balearic
-RUN chmod 0755 /usr/local/bin/croco_balearic
+COPY --from=croco_builder /usr/local/bin/croco_* /usr/local/bin/
+RUN chmod 0755 /usr/local/bin/croco_*
 WORKDIR /app
 COPY simulation/marine/swan/requirements.batch.txt /app/requirements.batch.txt
 RUN pip install --no-cache-dir -r /app/requirements.batch.txt
