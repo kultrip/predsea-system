@@ -162,12 +162,30 @@ import tempfile
 
 
 def stage_cmems_forcing(staged_cmems: Path, croco_work: Path) -> Path:
-    """Copy a pre-staged CMEMS file and reject missing or empty artifacts."""
+    """Copy a pre-staged CMEMS file only when it is complete 3-D forcing."""
     if not staged_cmems.is_file():
         raise FileNotFoundError(f"Pre-staged CMEMS forcing is missing: {staged_cmems}")
     source_size = staged_cmems.stat().st_size
     if source_size == 0:
         raise ValueError(f"Pre-staged CMEMS forcing is empty: {staged_cmems}")
+
+    with xr.open_dataset(staged_cmems) as dataset:
+        required_variables = {"uo", "vo", "thetao", "so", "zos"}
+        missing_variables = required_variables - set(dataset.variables)
+        if missing_variables:
+            raise ValueError(
+                "Pre-staged CMEMS forcing is incomplete; missing variables: "
+                f"{', '.join(sorted(missing_variables))}"
+            )
+        required_dimensions = {"time", "depth", "latitude", "longitude"}
+        missing_dimensions = required_dimensions - set(dataset.sizes)
+        if missing_dimensions:
+            raise ValueError(
+                "Pre-staged CMEMS forcing is not three-dimensional; "
+                f"missing dimensions: {', '.join(sorted(missing_dimensions))}"
+            )
+        if any(int(dataset.sizes[name]) <= 0 for name in required_dimensions):
+            raise ValueError("Pre-staged CMEMS forcing contains empty dimensions")
 
     destination = croco_work / "cmems_ocean_forcing.nc"
     shutil.copy2(staged_cmems, destination)
@@ -272,10 +290,18 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
 
     log_step("2. Acquiring validated three-dimensional CMEMS ocean forcing")
     staged_cmems = inputs_dir / "cmems_ocean_forcing.nc"
+    use_staged_cmems = False
     if staged_cmems.exists():
-        log_step(f"--> Found pre-staged CMEMS forcing at {staged_cmems}, copying to {croco_work}...")
-        stage_cmems_forcing(staged_cmems, croco_work)
-    else:
+        log_step(f"--> Validating pre-staged CMEMS forcing at {staged_cmems}...")
+        try:
+            stage_cmems_forcing(staged_cmems, croco_work)
+            use_staged_cmems = True
+        except ValueError as exc:
+            log_step(
+                "--> Rejecting structurally invalid CMEMS cache and "
+                f"reacquiring real 3-D forcing: {exc}"
+            )
+    if not use_staged_cmems:
         run_checked(
             [
                 "python3", "/app/scripts/fetch_native_marine_forcing.py",
