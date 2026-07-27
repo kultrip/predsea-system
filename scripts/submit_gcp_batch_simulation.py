@@ -19,7 +19,7 @@ try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass
+    load_dotenv = None
 
 
 def get_gcp_project() -> str:
@@ -250,11 +250,8 @@ def default_timeout_seconds(forecast_hours: int) -> int:
 
 
 def main():
-    try:
-        from dotenv import load_dotenv
+    if load_dotenv is not None:
         load_dotenv(Path(__file__).resolve().parents[1] / "humanintheloop" / ".env")
-    except ImportError:
-        pass
     parser = argparse.ArgumentParser(description="Submit parallel marine simulation jobs to GCP Batch.")
     parser.add_argument("--region", required=True, help="Region ID (e.g., balearic_1km, alboran_1km)")
     parser.add_argument("--model", choices=["swan", "croco", "both"], default="both", help="Model to run")

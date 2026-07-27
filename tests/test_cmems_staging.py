@@ -6,24 +6,75 @@ import pytest
 from scripts.run_marine_simulation import stage_cmems_forcing
 
 
-RUNNER = Path(__file__).parents[1] / "scripts" / "run_marine_simulation.py"
+SCRIPTS = Path(__file__).parents[1] / "scripts"
+MARINE_ENTRYPOINTS = (
+    SCRIPTS / "run_marine_simulation.py",
+    SCRIPTS / "prepare_croco_forcing.py",
+    SCRIPTS / "submit_gcp_batch_simulation.py",
+)
 
 
-def test_runner_never_imports_shutil_inside_a_function():
-    tree = ast.parse(RUNNER.read_text(encoding="utf-8"))
+def _import_bindings(node):
+    if isinstance(node, ast.Import):
+        return {
+            alias.asname or alias.name.split(".")[0]
+            for alias in node.names
+        }
+    if isinstance(node, ast.ImportFrom):
+        return {
+            alias.asname or alias.name
+            for alias in node.names
+            if alias.name != "*"
+        }
+    return set()
+
+
+def _module_import_bindings(tree):
+    bindings = set()
+
+    def visit(node):
+        if isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
+        ):
+            return
+        bindings.update(_import_bindings(node))
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+
+    visit(tree)
+    return bindings
+
+
+def _function_local_imports(function):
+    imports = []
+
+    def visit(node):
+        if node is not function and isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
+        ):
+            return
+        for name in _import_bindings(node):
+            imports.append((name, node.lineno))
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+
+    visit(function)
+    return imports
+
+
+@pytest.mark.parametrize("script", MARINE_ENTRYPOINTS, ids=lambda path: path.name)
+def test_function_local_imports_do_not_shadow_module_imports(script: Path):
+    tree = ast.parse(script.read_text(encoding="utf-8"), filename=str(script))
+    module_bindings = _module_import_bindings(tree)
     offenders = []
     for function in (
         node
         for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     ):
-        for node in ast.walk(function):
-            if isinstance(node, ast.Import) and any(
-                alias.name == "shutil" for alias in node.names
-            ):
-                offenders.append((function.name, node.lineno))
-            if isinstance(node, ast.ImportFrom) and node.module == "shutil":
-                offenders.append((function.name, node.lineno))
+        for name, lineno in _function_local_imports(function):
+            if name in module_bindings:
+                offenders.append((function.name, lineno, name))
     assert offenders == []
 
 
