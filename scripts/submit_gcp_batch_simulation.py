@@ -15,7 +15,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 
 def get_gcp_project() -> str:
@@ -99,10 +103,10 @@ def calculate_resources(region_cfg: dict) -> tuple[str, int, int, int]:
     # Map to resource matrix
     if grid_points < 500000:
         # Small tile
-        return "c2d-highcpu-4", 4000, 8192, 2
+        return "c2d-highcpu-8", 8000, 16384, 8
     elif grid_points <= 2000000:
         # Medium tile (e.g., Balearic)
-        return "c2d-highcpu-8", 8000, 16384, 4
+        return "c2d-highcpu-8", 8000, 16384, 8
     else:
         # Large tile (e.g., Tyrrhenian)
         return "c2d-highcpu-32", 32000, 65536, 16
@@ -127,6 +131,8 @@ def build_batch_job_json(
     copernicus_password: str | None = None,
     croco_grid_gcs_uri: str | None = None,
     wrf_gcs_uri: str | None = None,
+    croco_timestep_seconds: int | None = None,
+    croco_ndtfast: int | None = None,
 ) -> dict:
     runnable_cmd = (
         f"python3 /app/scripts/run_marine_simulation.py "
@@ -138,6 +144,10 @@ def build_batch_job_json(
     )
 
     environment_variables = {
+        # Batch injects the host COS value (/usr/bin/python3) into containers.
+        # python:3.11-slim installs Python under /usr/local, and Cloud SDK tools
+        # such as gsutil otherwise fail before any run-scoped diagnostics exist.
+        "CLOUDSDK_PYTHON": "/usr/local/bin/python3",
         "GOOGLE_CLOUD_PROJECT": project_id,
         "PREDSEA_RUN_DATE": run_date,
         "PREDSEA_RUN_ID": run_id,
@@ -154,14 +164,16 @@ def build_batch_job_json(
             }
         )
     if model_type == "croco":
-        if not croco_grid_gcs_uri or not wrf_gcs_uri:
-            raise ValueError("CROCO jobs require explicit grid and WRF GCS URIs")
-        environment_variables.update(
-            {
-                "PREDSEA_CROCO_GRID_GCS_URI": croco_grid_gcs_uri,
-                "PREDSEA_WRF_GCS_URI": wrf_gcs_uri,
-            }
-        )
+        if not wrf_gcs_uri:
+            raise ValueError("CROCO jobs require explicit WRF GCS URI")
+        if not croco_grid_gcs_uri:
+            croco_grid_gcs_uri = f"gs://{gcs_bucket}/grids/croco_grd_{region_id}.nc"
+        environment_variables["PREDSEA_WRF_GCS_URI"] = wrf_gcs_uri
+        environment_variables["PREDSEA_CROCO_GRID_GCS_URI"] = croco_grid_gcs_uri
+        if croco_timestep_seconds is not None:
+            environment_variables["PREDSEA_CROCO_TIMESTEP_SECONDS"] = str(croco_timestep_seconds)
+        if croco_ndtfast is not None:
+            environment_variables["PREDSEA_CROCO_NDTFAST"] = str(croco_ndtfast)
 
     job_def = {
         "taskGroups": [
@@ -183,8 +195,8 @@ def build_batch_job_json(
                 "cpuMilli": str(cpu_milli),
                 "memoryMib": str(memory_mib)
               },
-              "maxRetryCount": 1,
-              "maxRunDuration": f"{timeout_seconds}s"
+              "maxRetryCount": 2,
+              "maxRunDuration": f"{max(3600, timeout_seconds)}s"
             },
             "taskCount": 1
           }
@@ -215,7 +227,11 @@ def default_timeout_seconds(forecast_hours: int) -> int:
 
 
 def main():
-    load_dotenv(Path(__file__).resolve().parents[1] / "humanintheloop" / ".env")
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(Path(__file__).resolve().parents[1] / "humanintheloop" / ".env")
+    except ImportError:
+        pass
     parser = argparse.ArgumentParser(description="Submit parallel marine simulation jobs to GCP Batch.")
     parser.add_argument("--region", required=True, help="Region ID (e.g., balearic_1km, alboran_1km)")
     parser.add_argument("--model", choices=["swan", "croco", "both"], default="both", help="Model to run")
@@ -237,6 +253,8 @@ def main():
     parser.add_argument("--mpi-ranks", type=int, help="Override the profile-derived MPI rank count")
     parser.add_argument("--croco-grid-gcs-uri", help="Immutable staging CROCO grid gs:// object")
     parser.add_argument("--wrf-gcs-uri", help="Immutable staging WRF output gs:// prefix/object")
+    parser.add_argument("--croco-timestep-seconds", type=int, help="Override CROCO baroclinic timestep dt (seconds)")
+    parser.add_argument("--croco-ndtfast", type=int, help="Override CROCO NDTFAST barotropic substeps")
     parser.add_argument(
         "--provisioning-model",
         choices=["SPOT", "STANDARD"],
@@ -279,10 +297,23 @@ def main():
     if mpi_ranks > cpu_milli // 1000:
         parser.error("--mpi-ranks cannot exceed requested vCPUs")
 
+    croco_spec = region_cfg.get("models", {}).get("croco", {})
+    croco_timestep_seconds = args.croco_timestep_seconds or croco_spec.get("timestep_seconds")
+    croco_ndtfast = args.croco_ndtfast or croco_spec.get("ndtfast")
+    croco_grid_gcs_uri = (
+        args.croco_grid_gcs_uri
+        or croco_spec.get("grid_gcs_uri")
+        or f"gs://{gcs_bucket}/static/native-marine/{args.region}/croco-grid/20260726-v1/croco_grid.nc"
+    )
+
     print(f"✨ Scheduled execution parameters:")
     print(f"   - Target Machine: {machine_type} ({args.provisioning_model} VM)")
     print(f"   - CPUs / RAM: {cpu_milli/1000:.1f} vCPUs / {memory_mib/1024:.1f} GiB")
     print(f"   - MPI Parallel Decomposition: {mpi_ranks} ranks")
+    if args.model in ("croco", "both"):
+        print(f"   - CROCO Grid URI: {croco_grid_gcs_uri}")
+    if croco_timestep_seconds:
+        print(f"   - CROCO dt: {croco_timestep_seconds}s (NDTFAST={croco_ndtfast or 30})")
 
     # Generate job manifest
     job_manifest = build_batch_job_json(
@@ -304,8 +335,10 @@ def main():
         or os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
         copernicus_password=os.getenv("COPERNICUS_PASSWORD")
         or os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD"),
-        croco_grid_gcs_uri=args.croco_grid_gcs_uri,
+        croco_grid_gcs_uri=croco_grid_gcs_uri,
         wrf_gcs_uri=args.wrf_gcs_uri,
+        croco_timestep_seconds=croco_timestep_seconds,
+        croco_ndtfast=croco_ndtfast,
     )
 
     job_json_str = json.dumps(job_manifest, indent=2)

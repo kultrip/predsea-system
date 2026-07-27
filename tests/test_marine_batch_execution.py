@@ -119,6 +119,10 @@ def test_batch_manifest_carries_immutable_run_identity_and_timeout():
     assert task["maxRunDuration"] == "28800s"
     assert runnable["container"]["imageUri"] == image
     assert runnable["environment"]["variables"]["PREDSEA_RUN_ID"] == "run-123"
+    assert (
+        runnable["environment"]["variables"]["CLOUDSDK_PYTHON"]
+        == "/usr/local/bin/python3"
+    )
 
 
 def test_batch_manifest_exposes_copernicus_service_environment_names():
@@ -176,7 +180,7 @@ def test_batch_manifest_supports_deadline_critical_standard_vm():
 
 
 def test_croco_manifest_requires_and_carries_explicit_staging_inputs():
-    with pytest.raises(ValueError, match="explicit grid and WRF"):
+    with pytest.raises(ValueError, match="explicit WRF"):
         build_batch_job_json(
             project_id="predsea-api", region_id="balearic_1km", model_type="croco",
             forecast_hours=6, gcs_bucket="predsea-daily-outputs-test",
