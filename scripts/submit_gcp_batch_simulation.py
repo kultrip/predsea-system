@@ -155,6 +155,7 @@ def build_batch_job_json(
     wrf_gcs_uri: str | None = None,
     croco_timestep_seconds: int | None = None,
     croco_ndtfast: int | None = None,
+    cmems_gcs_uri: str | None = None,
 ) -> dict:
     runnable_cmd = (
         f"python3 /app/scripts/run_marine_simulation.py "
@@ -193,6 +194,8 @@ def build_batch_job_json(
         )
         environment_variables["PREDSEA_WRF_GCS_URI"] = wrf_gcs_uri
         environment_variables["PREDSEA_CROCO_GRID_GCS_URI"] = croco_grid_gcs_uri
+        if cmems_gcs_uri:
+            environment_variables["PREDSEA_CMEMS_GCS_URI"] = cmems_gcs_uri
         if croco_timestep_seconds is not None:
             environment_variables["PREDSEA_CROCO_TIMESTEP_SECONDS"] = str(croco_timestep_seconds)
         if croco_ndtfast is not None:
@@ -273,6 +276,12 @@ def main():
     parser.add_argument("--mpi-ranks", type=int, help="Override the profile-derived MPI rank count")
     parser.add_argument("--croco-grid-gcs-uri", help="Immutable staging CROCO grid gs:// object")
     parser.add_argument("--wrf-gcs-uri", help="Immutable staging WRF output gs:// prefix/object")
+    parser.add_argument("--cmems-gcs-uri", help="Immutable run-scoped CMEMS staging prefix")
+    parser.add_argument(
+        "--omit-copernicus-credentials",
+        action="store_true",
+        help="Do not inject Copernicus credentials; requires pre-staged CMEMS inputs",
+    )
     parser.add_argument("--croco-timestep-seconds", type=int, help="Override CROCO baroclinic timestep dt (seconds)")
     parser.add_argument("--croco-ndtfast", type=int, help="Override CROCO NDTFAST barotropic substeps")
     parser.add_argument(
@@ -293,6 +302,17 @@ def main():
     timeout_seconds = args.timeout_seconds or default_timeout_seconds(args.forecast_hours)
     if timeout_seconds <= 0:
         parser.error("--timeout-seconds must be positive")
+    if args.omit_copernicus_credentials and not args.cmems_gcs_uri:
+        parser.error(
+            "--omit-copernicus-credentials requires --cmems-gcs-uri"
+        )
+    if args.cmems_gcs_uri and (
+        not args.cmems_gcs_uri.startswith("gs://")
+        or f"/runs/{args.run_id}/" not in args.cmems_gcs_uri
+    ):
+        parser.error(
+            "--cmems-gcs-uri must be a gs:// prefix scoped to the exact run ID"
+        )
     if "@sha256:" not in args.image_uri and not args.dry_run:
         parser.error("--image-uri must be pinned by digest for a real submission")
 
@@ -355,14 +375,19 @@ def main():
         run_id=run_id,
         timeout_seconds=timeout_seconds,
         provisioning_model=args.provisioning_model,
-        copernicus_username=os.getenv("COPERNICUS_USERNAME")
-        or os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
-        copernicus_password=os.getenv("COPERNICUS_PASSWORD")
-        or os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD"),
+        copernicus_username=None if args.omit_copernicus_credentials else (
+            os.getenv("COPERNICUS_USERNAME")
+            or os.getenv("COPERNICUSMARINE_SERVICE_USERNAME")
+        ),
+        copernicus_password=None if args.omit_copernicus_credentials else (
+            os.getenv("COPERNICUS_PASSWORD")
+            or os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD")
+        ),
         croco_grid_gcs_uri=croco_grid_gcs_uri,
         wrf_gcs_uri=args.wrf_gcs_uri,
         croco_timestep_seconds=croco_timestep_seconds,
         croco_ndtfast=croco_ndtfast,
+        cmems_gcs_uri=args.cmems_gcs_uri,
     )
 
     job_json_str = json.dumps(job_manifest, indent=2)

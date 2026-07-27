@@ -290,6 +290,15 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
 
     log_step("2. Acquiring validated three-dimensional CMEMS ocean forcing")
     staged_cmems = inputs_dir / "cmems_ocean_forcing.nc"
+    staged_products = tuple(
+        inputs_dir / name
+        for name in (
+            "cmems_croco_currents_3d.nc",
+            "cmems_croco_temperature_3d.nc",
+            "cmems_croco_salinity_3d.nc",
+            "cmems_croco_sea_level.nc",
+        )
+    )
     use_staged_cmems = False
     if staged_cmems.exists():
         log_step(f"--> Validating pre-staged CMEMS forcing at {staged_cmems}...")
@@ -301,6 +310,11 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
                 "--> Rejecting structurally invalid CMEMS cache and "
                 f"reacquiring real 3-D forcing: {exc}"
             )
+    elif all(path.is_file() and path.stat().st_size > 0 for path in staged_products):
+        log_step("--> Found validated run-scoped CMEMS product set; staging for interpolation...")
+        for source in staged_products:
+            shutil.copy2(source, croco_work / source.name)
+        use_staged_cmems = True
     if not use_staged_cmems:
         run_checked(
             [
@@ -467,7 +481,10 @@ def main():
     log_step("1. Syncing boundary forcing files from GCS")
 
     ecmwf_gcs_src = f"gs://{args.gcs_bucket}/forcing/ecmwf/{run_date}/"
-    cmems_gcs_src = f"gs://{args.gcs_bucket}/forcing/cmems/{run_date}/"
+    cmems_gcs_src = os.environ.get(
+        "PREDSEA_CMEMS_GCS_URI",
+        f"gs://{args.gcs_bucket}/forcing/cmems/{run_date}/",
+    )
 
     print(f"📥 Syncing ECMWF forcing from {ecmwf_gcs_src}...")
     ecmwf_sync_rc = run_subprocess(
