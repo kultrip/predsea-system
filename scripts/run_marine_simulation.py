@@ -161,6 +161,24 @@ def resolve_swan_bathymetry(project_root: Path, region_id: str) -> Path:
 import tempfile
 
 
+def stage_cmems_forcing(staged_cmems: Path, croco_work: Path) -> Path:
+    """Copy a pre-staged CMEMS file and reject missing or empty artifacts."""
+    if not staged_cmems.is_file():
+        raise FileNotFoundError(f"Pre-staged CMEMS forcing is missing: {staged_cmems}")
+    source_size = staged_cmems.stat().st_size
+    if source_size == 0:
+        raise ValueError(f"Pre-staged CMEMS forcing is empty: {staged_cmems}")
+
+    destination = croco_work / "cmems_ocean_forcing.nc"
+    shutil.copy2(staged_cmems, destination)
+    if not destination.is_file() or destination.stat().st_size != source_size:
+        raise OSError(
+            "Pre-staged CMEMS forcing copy failed integrity check: "
+            f"source={staged_cmems}, destination={destination}"
+        )
+    return destination
+
+
 def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: Path,
                          region_id: str, run_date: str, run_id: str,
                          forecast_hours: int, mpi_ranks: int, gcs_bucket: str) -> None:
@@ -256,7 +274,7 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
     staged_cmems = inputs_dir / "cmems_ocean_forcing.nc"
     if staged_cmems.exists():
         log_step(f"--> Found pre-staged CMEMS forcing at {staged_cmems}, copying to {croco_work}...")
-        shutil.copy(staged_cmems, croco_work / "cmems_ocean_forcing.nc")
+        stage_cmems_forcing(staged_cmems, croco_work)
     else:
         run_checked(
             [
