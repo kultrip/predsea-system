@@ -188,7 +188,15 @@ validated.
 
 - Validated Balearic file grid: 501 x 401 points, nominal 1 km, exact profile
   bbox, max rx0 0.2, wet fraction about 0.929.
-- Matching compiled interior dimensions: LM=499, MM=399, N=30.
+- Matching compiled interior dimensions: LM=499, MM=399, N=32.
+
+The choice of 32 sigma levels is informed by Juza et al. (2016), “SOCIB
+operational ocean forecasting system and multi-platform validation in the
+Western Mediterranean Sea,” *Journal of Operational Oceanography*, 9:sup1,
+s155–s166, https://doi.org/10.1080/1755876X.2015.1117764. This citation
+supports only the vertical discretization count. WMOP is a ROMS configuration
+at approximately 2 km horizontal resolution over a different domain; it does
+not validate PredSea's CROCO implementation or nominal 1 km regional setup.
 - Runtime target: `c2d-highcpu-16` Standard, 16 MPI ranks, 32 GiB.
 - Real forcing proven through preparation: hourly 3-D CMEMS u/v, temperature,
   salinity and sea level; hourly PredSea WRF bulk surface fields.

@@ -112,6 +112,28 @@ def calculate_resources(region_cfg: dict) -> tuple[str, int, int, int]:
         return "c2d-highcpu-32", 32000, 65536, 16
 
 
+def validate_croco_grid_uri(croco_grid_gcs_uri: str | None, region_id: str) -> str:
+    """Require an explicit immutable grid under the matching region namespace."""
+    if not croco_grid_gcs_uri:
+        raise ValueError(
+            "No CROCO grid configured for region "
+            f"{region_id!r}; pass --croco-grid-gcs-uri or set "
+            "models.croco.grid_gcs_uri in the region profile"
+        )
+    if not croco_grid_gcs_uri.startswith("gs://"):
+        raise ValueError("CROCO grid URI must be a gs:// object")
+    expected_segment = f"/static/native-marine/{region_id}/croco-grid/"
+    if expected_segment not in croco_grid_gcs_uri:
+        raise ValueError(
+            "CROCO grid URI region mismatch: "
+            f"region_id={region_id!r}, expected path segment={expected_segment!r}, "
+            f"configured={croco_grid_gcs_uri!r}"
+        )
+    if not croco_grid_gcs_uri.endswith("/croco_grid.nc"):
+        raise ValueError("CROCO grid URI must identify a versioned croco_grid.nc object")
+    return croco_grid_gcs_uri
+
+
 def build_batch_job_json(
     project_id: str,
     region_id: str,
@@ -163,11 +185,12 @@ def build_batch_job_json(
                 "COPERNICUSMARINE_SERVICE_PASSWORD": copernicus_password,
             }
         )
-    if model_type == "croco":
+    if model_type in ("croco", "both"):
         if not wrf_gcs_uri:
             raise ValueError("CROCO jobs require explicit WRF GCS URI")
-        if not croco_grid_gcs_uri:
-            croco_grid_gcs_uri = f"gs://{gcs_bucket}/grids/croco_grd_{region_id}.nc"
+        croco_grid_gcs_uri = validate_croco_grid_uri(
+            croco_grid_gcs_uri, region_id
+        )
         environment_variables["PREDSEA_WRF_GCS_URI"] = wrf_gcs_uri
         environment_variables["PREDSEA_CROCO_GRID_GCS_URI"] = croco_grid_gcs_uri
         if croco_timestep_seconds is not None:
@@ -300,11 +323,15 @@ def main():
     croco_spec = region_cfg.get("models", {}).get("croco", {})
     croco_timestep_seconds = args.croco_timestep_seconds or croco_spec.get("timestep_seconds")
     croco_ndtfast = args.croco_ndtfast or croco_spec.get("ndtfast")
-    croco_grid_gcs_uri = (
-        args.croco_grid_gcs_uri
-        or croco_spec.get("grid_gcs_uri")
-        or f"gs://{gcs_bucket}/static/native-marine/{args.region}/croco-grid/20260726-v1/croco_grid.nc"
-    )
+    croco_grid_gcs_uri = None
+    if args.model in ("croco", "both"):
+        try:
+            croco_grid_gcs_uri = validate_croco_grid_uri(
+                args.croco_grid_gcs_uri or croco_spec.get("grid_gcs_uri"),
+                args.region,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
 
     print(f"✨ Scheduled execution parameters:")
     print(f"   - Target Machine: {machine_type} ({args.provisioning_model} VM)")

@@ -26,6 +26,13 @@
     },
     "croco": {
       "vertical_levels": 32,
+      "compiled_grid_shape": {
+        "xi_rho": 501,
+        "eta_rho": 401
+      },
+      "timestep_seconds": 5,
+      "ndtfast": 40,
+      "grid_gcs_uri": "gs://predsea-daily-outputs-test/static/native-marine/balearic_1km/croco-grid/20260722-v3/croco_grid.nc",
       "required_variables": [
         "eastward_current",
         "northward_current",

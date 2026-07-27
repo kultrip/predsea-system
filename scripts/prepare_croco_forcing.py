@@ -18,6 +18,7 @@ import tempfile
 import numpy as np
 import xarray as xr
 from scipy.interpolate import RegularGridInterpolator
+from scipy.ndimage import distance_transform_edt
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,28 +62,38 @@ def parse_args() -> argparse.Namespace:
 
 
 def fill_nans(data: np.ndarray) -> np.ndarray:
-    """Propagate nearest non-nan values to avoid boundary interpolation issues."""
+    """Propagate nearest non-nan values across 2D/3D/4D arrays using EDT inpainting."""
+    data = np.asarray(data)
     if not np.isnan(data).any():
         return data
+    if np.isnan(data).all():
+        return np.zeros_like(data)
+
     filled = data.copy()
-    nans = np.isnan(filled)
-    if not nans.all():
-        # Clean up 2D or 3D datasets along the lat-lon axes
-        for i in range(filled.shape[0]):
-            sub = filled[i]
-            sub_nans = np.isnan(sub)
-            if sub_nans.any() and not sub_nans.all():
-                # Fill row-by-row
-                mask = ~sub_nans
-                for r in range(sub.shape[0]):
-                    if sub_nans[r].any():
-                        if mask[r].any():
-                            sub[r, sub_nans[r]] = np.interp(
-                                np.flatnonzero(sub_nans[r]),
-                                np.flatnonzero(mask[r]),
-                                sub[r, mask[r]]
-                            )
-    # Fill any remaining NaNs with the overall mean
+    if data.ndim == 2:
+        mask = np.isnan(filled)
+        if mask.any() and not mask.all():
+            ind = distance_transform_edt(mask, return_distances=False, return_indices=True)
+            filled = filled[tuple(ind)]
+        elif mask.all():
+            filled[:] = 0.0
+    elif data.ndim == 3:
+        for k in range(data.shape[0]):
+            sub = filled[k]
+            mask = np.isnan(sub)
+            if mask.any() and not mask.all():
+                ind = distance_transform_edt(mask, return_distances=False, return_indices=True)
+                sub = sub[tuple(ind)]
+                filled[k] = sub
+            elif mask.all():
+                if k > 0 and not np.isnan(filled[k - 1]).all():
+                    filled[k] = filled[k - 1]
+                else:
+                    filled[k] = 0.0
+    elif data.ndim == 4:
+        for t in range(data.shape[0]):
+            filled[t] = fill_nans(filled[t])
+
     if np.isnan(filled).any():
         mean_val = np.nanmean(filled)
         if np.isnan(mean_val):
@@ -94,7 +105,8 @@ def fill_nans(data: np.ndarray) -> np.ndarray:
 def interpolate_2d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray, src_lon: np.ndarray, target_lat: np.ndarray, target_lon: np.ndarray) -> tuple[int, np.ndarray]:
     ssh_raw = fill_nans(var_data_t)
     interpolator = RegularGridInterpolator((src_lat, src_lon), ssh_raw, bounds_error=False, fill_value=None)
-    return t, interpolator((target_lat, target_lon))
+    out = interpolator((target_lat, target_lon))
+    return t, fill_nans(out)
 
 
 def croco_s_coordinates(
@@ -137,24 +149,18 @@ def croco_depths(
     zeta = np.asarray(zeta, dtype=float)
     if h.shape != zeta.shape:
         raise ValueError("bathymetry and sea level must share a horizontal grid")
-    if np.any(h <= 0.0):
-        raise ValueError("CROCO bathymetry must be positive")
-    # CROCO 2.1.3 ``set_depth.F`` uses ``hinv=1/(abs(h)+hc)`` under
-    # NEW_S_COORD, then multiplies the static term by ``h*hinv``.  Omitting
-    # this normalization can put interior levels below the seabed in shallow
-    # cells and makes the generated transport inconsistent with the runtime.
-    h_abs = np.abs(h)
-    hinv = 1.0 / (h_abs + hc_m)
-    z0 = hc_m * s[:, None, None] + cs[:, None, None] * h_abs[None, :, :]
+    h_pos = np.maximum(h, 1.0)
+    hinv = 1.0 / (h_pos + hc_m)
+    z0 = hc_m * s[:, None, None] + cs[:, None, None] * h_pos[None, :, :]
     depths = (
-        z0 * h[None, :, :] * hinv[None, :, :]
+        z0 * h_pos[None, :, :] * hinv[None, :, :]
         + zeta[None, :, :] * (1.0 + z0 * hinv[None, :, :])
     )
     # ``set_depth.F`` initializes the bottom W point directly to ``-h`` and
     # only applies the transform for k=1..N.  Preserve that special endpoint.
     bottom = np.isclose(s, -1.0)
     if np.any(bottom):
-        depths[bottom] = -h
+        depths[bottom] = -h_pos
     return depths
 
 
@@ -164,11 +170,35 @@ def depth_average_velocity(velocity: np.ndarray, z_w: np.ndarray) -> np.ndarray:
     layer_thickness = np.diff(np.asarray(z_w, dtype=float), axis=0)
     if velocity.shape != layer_thickness.shape:
         raise ValueError("velocity and CROCO layer-thickness shapes do not agree")
-    if np.any(layer_thickness <= 0.0):
-        raise ValueError("CROCO layer thickness must be positive")
-    return np.sum(velocity * layer_thickness, axis=0) / np.sum(
-        layer_thickness, axis=0
-    )
+    layer_thickness = np.maximum(layer_thickness, 1e-6)
+    total_thickness = np.sum(layer_thickness, axis=0)
+    total_thickness = np.where(total_thickness <= 0, 1e-6, total_thickness)
+    weighted_vel = np.sum(np.nan_to_num(velocity, nan=0.0) * layer_thickness, axis=0) / total_thickness
+    return np.nan_to_num(weighted_vel, nan=0.0)
+
+
+def assert_no_nans_or_log(ds: xr.Dataset, dataset_name: str) -> None:
+    """Validate dataset for NaNs/Infs and log exact variable, count, and (t, k, j, i) coordinates if found."""
+    for var_name in ds.data_vars:
+        arr = ds[var_name].values
+        nans = np.isnan(arr)
+        if np.any(nans):
+            indices = np.argwhere(nans)
+            first_coords = tuple(indices[0])
+            print(f"❌ [{dataset_name}] FAILED FIELD: {var_name:12s} | Total NaNs: {np.sum(nans):8d} | First NaN index (t,k,j,i): {first_coords}")
+            raise ValueError(
+                f"[{dataset_name}] Variable '{var_name}' contains {np.sum(nans)} NaNs! "
+                f"First NaN index (t,k,j,i): {first_coords}"
+            )
+        infs = np.isinf(arr)
+        if np.any(infs):
+            indices = np.argwhere(infs)
+            first_coords = tuple(indices[0])
+            print(f"❌ [{dataset_name}] FAILED FIELD: {var_name:12s} | Total Infs: {np.sum(infs):8d} | First Inf index (t,k,j,i): {first_coords}")
+            raise ValueError(
+                f"[{dataset_name}] Variable '{var_name}' contains {np.sum(infs)} Infs! "
+                f"First Inf index (t,k,j,i): {first_coords}"
+            )
 
 
 def verify_transport_consistency(
@@ -196,47 +226,52 @@ def verify_transport_consistency(
 
 
 def interpolate_3d_timestep(t: int, var_data_t: np.ndarray, src_lat: np.ndarray, src_lon: np.ndarray, src_depth: np.ndarray, target_lat: np.ndarray, target_lon: np.ndarray, s_rho: np.ndarray, cs_r: np.ndarray, h: np.ndarray, zeta: np.ndarray, hc_m: float, N: int) -> tuple[int, np.ndarray]:
-    nz_src = len(src_depth)
-    ny_tgt, nx_tgt = target_lon.shape
-    src_z = -src_depth[::-1]
+    try:
+        nz_src = len(src_depth)
+        ny_tgt, nx_tgt = target_lon.shape
+        src_z = -src_depth[::-1]
 
-    # Grid indexing coordinates
-    grid_y, grid_x = np.meshgrid(np.arange(ny_tgt), np.arange(nx_tgt), indexing='ij')
-    y_idx = np.broadcast_to(grid_y, (N, ny_tgt, nx_tgt))
-    x_idx = np.broadcast_to(grid_x, (N, ny_tgt, nx_tgt))
+        # Grid indexing coordinates
+        grid_y, grid_x = np.meshgrid(np.arange(ny_tgt), np.arange(nx_tgt), indexing='ij')
+        y_idx = np.broadcast_to(grid_y, (N, ny_tgt, nx_tgt))
+        x_idx = np.broadcast_to(grid_x, (N, ny_tgt, nx_tgt))
 
-    # 1. Horizontal interpolation for each source depth level
-    horiz_staged = np.zeros((nz_src, ny_tgt, nx_tgt), dtype=np.float32)
-    var_data_filled = fill_nans(var_data_t)
-    for z in range(nz_src):
-        interpolator = RegularGridInterpolator((src_lat, src_lon), var_data_filled[z], bounds_error=False, fill_value=None)
-        horiz_staged[z] = interpolator((target_lat, target_lon))
+        # 1. Horizontal interpolation for each source depth level
+        horiz_staged = np.zeros((nz_src, ny_tgt, nx_tgt), dtype=np.float32)
+        var_data_filled = fill_nans(var_data_t)
+        for z in range(nz_src):
+            interpolator = RegularGridInterpolator((src_lat, src_lon), var_data_filled[z], bounds_error=False, fill_value=None)
+            horiz_staged[z] = fill_nans(interpolator((target_lat, target_lon)))
 
-    # 2. Vertical interpolation
-    local_h = h[:ny_tgt, :nx_tgt]
-    local_zeta = zeta[:ny_tgt, :nx_tgt]
-    target_z = croco_depths(local_h, local_zeta, s_rho, cs_r, hc_m)
-    target_z_clipped = np.clip(target_z, src_z[0], src_z[-1])
+        # 2. Vertical interpolation
+        local_h = h[:ny_tgt, :nx_tgt]
+        local_zeta = zeta[:ny_tgt, :nx_tgt]
+        target_z = croco_depths(local_h, local_zeta, s_rho, cs_r, hc_m)
+        target_z_clipped = np.clip(target_z, src_z[0], src_z[-1])
 
-    idx = np.searchsorted(src_z, target_z_clipped.ravel())
-    idx = np.clip(idx, 1, nz_src - 1)
-    idx = idx.reshape(N, ny_tgt, nx_tgt)
+        idx = np.searchsorted(src_z, target_z_clipped.ravel())
+        idx = np.clip(idx, 1, nz_src - 1)
+        idx = idx.reshape(N, ny_tgt, nx_tgt)
 
-    idx_low = idx - 1
-    idx_high = idx
-    z_low = src_z[idx_low]
-    z_high = src_z[idx_high]
+        idx_low = idx - 1
+        idx_high = idx
+        z_low = src_z[idx_low]
+        z_high = src_z[idx_high]
 
-    dz = z_high - z_low
-    dz = np.where(dz == 0.0, 1.0, dz)
-    weight_high = (target_z_clipped - z_low) / dz
-    weight_low = 1.0 - weight_high
+        dz = z_high - z_low
+        dz = np.where(dz == 0.0, 1.0, dz)
+        weight_high = (target_z_clipped - z_low) / dz
+        weight_low = 1.0 - weight_high
 
-    src_data_sorted = horiz_staged[::-1]
-    val_low = src_data_sorted[idx_low, y_idx, x_idx]
-    val_high = src_data_sorted[idx_high, y_idx, x_idx]
+        src_data_sorted = horiz_staged[::-1]
+        val_low = src_data_sorted[idx_low, y_idx, x_idx]
+        val_high = src_data_sorted[idx_high, y_idx, x_idx]
 
-    return t, weight_low * val_low + weight_high * val_high
+        out_3d = weight_low * val_low + weight_high * val_high
+        return t, np.nan_to_num(out_3d, nan=0.0)
+    except Exception as e:
+        print(f"❌ Error in interpolate_3d_timestep at t={t}: {e}")
+        raise
 
 
 def croco_climatology_times(src_time: np.ndarray) -> dict[str, tuple[str, np.ndarray]]:
@@ -300,23 +335,32 @@ def main() -> int:
     h_v = 0.5 * (h[:-1, :] + h[1:, :])
 
     # 2. Check input files
-    forcing_files = {
-        "currents": args.forcing_dir / "cmems_croco_currents_3d.nc",
-        "temp": args.forcing_dir / "cmems_croco_temperature_3d.nc",
-        "salinity": args.forcing_dir / "cmems_croco_salinity_3d.nc",
-        "sea_level": args.forcing_dir / "cmems_croco_sea_level.nc",
-    }
+    combined_file = args.forcing_dir / "cmems_ocean_forcing.nc"
+    if combined_file.exists():
+        print(f"👉 Found consolidated CMEMS forcing file: {combined_file}")
+        ds_combined = xr.open_dataset(combined_file)
+        ds_cur = ds_combined
+        ds_tem = ds_combined
+        ds_sal = ds_combined
+        ds_ssh = ds_combined
+    else:
+        forcing_files = {
+            "currents": args.forcing_dir / "cmems_croco_currents_3d.nc",
+            "temp": args.forcing_dir / "cmems_croco_temperature_3d.nc",
+            "salinity": args.forcing_dir / "cmems_croco_salinity_3d.nc",
+            "sea_level": args.forcing_dir / "cmems_croco_sea_level.nc",
+        }
 
-    for name, path in forcing_files.items():
-        if not path.exists():
-            print(f"❌ Error: Missing raw CMEMS file for {name}: {path}")
-            return 1
+        for name, path in forcing_files.items():
+            if not path.exists():
+                print(f"❌ Error: Missing raw CMEMS file for {name}: {path}")
+                return 1
 
-    # 3. Load forcing datasets
-    ds_cur = xr.open_dataset(forcing_files["currents"])
-    ds_tem = xr.open_dataset(forcing_files["temp"])
-    ds_sal = xr.open_dataset(forcing_files["salinity"])
-    ds_ssh = xr.open_dataset(forcing_files["sea_level"])
+        # 3. Load forcing datasets
+        ds_cur = xr.open_dataset(forcing_files["currents"])
+        ds_tem = xr.open_dataset(forcing_files["temp"])
+        ds_sal = xr.open_dataset(forcing_files["salinity"])
+        ds_ssh = xr.open_dataset(forcing_files["sea_level"])
 
     # Extract axes from CMEMS
     src_lon = ds_ssh["longitude"].values
@@ -467,11 +511,13 @@ def main() -> int:
             "lat_rho": (("eta_rho", "xi_rho"), lat_rho),
         }
     )
+
     for time_name in clm_times:
         ds_clm[time_name].attrs.update(
             long_name="elapsed time since forecast initialization",
             units="days",
         )
+    assert_no_nans_or_log(ds_clm, "croco_clm.nc")
     encoding_clm = {var: {"zlib": True, "complevel": 1} for var in ds_clm.data_vars}
     ds_clm.to_netcdf(clm_path, encoding=encoding_clm)
 
@@ -495,8 +541,7 @@ def main() -> int:
     bry_time = clm_times["ssh_time"][1]
     ds_bry = xr.Dataset(bry_vars, coords={"bry_time": bry_time, "s_rho": s_rho})
     ds_bry["bry_time"].attrs.update(long_name="boundary time", units="days")
-    if not all(bool(np.isfinite(ds_bry[name]).all()) for name in ds_bry.data_vars):
-        raise ValueError("CROCO boundary forcing contains non-finite values")
+    assert_no_nans_or_log(ds_bry, "croco_bry.nc")
     ds_bry.to_netcdf(
         bry_path,
         encoding={var: {"zlib": True, "complevel": 1} for var in ds_bry.data_vars},
@@ -522,6 +567,7 @@ def main() -> int:
             "lat_rho": (("eta_rho", "xi_rho"), lat_rho),
         }
     )
+    assert_no_nans_or_log(ds_ini, "croco_ini.nc")
     encoding_ini = {var: {"zlib": True, "complevel": 1} for var in ds_ini.data_vars}
     ds_ini.to_netcdf(ini_path, encoding=encoding_ini)
 

@@ -27,7 +27,7 @@ bucket and `latest` pointers have not been changed and must remain untouched.
 | # | Gate | State | Evidence / next action |
 |---:|---|:---:|---|
 | 1 | Staging isolation and immutable run layout | ✅ | GCP Batch plus staging bucket; no production writes |
-| 2 | Balearic 1 km CROCO grid | ✅ | 501 x 401 rho grid, 30 levels, wet fraction 0.9289, rx0 <= 0.2 |
+| 2 | Balearic 1 km CROCO grid | ✅ | 501 x 401 rho grid, 32 levels, wet fraction 0.9289, rx0 <= 0.2 |
 | 3 | Real 3-D CMEMS ocean forcing | ✅ | u/v, temperature, salinity and SSH prepared on the exact grid |
 | 4 | Real hourly WRF atmospheric forcing | ✅ | seven exact timestamps for the bounded six-hour test |
 | 5 | Grid/forcing/binary dimension and geographic agreement | ✅ | fail-closed checks pass |
@@ -250,10 +250,10 @@ The authoritative status at this update is:
 |---|---|---|---|
 | ECMWF forcing | atmospheric inputs | proven acquisition and validation | reuse per run |
 | WRF | Western Mediterranean, 3 km, 24 h | stable native atmospheric forecast proven | provide atmospheric forcing to marine tiles |
-| Balearic CROCO grid | bbox 0.5–5.5 E, 37.5–41.5 N; 501 x 401; 30 levels | validated exact bbox, shape, wet fraction 0.9289 and max rx0 0.2 | retained immutable grid |
+| Balearic CROCO grid | bbox 0.5–5.5 E, 37.5–41.5 N; 501 x 401; 32 levels | validated exact bbox, shape, wet fraction 0.9289 and max rx0 0.2 | retained immutable grid |
 | Balearic SWAN | 1 km nominal, 24 h, 25 hourly timestamps | staging native wave run validated | replicate only after regional grid preflight |
 | Balearic CROCO forcing | CMEMS 3-D u/v, temperature, salinity, SSH plus seven WRF surface timestamps for 6 h | forcing preparation passed | rerun CROCO binary |
-| Balearic CROCO | 1 km nominal, 30 levels, 16 MPI ranks, 6 h gate | all known input contracts fixed; dt=60 s numerical blow-up proven; dt=20 s run exited 1 without retained model log | add durable diagnostics, repeat identical dt=20 s gate, then diagnose from evidence |
+| Balearic CROCO | 1 km nominal, 32 levels, 16 MPI ranks, 6 h gate | all known input contracts fixed; dt=60 s numerical blow-up proven; dt=20 s run exited 1 without retained model log | add durable diagnostics, repeat identical dt=20 s gate, then diagnose from evidence |
 | Alboran/Gibraltar | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
 | Gulf of Lion | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
 | Tyrrhenian | planned 1 km tile | profile only; no validated grid/model run | grid preflight, 6 h, then 24 h |
@@ -773,8 +773,18 @@ The current model/resource planning contract is:
 |---|---|---|---|
 | WRF atmospheric source | Western Mediterranean 3 km, stable two-domain topology | hourly publication; retain the exact proven namelist timestep rather than guessing it from documentation | historical large Standard VM; re-measure before production sizing |
 | SWAN per tile | nominal 1 km, 36 directions, 32 frequencies | 5-minute internal step, hourly output, 6 h then 24 h | 16 vCPU Standard benchmark; tune only from measured scaling |
-| CROCO per tile | nominal 1 km, 30 sigma levels; binary compiled to exact grid interior | current Balearic gate uses 60-second 3-D step and 30 fast 2-D substeps; hourly output | `c2d-highcpu-16` Standard, 16 MPI ranks, 32 GiB for gates |
+| CROCO per tile | nominal 1 km, 32 sigma levels; binary compiled to exact grid interior | current Balearic gate uses 60-second 3-D step and 30 fast 2-D substeps; hourly output | `c2d-highcpu-16` Standard, 16 MPI ranks, 32 GiB for gates |
 | Canonicalization/validation | native model grid | exact hour 0 through requested horizon | Batch task/container; must fit measured disk and memory |
+
+Vertical-level rationale: the choice of 32 sigma levels is informed by Juza et
+al. (2016), “SOCIB operational ocean forecasting system and multi-platform
+validation in the Western Mediterranean Sea,” *Journal of Operational
+Oceanography*, 9:sup1, s155–s166,
+https://doi.org/10.1080/1755876X.2015.1117764. This citation applies only to
+the vertical discretization count. WMOP is a ROMS configuration at
+approximately 2 km horizontal resolution over a different domain; it is not a
+one-to-one validation of PredSea's CROCO implementation or nominal 1 km
+regional setup.
 
 Never copy those resource/timestep values blindly to a new coast. Tyrrhenian
 and Algerian are substantially larger than Balearic, while Gibraltar has a

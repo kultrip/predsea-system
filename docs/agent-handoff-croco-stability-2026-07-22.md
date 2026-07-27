@@ -80,14 +80,14 @@ The required regional sequence is:
 | Order | Region | Bounds (longitude, latitude) | Planning grid | Acceptance note |
 |---:|---|---|---:|---|
 | 1 | `balearic_1km` | 0.5..5.5 E, 37.5..41.5 N | 501 x 401 validated | Reference implementation |
-| 2 | `alboran_1km` | -6.0..-1.0 E, 35.0..37.5 N | about 501 x 251 | Must explicitly validate Gibraltar |
-| 3 | `gulf_of_lion_1km` | 2.0..6.5 E, 41.5..44.5 N | about 451 x 301 | Southern France/Gulf of Lion |
-| 4 | `tyrrhenian_1km` | 7.5..14.0 E, 38.0..44.5 N | about 651 x 651 | Western Italy/Corsica/Sardinia |
-| 5 | `algerian_1km` | -1.0..8.5 E, 35.0..38.0 N | about 951 x 301 | Southern Western Mediterranean |
+| 2 | `alboran_1km` | -6.0..-1.0 E, 35.0..37.5 N | 501 x 251 | Must explicitly validate Gibraltar |
+| 3 | `gulf_of_lion_1km` | 2.0..6.5 E, 41.5..44.5 N | 451 x 301 | Southern France/Gulf of Lion |
+| 4 | `tyrrhenian_1km` | 7.5..14.0 E, 38.0..44.5 N | 650 x 651 | Western Italy/Corsica/Sardinia |
+| 5 | `algerian_1km` | -1.0..8.5 E, 35.0..38.0 N | 951 x 301 | Southern Western Mediterranean |
 
-Except for Balearic, point counts are estimates from the current 0.01-degree
-profiles, not validated NetCDF dimensions. Nominal 0.01 degree is not exactly
-1 km and changes physical distance with latitude.
+These bounds and dimensions match the current region profiles under
+`simulation/marine/regions/`, which are the source of truth. Nominal 0.01
+degree is not exactly 1 km and changes physical distance with latitude.
 
 Gibraltar is not accepted merely because it lies inside the Alboran bounding
 box. Its dedicated gates must show:
@@ -111,10 +111,10 @@ Inland destinations must not enlarge marine compute domains.
 | Staging isolation and immutable runs | ✅ | GCP Batch plus `predsea-daily-outputs-test`; production untouched |
 | PredSea WRF 3 km / 24 h source | ✅ retained | Stable two-domain atmospheric output used for marine forcing |
 | Balearic SWAN 1 km / 24 h | ✅ | 25 hourly native-wave timestamps validated in staging |
-| Balearic CROCO grid | ✅ structural | 501 x 401 rho points, 30 levels, wet fraction about 0.929, max rx0 0.20 |
+| Balearic CROCO grid | ✅ structural | 501 x 401 rho points, 32 levels, wet fraction about 0.929, max rx0 0.20 |
 | CMEMS 3-D forcing acquisition | ✅ | u/v, temperature, salinity, SSH with hourly coverage |
 | WRF bulk atmospheric forcing | ✅ | Exact retained hourly source coverage for bounded gate |
-| CROCO binary/grid dimension agreement | ✅ | LM=499, MM=399, N=30 matches file grid |
+| CROCO binary/grid dimension agreement | ✅ | LM=499, MM=399, N=32 matches file grid |
 | Dedicated `croco_bry.nc` generation | ✅ mechanical | CROCO logs prove `GET_BRY` reads hours 0, 1, and 2 |
 | Balearic CROCO 6 h stability | ❌ blocker | Repeatable `STEP2D BLOW UP` near simulated 1 h 24 min |
 | Balearic CROCO 24 h | ⬜ | Only after a fully validated 6 h pass |
@@ -208,7 +208,7 @@ The runtime CROCO configuration uses:
 
 ```text
 NEW_S_COORD
-N = 30
+N = 32
 THETA_S = 6.0
 THETA_B = 0.0
 Hc = 10 m
@@ -363,7 +363,7 @@ Current measured/planned configurations:
 |---|---|---|---|
 | WRF source | Stable Western Mediterranean 3 km, two-domain topology | hourly | Existing retained staging output |
 | SWAN per tile | nominal 1 km, 36 directions, 32 frequencies | 5-minute internal step, hourly output | 16-vCPU Standard benchmark |
-| CROCO Balearic gate | nominal 1 km, 501 x 401 rho, 30 stretched levels | 20-second 3-D step, 30 fast substeps, hourly output | `c2d-highcpu-16` Standard, 16 MPI, 32 GiB |
+| CROCO Balearic gate | nominal 1 km, 501 x 401 rho, 32 stretched levels | 20-second 3-D step, 30 fast substeps, hourly output | `c2d-highcpu-16` Standard, 16 MPI, 32 GiB |
 | Canonicalization/validation | native grid | exact hour 0..horizon | run-scoped Batch task |
 
 Do not copy these values blindly to Gibraltar or another coastline. Each region
@@ -477,6 +477,20 @@ The project is complete only when:
    retains fallback coverage.
 
 Until then, label native marine output as staging/experimental.
+
+### Vertical discretization reference
+
+PredSea uses 32 sigma levels as its vertical discretization choice, informed by
+the 32 stretched sigma levels documented for SOCIB's Western Mediterranean
+Operational Forecasting System (WMOP): Juza et al. (2016), “SOCIB operational
+ocean forecasting system and multi-platform validation in the Western
+Mediterranean Sea,” *Journal of Operational Oceanography*, 9:sup1, s155–s166,
+https://doi.org/10.1080/1755876X.2015.1117764.
+
+This citation supports only the choice of 32 vertical levels. WMOP is a ROMS
+configuration with approximately 2 km horizontal resolution over a different
+domain; it does not validate PredSea's CROCO implementation, nominal 1 km
+regional grids, or complete physical configuration.
 
 ## 16. Required reading
 

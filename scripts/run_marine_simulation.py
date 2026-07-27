@@ -20,8 +20,10 @@ import xarray as xr
 
 try:
     from scripts.fetch_swan_wind import fetch_wind, validate_wind
+    from scripts.grid_validation import validate_grid_matches_region
 except ModuleNotFoundError:  # Direct execution from the scripts directory.
     from fetch_swan_wind import fetch_wind, validate_wind
+    from grid_validation import validate_grid_matches_region
 
 
 def log_step(name: str):
@@ -156,6 +158,9 @@ def resolve_swan_bathymetry(project_root: Path, region_id: str) -> Path:
     )
 
 
+import tempfile
+
+
 def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: Path,
                          region_id: str, run_date: str, run_id: str,
                          forecast_hours: int, mpi_ranks: int, gcs_bucket: str) -> None:
@@ -173,48 +178,98 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
 
     region_profile = project_root / "simulation" / "marine" / "regions" / f"{region_id}.json"
     template = project_root / "simulation" / "marine" / "croco" / "croco.in.balearic"
-    croco_exe = Path("/usr/local/bin/croco_balearic")
+    croco_exe = Path(f"/usr/local/bin/croco_{region_id}")
+    croco_bin_env = os.environ.get("PREDSEA_CROCO_BINARY")
+    if croco_bin_env and Path(croco_bin_env) != croco_exe:
+        raise ValueError(
+            "PREDSEA_CROCO_BINARY must match the binary compiled for this region: "
+            f"region_id={region_id}, expected={croco_exe}, configured={croco_bin_env}"
+        )
+
     for required in (region_profile, template, croco_exe):
         if not required.is_file():
-            raise FileNotFoundError(f"required CROCO runtime asset is missing: {required}")
-
-    croco_work = outputs_dir / f"croco_{region_id}"
-    croco_work.mkdir(parents=True, exist_ok=True)
-    grid_path = croco_work / "croco_grid.nc"
-    wrf_dir = inputs_dir / "wrf"
-    wrf_dir.mkdir(parents=True, exist_ok=True)
-    run_checked(["gsutil", "cp", grid_uri, str(grid_path)], stage="CROCO grid download")
-    with xr.open_dataset(grid_path) as grid:
-        actual_shape = (int(grid.sizes["xi_rho"]), int(grid.sizes["eta_rho"]))
-        expected_shape = (
-            int(os.environ.get("PREDSEA_CROCO_XI_RHO", "501")),
-            int(os.environ.get("PREDSEA_CROCO_ETA_RHO", "401")),
-        )
-        if actual_shape != expected_shape:
-            raise ValueError(
-                "CROCO grid/binary dimension mismatch: "
-                f"grid xi_rho/eta_rho={actual_shape}, binary expects {expected_shape}"
+            raise FileNotFoundError(
+                f"required CROCO runtime asset is missing for region_id={region_id}: "
+                f"{required}"
             )
-    run_checked(["gsutil", "-m", "cp", "-r", wrf_uri, str(wrf_dir)], stage="WRF forcing download")
 
     with open(region_profile, "r", encoding="utf-8") as f:
         region_data = json.load(f)
     croco_spec = region_data.get("models", {}).get("croco", {})
+    compiled_shape = croco_spec.get("compiled_grid_shape")
+    if not isinstance(compiled_shape, dict):
+        raise ValueError(
+            f"missing models.croco.compiled_grid_shape for region_id={region_id}"
+        )
+    try:
+        expected_shape = (
+            int(compiled_shape["xi_rho"]),
+            int(compiled_shape["eta_rho"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            f"invalid models.croco.compiled_grid_shape for region_id={region_id}: "
+            f"{compiled_shape!r}"
+        ) from exc
+
+    # Aggressively clean working directories to ensure retries start with a 100% pristine workspace
+    croco_work = outputs_dir / f"croco_{region_id}"
+    if croco_work.exists():
+        log_step(f"0. Cleaning existing CROCO working directory for retry: {croco_work}")
+        shutil.rmtree(croco_work, ignore_errors=True)
+    croco_work.mkdir(parents=True, exist_ok=True)
+
+    wrf_dir = inputs_dir / "wrf"
+    if wrf_dir.exists():
+        shutil.rmtree(wrf_dir, ignore_errors=True)
+    wrf_dir.mkdir(parents=True, exist_ok=True)
+
+    for tmp_pattern in ("*.interpolated.float32", "croco_*", "cmems_*"):
+        for tmp_file in Path(tempfile.gettempdir()).glob(tmp_pattern):
+            try:
+                if tmp_file.is_file() or tmp_file.is_symlink():
+                    tmp_file.unlink()
+                elif tmp_file.is_dir():
+                    shutil.rmtree(tmp_file, ignore_errors=True)
+            except OSError:
+                pass
+
+    grid_path = croco_work / "croco_grid.nc"
+    wrf_dir = inputs_dir / "wrf"
+    wrf_dir.mkdir(parents=True, exist_ok=True)
+    run_checked(["gsutil", "cp", grid_uri, str(grid_path)], stage="CROCO grid download")
+    validate_grid_matches_region(str(grid_path), region_id)
+    with xr.open_dataset(grid_path) as grid:
+        actual_shape = (int(grid.sizes["xi_rho"]), int(grid.sizes["eta_rho"]))
+    if actual_shape != expected_shape:
+        raise ValueError(
+            "CROCO grid/binary dimension mismatch: "
+            f"region_id={region_id}, binary={croco_exe}, "
+            f"grid xi_rho/eta_rho={actual_shape}, "
+            f"compiled contract={expected_shape}"
+        )
+    run_checked(["gsutil", "-m", "cp", "-r", wrf_uri, str(wrf_dir)], stage="WRF forcing download")
+
     vertical_levels = int(croco_spec.get("vertical_levels", 32))
 
     log_step("2. Acquiring validated three-dimensional CMEMS ocean forcing")
-    run_checked(
-        [
-            "python3", "/app/scripts/fetch_native_marine_forcing.py",
-            "--run-date", run_date,
-            "--forecast-hours", str(forecast_hours),
-            "--region", str(region_profile),
-            "--output-dir", str(croco_work),
-            "--models", "croco",
-            "--overwrite",
-        ],
-        stage="CROCO CMEMS acquisition and validation",
-    )
+    staged_cmems = inputs_dir / "cmems_ocean_forcing.nc"
+    if staged_cmems.exists():
+        log_step(f"--> Found pre-staged CMEMS forcing at {staged_cmems}, copying to {croco_work}...")
+        shutil.copy(staged_cmems, croco_work / "cmems_ocean_forcing.nc")
+    else:
+        run_checked(
+            [
+                "python3", "/app/scripts/fetch_native_marine_forcing.py",
+                "--run-date", run_date,
+                "--forecast-hours", str(forecast_hours),
+                "--region", str(region_profile),
+                "--output-dir", str(croco_work),
+                "--models", "croco",
+                "--overwrite",
+            ],
+            stage="CROCO CMEMS acquisition and validation",
+        )
     run_checked(
         [
             "python3", "/app/scripts/prepare_croco_forcing.py",
@@ -255,11 +310,15 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
         if src.is_file():
             dst = rel_forcing_dir / fname
             if dst.resolve() != src.resolve():
-                import shutil
                 shutil.copy2(src, dst)
 
     namelist = croco_work / "croco.in"
-    croco_timestep_seconds = int(os.environ.get("PREDSEA_CROCO_TIMESTEP_SECONDS", "30"))
+    croco_timestep_seconds = int(
+        os.environ.get("PREDSEA_CROCO_TIMESTEP_SECONDS", croco_spec.get("timestep_seconds", 30))
+    )
+    croco_ndtfast = int(
+        os.environ.get("PREDSEA_CROCO_NDTFAST", croco_spec.get("ndtfast", 30))
+    )
     run_checked(
         [
             "python3", "/app/simulation/marine/croco/prepare_croco_in.py",
@@ -269,6 +328,7 @@ def run_croco_simulation(*, project_root: Path, inputs_dir: Path, outputs_dir: P
             "--start-date", run_date,
             "--forecast-hours", str(forecast_hours),
             "--timestep-seconds", str(croco_timestep_seconds),
+            "--ndtfast", str(croco_ndtfast),
         ],
         stage="CROCO namelist rendering",
     )

@@ -26,6 +26,13 @@
     },
     "croco": {
       "vertical_levels": 32,
+      "compiled_grid_shape": {
+        "xi_rho": 451,
+        "eta_rho": 301
+      },
+      "timestep_seconds": 5,
+      "ndtfast": 40,
+      "grid_gcs_uri": "gs://predsea-daily-outputs-test/static/native-marine/gulf_of_lion_1km/croco-grid/20260727-v1/croco_grid.nc",
       "required_variables": [
         "eastward_current",
         "northward_current",

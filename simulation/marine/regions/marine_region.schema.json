@@ -40,7 +40,12 @@
       "required": ["swan", "croco"],
       "properties": {
         "swan": {"$ref": "#/$defs/model"},
-        "croco": {"$ref": "#/$defs/model"}
+        "croco": {
+          "allOf": [
+            {"$ref": "#/$defs/model"},
+            {"required": ["compiled_grid_shape"]}
+          ]
+        }
       },
       "additionalProperties": false
     },
@@ -69,6 +74,15 @@
           "items": {"type": "string", "minLength": 1},
           "minItems": 1,
           "uniqueItems": true
+        },
+        "compiled_grid_shape": {
+          "type": "object",
+          "required": ["xi_rho", "eta_rho"],
+          "properties": {
+            "xi_rho": {"type": "integer", "minimum": 3},
+            "eta_rho": {"type": "integer", "minimum": 3}
+          },
+          "additionalProperties": false
         },
         "physical_ranges": {
           "type": "object",
